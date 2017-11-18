@@ -1,0 +1,16 @@
+This repository tracks the work on netlink interface for communication
+between ethtool (and possibly other userspace tools) and kernel. The
+ultimate goal is to provide a more flexible and extensible alternative to
+the ioctl() interface used so far.
+
+The work started as a SUSE Hackweek 16 project
+
+  https://hackweek.suse.com/16/projects/netlink-interface-for-ethtool
+
+but we were able to do much less than we wanted to. We do not want to give
+up, though, so the work is going on.
+
+Note that this hasn't been submitted yet, not even as an RFC so that
+everything must be expected to change (and even more so once the work is
+sent to upstream mailing list for review). Comments and suggestions are
+welcome.

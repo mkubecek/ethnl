@@ -1,0 +1,4 @@
+This directory tracks the patchset for ethtool utility implementing the use
+of kernel netlink interface which is being developed in parallel. It is
+based on current upstream master branch and it is going to be rebased to it
+while the work is in progress.
