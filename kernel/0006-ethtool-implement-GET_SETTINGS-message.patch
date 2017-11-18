@@ -1,0 +1,647 @@
+From 1f6ace3b0b01675509ea2fc35aae4fb48c9bf9ae Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Fri, 10 Nov 2017 19:40:36 +0100
+Subject: [PATCH 6/6] ethtool: implement GET_SETTINGS message
+
+Requests the information provided by ETHTOOL_GLINKSETTINGS, ETHTOOL_GWOL
+and ETHTOOL_GMSGLVL. The info_mask header field can be used to request only
+part of the information. Flag ETH_SETTINGS_RF_COMPACT_BITSETS switches
+between flag-by-flag list and compact bitmaps for link modes in the reply.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ include/linux/ethtool_netlink.h      |   3 +
+ include/linux/netdevice.h            |   2 +
+ include/uapi/linux/ethtool.h         |   3 +
+ include/uapi/linux/ethtool_netlink.h |  32 +++++
+ net/core/ethtool.c                   | 100 +-------------
+ net/core/ethtool_common.c            | 103 ++++++++++++++
+ net/core/ethtool_common.h            |   7 +
+ net/core/ethtool_netlink.c           | 253 +++++++++++++++++++++++++++++++++++
+ 8 files changed, 407 insertions(+), 96 deletions(-)
+
+diff --git a/include/linux/ethtool_netlink.h b/include/linux/ethtool_netlink.h
+index 0412adb4f42f..1787359f9e5d 100644
+--- a/include/linux/ethtool_netlink.h
++++ b/include/linux/ethtool_netlink.h
+@@ -6,4 +6,7 @@
+ #include <uapi/linux/ethtool_netlink.h>
+ #include <linux/ethtool.h>
+ 
++#define __ETHTOOL_LINK_MODE_MASK_NWORDS \
++	((__ETHTOOL_LINK_MODE_MASK_NBITS + 31) / 32)
++
+ #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+index 6b274bfe489f..e392632affca 100644
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -3503,6 +3503,8 @@ enum {
+ 	NETIF_MSG_PKTDATA	= 0x1000,
+ 	NETIF_MSG_HW		= 0x2000,
+ 	NETIF_MSG_WOL		= 0x4000,
++
++	NETIF_MSG_ALL		= 0x7fff,
+ };
+ 
+ #define netif_msg_drv(p)	((p)->msg_enable & NETIF_MSG_DRV)
+diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
+index ac71559314e7..29448b9d2338 100644
+--- a/include/uapi/linux/ethtool.h
++++ b/include/uapi/linux/ethtool.h
+@@ -143,6 +143,9 @@ static inline __u32 ethtool_cmd_speed(const struct ethtool_cmd *ep)
+  */
+ #define ETH_MDIO_SUPPORTS_C45	2
+ 
++/* All defined ETH_MDIO_SUPPORTS_* flags */
++#define ETH_MDIO_SUPPORTS_ALL (ETH_MDIO_SUPPORTS_C22 | ETH_MDIO_SUPPORTS_C45)
++
+ #define ETHTOOL_FWVERS_LEN	32
+ #define ETHTOOL_BUSINFO_LEN	32
+ #define ETHTOOL_EROMVERS_LEN	32
+diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
+index ed4b492fa5c5..0e5668883fa3 100644
+--- a/include/uapi/linux/ethtool_netlink.h
++++ b/include/uapi/linux/ethtool_netlink.h
+@@ -22,6 +22,8 @@ enum {
+ 	ETHTOOL_CMD_NOOP,
+ 	ETHTOOL_CMD_GET_DRVINFO,
+ 	ETHTOOL_CMD_SET_DRVINFO,	/* only for reply */
++	ETHTOOL_CMD_GET_SETTINGS,
++	ETHTOOL_CMD_SET_SETTINGS,
+ 
+ 	__ETHTOOL_CMD_MAX,
+ 	ETHTOOL_CMD_MAX = (__ETHTOOL_CMD_MAX - 1),
+@@ -77,6 +79,36 @@ enum {
+ 	ETHA_DRVINFO_MAX = (__ETHA_DRVINFO_MAX - 1),
+ };
+ 
++/* GET_SETTINGS / SET_SETTINGS */
++
++enum {
++	ETHA_SETTINGS_UNSPEC,
++	ETHA_SETTINGS_SPEED,			/* u32 */
++	ETHA_SETTINGS_DUPLEX,			/* s8 */
++	ETHA_SETTINGS_PORT,			/* u32 */
++	ETHA_SETTINGS_PHYADDR,			/* u32 */
++	ETHA_SETTINGS_AUTONEG,			/* u8 */
++	ETHA_SETTINGS_MDIO_SUPPORT,		/* bitfield32 */
++	ETHA_SETTINGS_TP_MDIX,			/* u32 */
++	ETHA_SETTINGS_TP_MDIX_CTRL,		/* u32 */
++	ETHA_SETTINGS_WOL_MODES,		/* bitfield32 */
++	ETHA_SETTINGS_SOPASS,			/* binary */
++	ETHA_SETTINGS_MSGLVL,			/* bitfield32 */
++	ETHA_SETTINGS_LINK_MODES,		/* bitset */
++	ETHA_SETTINGS_PEER_MODES,		/* bitset */
++
++	__ETHA_SETTINGS_MAX,
++	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_MAX - 1),
++};
++
++#define ETH_SETTINGS_RF_COMPACT_BITSETS		0x1
++
++#define ETH_SETTINGS_IM_LINKINFO		0x1
++#define ETH_SETTINGS_IM_LINKMODES		0x2
++#define ETH_SETTINGS_IM_WOLINFO			0x4
++
++#define ETH_SETTINGS_IM_DEFAULT			0x7
++
+ /* generic netlink info */
+ #define ETHTOOL_GENL_NAME "ethtool"
+ #define ETHTOOL_GENL_VERSION 1
+diff --git a/net/core/ethtool.c b/net/core/ethtool.c
+index 09e780a748f9..1777eb8b45bc 100644
+--- a/net/core/ethtool.c
++++ b/net/core/ethtool.c
+@@ -452,54 +452,6 @@ bool ethtool_convert_link_mode_to_legacy_u32(u32 *legacy_u32,
+ }
+ EXPORT_SYMBOL(ethtool_convert_link_mode_to_legacy_u32);
+ 
+-/* return false if legacy contained non-0 deprecated fields
+- * maxtxpkt/maxrxpkt. rest of ksettings always updated
+- */
+-static bool
+-convert_legacy_settings_to_link_ksettings(
+-	struct ethtool_link_ksettings *link_ksettings,
+-	const struct ethtool_cmd *legacy_settings)
+-{
+-	bool retval = true;
+-
+-	memset(link_ksettings, 0, sizeof(*link_ksettings));
+-
+-	/* This is used to tell users that driver is still using these
+-	 * deprecated legacy fields, and they should not use
+-	 * %ETHTOOL_GLINKSETTINGS/%ETHTOOL_SLINKSETTINGS
+-	 */
+-	if (legacy_settings->maxtxpkt ||
+-	    legacy_settings->maxrxpkt)
+-		retval = false;
+-
+-	ethtool_convert_legacy_u32_to_link_mode(
+-		link_ksettings->link_modes.supported,
+-		legacy_settings->supported);
+-	ethtool_convert_legacy_u32_to_link_mode(
+-		link_ksettings->link_modes.advertising,
+-		legacy_settings->advertising);
+-	ethtool_convert_legacy_u32_to_link_mode(
+-		link_ksettings->link_modes.lp_advertising,
+-		legacy_settings->lp_advertising);
+-	link_ksettings->base.speed
+-		= ethtool_cmd_speed(legacy_settings);
+-	link_ksettings->base.duplex
+-		= legacy_settings->duplex;
+-	link_ksettings->base.port
+-		= legacy_settings->port;
+-	link_ksettings->base.phy_address
+-		= legacy_settings->phy_address;
+-	link_ksettings->base.autoneg
+-		= legacy_settings->autoneg;
+-	link_ksettings->base.mdio_support
+-		= legacy_settings->mdio_support;
+-	link_ksettings->base.eth_tp_mdix
+-		= legacy_settings->eth_tp_mdix;
+-	link_ksettings->base.eth_tp_mdix_ctrl
+-		= legacy_settings->eth_tp_mdix_ctrl;
+-	return retval;
+-}
+-
+ /* return false if ksettings link modes had higher bits
+  * set. legacy_settings always updated (best effort)
+  */
+@@ -560,50 +512,6 @@ struct ethtool_link_usettings {
+ 	} link_modes;
+ };
+ 
+-/* Internal kernel helper to query a device ethtool_link_settings.
+- *
+- * Backward compatibility note: for compatibility with legacy drivers
+- * that implement only the ethtool_cmd API, this has to work with both
+- * drivers implementing get_link_ksettings API and drivers
+- * implementing get_settings API. When drivers implement get_settings
+- * and report ethtool_cmd deprecated fields
+- * (transceiver/maxrxpkt/maxtxpkt), these fields are silently ignored
+- * because the resulting struct ethtool_link_settings does not report them.
+- */
+-int __ethtool_get_link_ksettings(struct net_device *dev,
+-				 struct ethtool_link_ksettings *link_ksettings)
+-{
+-	int err;
+-	struct ethtool_cmd cmd;
+-
+-	ASSERT_RTNL();
+-
+-	if (dev->ethtool_ops->get_link_ksettings) {
+-		memset(link_ksettings, 0, sizeof(*link_ksettings));
+-		return dev->ethtool_ops->get_link_ksettings(dev,
+-							    link_ksettings);
+-	}
+-
+-	/* driver doesn't support %ethtool_link_ksettings API. revert to
+-	 * legacy %ethtool_cmd API, unless it's not supported either.
+-	 * TODO: remove when ethtool_ops::get_settings disappears internally
+-	 */
+-	if (!dev->ethtool_ops->get_settings)
+-		return -EOPNOTSUPP;
+-
+-	memset(&cmd, 0, sizeof(cmd));
+-	cmd.cmd = ETHTOOL_GSET;
+-	err = dev->ethtool_ops->get_settings(dev, &cmd);
+-	if (err < 0)
+-		return err;
+-
+-	/* we ignore deprecated fields transceiver/maxrxpkt/maxtxpkt
+-	 */
+-	convert_legacy_settings_to_link_ksettings(link_ksettings, &cmd);
+-	return err;
+-}
+-EXPORT_SYMBOL(__ethtool_get_link_ksettings);
+-
+ /* convert ethtool_link_usettings in user space to a kernel internal
+  * ethtool_link_ksettings. return 0 on success, errno on error.
+  */
+@@ -1437,11 +1345,11 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
+ static int ethtool_get_wol(struct net_device *dev, char __user *useraddr)
+ {
+ 	struct ethtool_wolinfo wol = { .cmd = ETHTOOL_GWOL };
++	int rc;
+ 
+-	if (!dev->ethtool_ops->get_wol)
+-		return -EOPNOTSUPP;
+-
+-	dev->ethtool_ops->get_wol(dev, &wol);
++	rc = __ethtool_get_wol(dev, &wol);
++	if (rc < 0)
++		return rc;
+ 
+ 	if (copy_to_user(useraddr, &wol, sizeof(wol)))
+ 		return -EFAULT;
+diff --git a/net/core/ethtool_common.c b/net/core/ethtool_common.c
+index 2c0abab0e43c..2ed44164c6a2 100644
+--- a/net/core/ethtool_common.c
++++ b/net/core/ethtool_common.c
+@@ -44,3 +44,106 @@ int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info)
+ 	return 0;
+ }
+ EXPORT_SYMBOL(__ethtool_get_drvinfo);
++
++/* return false if legacy contained non-0 deprecated fields
++ * maxtxpkt/maxrxpkt. rest of ksettings always updated
++ */
++bool
++convert_legacy_settings_to_link_ksettings(
++	struct ethtool_link_ksettings *link_ksettings,
++	const struct ethtool_cmd *legacy_settings)
++{
++	bool retval = true;
++
++	memset(link_ksettings, 0, sizeof(*link_ksettings));
++
++	/* This is used to tell users that driver is still using these
++	 * deprecated legacy fields, and they should not use
++	 * %ETHTOOL_GLINKSETTINGS/%ETHTOOL_SLINKSETTINGS
++	 */
++	if (legacy_settings->maxtxpkt ||
++	    legacy_settings->maxrxpkt)
++		retval = false;
++
++	ethtool_convert_legacy_u32_to_link_mode(
++		link_ksettings->link_modes.supported,
++		legacy_settings->supported);
++	ethtool_convert_legacy_u32_to_link_mode(
++		link_ksettings->link_modes.advertising,
++		legacy_settings->advertising);
++	ethtool_convert_legacy_u32_to_link_mode(
++		link_ksettings->link_modes.lp_advertising,
++		legacy_settings->lp_advertising);
++	link_ksettings->base.speed
++		= ethtool_cmd_speed(legacy_settings);
++	link_ksettings->base.duplex
++		= legacy_settings->duplex;
++	link_ksettings->base.port
++		= legacy_settings->port;
++	link_ksettings->base.phy_address
++		= legacy_settings->phy_address;
++	link_ksettings->base.autoneg
++		= legacy_settings->autoneg;
++	link_ksettings->base.mdio_support
++		= legacy_settings->mdio_support;
++	link_ksettings->base.eth_tp_mdix
++		= legacy_settings->eth_tp_mdix;
++	link_ksettings->base.eth_tp_mdix_ctrl
++		= legacy_settings->eth_tp_mdix_ctrl;
++	return retval;
++}
++
++/* Internal kernel helper to query a device ethtool_link_settings.
++ *
++ * Backward compatibility note: for compatibility with legacy drivers
++ * that implement only the ethtool_cmd API, this has to work with both
++ * drivers implementing get_link_ksettings API and drivers
++ * implementing get_settings API. When drivers implement get_settings
++ * and report ethtool_cmd deprecated fields
++ * (transceiver/maxrxpkt/maxtxpkt), these fields are silently ignored
++ * because the resulting struct ethtool_link_settings does not report them.
++ */
++int __ethtool_get_link_ksettings(struct net_device *dev,
++				 struct ethtool_link_ksettings *link_ksettings)
++{
++	int err;
++	struct ethtool_cmd cmd;
++
++	ASSERT_RTNL();
++
++	if (dev->ethtool_ops->get_link_ksettings) {
++		memset(link_ksettings, 0, sizeof(*link_ksettings));
++		return dev->ethtool_ops->get_link_ksettings(dev,
++							    link_ksettings);
++	}
++
++	/* driver doesn't support %ethtool_link_ksettings API. revert to
++	 * legacy %ethtool_cmd API, unless it's not supported either.
++	 * TODO: remove when ethtool_ops::get_settings disappears internally
++	 */
++	if (!dev->ethtool_ops->get_settings)
++		return -EOPNOTSUPP;
++
++	memset(&cmd, 0, sizeof(cmd));
++	cmd.cmd = ETHTOOL_GSET;
++	err = dev->ethtool_ops->get_settings(dev, &cmd);
++	if (err < 0)
++		return err;
++
++	/* we ignore deprecated fields transceiver/maxrxpkt/maxtxpkt
++	 */
++	convert_legacy_settings_to_link_ksettings(link_ksettings, &cmd);
++	return err;
++}
++EXPORT_SYMBOL(__ethtool_get_link_ksettings);
++
++int __ethtool_get_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
++{
++	if (!dev->ethtool_ops->get_wol)
++		return -EOPNOTSUPP;
++
++	dev->ethtool_ops->get_wol(dev, wol);
++
++	return 0;
++}
++EXPORT_SYMBOL(__ethtool_get_wol);
+diff --git a/net/core/ethtool_common.h b/net/core/ethtool_common.h
+index 1f031c1d943a..635141ebc7e6 100644
+--- a/net/core/ethtool_common.h
++++ b/net/core/ethtool_common.h
+@@ -7,5 +7,12 @@
+ #include <linux/ethtool.h>
+ 
+ int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info);
++int __ethtool_get_wol(struct net_device *dev, struct ethtool_wolinfo *wol);
++int __ethtool_get_link_ksettings(struct net_device *dev,
++				 struct ethtool_link_ksettings *link_ksettings);
++
++bool convert_legacy_settings_to_link_ksettings(
++	struct ethtool_link_ksettings *link_ksettings,
++	const struct ethtool_cmd *legacy_settings);
+ 
+ #endif /* _ETHTOOL_COMMON_H */
+diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
+index 07945b8f2120..9e4b60d01e3b 100644
+--- a/net/core/ethtool_netlink.c
++++ b/net/core/ethtool_netlink.c
+@@ -4,11 +4,69 @@
+ #include <linux/ethtool_netlink.h>
+ #include <linux/netdevice.h>
+ #include <linux/bitmap.h>
++#include <linux/rtnetlink.h>
+ #include <net/genetlink.h>
+ #include "ethtool_common.h"
+ 
+ static struct genl_family ethtool_genl_family;
+ 
++/* dictionary */
++
++static const char *const link_mode_names[] = {
++	[ETHTOOL_LINK_MODE_10baseT_Half_BIT]		= "10baseT_Half",
++	[ETHTOOL_LINK_MODE_10baseT_Full_BIT]		= "10baseT_Full",
++	[ETHTOOL_LINK_MODE_100baseT_Half_BIT]		= "100baseT_Half",
++	[ETHTOOL_LINK_MODE_100baseT_Full_BIT]		= "100baseT_Full",
++	[ETHTOOL_LINK_MODE_1000baseT_Half_BIT]		= "1000baseT_Half",
++	[ETHTOOL_LINK_MODE_1000baseT_Full_BIT]		= "1000baseT_Full",
++	[ETHTOOL_LINK_MODE_Autoneg_BIT]			= "Autoneg",
++	[ETHTOOL_LINK_MODE_TP_BIT]			= "TP",
++	[ETHTOOL_LINK_MODE_AUI_BIT]			= "AUI",
++	[ETHTOOL_LINK_MODE_MII_BIT]			= "MII",
++	[ETHTOOL_LINK_MODE_FIBRE_BIT]			= "FIBRE",
++	[ETHTOOL_LINK_MODE_BNC_BIT]			= "BNC",
++	[ETHTOOL_LINK_MODE_10000baseT_Full_BIT]		= "10000baseT_Full",
++	[ETHTOOL_LINK_MODE_Pause_BIT]			= "Pause",
++	[ETHTOOL_LINK_MODE_Asym_Pause_BIT]		= "Asym_Pause",
++	[ETHTOOL_LINK_MODE_2500baseX_Full_BIT]		= "2500baseX_Full",
++	[ETHTOOL_LINK_MODE_Backplane_BIT]		= "Backplane",
++	[ETHTOOL_LINK_MODE_1000baseKX_Full_BIT]		= "1000baseKX_Full",
++	[ETHTOOL_LINK_MODE_10000baseKX4_Full_BIT]	= "10000baseKX4_Full",
++	[ETHTOOL_LINK_MODE_10000baseKR_Full_BIT]	= "10000baseKR_Full",
++	[ETHTOOL_LINK_MODE_10000baseR_FEC_BIT]		= "10000baseR_FEC",
++	[ETHTOOL_LINK_MODE_20000baseMLD2_Full_BIT]	= "20000baseMLD2_Full",
++	[ETHTOOL_LINK_MODE_20000baseKR2_Full_BIT]	= "20000baseKR2_Full",
++	[ETHTOOL_LINK_MODE_40000baseKR4_Full_BIT]	= "40000baseKR4_Full",
++	[ETHTOOL_LINK_MODE_40000baseCR4_Full_BIT]	= "40000baseCR4_Full",
++	[ETHTOOL_LINK_MODE_40000baseSR4_Full_BIT]	= "40000baseSR4_Full",
++	[ETHTOOL_LINK_MODE_40000baseLR4_Full_BIT]	= "40000baseLR4_Full",
++	[ETHTOOL_LINK_MODE_56000baseKR4_Full_BIT]	= "56000baseKR4_Full",
++	[ETHTOOL_LINK_MODE_56000baseCR4_Full_BIT]	= "56000baseCR4_Full",
++	[ETHTOOL_LINK_MODE_56000baseSR4_Full_BIT]	= "56000baseSR4_Full",
++	[ETHTOOL_LINK_MODE_56000baseLR4_Full_BIT]	= "56000baseLR4_Full",
++	[ETHTOOL_LINK_MODE_25000baseCR_Full_BIT]	= "25000baseCR_Full",
++	[ETHTOOL_LINK_MODE_25000baseKR_Full_BIT]	= "25000baseKR_Full",
++	[ETHTOOL_LINK_MODE_25000baseSR_Full_BIT]	= "25000baseSR_Full",
++	[ETHTOOL_LINK_MODE_50000baseCR2_Full_BIT]	= "50000baseCR2_Full",
++	[ETHTOOL_LINK_MODE_50000baseKR2_Full_BIT]	= "50000baseKR2_Full",
++	[ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT]	= "100000baseKR4_Full",
++	[ETHTOOL_LINK_MODE_100000baseSR4_Full_BIT]	= "100000baseSR4_Full",
++	[ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT]	= "100000baseCR4_Full",
++	[ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT]	= "100000baseLR4_ER4_Full",
++	[ETHTOOL_LINK_MODE_50000baseSR2_Full_BIT]	= "50000baseSR2_Full",
++	[ETHTOOL_LINK_MODE_1000baseX_Full_BIT]		= "1000baseX_Full",
++	[ETHTOOL_LINK_MODE_10000baseCR_Full_BIT]	= "10000baseCR_Full",
++	[ETHTOOL_LINK_MODE_10000baseSR_Full_BIT]	= "10000baseSR_Full",
++	[ETHTOOL_LINK_MODE_10000baseLR_Full_BIT]	= "10000baseLR_Full",
++	[ETHTOOL_LINK_MODE_10000baseLRM_Full_BIT]	= "10000baseLRM_Full",
++	[ETHTOOL_LINK_MODE_10000baseER_Full_BIT]	= "10000baseER_Full",
++	[ETHTOOL_LINK_MODE_2500baseT_Full_BIT]		= "2500baseT_Full",
++	[ETHTOOL_LINK_MODE_5000baseT_Full_BIT]		= "5000baseT_Full",
++	[ETHTOOL_LINK_MODE_FEC_NONE_BIT]		= "FEC_NONE",
++	[ETHTOOL_LINK_MODE_FEC_RS_BIT]			= "FEC_RS",
++	[ETHTOOL_LINK_MODE_FEC_BASER_BIT]		= "FEC_BASER",
++};
++
+ /* misc helper functions */
+ 
+ static int ethnl_str_size(const char *s)
+@@ -322,9 +380,204 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
+ 	return -EMSGSIZE;
+ }
+ 
++/* GET_SETTINGS */
++
++static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
++	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_UNSPEC },
++	[ETHA_SETTINGS_SPEED]		= { .type = NLA_U32 },
++	[ETHA_SETTINGS_DUPLEX]		= { .type = NLA_S8 },
++	[ETHA_SETTINGS_PORT]		= { .type = NLA_U32 },
++	[ETHA_SETTINGS_PHYADDR]		= { .type = NLA_U32 },
++	[ETHA_SETTINGS_AUTONEG]		= { .type = NLA_U8 },
++	[ETHA_SETTINGS_MDIO_SUPPORT]	= { .type = NLA_BITFIELD32 },
++	[ETHA_SETTINGS_TP_MDIX]		= { .type = NLA_U32 },
++	[ETHA_SETTINGS_TP_MDIX_CTRL]	= { .type = NLA_U32 },
++	[ETHA_SETTINGS_WOL_MODES]	= { .type = NLA_BITFIELD32 },
++	[ETHA_SETTINGS_SOPASS]		= { .type = NLA_BINARY,
++					    .len = SOPASS_MAX },
++	[ETHA_SETTINGS_MSGLVL]		= { .type = NLA_BITFIELD32 },
++};
++
++static int ethnl_settings_size(struct ethtool_nl_msghdr *ehdr,
++			       struct ethtool_link_ksettings *ksettings,
++			       struct net_device *dev)
++{
++	size_t len = 0;
++	int rc = 0;
++
++	if (ehdr->info_mask & ETH_SETTINGS_IM_LINKINFO) {
++		/* speed, port, phyaddr, mdix, mdixctrl */
++		len += 5 * nla_total_size(sizeof(u32));
++		/* duplex, autoneg */
++		len += 2 * nla_total_size(sizeof(u8));
++		/* mdio_support */
++		len += nla_total_size(sizeof(struct nla_bitfield32));
++		if (dev->ethtool_ops->get_msglevel)
++			len += nla_total_size(sizeof(struct nla_bitfield32));
++	}
++	if (ehdr->info_mask & ETH_SETTINGS_IM_WOLINFO) {
++		/* wolopts / wol_supported */
++		len += nla_total_size(sizeof(struct nla_bitfield32));
++		/* sopass */
++		len += nla_total_size(SOPASS_MAX);
++	}
++	if (ehdr->info_mask & ETH_SETTINGS_IM_LINKMODES) {
++		u32 *supported = (u32 *)ksettings->link_modes.supported;
++		u32 *advertising = (u32 *)ksettings->link_modes.advertising;
++		u32 *lp_advertising =
++			(u32 *)ksettings->link_modes.lp_advertising;
++		bool compact = ehdr->flags & ETH_SETTINGS_RF_COMPACT_BITSETS;
++
++		rc = ethnl_bitset_size(compact, __ETHTOOL_LINK_MODE_MASK_NBITS,
++				       advertising, supported, link_mode_names);
++		if (rc < 0)
++			return rc;
++		len += rc;
++		rc = ethnl_bitset_size(compact, __ETHTOOL_LINK_MODE_MASK_NBITS,
++				       lp_advertising, NULL, link_mode_names);
++		if (rc < 0)
++			return rc;
++		len += rc;
++	}
++
++	return len;
++}
++
++static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
++{
++	struct ethtool_link_ksettings ksettings;
++	struct ethtool_link_settings *lsettings;
++	struct net *net = genl_info_net(info);
++	struct ethtool_nl_msghdr *ehdr;
++	struct ethtool_wolinfo wolinfo;
++	struct net_device *dev;
++	struct sk_buff *rskb;
++	int reply_len;
++	u16 req_mask;
++	u16 req_flags;
++	int rc = 0;
++
++	lsettings = &ksettings.base;
++	ehdr = info->userhdr;
++	if (!ehdr->info_mask)
++		ehdr->info_mask = ETH_SETTINGS_IM_DEFAULT;
++	req_mask = ehdr->info_mask;
++	req_flags = ehdr->flags;
++
++	dev = ethnl_get_dev(net, ehdr);
++	if (IS_ERR(dev))
++		return PTR_ERR(dev);
++	if (req_mask & (ETH_SETTINGS_IM_LINKINFO | ETH_SETTINGS_IM_LINKMODES)) {
++		rtnl_lock();
++		rc = __ethtool_get_link_ksettings(dev, &ksettings);
++		rtnl_unlock();
++		if (rc < 0) {
++			dev_put(dev);
++			return rc;
++		}
++		if (req_mask & ETH_SETTINGS_IM_LINKMODES) {
++			ethnl_bitmap_to_u32(ksettings.link_modes.supported,
++					    __ETHTOOL_LINK_MODE_MASK_NWORDS);
++			ethnl_bitmap_to_u32(ksettings.link_modes.advertising,
++					    __ETHTOOL_LINK_MODE_MASK_NWORDS);
++			ethnl_bitmap_to_u32(ksettings.link_modes.lp_advertising,
++					    __ETHTOOL_LINK_MODE_MASK_NWORDS);
++		}
++	}
++	if (req_mask & ETH_SETTINGS_IM_WOLINFO) {
++		rc = __ethtool_get_wol(dev, &wolinfo);
++		if (rc < 0) {
++			dev_put(dev);
++			return rc;
++		}
++	}
++
++	reply_len = ethnl_settings_size(ehdr, &ksettings, dev);
++	if (reply_len < 0)
++		return reply_len;
++	rskb = ethnl_reply_init(reply_len, dev, ETHTOOL_CMD_SET_SETTINGS, info,
++				&ehdr);
++	if (!rskb) {
++		dev_put(dev);
++		return -ENOMEM;
++	}
++
++	rc = -EMSGSIZE;
++	if (req_mask & ETH_SETTINGS_IM_LINKINFO) {
++		if (nla_put_u32(rskb, ETHA_SETTINGS_SPEED, lsettings->speed) ||
++		    nla_put_s8(rskb, ETHA_SETTINGS_DUPLEX, lsettings->duplex) ||
++		    nla_put_u32(rskb, ETHA_SETTINGS_PORT, lsettings->port) ||
++		    nla_put_u32(rskb, ETHA_SETTINGS_PHYADDR,
++				lsettings->phy_address) ||
++		    nla_put_u8(rskb, ETHA_SETTINGS_AUTONEG,
++			       lsettings->autoneg) ||
++		    nla_put_bitfield32(rskb, ETHA_SETTINGS_MDIO_SUPPORT,
++				       lsettings->mdio_support,
++				       ETH_MDIO_SUPPORTS_ALL) ||
++		    nla_put_u32(rskb, ETHA_SETTINGS_TP_MDIX,
++				lsettings->eth_tp_mdix) ||
++		    nla_put_u32(rskb, ETHA_SETTINGS_TP_MDIX_CTRL,
++				lsettings->eth_tp_mdix_ctrl))
++			goto err;
++		if (dev->ethtool_ops->get_msglevel &&
++		    nla_put_bitfield32(rskb, ETHA_SETTINGS_MSGLVL,
++				       dev->ethtool_ops->get_msglevel(dev),
++				       NETIF_MSG_ALL))
++			goto err;
++	}
++	if (req_mask & ETH_SETTINGS_IM_WOLINFO) {
++		if (nla_put_bitfield32(rskb, ETHA_SETTINGS_WOL_MODES,
++				       wolinfo.wolopts, wolinfo.supported))
++			goto err;
++		if ((wolinfo.wolopts & WAKE_MAGICSECURE) &&
++		    nla_put(rskb, ETHA_SETTINGS_SOPASS,	sizeof(wolinfo.sopass),
++			    wolinfo.sopass))
++			goto err;
++	}
++	if (req_mask & ETH_SETTINGS_IM_LINKMODES) {
++		u32 *supported = (u32 *)ksettings.link_modes.supported;
++		u32 *advertising = (u32 *)ksettings.link_modes.advertising;
++		u32 *lp_advertising =
++			(u32 *)ksettings.link_modes.lp_advertising;
++		bool compact = req_flags & ETH_SETTINGS_RF_COMPACT_BITSETS;
++
++		rc = ethnl_put_bitset(rskb, ETHA_SETTINGS_LINK_MODES, compact,
++				      __ETHTOOL_LINK_MODE_MASK_NBITS,
++				      advertising, supported, link_mode_names);
++		if (rc < 0)
++			goto err;
++		rc = ethnl_put_bitset(rskb, ETHA_SETTINGS_PEER_MODES, compact,
++				      __ETHTOOL_LINK_MODE_MASK_NBITS,
++				      lp_advertising, NULL, link_mode_names);
++		if (rc < 0)
++			goto err;
++	}
++
++	dev_put(dev);
++	genlmsg_end(rskb, ehdr);
++	return genlmsg_reply(rskb, info);
++
++err:
++	dev_put(dev);
++	nlmsg_free(rskb);
++	WARN_ONCE(1, "calculated message payload length (%d) not sufficient\n",
++		  reply_len);
++	return rc;
++}
++
+ /* genetlink paperwork */
+ 
+ static const struct genl_ops ethtool_nl_ops[] = {
++	{
++		.cmd	= ETHTOOL_CMD_GET_DRVINFO,
++		.doit	= ethnl_get_drvinfo,
++		.policy	= drvinfo_policy,
++	},
++	{
++		.cmd	= ETHTOOL_CMD_GET_SETTINGS,
++		.doit	= ethnl_get_settings,
++		.policy	= settings_policy,
++	},
+ };
+ 
+ static struct genl_family ethtool_genl_family = {
+-- 
+2.15.0
+

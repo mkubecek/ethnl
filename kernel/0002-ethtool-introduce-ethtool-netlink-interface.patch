@@ -1,0 +1,157 @@
+From 1a801d5743f65737f5eaf6145a9a419ae74531ff Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Fri, 10 Nov 2017 15:12:24 +0100
+Subject: [PATCH 2/6] ethtool: introduce ethtool netlink interface
+
+No function implemented yet, only genetlink and module infrastructure.
+Register/unregister genetlink family "ethtool" and allow the module to be
+autoloaded by genetlink code (if built as a module, distributions would
+probably prefer "y").
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ include/linux/ethtool_netlink.h      |  9 +++++++
+ include/uapi/linux/ethtool_netlink.h | 32 +++++++++++++++++++++++++
+ net/Kconfig                          |  7 ++++++
+ net/core/Makefile                    |  1 +
+ net/core/ethtool_netlink.c           | 46 ++++++++++++++++++++++++++++++++++++
+ 5 files changed, 95 insertions(+)
+ create mode 100644 include/linux/ethtool_netlink.h
+ create mode 100644 include/uapi/linux/ethtool_netlink.h
+ create mode 100644 net/core/ethtool_netlink.c
+
+diff --git a/include/linux/ethtool_netlink.h b/include/linux/ethtool_netlink.h
+new file mode 100644
+index 000000000000..0412adb4f42f
+--- /dev/null
++++ b/include/linux/ethtool_netlink.h
+@@ -0,0 +1,9 @@
++/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
++
++#ifndef _LINUX_ETHTOOL_NETLINK_H_
++#define _LINUX_ETHTOOL_NETLINK_H_
++
++#include <uapi/linux/ethtool_netlink.h>
++#include <linux/ethtool.h>
++
++#endif /* _LINUX_ETHTOOL_NETLINK_H_ */
+diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
+new file mode 100644
+index 000000000000..8a78fcd69493
+--- /dev/null
++++ b/include/uapi/linux/ethtool_netlink.h
+@@ -0,0 +1,32 @@
++/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
++
++#ifndef _UAPI_LINUX_ETHTOOL_NETLINK_H_
++#define _UAPI_LINUX_ETHTOOL_NETLINK_H_
++
++#include <linux/ethtool.h>
++
++/* identifies the device to query/set
++ * - use either ifindex or ifname, not both
++ * - for dumps and messages not related to a particular devices, fill neither
++ * - info_mask is a bitfield, interpretation depends on the command
++ */
++struct ethtool_nl_msghdr {
++	__u32	ifindex;		/* device ifindex */
++	__u16	flags;			/* request/response flags */
++	__u16	info_mask;		/* request/response info mask */
++	char	ifname[IFNAMSIZ];	/* device name */
++};
++#define ETHNL_HDRLEN NLMSG_ALIGN(sizeof(struct ethtool_nl_msghdr))
++
++enum {
++	ETHTOOL_CMD_NOOP,
++
++	__ETHTOOL_CMD_MAX,
++	ETHTOOL_CMD_MAX = (__ETHTOOL_CMD_MAX - 1),
++};
++
++/* generic netlink info */
++#define ETHTOOL_GENL_NAME "ethtool"
++#define ETHTOOL_GENL_VERSION 1
++
++#endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
+diff --git a/net/Kconfig b/net/Kconfig
+index 9dba2715919d..a5e3c89a2495 100644
+--- a/net/Kconfig
++++ b/net/Kconfig
+@@ -440,6 +440,13 @@ config MAY_USE_DEVLINK
+ 	  on MAY_USE_DEVLINK to ensure they do not cause link errors when
+ 	  devlink is a loadable module and the driver using it is built-in.
+ 
++config ETHTOOL_NETLINK
++	tristate "Netlink interface for ethtool"
++	default m
++	help
++	   New netlink based interface for ethtool which is going to obsolete
++	   the old ioctl based one once it provides all features.
++
+ endif   # if NET
+ 
+ # Used by archs to tell that they support BPF JIT compiler plus which flavour.
+diff --git a/net/core/Makefile b/net/core/Makefile
+index 1fd0a9c88b1b..617ab2abecdf 100644
+--- a/net/core/Makefile
++++ b/net/core/Makefile
+@@ -30,3 +30,4 @@ obj-$(CONFIG_DST_CACHE) += dst_cache.o
+ obj-$(CONFIG_HWBM) += hwbm.o
+ obj-$(CONFIG_NET_DEVLINK) += devlink.o
+ obj-$(CONFIG_GRO_CELLS) += gro_cells.o
++obj-$(CONFIG_ETHTOOL_NETLINK) += ethtool_netlink.o
+diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
+new file mode 100644
+index 000000000000..2421af2664a4
+--- /dev/null
++++ b/net/core/ethtool_netlink.c
+@@ -0,0 +1,46 @@
++/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
++
++#include <linux/module.h>
++#include <linux/ethtool_netlink.h>
++#include <linux/netdevice.h>
++#include <net/genetlink.h>
++#include "ethtool_common.h"
++
++static struct genl_family ethtool_genl_family;
++
++/* genetlink paperwork */
++
++static const struct genl_ops ethtool_nl_ops[] = {
++};
++
++static struct genl_family ethtool_genl_family = {
++	.hdrsize	= sizeof(struct ethtool_nl_msghdr),
++	.name		= ETHTOOL_GENL_NAME,
++	.version	= ETHTOOL_GENL_VERSION,
++	.netnsok	= true,
++	.ops		= ethtool_nl_ops,
++	.n_ops		= ARRAY_SIZE(ethtool_nl_ops),
++};
++
++/* module paperwork */
++
++static int __init ethtool_nl_init(void)
++{
++	return genl_register_family(&ethtool_genl_family);
++}
++
++static void __exit ethtool_nl_exit(void)
++{
++	genl_unregister_family(&ethtool_genl_family);
++}
++
++module_init(ethtool_nl_init);
++module_exit(ethtool_nl_exit);
++
++/* this alias is for autoload */
++MODULE_ALIAS("net-pf-" __stringify(PF_NETLINK)
++	     "-proto-" __stringify(NETLINK_GENERIC)
++	     "-family-" ETHTOOL_GENL_NAME);
++MODULE_AUTHOR("Michal Kubecek <mkubecek@suse.cz>");
++MODULE_DESCRIPTION("Netlink interface for ethtool");
++MODULE_LICENSE("GPL");
+-- 
+2.15.0
+

@@ -1,0 +1,240 @@
+From ad3faf6693f9d8fd96ca3f742523b7484d95e283 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Mon, 13 Nov 2017 12:58:03 +0100
+Subject: [PATCH 4/6] ethtool: netlink bitset handling
+
+Declare attribute type constants and add helper functions to handle
+arbitrary length bit sets.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ include/uapi/linux/ethtool_netlink.h |  31 +++++++
+ net/core/ethtool_netlink.c           | 163 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 194 insertions(+)
+
+diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
+index 8a78fcd69493..a4f536fd6f06 100644
+--- a/include/uapi/linux/ethtool_netlink.h
++++ b/include/uapi/linux/ethtool_netlink.h
+@@ -25,6 +25,37 @@ enum {
+ 	ETHTOOL_CMD_MAX = (__ETHTOOL_CMD_MAX - 1),
+ };
+ 
++/* bit sets */
++
++enum {
++	ETHA_BIT_UNSPEC,
++	ETHA_BIT_INDEX,				/* u32 */
++	ETHA_BIT_NAME,				/* string */
++	ETHA_BIT_VALUE,				/* flag */
++
++	__ETHA_BIT_MAX,
++	ETHA_BIT_MAX = (__ETHA_BIT_MAX - 1),
++};
++
++enum {
++	ETHA_BITS_UNSPEC,
++	ETHA_BITS_BIT,
++
++	__ETHA_BITS_MAX,
++	ETHA_BITS_MAX = (__ETHA_BITS_MAX - 1),
++};
++
++enum {
++	ETHA_BITSET_UNSPEC,
++	ETHA_BITSET_SIZE,			/* u32 */
++	ETHA_BITSET_BITS,			/* nest - ETHA_BITS_* */
++	ETHA_BITSET_VALUES,			/* binary */
++	ETHA_BITSET_MASK,			/* binary */
++
++	__ETHA_BITSET_MAX,
++	ETHA_BITSET_MAX = (__ETHA_BITSET_MAX - 1),
++};
++
+ /* generic netlink info */
+ #define ETHTOOL_GENL_NAME "ethtool"
+ #define ETHTOOL_GENL_VERSION 1
+diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
+index 33dd65ef5092..32b65317bc61 100644
+--- a/net/core/ethtool_netlink.c
++++ b/net/core/ethtool_netlink.c
+@@ -3,6 +3,7 @@
+ #include <linux/module.h>
+ #include <linux/ethtool_netlink.h>
+ #include <linux/netdevice.h>
++#include <linux/bitmap.h>
+ #include <net/genetlink.h>
+ #include "ethtool_common.h"
+ 
+@@ -40,6 +41,168 @@ static struct net_device *ethnl_get_dev(struct net *net,
+ 	return NULL;
+ }
+ 
++/* bitset helper functions */
++
++static bool ethnl_test_bit(u32 *val, unsigned int index)
++{
++	if (val)
++		return val[index / 32] & (1 << (index % 32));
++	else
++		return true;
++}
++
++static void ethnl_copy_bitmap(u32 *dst, u32 *src, unsigned int size)
++{
++	unsigned int full_words = size / 32;
++
++	memcpy(dst, src, full_words * sizeof(u32));
++	if (size % 32 != 0)
++		dst[full_words] = src[full_words] & ((1U << (size % 32)) - 1);
++}
++
++static void ethnl_fill_bitmap(u32 *dst, unsigned int size)
++{
++	unsigned int full_words = size / 32;
++
++	memset(dst, 0xff, full_words * sizeof(u32));
++	if (size % 32 != 0)
++		dst[full_words] = (1U << (size % 32)) - 1;
++}
++
++/* convert standard kernel bitmap (long sized words) to ethtool one (u32 words)
++ * bitmap_to_u32array() can in fact do an "in place" conversion but it's not
++ * documented so we cannot rely on it; moreover, we can use the fact that this
++ * conversion is no-op except for 64-bit big endian architectures
++ */
++static void ethnl_bitmap_to_u32(unsigned long *bitmap,
++				       unsigned int nwords)
++{
++#if BITS_PER_LONG == 64 && defined(__BIG_ENDIAN)
++	u32 *dst = (u32 *)bitmap;
++	unsigned int i;
++
++	for (i = 0; i < nwords; i++) {
++		unsigned long tmp = READ_ONCE(bitmap[i]);
++
++		dst[2 * i] = tmp & 0xffffffff;
++		dst[2 * i + 1] = tmp >> 32;
++	}
++#endif
++}
++
++/* calculate size for a bitset attribute
++ * see ethnl_put_bitset() for arguments
++ */
++static int ethnl_bitset_size(bool compact, unsigned int size, u32 *val,
++			     u32 *mask, const char *const *names)
++{
++	unsigned int nwords = (size + 31) / 32;
++	unsigned int len;
++
++	if (WARN_ON(!compact && !names))
++		return -EINVAL;
++	/* size */
++	len = nla_total_size(sizeof(u32));
++
++	if (compact) {
++		/* values, mask */
++		len += 2 * nla_total_size(nwords * sizeof(u32));
++	} else {
++		unsigned int bits_len = 0;
++		unsigned int bit_len, i;
++
++		for (i = 0; i < size; i++) {
++			if (!ethnl_test_bit(mask, i))
++				continue;
++			/* index */
++			bit_len = nla_total_size(sizeof(u32));
++			/* name */
++			bit_len += ethnl_str_size(names[i]);
++			/* value */
++			if (ethnl_test_bit(val, i))
++				bit_len += nla_total_size(0);
++
++			/* bit nest */
++			bits_len += nla_total_size(bit_len);
++		}
++		len += nla_total_size(bits_len);
++	}
++
++	/* outermost nest */
++	return nla_total_size(len);
++}
++
++/* put bitset into a message
++ * skb:      skb with the message
++ * attrtype: attribute type for the bitset
++ * compact:  compact (bitmaps) or verbose (bit-by-bit with names) format
++ * size:     size of the set in bits
++ * val:      bitset values
++ * mask:     mask of valid bits
++ * names:    bit names (only used for verbose format)
++ */
++static int ethnl_put_bitset(struct sk_buff *skb, int attrtype, bool compact,
++			    unsigned int size, u32 *val, u32 *mask,
++			    const char *const *names)
++{
++	struct nlattr *nest;
++	struct nlattr *attr;
++	int ret;
++
++	if (WARN_ON(!compact && !names))
++		return -EINVAL;
++	nest = nla_nest_start(skb, attrtype);
++	if (!nest)
++		return -EMSGSIZE;
++
++	ret = -EMSGSIZE;
++	if (nla_put_u32(skb, ETHA_BITSET_SIZE, size))
++		goto err;
++	if (compact) {
++		unsigned int bytesize = ((size + 31) / 32) * sizeof(u32);
++
++		ret = -EMSGSIZE;
++		attr = nla_reserve(skb, ETHA_BITSET_VALUES, bytesize);
++		if (!attr)
++			goto err;
++		ethnl_copy_bitmap(nla_data(attr), val, size);
++		attr = nla_reserve(skb, ETHA_BITSET_MASK, bytesize);
++		if (!attr)
++			goto err;
++		if (mask)
++			ethnl_copy_bitmap(nla_data(attr), mask, size);
++		else
++			ethnl_fill_bitmap(nla_data(attr), size);
++	} else {
++		struct nlattr *bits;
++		unsigned int i;
++
++		bits = nla_nest_start(skb, ETHA_BITSET_BITS);
++		if (!bits)
++			goto err;
++		for (i = 0; i < size; i++) {
++			if (!ethnl_test_bit(mask, i))
++				continue;
++			attr = nla_nest_start(skb, ETHA_BITS_BIT);
++			if (!attr ||
++			    nla_put_u32(skb, ETHA_BIT_INDEX, i) ||
++			    nla_put_string(skb, ETHA_BIT_NAME, names[i]))
++				goto err;
++			if (ethnl_test_bit(val, i))
++				if (nla_put_flag(skb, ETHA_BIT_VALUE))
++					goto err;
++			nla_nest_end(skb, attr);
++		}
++		nla_nest_end(skb, bits);
++	}
++
++	return nla_nest_end(skb, nest);
++
++err:
++	nla_nest_cancel(skb, nest);
++	return ret;
++}
++
+ /* create skb for a reply
+  * payload: payload length (without netlink, genetlink and ethnl headers)
+  * dev:     device the reply is about
+-- 
+2.15.0
+
