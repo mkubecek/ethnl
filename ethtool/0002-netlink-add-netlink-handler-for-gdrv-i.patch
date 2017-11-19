@@ -1,0 +1,104 @@
+From a10c1f59e228b586d8f4a87646e686b5cba894f1 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Sun, 19 Nov 2017 21:10:58 +0100
+Subject: [PATCH 2/2] netlink: add netlink handler for gdrv (-i)
+
+Implement "-i" subcommand using netlink interface.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ ethtool.c |  3 ++-
+ netlink.c | 47 +++++++++++++++++++++++++++++++++++++++++++++++
+ netlink.h |  2 ++
+ 3 files changed, 51 insertions(+), 1 deletion(-)
+
+diff --git a/ethtool.c b/ethtool.c
+index 49e0dff0e31f..b1ba4797c154 100644
+--- a/ethtool.c
++++ b/ethtool.c
+@@ -4750,6 +4750,7 @@ static int show_usage(struct cmd_context *ctx);
+ 
+ #ifndef ETHTOOL_ENABLE_NETLINK
+ /* Stubs to (not) use when building without netlink support */
++int nl_gdrv(struct cmd_context *ctx) { return 0; }
+ #endif
+ 
+ static const struct option {
+@@ -4820,7 +4821,7 @@ static const struct option {
+ 	{ "-K|--features|--offload", 1, do_sfeatures, NULL,
+ 	  "Set protocol offload and other features",
+ 	  "		FEATURE on|off ...\n" },
+-	{ "-i|--driver", 1, do_gdrv, NULL,
++	{ "-i|--driver", 1, do_gdrv, nl_gdrv,
+ 	  "Show driver information" },
+ 	{ "-d|--register-dump", 1, do_gregs, NULL,
+ 	  "Do a register dump",
+diff --git a/netlink.c b/netlink.c
+index c3add41a8908..c2afc2d8418b 100644
+--- a/netlink.c
++++ b/netlink.c
+@@ -221,3 +221,50 @@ int netlink_done(struct cmd_context *ctx)
+ 
+ 	return 0;
+ }
++
++/* GET_DRVINFO */
++
++static void print_drvinfo_str(const struct nlattr **tb, unsigned int idx,
++			      const char *label)
++{
++	printf("%s: %s\n", label, tb[idx] ? mnl_attr_get_str(tb[idx]) : "");
++}
++
++static void print_drvinfo_u32b(const struct nlattr **tb, unsigned int idx,
++			       const char *label)
++{
++	if (tb[idx])
++		printf("%s: %s\n", label,
++		       mnl_attr_get_u32(tb[idx]) ? "yes" : "no");
++}
++
++static int drvinfo_reply_cb(const struct nlmsghdr *nlhdr, void *data)
++{
++	const struct nlattr *tb[ETHA_DRVINFO_MAX + 1] = {};
++	int ret;
++
++	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN + ETHNL_HDRLEN, attr_cb, tb);
++	if (ret < 0)
++		return ret;
++
++	print_drvinfo_str(tb, ETHA_DRVINFO_DRIVER, "driver");
++	print_drvinfo_str(tb, ETHA_DRVINFO_VERSION, "version");
++	print_drvinfo_str(tb, ETHA_DRVINFO_FWVERSION, "firmware-version");
++	print_drvinfo_str(tb, ETHA_DRVINFO_EROM_VER, "expansion-rom-version");
++	print_drvinfo_str(tb, ETHA_DRVINFO_BUSINFO, "bus-info");
++	print_drvinfo_u32b(tb, ETHA_DRVINFO_N_STATS, "supports-statistics");
++	print_drvinfo_u32b(tb, ETHA_DRVINFO_TESTINFO_LEN, "supports-test");
++	print_drvinfo_u32b(tb, ETHA_DRVINFO_EEDUMP_LEN,
++			  "supports-eeprom-access");
++	print_drvinfo_u32b(tb, ETHA_DRVINFO_REGDUMP_LEN,
++			  "supports-register-dump");
++	print_drvinfo_u32b(tb, ETHA_DRVINFO_N_PRIV_FLAGS, "supports-priv-flags");
++
++	return MNL_CB_OK;
++}
++
++int nl_gdrv(struct cmd_context *ctx)
++{
++	return ethnl_std_get_request(ctx, ETHTOOL_CMD_GET_DRVINFO,
++				     drvinfo_reply_cb);
++}
+diff --git a/netlink.h b/netlink.h
+index b10b168b1f5b..277cd543cee7 100644
+--- a/netlink.h
++++ b/netlink.h
+@@ -7,4 +7,6 @@ struct nl_context;
+ int netlink_init(struct cmd_context *ctx);
+ int netlink_done(struct cmd_context *ctx);
+ 
++int nl_gdrv(struct cmd_context *ctx);
++
+ #endif /* ETHTOOL_NETLINK_H__ */
+-- 
+2.15.0
+

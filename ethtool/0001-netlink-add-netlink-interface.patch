@@ -1,0 +1,778 @@
+From d0e3b57eb20927076a13690e65550756e0f706af Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Sun, 19 Nov 2017 21:07:03 +0100
+Subject: [PATCH 1/2] netlink: add netlink interface
+
+Add basic netlink interface based on genetlink and libmnl. This commit only
+adds the generic infrastructure but does not override any ethtool command
+(so that there is no actual behaviour change).
+
+Netlink handlers for ethtool subcommands are added as nl_func members to
+args array in ethtool.c. Netlink handler is used if it is available (i.e.
+nl_func is not null) and ethtool succeeds to open a netlink socket and get
+id of genetlink family "ethtool". At the moment, all nl_func are null so
+that ioctl() is always used.
+
+Running configure with --disable-netlink disables netlink interface
+completely.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ Makefile.am       |   9 +++
+ configure.ac      |  12 +++
+ ethtool.c         | 160 ++++++++++++++++++++++++++-------------
+ ethtool_netlink.h | 117 ++++++++++++++++++++++++++++
+ internal.h        |   8 ++
+ netlink.c         | 223 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink.h         |  10 +++
+ 7 files changed, 486 insertions(+), 53 deletions(-)
+ create mode 100644 ethtool_netlink.h
+ create mode 100644 netlink.c
+ create mode 100644 netlink.h
+
+diff --git a/Makefile.am b/Makefile.am
+index edbda5770331..ac7dcba41a8c 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -7,6 +7,8 @@ EXTRA_DIST = LICENSE ethtool.8 ethtool.spec.in aclocal.m4 ChangeLog autogen.sh
+ sbin_PROGRAMS = ethtool
+ ethtool_SOURCES = ethtool.c ethtool-copy.h internal.h net_tstamp-copy.h \
+ 		  rxclass.c
++ethtool_CFLAGS = 
++ethtool_LDADD =  -lm
+ if ETHTOOL_ENABLE_PRETTY_DUMP
+ ethtool_SOURCES += \
+ 		  amd8111e.c de2104x.c e100.c e1000.c et131x.c igb.c	\
+@@ -17,6 +19,13 @@ ethtool_SOURCES += \
+ 		  ixgbevf.c tse.c vmxnet3.c qsfp.c qsfp.h fjes.c
+ endif
+ 
++if ETHTOOL_ENABLE_NETLINK
++ethtool_SOURCES += \
++		  netlink.c netlink.h ethtool_netlink.h
++ethtool_CFLAGS += @MNL_CFLAGS@
++ethtool_LDADD += @MNL_LIBS@
++endif
++
+ TESTS = test-cmdline test-features
+ check_PROGRAMS = test-cmdline test-features
+ test_cmdline_SOURCES = test-cmdline.c test-common.c $(ethtool_SOURCES) 
+diff --git a/configure.ac b/configure.ac
+index ce23a43a3a00..01b9950a9803 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -40,5 +40,17 @@ if test x$enable_pretty_dump = xyes; then
+ fi
+ AM_CONDITIONAL([ETHTOOL_ENABLE_PRETTY_DUMP], [test x$enable_pretty_dump = xyes])
+ 
++AC_ARG_ENABLE(netlink,
++	      [  --enable-netlink	  enable netlink interface (enabled by default)],
++	      ,
++	      enable_netlink=yes)
++if test x$enable_netlink = xyes; then
++    PKG_PROG_PKG_CONFIG
++    PKG_CHECK_MODULES([MNL], [libmnl])
++    AC_DEFINE(ETHTOOL_ENABLE_NETLINK, 1,
++	      Define this to support netlink interface to talk to kernel.)
++fi
++AM_CONDITIONAL([ETHTOOL_ENABLE_NETLINK], [test x$enable_netlink = xyes])
++
+ AC_CONFIG_FILES([Makefile ethtool.spec ethtool.8])
+ AC_OUTPUT
+diff --git a/ethtool.c b/ethtool.c
+index 1a2b7ccd2edf..49e0dff0e31f 100644
+--- a/ethtool.c
++++ b/ethtool.c
+@@ -30,6 +30,7 @@
+  */
+ 
+ #include "internal.h"
++#include "netlink.h"
+ #include <string.h>
+ #include <stdlib.h>
+ #include <sys/stat.h>
+@@ -4747,14 +4748,20 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
+ 
+ static int show_usage(struct cmd_context *ctx);
+ 
++#ifndef ETHTOOL_ENABLE_NETLINK
++/* Stubs to (not) use when building without netlink support */
++#endif
++
+ static const struct option {
+ 	const char *opts;
+ 	int want_device;
+ 	int (*func)(struct cmd_context *);
++	int (*nl_func)(struct cmd_context *);
+ 	char *help;
+ 	char *opthelp;
+ } args[] = {
+-	{ "-s|--change", 1, do_sset, "Change generic options",
++	{ "-s|--change", 1, do_sset, NULL,
++	  "Change generic options",
+ 	  "		[ speed %d ]\n"
+ 	  "		[ duplex half|full ]\n"
+ 	  "		[ port tp|aui|bnc|mii|fibre ]\n"
+@@ -4766,13 +4773,17 @@ static const struct option {
+ 	  "		[ wol p|u|m|b|a|g|s|d... ]\n"
+ 	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
+ 	  "		[ msglvl %d | msglvl type on|off ... ]\n" },
+-	{ "-a|--show-pause", 1, do_gpause, "Show pause options" },
+-	{ "-A|--pause", 1, do_spause, "Set pause options",
++	{ "-a|--show-pause", 1, do_gpause, NULL,
++	  "Show pause options" },
++	{ "-A|--pause", 1, do_spause, NULL,
++	  "Set pause options",
+ 	  "		[ autoneg on|off ]\n"
+ 	  "		[ rx on|off ]\n"
+ 	  "		[ tx on|off ]\n" },
+-	{ "-c|--show-coalesce", 1, do_gcoalesce, "Show coalesce options" },
+-	{ "-C|--coalesce", 1, do_scoalesce, "Set coalesce options",
++	{ "-c|--show-coalesce", 1, do_gcoalesce, NULL,
++	  "Show coalesce options" },
++	{ "-C|--coalesce", 1, do_scoalesce, NULL,
++	  "Set coalesce options",
+ 	  "		[adaptive-rx on|off]\n"
+ 	  "		[adaptive-tx on|off]\n"
+ 	  "		[rx-usecs N]\n"
+@@ -4796,46 +4807,54 @@ static const struct option {
+ 	  "		[tx-frames-high N]\n"
+ 	  "		[sample-interval N]\n"
+ 	  "		[dmac N]\n" },
+-	{ "-g|--show-ring", 1, do_gring, "Query RX/TX ring parameters" },
+-	{ "-G|--set-ring", 1, do_sring, "Set RX/TX ring parameters",
++	{ "-g|--show-ring", 1, do_gring, NULL,
++	  "Query RX/TX ring parameters" },
++	{ "-G|--set-ring", 1, do_sring, NULL,
++	  "Set RX/TX ring parameters",
+ 	  "		[ rx N ]\n"
+ 	  "		[ rx-mini N ]\n"
+ 	  "		[ rx-jumbo N ]\n"
+ 	  "		[ tx N ]\n" },
+-	{ "-k|--show-features|--show-offload", 1, do_gfeatures,
++	{ "-k|--show-features|--show-offload", 1, do_gfeatures, NULL,
+ 	  "Get state of protocol offload and other features" },
+-	{ "-K|--features|--offload", 1, do_sfeatures,
++	{ "-K|--features|--offload", 1, do_sfeatures, NULL,
+ 	  "Set protocol offload and other features",
+ 	  "		FEATURE on|off ...\n" },
+-	{ "-i|--driver", 1, do_gdrv, "Show driver information" },
+-	{ "-d|--register-dump", 1, do_gregs, "Do a register dump",
++	{ "-i|--driver", 1, do_gdrv, NULL,
++	  "Show driver information" },
++	{ "-d|--register-dump", 1, do_gregs, NULL,
++	  "Do a register dump",
+ 	  "		[ raw on|off ]\n"
+ 	  "		[ file FILENAME ]\n" },
+-	{ "-e|--eeprom-dump", 1, do_geeprom, "Do a EEPROM dump",
++	{ "-e|--eeprom-dump", 1, do_geeprom, NULL,
++	  "Do a EEPROM dump",
+ 	  "		[ raw on|off ]\n"
+ 	  "		[ offset N ]\n"
+ 	  "		[ length N ]\n" },
+-	{ "-E|--change-eeprom", 1, do_seeprom,
++	{ "-E|--change-eeprom", 1, do_seeprom, NULL,
+ 	  "Change bytes in device EEPROM",
+ 	  "		[ magic N ]\n"
+ 	  "		[ offset N ]\n"
+ 	  "		[ length N ]\n"
+ 	  "		[ value N ]\n" },
+-	{ "-r|--negotiate", 1, do_nway_rst, "Restart N-WAY negotiation" },
+-	{ "-p|--identify", 1, do_phys_id,
++	{ "-r|--negotiate", 1, do_nway_rst, NULL,
++	  "Restart N-WAY negotiation" },
++	{ "-p|--identify", 1, do_phys_id, NULL,
+ 	  "Show visible port identification (e.g. blinking)",
+ 	  "               [ TIME-IN-SECONDS ]\n" },
+-	{ "-t|--test", 1, do_test, "Execute adapter self test",
++	{ "-t|--test", 1, do_test, NULL,
++	  "Execute adapter self test",
+ 	  "               [ online | offline | external_lb ]\n" },
+-	{ "-S|--statistics", 1, do_gnicstats, "Show adapter statistics" },
+-	{ "--phy-statistics", 1, do_gphystats,
++	{ "-S|--statistics", 1, do_gnicstats, NULL,
++	  "Show adapter statistics" },
++	{ "--phy-statistics", 1, do_gphystats, NULL,
+ 	  "Show phy statistics" },
+-	{ "-n|-u|--show-nfc|--show-ntuple", 1, do_grxclass,
++	{ "-n|-u|--show-nfc|--show-ntuple", 1, do_grxclass, NULL,
+ 	  "Show Rx network flow classification options or rules",
+ 	  "		[ rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
+ 	  "tcp6|udp6|ah6|esp6|sctp6 |\n"
+ 	  "		  rule %d ]\n" },
+-	{ "-N|-U|--config-nfc|--config-ntuple", 1, do_srxclass,
++	{ "-N|-U|--config-nfc|--config-ntuple", 1, do_srxclass, NULL,
+ 	  "Configure Rx network flow classification options or rules",
+ 	  "		rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
+ 	  "tcp6|udp6|ah6|esp6|sctp6 m|v|t|s|d|f|n|r... |\n"
+@@ -4859,53 +4878,63 @@ static const struct option {
+ 	  "			[ action %d ]\n"
+ 	  "			[ loc %d]] |\n"
+ 	  "		delete %d\n" },
+-	{ "-T|--show-time-stamping", 1, do_tsinfo,
++	{ "-T|--show-time-stamping", 1, do_tsinfo, NULL,
+ 	  "Show time stamping capabilities" },
+-	{ "-x|--show-rxfh-indir|--show-rxfh", 1, do_grxfh,
++	{ "-x|--show-rxfh-indir|--show-rxfh", 1, do_grxfh, NULL,
+ 	  "Show Rx flow hash indirection table and/or RSS hash key" },
+-	{ "-X|--set-rxfh-indir|--rxfh", 1, do_srxfh,
++	{ "-X|--set-rxfh-indir|--rxfh", 1, do_srxfh, NULL,
+ 	  "Set Rx flow hash indirection table and/or RSS hash key",
+ 	  "		[ equal N | weight W0 W1 ... | default ]\n"
+ 	  "		[ hkey %x:%x:%x:%x:%x:.... ]\n"
+ 	  "		[ hfunc FUNC ]\n" },
+-	{ "-f|--flash", 1, do_flash,
++	{ "-f|--flash", 1, do_flash, NULL,
+ 	  "Flash firmware image from the specified file to a region on the device",
+ 	  "               FILENAME [ REGION-NUMBER-TO-FLASH ]\n" },
+-	{ "-P|--show-permaddr", 1, do_permaddr,
++	{ "-P|--show-permaddr", 1, do_permaddr, NULL,
+ 	  "Show permanent hardware address" },
+-	{ "-w|--get-dump", 1, do_getfwdump,
++	{ "-w|--get-dump", 1, do_getfwdump, NULL,
+ 	  "Get dump flag, data",
+ 	  "		[ data FILENAME ]\n" },
+-	{ "-W|--set-dump", 1, do_setfwdump,
++	{ "-W|--set-dump", 1, do_setfwdump, NULL,
+ 	  "Set dump flag of the device",
+ 	  "		N\n"},
+-	{ "-l|--show-channels", 1, do_gchannels, "Query Channels" },
+-	{ "-L|--set-channels", 1, do_schannels, "Set Channels",
++	{ "-l|--show-channels", 1, do_gchannels, NULL,
++	  "Query Channels" },
++	{ "-L|--set-channels", 1, do_schannels, NULL,
++	  "Set Channels",
+ 	  "               [ rx N ]\n"
+ 	  "               [ tx N ]\n"
+ 	  "               [ other N ]\n"
+ 	  "               [ combined N ]\n" },
+-	{ "--show-priv-flags" , 1, do_gprivflags, "Query private flags" },
+-	{ "--set-priv-flags", 1, do_sprivflags, "Set private flags",
++	{ "--show-priv-flags" , 1, do_gprivflags, NULL,
++	  "Query private flags" },
++	{ "--set-priv-flags", 1, do_sprivflags, NULL,
++	  "Set private flags",
+ 	  "		FLAG on|off ...\n" },
+-	{ "-m|--dump-module-eeprom|--module-info", 1, do_getmodule,
++	{ "-m|--dump-module-eeprom|--module-info", 1, do_getmodule, NULL,
+ 	  "Query/Decode Module EEPROM information and optical diagnostics if available",
+ 	  "		[ raw on|off ]\n"
+ 	  "		[ hex on|off ]\n"
+ 	  "		[ offset N ]\n"
+ 	  "		[ length N ]\n" },
+-	{ "--show-eee", 1, do_geee, "Show EEE settings"},
+-	{ "--set-eee", 1, do_seee, "Set EEE settings",
++	{ "--show-eee", 1, do_geee, NULL,
++	  "Show EEE settings"},
++	{ "--set-eee", 1, do_seee, NULL,
++	  "Set EEE settings",
+ 	  "		[ eee on|off ]\n"
+ 	  "		[ advertise %x ]\n"
+ 	  "		[ tx-lpi on|off ]\n"
+ 	  "		[ tx-timer %d ]\n"},
+-	{ "--set-phy-tunable", 1, do_set_phy_tunable, "Set PHY tunable",
++	{ "--set-phy-tunable", 1, do_set_phy_tunable, NULL,
++	  "Set PHY tunable",
+ 	  "		[ downshift on|off [count N] ]\n"},
+-	{ "--get-phy-tunable", 1, do_get_phy_tunable, "Get PHY tunable",
++	{ "--get-phy-tunable", 1, do_get_phy_tunable, NULL,
++	  "Get PHY tunable",
+ 	  "		[ downshift ]\n"},
+-	{ "-h|--help", 0, show_usage, "Show this help" },
+-	{ "--version", 0, do_version, "Show version number" },
++	{ "-h|--help", 0, show_usage, NULL,
++	 "Show this help" },
++	{ "--version", 0, do_version, NULL,
++	  "Show version number" },
+ 	{}
+ };
+ 
+@@ -4932,11 +4961,35 @@ static int show_usage(struct cmd_context *ctx)
+ 	return 0;
+ }
+ 
++static int ioctl_init(struct cmd_context *ctx, int want_device)
++{
++	if (want_device) {
++		/* Setup our control structures. */
++		memset(&ctx->ifr, 0, sizeof(ctx->ifr));
++		strcpy(ctx->ifr.ifr_name, ctx->devname);
++
++		/* Open control socket. */
++		ctx->fd = socket(AF_INET, SOCK_DGRAM, 0);
++		if (ctx->fd < 0)
++			ctx->fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_GENERIC);
++		if (ctx->fd < 0) {
++			perror("Cannot get control socket");
++			return 70;
++		}
++	} else {
++		ctx->fd = -1;
++	}
++
++	return 0;
++}
++
+ int main(int argc, char **argp)
+ {
+ 	int (*func)(struct cmd_context *);
++	int (*nl_func)(struct cmd_context *);
+ 	int want_device;
+ 	struct cmd_context ctx;
++	int ret;
+ 	int k;
+ 
+ 	init_global_link_mode_masks();
+@@ -4962,6 +5015,7 @@ int main(int argc, char **argp)
+ 				argp++;
+ 				argc--;
+ 				func = args[k].func;
++				nl_func = args[k].nl_func;
+ 				want_device = args[k].want_device;
+ 				goto opt_found;
+ 			}
+@@ -4976,6 +5030,15 @@ int main(int argc, char **argp)
+ 	want_device = 1;
+ 
+ opt_found:
++#ifdef ETHTOOL_ENABLE_NETLINK
++	if (nl_func) {
++		if (netlink_init(&ctx))
++			nl_func = NULL;		/* fallback to ioctl() */
++	}
++#else
++	nl_func = NULL;
++#endif
++
+ 	if (want_device) {
+ 		ctx.devname = *argp++;
+ 		argc--;
+@@ -4984,25 +5047,16 @@ opt_found:
+ 			exit_bad_args();
+ 		if (strlen(ctx.devname) >= IFNAMSIZ)
+ 			exit_bad_args();
++	}
+ 
+-		/* Setup our control structures. */
+-		memset(&ctx.ifr, 0, sizeof(ctx.ifr));
+-		strcpy(ctx.ifr.ifr_name, ctx.devname);
+-
+-		/* Open control socket. */
+-		ctx.fd = socket(AF_INET, SOCK_DGRAM, 0);
+-		if (ctx.fd < 0)
+-			ctx.fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_GENERIC);
+-		if (ctx.fd < 0) {
+-			perror("Cannot get control socket");
+-			return 70;
+-		}
+-	} else {
+-		ctx.fd = -1;
++	if (!nl_func) {
++		ret = ioctl_init(&ctx, want_device);
++		if (ret)
++			return ret;
+ 	}
+ 
+ 	ctx.argc = argc;
+ 	ctx.argp = argp;
+ 
+-	return func(&ctx);
++	return nl_func ? nl_func(&ctx) : func(&ctx);
+ }
+diff --git a/ethtool_netlink.h b/ethtool_netlink.h
+new file mode 100644
+index 000000000000..7985635b7c31
+--- /dev/null
++++ b/ethtool_netlink.h
+@@ -0,0 +1,117 @@
++/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
++
++#ifndef _UAPI_LINUX_ETHTOOL_NETLINK_H_
++#define _UAPI_LINUX_ETHTOOL_NETLINK_H_
++
++#include <linux/ethtool.h>
++
++/* identifies the device to query/set
++ * - use either ifindex or ifname, not both
++ * - for dumps and messages not related to a particular devices, fill neither
++ * - info_mask is a bitfield, interpretation depends on the command
++ */
++struct ethtool_nl_msghdr {
++	__u32	ifindex;		/* device ifindex */
++	__u16	flags;			/* request/response flags */
++	__u16	info_mask;		/* request/response info mask */
++	char	ifname[IFNAMSIZ];	/* device name */
++};
++#define ETHNL_HDRLEN NLMSG_ALIGN(sizeof(struct ethtool_nl_msghdr))
++
++enum {
++	ETHTOOL_CMD_NOOP,
++	ETHTOOL_CMD_GET_DRVINFO,
++	ETHTOOL_CMD_SET_DRVINFO,	/* only for reply */
++	ETHTOOL_CMD_GET_SETTINGS,
++	ETHTOOL_CMD_SET_SETTINGS,
++
++	__ETHTOOL_CMD_MAX,
++	ETHTOOL_CMD_MAX = (__ETHTOOL_CMD_MAX - 1),
++};
++
++/* bit sets */
++
++enum {
++	ETHA_BIT_UNSPEC,
++	ETHA_BIT_INDEX,				/* u32 */
++	ETHA_BIT_NAME,				/* string */
++	ETHA_BIT_VALUE,				/* flag */
++
++	__ETHA_BIT_MAX,
++	ETHA_BIT_MAX = (__ETHA_BIT_MAX - 1),
++};
++
++enum {
++	ETHA_BITS_UNSPEC,
++	ETHA_BITS_BIT,
++
++	__ETHA_BITS_MAX,
++	ETHA_BITS_MAX = (__ETHA_BITS_MAX - 1),
++};
++
++enum {
++	ETHA_BITSET_UNSPEC,
++	ETHA_BITSET_SIZE,			/* u32 */
++	ETHA_BITSET_BITS,			/* nest - ETHA_BITS_* */
++	ETHA_BITSET_VALUES,			/* binary */
++	ETHA_BITSET_MASK,			/* binary */
++
++	__ETHA_BITSET_MAX,
++	ETHA_BITSET_MAX = (__ETHA_BITSET_MAX - 1),
++};
++
++/* GET_DRVINFO / SET_DRVINFO */
++
++enum {
++	ETHA_DRVINFO_UNSPEC,
++	ETHA_DRVINFO_DRIVER,			/* string */
++	ETHA_DRVINFO_VERSION,			/* string */
++	ETHA_DRVINFO_FWVERSION,			/* string */
++	ETHA_DRVINFO_BUSINFO,			/* string */
++	ETHA_DRVINFO_EROM_VER,			/* string */
++	ETHA_DRVINFO_N_PRIV_FLAGS,		/* u32 */
++	ETHA_DRVINFO_N_STATS,			/* u32 */
++	ETHA_DRVINFO_TESTINFO_LEN,		/* u32 */
++	ETHA_DRVINFO_EEDUMP_LEN,		/* u32 */
++	ETHA_DRVINFO_REGDUMP_LEN,		/* u32 */
++
++	__ETHA_DRVINFO_MAX,
++	ETHA_DRVINFO_MAX = (__ETHA_DRVINFO_MAX - 1),
++};
++
++/* GET_SETTINGS / SET_SETTINGS */
++
++enum {
++	ETHA_SETTINGS_UNSPEC,
++	ETHA_SETTINGS_SPEED,			/* u32 */
++	ETHA_SETTINGS_DUPLEX,			/* u8 */
++	ETHA_SETTINGS_PORT,			/* u8 */
++	ETHA_SETTINGS_PHYADDR,			/* u8 */
++	ETHA_SETTINGS_AUTONEG,			/* u8 */
++	ETHA_SETTINGS_MDIO_SUPPORT,		/* bitfield32 */
++	ETHA_SETTINGS_TP_MDIX,			/* u8 */
++	ETHA_SETTINGS_TP_MDIX_CTRL,		/* u8 */
++	ETHA_SETTINGS_TRANSCEIVER,		/* u8 */
++	ETHA_SETTINGS_WOL_MODES,		/* bitfield32 */
++	ETHA_SETTINGS_SOPASS,			/* binary */
++	ETHA_SETTINGS_MSGLVL,			/* bitfield32 */
++	ETHA_SETTINGS_LINK_MODES,		/* bitset */
++	ETHA_SETTINGS_PEER_MODES,		/* bitset */
++
++	__ETHA_SETTINGS_MAX,
++	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_MAX - 1),
++};
++
++#define ETH_SETTINGS_RF_COMPACT_BITSETS		0x1
++
++#define ETH_SETTINGS_IM_LINKINFO		0x1
++#define ETH_SETTINGS_IM_LINKMODES		0x2
++#define ETH_SETTINGS_IM_WOLINFO			0x4
++
++#define ETH_SETTINGS_IM_DEFAULT			0x7
++
++/* generic netlink info */
++#define ETHTOOL_GENL_NAME "ethtool"
++#define ETHTOOL_GENL_VERSION 1
++
++#endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
+diff --git a/internal.h b/internal.h
+index 4e658ea54307..e4f95794a89d 100644
+--- a/internal.h
++++ b/internal.h
+@@ -23,6 +23,11 @@
+ #include <sys/ioctl.h>
+ #include <net/if.h>
+ 
++/* internal for netlink interface */
++#ifdef ETHTOOL_ENABLE_NETLINK
++struct nl_context;
++#endif
++
+ /* ethtool.h expects these to be defined by <linux/types.h> */
+ #ifndef HAVE_BE_TYPES
+ typedef uint16_t __be16;
+@@ -195,6 +200,9 @@ struct cmd_context {
+ 	struct ifreq ifr;	/* ifreq suitable for ethtool ioctl */
+ 	int argc;		/* number of arguments to the sub-command */
+ 	char **argp;		/* arguments to the sub-command */
++#ifdef ETHTOOL_ENABLE_NETLINK
++	struct nl_context *nlctx;	/* netlink context (opaque) */
++#endif
+ };
+ 
+ #ifdef TEST_ETHTOOL
+diff --git a/netlink.c b/netlink.c
+new file mode 100644
+index 000000000000..c3add41a8908
+--- /dev/null
++++ b/netlink.c
+@@ -0,0 +1,223 @@
++#include <stdio.h>
++#include <string.h>
++#include <time.h>
++#include <errno.h>
++#include <libmnl/libmnl.h>
++#include <linux/genetlink.h>
++
++#include "internal.h"
++#include "netlink.h"
++#include "ethtool_netlink.h"
++
++struct nl_context {
++	int ethnl_fam;
++	struct mnl_socket *sk;
++	char *buff;
++	unsigned int buffsize;
++	unsigned int port;
++	unsigned int seq;
++	struct nlmsghdr *nlhdr;
++	struct genlmsghdr *gnlhdr;
++	struct ethtool_nl_msghdr *enlhdr;
++};
++
++/* misc helpers */
++
++static int attr_cb(const struct nlattr *attr, void *data)
++{
++	const struct nlattr **tb = data;
++	int type = mnl_attr_get_type(attr);
++
++	tb[type] = attr;
++
++	return MNL_CB_OK;
++}
++
++static int __msg_init(struct nl_context *nlctx, int family, int cmd,
++		      unsigned int flags, int version)
++{
++	struct nlmsghdr *nlhdr;
++	struct genlmsghdr *gnlhdr;
++
++	nlctx->buff = malloc(MNL_SOCKET_BUFFER_SIZE);
++	if (!nlctx->buff)
++		return -ENOMEM;
++	nlctx->buffsize = MNL_SOCKET_BUFFER_SIZE;
++	nlctx->seq++;
++	memset(nlctx->buff, '\0', NLMSG_HDRLEN + GENL_HDRLEN);
++
++	nlhdr = mnl_nlmsg_put_header(nlctx->buff);
++	nlhdr->nlmsg_type = family;
++	nlhdr->nlmsg_flags = flags;
++	nlhdr->nlmsg_seq = nlctx->seq;
++	nlctx->nlhdr = nlhdr;
++
++	gnlhdr = mnl_nlmsg_put_extra_header(nlhdr, sizeof(*gnlhdr));
++	gnlhdr->cmd = cmd;
++	gnlhdr->version = version;
++	nlctx->gnlhdr = gnlhdr;
++
++	return 0;
++}
++
++static int msg_init(struct nl_context *nlctx, int cmd, unsigned int flags,
++		    const char *ifname, unsigned int req_mask,
++		    unsigned int req_flags) {
++	struct ethtool_nl_msghdr *enlhdr;
++	int ret;
++
++	ret = __msg_init(nlctx, nlctx->ethnl_fam, cmd, flags,
++			 ETHTOOL_GENL_VERSION);
++	if (ret < 0)
++		return ret;
++	enlhdr = mnl_nlmsg_put_extra_header(nlctx->nlhdr, sizeof(*enlhdr));
++
++	memset(enlhdr, '\0', sizeof(*enlhdr));
++	enlhdr->flags = req_flags;
++	enlhdr->info_mask = req_mask;
++	strncpy(enlhdr->ifname, ifname, sizeof(enlhdr->ifname) - 1);
++	nlctx->enlhdr = enlhdr;
++
++	return 0;
++}
++
++static ssize_t ethnl_sendmsg(struct nl_context *nlctx)
++{
++	struct nlmsghdr *nlhdr = nlctx->nlhdr;
++
++	return mnl_socket_sendto(nlctx->sk, nlhdr, nlhdr->nlmsg_len);
++}
++
++static int ethnl_process_reply(struct nl_context *nlctx, mnl_cb_t reply_cb)
++{
++	ssize_t len;
++	int ret;
++
++	do {
++		len = mnl_socket_recvfrom(nlctx->sk, nlctx->buff,
++					  nlctx->buffsize);
++		if (len <= 0)
++			return (len ? -EFAULT : 0);
++		ret = mnl_cb_run(nlctx->buff, len, nlctx->seq, nlctx->port,
++				 reply_cb, nlctx);
++	} while (ret > 0);
++
++	return ret;
++}
++
++static int ethnl_std_get_request(struct cmd_context *ctx, unsigned int nlcmd,
++				 mnl_cb_t cb)
++{
++	struct nl_context *nlctx = ctx->nlctx;
++	int ret;
++
++	ret = msg_init(nlctx, nlcmd, NLM_F_REQUEST | NLM_F_ACK, ctx->devname,
++		       0, 0);
++	if (ret < 0)
++		return ret;
++	ret = ethnl_sendmsg(nlctx);
++	if (ret < 0)
++		return ret;
++	return ethnl_process_reply(nlctx, cb);
++}
++
++/* get ethtool family id */
++
++static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
++{
++	struct nl_context *nlctx = data;
++	struct nlattr *attr;
++
++	nlctx->ethnl_fam = 0;
++	mnl_attr_for_each(attr, nlhdr, GENL_HDRLEN) {
++		if (mnl_attr_get_type(attr) == CTRL_ATTR_FAMILY_ID) {
++			nlctx->ethnl_fam = mnl_attr_get_u16(attr);
++			break;
++		}
++	}
++
++	return (nlctx->ethnl_fam ? MNL_CB_OK : MNL_CB_ERROR);
++}
++
++static int get_ethnl_family(struct nl_context *nlctx)
++{
++	struct nlmsghdr *nlhdr;
++	int ret;
++
++	ret = __msg_init(nlctx, GENL_ID_CTRL, CTRL_CMD_GETFAMILY,
++			 NLM_F_REQUEST | NLM_F_ACK, 1);
++	if (ret < 0)
++		return ret;
++	mnl_attr_put_strz(nlctx->nlhdr, CTRL_ATTR_FAMILY_NAME,
++			  ETHTOOL_GENL_NAME);
++
++	ethnl_sendmsg(nlctx);
++	ethnl_process_reply(nlctx, ethnl_family_cb);
++
++	return (nlctx->ethnl_fam ? 0 : -EADDRNOTAVAIL);
++}
++
++/* initialization */
++
++static int nlctx_init(struct nl_context *nlctx)
++{
++	int ret;
++
++	memset(nlctx, '\0', sizeof(*nlctx));
++	nlctx->seq = (int)time(NULL);
++	nlctx->sk = mnl_socket_open(NETLINK_GENERIC);
++	if (!nlctx->sk)
++		return -ECONNREFUSED;
++	ret = mnl_socket_bind(nlctx->sk, 0, MNL_SOCKET_AUTOPID);
++	if (ret < 0)
++		return ret;
++	nlctx->port = mnl_socket_get_portid(nlctx->sk);
++
++	return 0;
++}
++
++static int nlctx_done(struct nl_context *nlctx)
++{
++	free(nlctx->buff);
++	memset(nlctx, '\0', sizeof(*nlctx));
++
++	return 0;
++}
++
++int netlink_init(struct cmd_context *ctx)
++{
++	struct nl_context *nlctx;
++	int ret;
++
++	nlctx = malloc(sizeof(*nlctx));
++	if (!nlctx)
++		return -ENOMEM;
++	ret = nlctx_init(nlctx);
++	if (ret < 0)
++		goto err_freenlctx;
++
++	ret = get_ethnl_family(nlctx);
++	if (ret < 0)
++		goto err_uninit;
++
++	ctx->nlctx = nlctx;
++	return 0;
++
++err_uninit:
++	nlctx_done(nlctx);
++err_freenlctx:
++	free(nlctx);
++	ctx->nlctx = NULL;
++	return ret;
++}
++
++int netlink_done(struct cmd_context *ctx)
++{
++	if (ctx->nlctx) {
++		nlctx_done(ctx->nlctx);
++		free(ctx->nlctx);
++		ctx->nlctx = NULL;
++	}
++
++	return 0;
++}
+diff --git a/netlink.h b/netlink.h
+new file mode 100644
+index 000000000000..b10b168b1f5b
+--- /dev/null
++++ b/netlink.h
+@@ -0,0 +1,10 @@
++#ifndef ETHTOOL_NETLINK_H__
++#define ETHTOOL_NETLINK_H__
++
++struct cmd_context;
++struct nl_context;
++
++int netlink_init(struct cmd_context *ctx);
++int netlink_done(struct cmd_context *ctx);
++
++#endif /* ETHTOOL_NETLINK_H__ */
+-- 
+2.15.0
+
