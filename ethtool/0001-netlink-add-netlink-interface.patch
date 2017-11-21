@@ -1,4 +1,4 @@
-From d0e3b57eb20927076a13690e65550756e0f706af Mon Sep 17 00:00:00 2001
+From 18ec8404869bf8013b3e692344302a6d4c35accf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 1/2] netlink: add netlink interface
@@ -381,7 +381,7 @@ index 1a2b7ccd2edf..49e0dff0e31f 100644
  }
 diff --git a/ethtool_netlink.h b/ethtool_netlink.h
 new file mode 100644
-index 000000000000..7985635b7c31
+index 000000000000..e6902cdd1146
 --- /dev/null
 +++ b/ethtool_netlink.h
 @@ -0,0 +1,117 @@
@@ -440,7 +440,7 @@ index 000000000000..7985635b7c31
 +	ETHA_BITSET_UNSPEC,
 +	ETHA_BITSET_SIZE,			/* u32 */
 +	ETHA_BITSET_BITS,			/* nest - ETHA_BITS_* */
-+	ETHA_BITSET_VALUES,			/* binary */
++	ETHA_BITSET_VALUE,			/* binary */
 +	ETHA_BITSET_MASK,			/* binary */
 +
 +	__ETHA_BITSET_MAX,
