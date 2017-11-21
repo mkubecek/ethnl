@@ -1,0 +1,141 @@
+From 80e2a18c6546c16b040d705a641dcb15fa127496 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Tue, 21 Nov 2017 14:32:32 +0100
+Subject: [PATCH 7/7] ethtool: implement SET_SETTINGS message
+
+Sets the information provided by ETHTOOL_SLINKSETTINGS, ETHTOOL_SWOL and
+ETHTOOL_SMSGLVL. Unlike with ioctl(), userspace can send only some
+attributes so that we only need to call ethtool_ops callbacks which we
+really need (and the "set" callback is only called when we actually changed
+some setting).
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ net/core/ethtool_netlink.c | 104 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 104 insertions(+)
+
+diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
+index 32c59f98949c..03c92cc2c7cd 100644
+--- a/net/core/ethtool_netlink.c
++++ b/net/core/ethtool_netlink.c
+@@ -799,6 +799,104 @@ static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
+ 	return rc;
+ }
+ 
++static int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
++{
++	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
++	struct ethtool_link_ksettings ksettings;
++	struct ethtool_link_settings *lsettings;
++	struct net *net = genl_info_net(info);
++	struct ethtool_nl_msghdr *ehdr;
++	struct ethtool_wolinfo wolinfo;
++	struct net_device *dev;
++	bool mod;
++	int rc;
++
++	lsettings = &ksettings.base;
++	ehdr = info->userhdr;
++	dev = ethnl_get_dev(net, ehdr);
++	if (IS_ERR(dev))
++		return PTR_ERR(dev);
++
++	rc = genlmsg_parse(info->nlhdr, &ethtool_genl_family, tb,
++			   ETHA_SETTINGS_MAX, settings_policy, NULL);
++	if (rc < 0)
++		goto err_putdev;
++
++	/* read only attributes */
++	rc = -EINVAL;
++	if (tb[ETHA_SETTINGS_MDIO_SUPPORT] || tb[ETHA_SETTINGS_TP_MDIX] ||
++	    tb[ETHA_SETTINGS_TRANSCEIVER] || tb[ETHA_SETTINGS_PEER_MODES])
++		goto err_putdev;
++
++	if (tb[ETHA_SETTINGS_SPEED] || tb[ETHA_SETTINGS_DUPLEX] ||
++	    tb[ETHA_SETTINGS_PORT] || tb[ETHA_SETTINGS_PHYADDR] ||
++	    tb[ETHA_SETTINGS_AUTONEG] || tb[ETHA_SETTINGS_TP_MDIX_CTRL] ||
++	    tb[ETHA_SETTINGS_LINK_MODES]) {
++		rtnl_lock();
++		rc = __ethtool_get_link_ksettings(dev, &ksettings);
++		if (rc < 0)
++			goto err_unlock;
++
++		mod = ethnl_update_u32(&lsettings->speed,
++				       tb[ETHA_SETTINGS_SPEED]) ||
++		      ethnl_update_u8(&lsettings->duplex,
++				      tb[ETHA_SETTINGS_DUPLEX]) ||
++		      ethnl_update_u8(&lsettings->port,
++				      tb[ETHA_SETTINGS_PORT]) ||
++		      ethnl_update_u8(&lsettings->phy_address,
++				      tb[ETHA_SETTINGS_PHYADDR]) ||
++		      ethnl_update_u8(&lsettings->autoneg,
++				      tb[ETHA_SETTINGS_AUTONEG]) ||
++		      ethnl_update_u8(&lsettings->eth_tp_mdix_ctrl,
++				      tb[ETHA_SETTINGS_TP_MDIX_CTRL]) ||
++		      ethnl_update_bitset(ksettings.link_modes.advertising,
++					  __ETHTOOL_LINK_MODE_MASK_NBITS,
++					  tb[ETHA_SETTINGS_LINK_MODES],
++					  &rc, link_mode_names);
++		if (mod) {
++			rc = dev->ethtool_ops->set_link_ksettings(dev, &ksettings);
++			if (rc < 0)
++				goto err_unlock;
++		}
++		rtnl_unlock();
++	}
++	if (tb[ETHA_SETTINGS_WOL_MODES] || tb[ETHA_SETTINGS_SOPASS]) {
++		rc = __ethtool_get_wol(dev, &wolinfo);
++		if (rc < 0)
++			goto err_putdev;
++
++		mod = ethnl_update_bitfield32(&wolinfo.wolopts,
++					      tb[ETHA_SETTINGS_WOL_MODES]) ||
++		      ethnl_update_binary(wolinfo.sopass, SOPASS_MAX,
++					  tb[ETHA_SETTINGS_SOPASS]);
++		if (mod) {
++			rc = dev->ethtool_ops->set_wol(dev, &wolinfo);
++			if (rc < 0)
++				goto err_putdev;
++		}
++	}
++	if (tb[ETHA_SETTINGS_MSGLVL]) {
++		u32 msglvl;
++
++		rc = -EOPNOTSUPP;
++		if (!dev->ethtool_ops->get_msglevel ||
++		    !dev->ethtool_ops->set_msglevel)
++			goto err_putdev;
++		msglvl = dev->ethtool_ops->get_msglevel(dev);
++		if (ethnl_update_bitfield32(&msglvl, tb[ETHA_SETTINGS_MSGLVL]))
++			dev->ethtool_ops->set_msglevel(dev, msglvl);
++	}
++
++	dev_put(dev);
++	return 0;
++
++err_unlock:
++	rtnl_unlock();
++err_putdev:
++	dev_put(dev);
++	return rc;
++}
++
+ /* genetlink paperwork */
+ 
+ static const struct genl_ops ethtool_nl_ops[] = {
+@@ -810,6 +908,12 @@ static const struct genl_ops ethtool_nl_ops[] = {
+ 		.cmd	= ETHTOOL_CMD_GET_SETTINGS,
+ 		.doit	= ethnl_get_settings,
+ 	},
++	{
++		.cmd	= ETHTOOL_CMD_SET_SETTINGS,
++		.flags	= GENL_UNS_ADMIN_PERM,
++		.policy	= settings_policy,
++		.doit	= ethnl_set_settings,
++	},
+ };
+ 
+ static struct genl_family ethtool_genl_family = {
+-- 
+2.15.0
+

@@ -1,7 +1,7 @@
-From 1f6ace3b0b01675509ea2fc35aae4fb48c9bf9ae Mon Sep 17 00:00:00 2001
+From ffe8961219fb81444d677c373ef2844ad84e5ff7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
-Subject: [PATCH 6/6] ethtool: implement GET_SETTINGS message
+Subject: [PATCH 6/7] ethtool: implement GET_SETTINGS message
 
 Requests the information provided by ETHTOOL_GLINKSETTINGS, ETHTOOL_GWOL
 and ETHTOOL_GMSGLVL. The info_mask header field can be used to request only
@@ -13,11 +13,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/linux/ethtool_netlink.h      |   3 +
  include/linux/netdevice.h            |   2 +
  include/uapi/linux/ethtool.h         |   3 +
- include/uapi/linux/ethtool_netlink.h |  32 +++++
+ include/uapi/linux/ethtool_netlink.h |  33 +++++
  net/core/ethtool.c                   | 100 +-------------
  net/core/ethtool_common.c            | 103 ++++++++++++++
  net/core/ethtool_common.h            |   7 +
- net/core/ethtool_netlink.c           | 253 +++++++++++++++++++++++++++++++++++
+ net/core/ethtool_netlink.c           | 252 +++++++++++++++++++++++++++++++++++
  8 files changed, 407 insertions(+), 96 deletions(-)
 
 diff --git a/include/linux/ethtool_netlink.h b/include/linux/ethtool_netlink.h
@@ -60,7 +60,7 @@ index ac71559314e7..29448b9d2338 100644
  #define ETHTOOL_BUSINFO_LEN	32
  #define ETHTOOL_EROMVERS_LEN	32
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index ed4b492fa5c5..0e5668883fa3 100644
+index 7ee6ae07c449..e6902cdd1146 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -22,6 +22,8 @@ enum {
@@ -72,7 +72,7 @@ index ed4b492fa5c5..0e5668883fa3 100644
  
  	__ETHTOOL_CMD_MAX,
  	ETHTOOL_CMD_MAX = (__ETHTOOL_CMD_MAX - 1),
-@@ -77,6 +79,36 @@ enum {
+@@ -77,6 +79,37 @@ enum {
  	ETHA_DRVINFO_MAX = (__ETHA_DRVINFO_MAX - 1),
  };
  
@@ -81,13 +81,14 @@ index ed4b492fa5c5..0e5668883fa3 100644
 +enum {
 +	ETHA_SETTINGS_UNSPEC,
 +	ETHA_SETTINGS_SPEED,			/* u32 */
-+	ETHA_SETTINGS_DUPLEX,			/* s8 */
-+	ETHA_SETTINGS_PORT,			/* u32 */
-+	ETHA_SETTINGS_PHYADDR,			/* u32 */
++	ETHA_SETTINGS_DUPLEX,			/* u8 */
++	ETHA_SETTINGS_PORT,			/* u8 */
++	ETHA_SETTINGS_PHYADDR,			/* u8 */
 +	ETHA_SETTINGS_AUTONEG,			/* u8 */
 +	ETHA_SETTINGS_MDIO_SUPPORT,		/* bitfield32 */
-+	ETHA_SETTINGS_TP_MDIX,			/* u32 */
-+	ETHA_SETTINGS_TP_MDIX_CTRL,		/* u32 */
++	ETHA_SETTINGS_TP_MDIX,			/* u8 */
++	ETHA_SETTINGS_TP_MDIX_CTRL,		/* u8 */
++	ETHA_SETTINGS_TRANSCEIVER,		/* u8 */
 +	ETHA_SETTINGS_WOL_MODES,		/* bitfield32 */
 +	ETHA_SETTINGS_SOPASS,			/* binary */
 +	ETHA_SETTINGS_MSGLVL,			/* bitfield32 */
@@ -364,7 +365,7 @@ index 1f031c1d943a..635141ebc7e6 100644
  
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 07945b8f2120..9e4b60d01e3b 100644
+index b25812084208..32c59f98949c 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -4,11 +4,69 @@
@@ -437,7 +438,7 @@ index 07945b8f2120..9e4b60d01e3b 100644
  /* misc helper functions */
  
  static int ethnl_str_size(const char *s)
-@@ -322,9 +380,204 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
+@@ -551,6 +609,196 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
  	return -EMSGSIZE;
  }
  
@@ -446,17 +447,20 @@ index 07945b8f2120..9e4b60d01e3b 100644
 +static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
 +	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_UNSPEC },
 +	[ETHA_SETTINGS_SPEED]		= { .type = NLA_U32 },
-+	[ETHA_SETTINGS_DUPLEX]		= { .type = NLA_S8 },
-+	[ETHA_SETTINGS_PORT]		= { .type = NLA_U32 },
-+	[ETHA_SETTINGS_PHYADDR]		= { .type = NLA_U32 },
++	[ETHA_SETTINGS_DUPLEX]		= { .type = NLA_U8 },
++	[ETHA_SETTINGS_PORT]		= { .type = NLA_U8 },
++	[ETHA_SETTINGS_PHYADDR]		= { .type = NLA_U8 },
 +	[ETHA_SETTINGS_AUTONEG]		= { .type = NLA_U8 },
 +	[ETHA_SETTINGS_MDIO_SUPPORT]	= { .type = NLA_BITFIELD32 },
-+	[ETHA_SETTINGS_TP_MDIX]		= { .type = NLA_U32 },
-+	[ETHA_SETTINGS_TP_MDIX_CTRL]	= { .type = NLA_U32 },
++	[ETHA_SETTINGS_TP_MDIX]		= { .type = NLA_U8 },
++	[ETHA_SETTINGS_TP_MDIX_CTRL]	= { .type = NLA_U8 },
++	[ETHA_SETTINGS_TRANSCEIVER]	= { .type = NLA_U8 },
 +	[ETHA_SETTINGS_WOL_MODES]	= { .type = NLA_BITFIELD32 },
 +	[ETHA_SETTINGS_SOPASS]		= { .type = NLA_BINARY,
 +					    .len = SOPASS_MAX },
 +	[ETHA_SETTINGS_MSGLVL]		= { .type = NLA_BITFIELD32 },
++	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
++	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_NESTED },
 +};
 +
 +static int ethnl_settings_size(struct ethtool_nl_msghdr *ehdr,
@@ -467,10 +471,10 @@ index 07945b8f2120..9e4b60d01e3b 100644
 +	int rc = 0;
 +
 +	if (ehdr->info_mask & ETH_SETTINGS_IM_LINKINFO) {
-+		/* speed, port, phyaddr, mdix, mdixctrl */
-+		len += 5 * nla_total_size(sizeof(u32));
-+		/* duplex, autoneg */
-+		len += 2 * nla_total_size(sizeof(u8));
++		/* speed */
++		len += nla_total_size(sizeof(u32));
++		/* duplex, autoneg, port, phyaddr, mdix, mdixctrl, transcvr */
++		len += 7 * nla_total_size(sizeof(u8));
 +		/* mdio_support */
 +		len += nla_total_size(sizeof(struct nla_bitfield32));
 +		if (dev->ethtool_ops->get_msglevel)
@@ -495,7 +499,8 @@ index 07945b8f2120..9e4b60d01e3b 100644
 +			return rc;
 +		len += rc;
 +		rc = ethnl_bitset_size(compact, __ETHTOOL_LINK_MODE_MASK_NBITS,
-+				       lp_advertising, NULL, link_mode_names);
++				       lp_advertising, lp_advertising,
++				       link_mode_names);
 +		if (rc < 0)
 +			return rc;
 +		len += rc;
@@ -566,19 +571,21 @@ index 07945b8f2120..9e4b60d01e3b 100644
 +	rc = -EMSGSIZE;
 +	if (req_mask & ETH_SETTINGS_IM_LINKINFO) {
 +		if (nla_put_u32(rskb, ETHA_SETTINGS_SPEED, lsettings->speed) ||
-+		    nla_put_s8(rskb, ETHA_SETTINGS_DUPLEX, lsettings->duplex) ||
-+		    nla_put_u32(rskb, ETHA_SETTINGS_PORT, lsettings->port) ||
-+		    nla_put_u32(rskb, ETHA_SETTINGS_PHYADDR,
-+				lsettings->phy_address) ||
++		    nla_put_u8(rskb, ETHA_SETTINGS_DUPLEX, lsettings->duplex) ||
++		    nla_put_u8(rskb, ETHA_SETTINGS_PORT, lsettings->port) ||
++		    nla_put_u8(rskb, ETHA_SETTINGS_PHYADDR,
++			       lsettings->phy_address) ||
 +		    nla_put_u8(rskb, ETHA_SETTINGS_AUTONEG,
 +			       lsettings->autoneg) ||
 +		    nla_put_bitfield32(rskb, ETHA_SETTINGS_MDIO_SUPPORT,
 +				       lsettings->mdio_support,
 +				       ETH_MDIO_SUPPORTS_ALL) ||
-+		    nla_put_u32(rskb, ETHA_SETTINGS_TP_MDIX,
-+				lsettings->eth_tp_mdix) ||
-+		    nla_put_u32(rskb, ETHA_SETTINGS_TP_MDIX_CTRL,
-+				lsettings->eth_tp_mdix_ctrl))
++		    nla_put_u8(rskb, ETHA_SETTINGS_TP_MDIX,
++			       lsettings->eth_tp_mdix) ||
++		    nla_put_u8(rskb, ETHA_SETTINGS_TP_MDIX_CTRL,
++			       lsettings->eth_tp_mdix_ctrl) ||
++		    nla_put_u8(rskb, ETHA_SETTINGS_TRANSCEIVER,
++			       lsettings->transceiver))
 +			goto err;
 +		if (dev->ethtool_ops->get_msglevel &&
 +		    nla_put_bitfield32(rskb, ETHA_SETTINGS_MSGLVL,
@@ -588,10 +595,8 @@ index 07945b8f2120..9e4b60d01e3b 100644
 +	}
 +	if (req_mask & ETH_SETTINGS_IM_WOLINFO) {
 +		if (nla_put_bitfield32(rskb, ETHA_SETTINGS_WOL_MODES,
-+				       wolinfo.wolopts, wolinfo.supported))
-+			goto err;
-+		if ((wolinfo.wolopts & WAKE_MAGICSECURE) &&
-+		    nla_put(rskb, ETHA_SETTINGS_SOPASS,	sizeof(wolinfo.sopass),
++				       wolinfo.wolopts, wolinfo.supported) ||
++		    nla_put(rskb, ETHA_SETTINGS_SOPASS, sizeof(wolinfo.sopass),
 +			    wolinfo.sopass))
 +			goto err;
 +	}
@@ -609,7 +614,8 @@ index 07945b8f2120..9e4b60d01e3b 100644
 +			goto err;
 +		rc = ethnl_put_bitset(rskb, ETHA_SETTINGS_PEER_MODES, compact,
 +				      __ETHTOOL_LINK_MODE_MASK_NBITS,
-+				      lp_advertising, NULL, link_mode_names);
++				      lp_advertising, lp_advertising,
++				      link_mode_names);
 +		if (rc < 0)
 +			goto err;
 +	}
@@ -629,15 +635,13 @@ index 07945b8f2120..9e4b60d01e3b 100644
  /* genetlink paperwork */
  
  static const struct genl_ops ethtool_nl_ops[] = {
-+	{
-+		.cmd	= ETHTOOL_CMD_GET_DRVINFO,
-+		.doit	= ethnl_get_drvinfo,
-+		.policy	= drvinfo_policy,
-+	},
+@@ -558,6 +806,10 @@ static const struct genl_ops ethtool_nl_ops[] = {
+ 		.cmd	= ETHTOOL_CMD_GET_DRVINFO,
+ 		.doit	= ethnl_get_drvinfo,
+ 	},
 +	{
 +		.cmd	= ETHTOOL_CMD_GET_SETTINGS,
 +		.doit	= ethnl_get_settings,
-+		.policy	= settings_policy,
 +	},
  };
  

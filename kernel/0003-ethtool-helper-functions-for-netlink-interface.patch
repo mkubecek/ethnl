@@ -1,20 +1,20 @@
-From 164360991d52ec2d58c696bc4e0c920c376cc25b Mon Sep 17 00:00:00 2001
+From 5b60cd40bfd843dbcba4e2cd2302083ececabb5b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
-Subject: [PATCH 3/6] ethtool: helper functions for netlink interface
+Subject: [PATCH 3/7] ethtool: helper functions for netlink interface
 
 Misc helpers used by ethtool netlink code.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/core/ethtool_netlink.c | 68 ++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 68 insertions(+)
+ net/core/ethtool_netlink.c | 141 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 141 insertions(+)
 
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 2421af2664a4..33dd65ef5092 100644
+index 2421af2664a4..2cc7c8078e32 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -8,6 +8,74 @@
+@@ -8,6 +8,147 @@
  
  static struct genl_family ethtool_genl_family;
  
@@ -35,6 +35,79 @@ index 2421af2664a4..33dd65ef5092 100644
 +	if (!s[0])
 +		return 0;
 +	return nla_put_string(skb, attrtype, s);
++}
++
++/* ethnl_update_* return true if the value is changed */
++static bool ethnl_update_u32(u32 *dst, struct nlattr *attr)
++{
++	u32 val;
++
++	if (!attr)
++		return false;
++	val = nla_get_u32(attr);
++	if (*dst == val)
++		return false;
++
++	*dst = val;
++	return true;
++}
++
++static bool ethnl_update_u8(u8 *dst, struct nlattr *attr)
++{
++	u8 val;
++
++	if (!attr)
++		return false;
++	val = nla_get_u32(attr);
++	if (*dst == val)
++		return false;
++
++	*dst = val;
++	return true;
++}
++
++static bool ethnl_update_binary(u8 *dst, unsigned int len, struct nlattr *attr)
++{
++	if (nla_len(attr) < len)
++		len = nla_len(attr);
++	if (!memcmp(dst, nla_data(attr), len))
++		return false;
++
++	memcpy(dst, nla_data(attr), len);
++	return true;
++}
++
++static bool ethnl_update_bitfield32(u32 *dst, struct nlattr *attr)
++{
++	struct nla_bitfield32 change;
++	u32 newval;
++
++	if (!attr)
++		return false;
++	change = nla_get_bitfield32(attr);
++	newval = (*dst & ~change.selector) | (change.value & change.selector);
++	if (*dst == newval)
++		return false;
++
++	*dst = newval;
++	return true;
++}
++
++static bool ethnl_update_bitfield8(u8 *dst, struct nlattr *attr)
++{
++	struct nla_bitfield32 change;
++	u8 newval;
++
++	if (!attr)
++		return false;
++	change = nla_get_bitfield32(attr);
++	newval = (*dst & ~(u8)change.selector) |
++		 (u8)(change.value & change.selector);
++	if (*dst == newval)
++		return false;
++
++	*dst = newval;
++	return true;
 +}
 +
 +static struct net_device *ethnl_get_dev(struct net *net,

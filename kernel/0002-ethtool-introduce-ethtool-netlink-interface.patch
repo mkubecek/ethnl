@@ -1,7 +1,7 @@
-From 1a801d5743f65737f5eaf6145a9a419ae74531ff Mon Sep 17 00:00:00 2001
+From 9c2256d2b12735d164c56ae25c79f9a83112ff45 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
-Subject: [PATCH 2/6] ethtool: introduce ethtool netlink interface
+Subject: [PATCH 2/7] ethtool: introduce ethtool netlink interface
 
 No function implemented yet, only genetlink and module infrastructure.
 Register/unregister genetlink family "ethtool" and allow the module to be

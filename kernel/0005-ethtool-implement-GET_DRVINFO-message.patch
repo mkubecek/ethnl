@@ -1,7 +1,7 @@
-From 90a838620ac5f6342a72ba536f03a8993e94394a Mon Sep 17 00:00:00 2001
+From f3a7270264fc5e1db82d7e18c05cb71cdec471fb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
-Subject: [PATCH 5/6] ethtool: implement GET_DRVINFO message
+Subject: [PATCH 5/7] ethtool: implement GET_DRVINFO message
 
 Request the same information as ETHTOOL_GDRVINFO. This is read-only so that
 corresponding SET_DRVINFO exists but is only used in kernel replies. Rip
@@ -12,16 +12,16 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  include/uapi/linux/ethtool_netlink.h | 21 +++++++++
  net/core/Makefile                    |  2 +-
- net/core/ethtool.c                   | 42 +++---------------
- net/core/ethtool_common.c            | 46 ++++++++++++++++++++
+ net/core/ethtool.c                   | 42 +++--------------
+ net/core/ethtool_common.c            | 46 +++++++++++++++++++
  net/core/ethtool_common.h            | 11 +++++
- net/core/ethtool_netlink.c           | 83 ++++++++++++++++++++++++++++++++++++
- 6 files changed, 168 insertions(+), 37 deletions(-)
+ net/core/ethtool_netlink.c           | 87 ++++++++++++++++++++++++++++++++++++
+ 6 files changed, 172 insertions(+), 37 deletions(-)
  create mode 100644 net/core/ethtool_common.c
  create mode 100644 net/core/ethtool_common.h
 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index a4f536fd6f06..ed4b492fa5c5 100644
+index 0eaabfa1ae5a..7ee6ae07c449 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -20,6 +20,8 @@ struct ethtool_nl_msghdr {
@@ -205,10 +205,10 @@ index 000000000000..1f031c1d943a
 +
 +#endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 32b65317bc61..07945b8f2120 100644
+index 4b94e336fc8c..b25812084208 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -239,6 +239,89 @@ static struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev,
+@@ -468,9 +468,96 @@ static struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev,
  	return rskb;
  }
  
@@ -298,6 +298,13 @@ index 32b65317bc61..07945b8f2120 100644
  /* genetlink paperwork */
  
  static const struct genl_ops ethtool_nl_ops[] = {
++	{
++		.cmd	= ETHTOOL_CMD_GET_DRVINFO,
++		.doit	= ethnl_get_drvinfo,
++	},
+ };
+ 
+ static struct genl_family ethtool_genl_family = {
 -- 
 2.15.0
 
