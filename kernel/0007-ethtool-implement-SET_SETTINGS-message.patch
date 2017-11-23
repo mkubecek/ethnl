@@ -1,4 +1,4 @@
-From 80e2a18c6546c16b040d705a641dcb15fa127496 Mon Sep 17 00:00:00 2001
+From 2774ab74abf3ea6ac692594a6cd88f8ac0c8585e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 7/7] ethtool: implement SET_SETTINGS message
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  1 file changed, 104 insertions(+)
 
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 32c59f98949c..03c92cc2c7cd 100644
+index e916065b1d1a..5a56d7e1fc58 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -799,6 +799,104 @@ static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -807,6 +807,104 @@ static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
  	return rc;
  }
  
@@ -123,7 +123,7 @@ index 32c59f98949c..03c92cc2c7cd 100644
  /* genetlink paperwork */
  
  static const struct genl_ops ethtool_nl_ops[] = {
-@@ -810,6 +908,12 @@ static const struct genl_ops ethtool_nl_ops[] = {
+@@ -818,6 +916,12 @@ static const struct genl_ops ethtool_nl_ops[] = {
  		.cmd	= ETHTOOL_CMD_GET_SETTINGS,
  		.doit	= ethnl_get_settings,
  	},

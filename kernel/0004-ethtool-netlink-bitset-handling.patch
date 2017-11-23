@@ -1,4 +1,4 @@
-From 07ac0d7310cee29a25ddda6de9857f5bda333ddf Mon Sep 17 00:00:00 2001
+From 20729b9ea48e781cb97a8aff681a298a5c829ec5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 4/7] ethtool: netlink bitset handling
@@ -55,7 +55,7 @@ index 8a78fcd69493..0eaabfa1ae5a 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 2cc7c8078e32..4b94e336fc8c 100644
+index 8a5bcba0805f..5211713f52f6 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -3,6 +3,7 @@
@@ -66,8 +66,8 @@ index 2cc7c8078e32..4b94e336fc8c 100644
  #include <net/genetlink.h>
  #include "ethtool_common.h"
  
-@@ -113,6 +114,324 @@ static struct net_device *ethnl_get_dev(struct net *net,
- 	return NULL;
+@@ -121,6 +122,324 @@ static struct net_device *ethnl_get_dev(struct net *net,
+ 	return ERR_PTR(-EINVAL);
  }
  
 +/* bitset helper functions */
