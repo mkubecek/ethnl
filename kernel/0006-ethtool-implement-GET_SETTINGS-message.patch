@@ -1,4 +1,4 @@
-From a86c36d36f1540e78cf8066a5af879328468c549 Mon Sep 17 00:00:00 2001
+From a2c3c05d568f7d5dcd1e4ce155e781686b4d4e51 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
 Subject: [PATCH 6/7] ethtool: implement GET_SETTINGS message
@@ -13,12 +13,12 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/linux/ethtool_netlink.h      |   3 +
  include/linux/netdevice.h            |   2 +
  include/uapi/linux/ethtool.h         |   3 +
- include/uapi/linux/ethtool_netlink.h |  33 +++++
- net/core/ethtool.c                   | 100 +-------------
- net/core/ethtool_common.c            | 103 ++++++++++++++
- net/core/ethtool_common.h            |   7 +
- net/core/ethtool_netlink.c           | 252 +++++++++++++++++++++++++++++++++++
- 8 files changed, 407 insertions(+), 96 deletions(-)
+ include/uapi/linux/ethtool_netlink.h |  35 +++++
+ net/core/ethtool.c                   | 108 ++------------
+ net/core/ethtool_common.c            | 112 +++++++++++++++
+ net/core/ethtool_common.h            |   8 ++
+ net/core/ethtool_netlink.c           | 269 +++++++++++++++++++++++++++++++++++
+ 8 files changed, 440 insertions(+), 100 deletions(-)
 
 diff --git a/include/linux/ethtool_netlink.h b/include/linux/ethtool_netlink.h
 index 0412adb4f42f..1787359f9e5d 100644
@@ -60,7 +60,7 @@ index ac71559314e7..29448b9d2338 100644
  #define ETHTOOL_BUSINFO_LEN	32
  #define ETHTOOL_EROMVERS_LEN	32
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 7ee6ae07c449..e6902cdd1146 100644
+index 7ee6ae07c449..89cbec8552db 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -22,6 +22,8 @@ enum {
@@ -72,7 +72,7 @@ index 7ee6ae07c449..e6902cdd1146 100644
  
  	__ETHTOOL_CMD_MAX,
  	ETHTOOL_CMD_MAX = (__ETHTOOL_CMD_MAX - 1),
-@@ -77,6 +79,37 @@ enum {
+@@ -77,6 +79,39 @@ enum {
  	ETHA_DRVINFO_MAX = (__ETHA_DRVINFO_MAX - 1),
  };
  
@@ -94,6 +94,7 @@ index 7ee6ae07c449..e6902cdd1146 100644
 +	ETHA_SETTINGS_MSGLVL,			/* bitfield32 */
 +	ETHA_SETTINGS_LINK_MODES,		/* bitset */
 +	ETHA_SETTINGS_PEER_MODES,		/* bitset */
++	ETHA_SETTINGS_LINK,			/* u32 */
 +
 +	__ETHA_SETTINGS_MAX,
 +	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_MAX - 1),
@@ -104,14 +105,15 @@ index 7ee6ae07c449..e6902cdd1146 100644
 +#define ETH_SETTINGS_IM_LINKINFO		0x1
 +#define ETH_SETTINGS_IM_LINKMODES		0x2
 +#define ETH_SETTINGS_IM_WOLINFO			0x4
++#define ETH_SETTINGS_IM_LINK			0x8
 +
-+#define ETH_SETTINGS_IM_DEFAULT			0x7
++#define ETH_SETTINGS_IM_DEFAULT			0xf
 +
  /* generic netlink info */
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/ethtool.c b/net/core/ethtool.c
-index 09e780a748f9..1777eb8b45bc 100644
+index 09e780a748f9..b08a2efa2e89 100644
 --- a/net/core/ethtool.c
 +++ b/net/core/ethtool.c
 @@ -452,54 +452,6 @@ bool ethtool_convert_link_mode_to_legacy_u32(u32 *legacy_u32,
@@ -236,11 +238,28 @@ index 09e780a748f9..1777eb8b45bc 100644
  
  	if (copy_to_user(useraddr, &wol, sizeof(wol)))
  		return -EFAULT;
+@@ -1506,12 +1414,12 @@ static int ethtool_nway_reset(struct net_device *dev)
+ static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
+ {
+ 	struct ethtool_value edata = { .cmd = ETHTOOL_GLINK };
++	int link = __ethtool_get_link(dev);
+ 
+-	if (!dev->ethtool_ops->get_link)
+-		return -EOPNOTSUPP;
+-
+-	edata.data = netif_running(dev) && dev->ethtool_ops->get_link(dev);
++	if (link < 0)
++		return link;
+ 
++	edata.data = link;
+ 	if (copy_to_user(useraddr, &edata, sizeof(edata)))
+ 		return -EFAULT;
+ 	return 0;
 diff --git a/net/core/ethtool_common.c b/net/core/ethtool_common.c
-index 2c0abab0e43c..2ed44164c6a2 100644
+index 2c0abab0e43c..30bc2b14cf2a 100644
 --- a/net/core/ethtool_common.c
 +++ b/net/core/ethtool_common.c
-@@ -44,3 +44,106 @@ int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info)
+@@ -44,3 +44,115 @@ int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info)
  	return 0;
  }
  EXPORT_SYMBOL(__ethtool_get_drvinfo);
@@ -347,17 +366,27 @@ index 2c0abab0e43c..2ed44164c6a2 100644
 +	return 0;
 +}
 +EXPORT_SYMBOL(__ethtool_get_wol);
++
++int __ethtool_get_link(struct net_device *dev)
++{
++	if (!dev->ethtool_ops->get_link)
++		return -EOPNOTSUPP;
++
++	return netif_running(dev) && dev->ethtool_ops->get_link(dev);
++}
++EXPORT_SYMBOL(__ethtool_get_link);
 diff --git a/net/core/ethtool_common.h b/net/core/ethtool_common.h
-index 1f031c1d943a..635141ebc7e6 100644
+index 1f031c1d943a..92e236952f18 100644
 --- a/net/core/ethtool_common.h
 +++ b/net/core/ethtool_common.h
-@@ -7,5 +7,12 @@
+@@ -7,5 +7,13 @@
  #include <linux/ethtool.h>
  
  int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info);
 +int __ethtool_get_wol(struct net_device *dev, struct ethtool_wolinfo *wol);
 +int __ethtool_get_link_ksettings(struct net_device *dev,
 +				 struct ethtool_link_ksettings *link_ksettings);
++int __ethtool_get_link(struct net_device *dev);
 +
 +bool convert_legacy_settings_to_link_ksettings(
 +	struct ethtool_link_ksettings *link_ksettings,
@@ -365,7 +394,7 @@ index 1f031c1d943a..635141ebc7e6 100644
  
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 963d1df78319..e916065b1d1a 100644
+index 963d1df78319..9edf72a9f44e 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -4,11 +4,69 @@
@@ -381,64 +410,64 @@ index 963d1df78319..e916065b1d1a 100644
 +/* dictionary */
 +
 +static const char *const link_mode_names[] = {
-+	[ETHTOOL_LINK_MODE_10baseT_Half_BIT]		= "10baseT_Half",
-+	[ETHTOOL_LINK_MODE_10baseT_Full_BIT]		= "10baseT_Full",
-+	[ETHTOOL_LINK_MODE_100baseT_Half_BIT]		= "100baseT_Half",
-+	[ETHTOOL_LINK_MODE_100baseT_Full_BIT]		= "100baseT_Full",
-+	[ETHTOOL_LINK_MODE_1000baseT_Half_BIT]		= "1000baseT_Half",
-+	[ETHTOOL_LINK_MODE_1000baseT_Full_BIT]		= "1000baseT_Full",
++	[ETHTOOL_LINK_MODE_10baseT_Half_BIT]		= "10baseT/Half",
++	[ETHTOOL_LINK_MODE_10baseT_Full_BIT]		= "10baseT/Full",
++	[ETHTOOL_LINK_MODE_100baseT_Half_BIT]		= "100baseT/Half",
++	[ETHTOOL_LINK_MODE_100baseT_Full_BIT]		= "100baseT/Full",
++	[ETHTOOL_LINK_MODE_1000baseT_Half_BIT]		= "1000baseT/Half",
++	[ETHTOOL_LINK_MODE_1000baseT_Full_BIT]		= "1000baseT/Full",
 +	[ETHTOOL_LINK_MODE_Autoneg_BIT]			= "Autoneg",
 +	[ETHTOOL_LINK_MODE_TP_BIT]			= "TP",
 +	[ETHTOOL_LINK_MODE_AUI_BIT]			= "AUI",
 +	[ETHTOOL_LINK_MODE_MII_BIT]			= "MII",
 +	[ETHTOOL_LINK_MODE_FIBRE_BIT]			= "FIBRE",
 +	[ETHTOOL_LINK_MODE_BNC_BIT]			= "BNC",
-+	[ETHTOOL_LINK_MODE_10000baseT_Full_BIT]		= "10000baseT_Full",
++	[ETHTOOL_LINK_MODE_10000baseT_Full_BIT]		= "10000baseT/Full",
 +	[ETHTOOL_LINK_MODE_Pause_BIT]			= "Pause",
 +	[ETHTOOL_LINK_MODE_Asym_Pause_BIT]		= "Asym_Pause",
-+	[ETHTOOL_LINK_MODE_2500baseX_Full_BIT]		= "2500baseX_Full",
++	[ETHTOOL_LINK_MODE_2500baseX_Full_BIT]		= "2500baseX/Full",
 +	[ETHTOOL_LINK_MODE_Backplane_BIT]		= "Backplane",
-+	[ETHTOOL_LINK_MODE_1000baseKX_Full_BIT]		= "1000baseKX_Full",
-+	[ETHTOOL_LINK_MODE_10000baseKX4_Full_BIT]	= "10000baseKX4_Full",
-+	[ETHTOOL_LINK_MODE_10000baseKR_Full_BIT]	= "10000baseKR_Full",
-+	[ETHTOOL_LINK_MODE_10000baseR_FEC_BIT]		= "10000baseR_FEC",
-+	[ETHTOOL_LINK_MODE_20000baseMLD2_Full_BIT]	= "20000baseMLD2_Full",
-+	[ETHTOOL_LINK_MODE_20000baseKR2_Full_BIT]	= "20000baseKR2_Full",
-+	[ETHTOOL_LINK_MODE_40000baseKR4_Full_BIT]	= "40000baseKR4_Full",
-+	[ETHTOOL_LINK_MODE_40000baseCR4_Full_BIT]	= "40000baseCR4_Full",
-+	[ETHTOOL_LINK_MODE_40000baseSR4_Full_BIT]	= "40000baseSR4_Full",
-+	[ETHTOOL_LINK_MODE_40000baseLR4_Full_BIT]	= "40000baseLR4_Full",
-+	[ETHTOOL_LINK_MODE_56000baseKR4_Full_BIT]	= "56000baseKR4_Full",
-+	[ETHTOOL_LINK_MODE_56000baseCR4_Full_BIT]	= "56000baseCR4_Full",
-+	[ETHTOOL_LINK_MODE_56000baseSR4_Full_BIT]	= "56000baseSR4_Full",
-+	[ETHTOOL_LINK_MODE_56000baseLR4_Full_BIT]	= "56000baseLR4_Full",
-+	[ETHTOOL_LINK_MODE_25000baseCR_Full_BIT]	= "25000baseCR_Full",
-+	[ETHTOOL_LINK_MODE_25000baseKR_Full_BIT]	= "25000baseKR_Full",
-+	[ETHTOOL_LINK_MODE_25000baseSR_Full_BIT]	= "25000baseSR_Full",
-+	[ETHTOOL_LINK_MODE_50000baseCR2_Full_BIT]	= "50000baseCR2_Full",
-+	[ETHTOOL_LINK_MODE_50000baseKR2_Full_BIT]	= "50000baseKR2_Full",
-+	[ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT]	= "100000baseKR4_Full",
-+	[ETHTOOL_LINK_MODE_100000baseSR4_Full_BIT]	= "100000baseSR4_Full",
-+	[ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT]	= "100000baseCR4_Full",
-+	[ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT]	= "100000baseLR4_ER4_Full",
-+	[ETHTOOL_LINK_MODE_50000baseSR2_Full_BIT]	= "50000baseSR2_Full",
-+	[ETHTOOL_LINK_MODE_1000baseX_Full_BIT]		= "1000baseX_Full",
-+	[ETHTOOL_LINK_MODE_10000baseCR_Full_BIT]	= "10000baseCR_Full",
-+	[ETHTOOL_LINK_MODE_10000baseSR_Full_BIT]	= "10000baseSR_Full",
-+	[ETHTOOL_LINK_MODE_10000baseLR_Full_BIT]	= "10000baseLR_Full",
-+	[ETHTOOL_LINK_MODE_10000baseLRM_Full_BIT]	= "10000baseLRM_Full",
-+	[ETHTOOL_LINK_MODE_10000baseER_Full_BIT]	= "10000baseER_Full",
-+	[ETHTOOL_LINK_MODE_2500baseT_Full_BIT]		= "2500baseT_Full",
-+	[ETHTOOL_LINK_MODE_5000baseT_Full_BIT]		= "5000baseT_Full",
-+	[ETHTOOL_LINK_MODE_FEC_NONE_BIT]		= "FEC_NONE",
-+	[ETHTOOL_LINK_MODE_FEC_RS_BIT]			= "FEC_RS",
-+	[ETHTOOL_LINK_MODE_FEC_BASER_BIT]		= "FEC_BASER",
++	[ETHTOOL_LINK_MODE_1000baseKX_Full_BIT]		= "1000baseKX/Full",
++	[ETHTOOL_LINK_MODE_10000baseKX4_Full_BIT]	= "10000baseKX4/Full",
++	[ETHTOOL_LINK_MODE_10000baseKR_Full_BIT]	= "10000baseKR/Full",
++	[ETHTOOL_LINK_MODE_10000baseR_FEC_BIT]		= "10000baseR/FEC",
++	[ETHTOOL_LINK_MODE_20000baseMLD2_Full_BIT]	= "20000baseMLD2/Full",
++	[ETHTOOL_LINK_MODE_20000baseKR2_Full_BIT]	= "20000baseKR2/Full",
++	[ETHTOOL_LINK_MODE_40000baseKR4_Full_BIT]	= "40000baseKR4/Full",
++	[ETHTOOL_LINK_MODE_40000baseCR4_Full_BIT]	= "40000baseCR4/Full",
++	[ETHTOOL_LINK_MODE_40000baseSR4_Full_BIT]	= "40000baseSR4/Full",
++	[ETHTOOL_LINK_MODE_40000baseLR4_Full_BIT]	= "40000baseLR4/Full",
++	[ETHTOOL_LINK_MODE_56000baseKR4_Full_BIT]	= "56000baseKR4/Full",
++	[ETHTOOL_LINK_MODE_56000baseCR4_Full_BIT]	= "56000baseCR4/Full",
++	[ETHTOOL_LINK_MODE_56000baseSR4_Full_BIT]	= "56000baseSR4/Full",
++	[ETHTOOL_LINK_MODE_56000baseLR4_Full_BIT]	= "56000baseLR4/Full",
++	[ETHTOOL_LINK_MODE_25000baseCR_Full_BIT]	= "25000baseCR/Full",
++	[ETHTOOL_LINK_MODE_25000baseKR_Full_BIT]	= "25000baseKR/Full",
++	[ETHTOOL_LINK_MODE_25000baseSR_Full_BIT]	= "25000baseSR/Full",
++	[ETHTOOL_LINK_MODE_50000baseCR2_Full_BIT]	= "50000baseCR2/Full",
++	[ETHTOOL_LINK_MODE_50000baseKR2_Full_BIT]	= "50000baseKR2/Full",
++	[ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT]	= "100000baseKR4/Full",
++	[ETHTOOL_LINK_MODE_100000baseSR4_Full_BIT]	= "100000baseSR4/Full",
++	[ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT]	= "100000baseCR4/Full",
++	[ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT]	= "100000baseLR4/ER4_Full",
++	[ETHTOOL_LINK_MODE_50000baseSR2_Full_BIT]	= "50000baseSR2/Full",
++	[ETHTOOL_LINK_MODE_1000baseX_Full_BIT]		= "1000baseX/Full",
++	[ETHTOOL_LINK_MODE_10000baseCR_Full_BIT]	= "10000baseCR/Full",
++	[ETHTOOL_LINK_MODE_10000baseSR_Full_BIT]	= "10000baseSR/Full",
++	[ETHTOOL_LINK_MODE_10000baseLR_Full_BIT]	= "10000baseLR/Full",
++	[ETHTOOL_LINK_MODE_10000baseLRM_Full_BIT]	= "10000baseLRM/Full",
++	[ETHTOOL_LINK_MODE_10000baseER_Full_BIT]	= "10000baseER/Full",
++	[ETHTOOL_LINK_MODE_2500baseT_Full_BIT]		= "2500baseT/Full",
++	[ETHTOOL_LINK_MODE_5000baseT_Full_BIT]		= "5000baseT/Full",
++	[ETHTOOL_LINK_MODE_FEC_NONE_BIT]		= "None",
++	[ETHTOOL_LINK_MODE_FEC_RS_BIT]			= "RS",
++	[ETHTOOL_LINK_MODE_FEC_BASER_BIT]		= "BASER",
 +};
 +
  /* misc helper functions */
  
  static int ethnl_str_size(const char *s)
-@@ -559,6 +617,196 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
+@@ -559,6 +617,213 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
  	return -EMSGSIZE;
  }
  
@@ -461,6 +490,7 @@ index 963d1df78319..e916065b1d1a 100644
 +	[ETHA_SETTINGS_MSGLVL]		= { .type = NLA_BITFIELD32 },
 +	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
 +	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_NESTED },
++	[ETHA_SETTINGS_LINK]		= { .type = NLA_FLAG },
 +};
 +
 +static int ethnl_settings_size(struct ethtool_nl_msghdr *ehdr,
@@ -505,6 +535,8 @@ index 963d1df78319..e916065b1d1a 100644
 +			return rc;
 +		len += rc;
 +	}
++	if (ehdr->info_mask & ETH_SETTINGS_IM_LINK)
++		len += nla_total_size(sizeof(u32));
 +
 +	return len;
 +}
@@ -515,13 +547,15 @@ index 963d1df78319..e916065b1d1a 100644
 +	struct ethtool_link_settings *lsettings;
 +	struct net *net = genl_info_net(info);
 +	struct ethtool_nl_msghdr *ehdr;
-+	struct ethtool_wolinfo wolinfo;
++	struct ethtool_wolinfo wolinfo = {};
 +	struct net_device *dev;
 +	struct sk_buff *rskb;
-+	int reply_len;
++	unsigned int reply_len;
++	bool lp_modes_empty = true;
 +	u16 req_mask;
 +	u16 req_flags;
 +	int rc = 0;
++	int link = -EOPNOTSUPP;
 +
 +	lsettings = &ksettings.base;
 +	ehdr = info->userhdr;
@@ -537,11 +571,11 @@ index 963d1df78319..e916065b1d1a 100644
 +		rtnl_lock();
 +		rc = __ethtool_get_link_ksettings(dev, &ksettings);
 +		rtnl_unlock();
-+		if (rc < 0) {
-+			dev_put(dev);
-+			return rc;
-+		}
++		if (rc < 0)
++			goto err_putdev;
 +		if (req_mask & ETH_SETTINGS_IM_LINKMODES) {
++			lp_modes_empty = bitmap_empty(ksettings.link_modes.lp_advertising,
++						      __ETHTOOL_LINK_MODE_MASK_NBITS);
 +			ethnl_bitmap_to_u32(ksettings.link_modes.supported,
 +					    __ETHTOOL_LINK_MODE_MASK_NWORDS);
 +			ethnl_bitmap_to_u32(ksettings.link_modes.advertising,
@@ -552,21 +586,23 @@ index 963d1df78319..e916065b1d1a 100644
 +	}
 +	if (req_mask & ETH_SETTINGS_IM_WOLINFO) {
 +		rc = __ethtool_get_wol(dev, &wolinfo);
-+		if (rc < 0) {
-+			dev_put(dev);
-+			return rc;
-+		}
++		if (rc < 0)
++			goto err_putdev;
++	}
++	if (req_mask & ETH_SETTINGS_IM_LINK) {
++		link = __ethtool_get_link(dev);
 +	}
 +
-+	reply_len = ethnl_settings_size(ehdr, &ksettings, dev);
-+	if (reply_len < 0)
-+		return reply_len;
++	rc = ethnl_settings_size(ehdr, &ksettings, dev);
++	if (rc < 0)
++		goto err_putdev;
++	else
++		reply_len = rc;
 +	rskb = ethnl_reply_init(reply_len, dev, ETHTOOL_CMD_SET_SETTINGS, info,
 +				&ehdr);
-+	if (!rskb) {
-+		dev_put(dev);
-+		return -ENOMEM;
-+	}
++	rc = -ENOMEM;
++	if (!rskb)
++		goto err_putdev;
 +
 +	rc = -EMSGSIZE;
 +	if (req_mask & ETH_SETTINGS_IM_LINKINFO) {
@@ -612,11 +648,19 @@ index 963d1df78319..e916065b1d1a 100644
 +				      advertising, supported, link_mode_names);
 +		if (rc < 0)
 +			goto err;
-+		rc = ethnl_put_bitset(rskb, ETHA_SETTINGS_PEER_MODES, compact,
-+				      __ETHTOOL_LINK_MODE_MASK_NBITS,
-+				      lp_advertising, lp_advertising,
-+				      link_mode_names);
-+		if (rc < 0)
++		if (!lp_modes_empty) {
++			rc = ethnl_put_bitset(rskb, ETHA_SETTINGS_PEER_MODES,
++					      compact,
++					      __ETHTOOL_LINK_MODE_MASK_NBITS,
++					      lp_advertising, lp_advertising,
++					      link_mode_names);
++			if (rc < 0)
++				goto err;
++		}
++		rc = -EMSGSIZE;
++	}
++	if (req_mask & ETH_SETTINGS_IM_LINK && link >= 0) {
++		if (nla_put_u32(rskb, ETHA_SETTINGS_LINK, link))
 +			goto err;
 +	}
 +
@@ -625,9 +669,11 @@ index 963d1df78319..e916065b1d1a 100644
 +	return genlmsg_reply(rskb, info);
 +
 +err:
-+	dev_put(dev);
 +	nlmsg_free(rskb);
-+	WARN_ONCE(1, "calculated message payload length (%d) not sufficient\n",
++err_putdev:
++	dev_put(dev);
++	WARN_ONCE(rc == -EMSGSIZE,
++		  "calculated message payload length (%d) not sufficient\n",
 +		  reply_len);
 +	return rc;
 +}
@@ -635,7 +681,7 @@ index 963d1df78319..e916065b1d1a 100644
  /* genetlink paperwork */
  
  static const struct genl_ops ethtool_nl_ops[] = {
-@@ -566,6 +814,10 @@ static const struct genl_ops ethtool_nl_ops[] = {
+@@ -566,6 +831,10 @@ static const struct genl_ops ethtool_nl_ops[] = {
  		.cmd	= ETHTOOL_CMD_GET_DRVINFO,
  		.doit	= ethnl_get_drvinfo,
  	},

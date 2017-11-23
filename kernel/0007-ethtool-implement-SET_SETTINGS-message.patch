@@ -1,4 +1,4 @@
-From 2774ab74abf3ea6ac692594a6cd88f8ac0c8585e Mon Sep 17 00:00:00 2001
+From bc7ff65de6aa6f52cb10abdac2cb5480f8028505 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 7/7] ethtool: implement SET_SETTINGS message
@@ -11,14 +11,14 @@ some setting).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/core/ethtool_netlink.c | 104 +++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 104 insertions(+)
+ net/core/ethtool_netlink.c | 105 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 105 insertions(+)
 
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index e916065b1d1a..5a56d7e1fc58 100644
+index 9edf72a9f44e..3c720d588215 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -807,6 +807,104 @@ static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -824,6 +824,105 @@ static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
  	return rc;
  }
  
@@ -48,7 +48,8 @@ index e916065b1d1a..5a56d7e1fc58 100644
 +	/* read only attributes */
 +	rc = -EINVAL;
 +	if (tb[ETHA_SETTINGS_MDIO_SUPPORT] || tb[ETHA_SETTINGS_TP_MDIX] ||
-+	    tb[ETHA_SETTINGS_TRANSCEIVER] || tb[ETHA_SETTINGS_PEER_MODES])
++	    tb[ETHA_SETTINGS_TRANSCEIVER] || tb[ETHA_SETTINGS_PEER_MODES] ||
++	    tb[ETHA_SETTINGS_LINK])
 +		goto err_putdev;
 +
 +	if (tb[ETHA_SETTINGS_SPEED] || tb[ETHA_SETTINGS_DUPLEX] ||
@@ -123,7 +124,7 @@ index e916065b1d1a..5a56d7e1fc58 100644
  /* genetlink paperwork */
  
  static const struct genl_ops ethtool_nl_ops[] = {
-@@ -818,6 +916,12 @@ static const struct genl_ops ethtool_nl_ops[] = {
+@@ -835,6 +934,12 @@ static const struct genl_ops ethtool_nl_ops[] = {
  		.cmd	= ETHTOOL_CMD_GET_SETTINGS,
  		.doit	= ethnl_get_settings,
  	},
