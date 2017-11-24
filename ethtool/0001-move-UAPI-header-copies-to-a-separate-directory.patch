@@ -1,0 +1,69 @@
+From c70a69019fb9a383b55ed0f3c3376c3e9962444d Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Wed, 22 Nov 2017 09:02:44 +0100
+Subject: [PATCH 1/5] move UAPI header copies to a separate directory
+
+The upcoming netlink series is going to add more local copies of kernel
+UAPI header files and some of them are going to include others. Keeping
+them in the main directory under modified name would require modifying
+those includes as well which would be impractical.
+
+Create a subdirectory uapi and move the UAPI headers there to allow
+including them in the usual way.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ Makefile.am                                  | 6 +++---
+ internal.h                                   | 4 ++--
+ ethtool-copy.h => uapi/linux/ethtool.h       | 0
+ net_tstamp-copy.h => uapi/linux/net_tstamp.h | 0
+ 4 files changed, 5 insertions(+), 5 deletions(-)
+ rename ethtool-copy.h => uapi/linux/ethtool.h (100%)
+ rename net_tstamp-copy.h => uapi/linux/net_tstamp.h (100%)
+
+diff --git a/Makefile.am b/Makefile.am
+index edbda5770331..caa2b8603551 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -1,12 +1,12 @@
+-AM_CFLAGS = -Wall
++AM_CFLAGS = -I./uapi -Wall
+ LDADD = -lm
+ 
+ man_MANS = ethtool.8
+ EXTRA_DIST = LICENSE ethtool.8 ethtool.spec.in aclocal.m4 ChangeLog autogen.sh
+ 
+ sbin_PROGRAMS = ethtool
+-ethtool_SOURCES = ethtool.c ethtool-copy.h internal.h net_tstamp-copy.h \
+-		  rxclass.c
++ethtool_SOURCES = ethtool.c uapi/linux/ethtool.h internal.h \
++		  uapi/linux/net_tstamp.h rxclass.c
+ if ETHTOOL_ENABLE_PRETTY_DUMP
+ ethtool_SOURCES += \
+ 		  amd8111e.c de2104x.c e100.c e1000.c et131x.c igb.c	\
+diff --git a/internal.h b/internal.h
+index 4e658ea54307..2907679c30f2 100644
+--- a/internal.h
++++ b/internal.h
+@@ -42,8 +42,8 @@ typedef int32_t s32;
+ #define __KERNEL_DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
+ #endif
+ 
+-#include "ethtool-copy.h"
+-#include "net_tstamp-copy.h"
++#include <linux/ethtool.h>
++#include <linux/net_tstamp.h>
+ 
+ #if __BYTE_ORDER == __BIG_ENDIAN
+ static inline u16 cpu_to_be16(u16 value)
+diff --git a/ethtool-copy.h b/uapi/linux/ethtool.h
+similarity index 100%
+rename from ethtool-copy.h
+rename to uapi/linux/ethtool.h
+diff --git a/net_tstamp-copy.h b/uapi/linux/net_tstamp.h
+similarity index 100%
+rename from net_tstamp-copy.h
+rename to uapi/linux/net_tstamp.h
+-- 
+2.15.0
+

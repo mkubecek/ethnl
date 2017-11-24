@@ -1,19 +1,19 @@
-From fa345fcf16fb0dbbe5072bad02371291cfafe7a8 Mon Sep 17 00:00:00 2001
+From 70a77d638f377e360787870a6b33f68d882e9fa7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
-Subject: [PATCH 2/2] netlink: add netlink handler for gdrv (-i)
+Subject: [PATCH 4/5] netlink: add netlink handler for gdrv (-i)
 
 Implement "-i" subcommand using netlink interface.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c |  3 ++-
- netlink.c | 47 +++++++++++++++++++++++++++++++++++++++++++++++
+ netlink.c | 49 +++++++++++++++++++++++++++++++++++++++++++++++++
  netlink.h |  2 ++
- 3 files changed, 51 insertions(+), 1 deletion(-)
+ 3 files changed, 53 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 49e0dff0e31f..b1ba4797c154 100644
+index 1cec0db8f7d1..7244c9122412 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4750,6 +4750,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -34,10 +34,10 @@ index 49e0dff0e31f..b1ba4797c154 100644
  	{ "-d|--register-dump", 1, do_gregs, NULL,
  	  "Do a register dump",
 diff --git a/netlink.c b/netlink.c
-index c3add41a8908..c2afc2d8418b 100644
+index 38f9216735d7..a3c61de773eb 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -221,3 +221,50 @@ int netlink_done(struct cmd_context *ctx)
+@@ -297,3 +297,52 @@ int netlink_done(struct cmd_context *ctx)
  
  	return 0;
  }
@@ -61,9 +61,11 @@ index c3add41a8908..c2afc2d8418b 100644
 +static int drvinfo_reply_cb(const struct nlmsghdr *nlhdr, void *data)
 +{
 +	const struct nlattr *tb[ETHA_DRVINFO_MAX + 1] = {};
++	DECLARE_ATTR_TB_INFO(tb);
 +	int ret;
 +
-+	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN + ETHNL_HDRLEN, attr_cb, tb);
++	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN + ETHNL_HDRLEN, attr_cb,
++			     &tb_info);
 +	if (ret < 0)
 +		return ret;
 +
