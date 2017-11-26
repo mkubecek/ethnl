@@ -1,7 +1,7 @@
-From 70a77d638f377e360787870a6b33f68d882e9fa7 Mon Sep 17 00:00:00 2001
+From fa002b4d0876f7250e8a1bcb8cea519396db2724 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
-Subject: [PATCH 4/5] netlink: add netlink handler for gdrv (-i)
+Subject: [PATCH 4/7] netlink: add netlink handler for gdrv (-i)
 
 Implement "-i" subcommand using netlink interface.
 
@@ -34,10 +34,10 @@ index 1cec0db8f7d1..7244c9122412 100644
  	{ "-d|--register-dump", 1, do_gregs, NULL,
  	  "Do a register dump",
 diff --git a/netlink.c b/netlink.c
-index 38f9216735d7..a3c61de773eb 100644
+index ca834275f371..c025f728250b 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -297,3 +297,52 @@ int netlink_done(struct cmd_context *ctx)
+@@ -376,3 +376,52 @@ int netlink_done(struct cmd_context *ctx)
  
  	return 0;
  }

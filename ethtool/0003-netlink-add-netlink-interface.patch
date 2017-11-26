@@ -1,7 +1,7 @@
-From b3d927ca48b7a5d6becb174c71dec68a5217c684 Mon Sep 17 00:00:00 2001
+From c2a692ddb0dbfd00b5f911455466f7d6ca17c265 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
-Subject: [PATCH 3/5] netlink: add netlink interface
+Subject: [PATCH 3/7] netlink: add netlink interface
 
 Add basic netlink interface based on genetlink and libmnl. This commit only
 adds the generic infrastructure but does not override any ethtool command
@@ -20,14 +20,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am                  |  10 ++
  configure.ac                 |  12 ++
- ethtool.c                    | 160 +++++++++++++++--------
- internal.h                   |   8 ++
- netlink.c                    | 299 +++++++++++++++++++++++++++++++++++++++++++
+ ethtool.c                    | 160 ++++++++++++------
+ internal.h                   |   8 +
+ netlink.c                    | 378 +++++++++++++++++++++++++++++++++++++++++++
  netlink.h                    |  10 ++
- uapi/linux/ethtool_netlink.h | 119 +++++++++++++++++
- uapi/linux/genetlink.h       |  89 +++++++++++++
- uapi/linux/netlink.h         | 247 +++++++++++++++++++++++++++++++++++
- 9 files changed, 901 insertions(+), 53 deletions(-)
+ uapi/linux/ethtool_netlink.h | 119 ++++++++++++++
+ uapi/linux/genetlink.h       |  89 ++++++++++
+ uapi/linux/netlink.h         | 247 ++++++++++++++++++++++++++++
+ 9 files changed, 980 insertions(+), 53 deletions(-)
  create mode 100644 netlink.c
  create mode 100644 netlink.h
  create mode 100644 uapi/linux/ethtool_netlink.h
@@ -412,10 +412,10 @@ index 2907679c30f2..23573a6a4694 100644
  #ifdef TEST_ETHTOOL
 diff --git a/netlink.c b/netlink.c
 new file mode 100644
-index 000000000000..38f9216735d7
+index 000000000000..ca834275f371
 --- /dev/null
 +++ b/netlink.c
-@@ -0,0 +1,299 @@
+@@ -0,0 +1,378 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -428,6 +428,8 @@ index 000000000000..38f9216735d7
 +#include <linux/netlink.h>
 +#include <linux/genetlink.h>
 +#include <linux/ethtool_netlink.h>
++
++#define MAX_MSG_SIZE (4 << 20)		/* 4 MB */
 +
 +struct nl_context {
 +	int ethnl_fam;
@@ -547,6 +549,33 @@ index 000000000000..38f9216735d7
 +	return 0;
 +}
 +
++static int msg_realloc(struct nl_context *nlctx)
++{
++	unsigned int nlhdr_offset = (char *)nlctx->nlhdr - nlctx->buff;
++	unsigned int gnlhdr_offset = (char *)nlctx->gnlhdr - nlctx->buff;
++	unsigned int enlhdr_offset = (char *)nlctx->enlhdr - nlctx->buff;
++	unsigned int old_size = nlctx->buffsize;
++	unsigned int new_size = old_size + MNL_SOCKET_BUFFER_SIZE;
++	char *new_buff;
++
++	if (new_size > MAX_MSG_SIZE)
++		return -EMSGSIZE;
++	new_buff = realloc(nlctx->buff, new_size);
++	if (!new_buff)
++		return -ENOMEM;
++	if (new_buff != nlctx->buff) {
++		memset(new_buff + old_size, '\0', new_size - old_size);
++		nlctx->nlhdr = (struct nlmsghdr *)(new_buff + nlhdr_offset);
++		nlctx->gnlhdr = (struct genlmsghdr *)(new_buff + gnlhdr_offset);
++		nlctx->enlhdr =
++			(struct ethtool_nl_msghdr *)(new_buff + enlhdr_offset);
++		nlctx->buff = new_buff;
++	}
++	nlctx->buffsize = new_size;
++
++	return 0;
++}
++
 +static int msg_init(struct nl_context *nlctx, int cmd, unsigned int flags,
 +		    const char *ifname, unsigned int req_mask,
 +		    unsigned int req_flags) {
@@ -612,6 +641,56 @@ index 000000000000..38f9216735d7
 +	errno = -ret;
 +	perror("netlink error");
 +	return nlctx->exit_code ?: 1;
++}
++
++/* safe message composition */
++
++static bool ethnla_put(struct nl_context *nlctx, uint16_t type, size_t len,
++		       const void *data)
++{
++	struct nlmsghdr *nlhdr = nlctx->nlhdr;
++
++	while (!mnl_attr_put_check(nlhdr, nlctx->buffsize, type, len, data)) {
++		int ret = msg_realloc(nlctx);
++
++		if (ret < 0)
++			return true;
++	}
++
++	return false;
++}
++
++#define DEFINE_ETHNLA_PUT(typeid) \
++	static bool ethnla_put_ ## typeid(struct nl_context *nlctx, uint16_t type, typeid data) \
++	{ return ethnla_put(nlctx, type, sizeof(typeid), &data); }
++DEFINE_ETHNLA_PUT(u64);
++DEFINE_ETHNLA_PUT(u32);
++DEFINE_ETHNLA_PUT(u16);
++DEFINE_ETHNLA_PUT(u8);
++
++static bool ethnla_put_flag(struct nl_context *nlctx, uint16_t type, bool val)
++{
++	if (val)
++		return ethnla_put(nlctx, type, 0, &val);
++	else
++		return false;
++}
++
++static bool ethnla_put_bitfield32(struct nl_context *nlctx, uint16_t type,
++				  u32 value, u32 selector)
++{
++	struct nla_bitfield32 val = {
++		.value		= value,
++		.selector	= selector,
++	};
++
++	return ethnla_put(nlctx, type, sizeof(val), &val);
++}
++
++static bool ethnla_put_strz(struct nl_context *nlctx, uint16_t type,
++			    const char *data)
++{
++	return ethnla_put(nlctx, type, strlen(data) + 1, data);
 +}
 +
 +/* get ethtool family id */

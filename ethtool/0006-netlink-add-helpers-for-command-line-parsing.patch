@@ -1,0 +1,353 @@
+From f4f3be777c16aec57334dee80d9f01067597a5cc Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Sun, 26 Nov 2017 22:42:26 +0100
+Subject: [PATCH 6/7] netlink: add helpers for command line parsing
+
+Support for easier parsing of subcommand parameters and their values from
+command line. Existing parser helpers in ethtool.c are closely tied to
+ioctl() interface and using them would be often inconvenient.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ netlink.c | 318 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 318 insertions(+)
+
+diff --git a/netlink.c b/netlink.c
+index c2fbc551ecac..e5f960638e8c 100644
+--- a/netlink.c
++++ b/netlink.c
+@@ -24,6 +24,10 @@ struct nl_context {
+ 	struct nlmsghdr *nlhdr;
+ 	struct genlmsghdr *gnlhdr;
+ 	struct ethtool_nl_msghdr *enlhdr;
++	const char *cmd;
++	const char *param;
++	char **argp;
++	int argc;
+ 	int exit_code;
+ };
+ 
+@@ -276,6 +280,320 @@ static bool ethnla_put_strz(struct nl_context *nlctx, uint16_t type,
+ 	return ethnla_put(nlctx, type, strlen(data) + 1, data);
+ }
+ 
++/* command line parsing */
++
++struct lookup_entry_u32 {
++	const char	*arg;
++	u32		val;
++};
++
++struct lookup_entry_u16 {
++	const char	*arg;
++	u16		val;
++};
++
++struct lookup_entry_u8{
++	const char	*arg;
++	u8		val;
++};
++
++typedef int (*param_parser_cb_t)(struct nl_context *, uint16_t, const void *);
++
++struct param_parser {
++	const char		*arg;
++	uint16_t		type;
++	param_parser_cb_t	handler;
++	const void		*handler_data;
++	unsigned int		min_argc;
++};
++
++static void parser_err_unknown_param(struct nl_context *nlctx)
++{
++	fprintf(stderr, "ethtool (%s): unknown parameter '%s'\n", nlctx->cmd,
++		nlctx->param);
++}
++
++static void parser_err_dup_param(struct nl_context *nlctx)
++{
++	fprintf(stderr, "ethtool (%s): duplicate parameter '%s'\n", nlctx->cmd,
++		nlctx->param);
++}
++
++static void parser_err_min_argc(struct nl_context *nlctx, unsigned int min_argc)
++{
++	if (min_argc == 1)
++		fprintf(stderr, "ethtool (%s): no value for parameter '%s'\n",
++			nlctx->cmd, nlctx->param);
++	else
++		fprintf(stderr,
++			"ethtool (%s): parameter '%s' requires %u words\n",
++			nlctx->cmd, nlctx->param, min_argc);
++}
++
++static void parser_err_invalid_value(struct nl_context *nlctx, const char *val)
++{
++	fprintf(stderr, "ethtool (%s): invalid value '%s' for parameter '%s'\n",
++		nlctx->cmd, val, nlctx->param);
++}
++
++static int __parse_u32(const char *arg, u32 *result, u32 min, u32 max, int base)
++{
++	unsigned long long val;
++	char *endptr;
++
++	if (!arg || !arg[0])
++		return -EINVAL;
++	val = strtoul(arg, &endptr, base);
++	if (*endptr || val < min || val > max)
++		return -EINVAL;
++
++	*result = (u32)val;
++	return 0;
++}
++
++static int __parse_s32(const char *arg, s32 *result, s32 min, s32 max)
++{
++	long long val;
++	char *endptr;
++
++	if (!arg || !arg[0])
++		return -EINVAL;
++	val = strtoul(arg, &endptr, 10);
++	if (*endptr || val < min || val > max)
++		return -EINVAL;
++
++	*result = (s32)val;
++	return 0;
++}
++
++static int parse_s32(const char *arg, s32 *result)
++{
++	return __parse_s32(arg, result, INT32_MIN, INT32_MAX);
++}
++
++static int parse_u32d(const char *arg, u32 *result)
++{
++	return __parse_u32(arg, result, 0, 0xffffffff, 10);
++}
++
++static int parse_x32(const char *arg, u32 *result)
++{
++	return __parse_u32(arg, result, 0, 0xffffffff, 16);
++}
++
++static int parse_u32(const char *arg, u32 *result)
++{
++	if (!arg)
++		return -EINVAL;
++	if ((arg[0] == '0') && (arg[1] == 'x' || arg[1] == 'X'))
++		return parse_x32(arg + 2, result);
++	else
++		return parse_u32d(arg, result);
++}
++
++static int parse_u8(const char *arg, u8 *result)
++{
++	u32 val;
++	int ret = parse_u32(arg, &val);
++
++	if (ret < 0 || val > UINT8_MAX)
++		return ret;
++
++	*result = (u8)val;
++	return 0;
++}
++
++static int lookup_u32(const char *arg, u32 *result,
++		      const struct lookup_entry_u32 *tbl)
++{
++	if (!arg)
++		return -EINVAL;
++	while (tbl->arg) {
++		if (!strcmp(tbl->arg, arg)) {
++			*result = tbl->val;
++			return 0;
++		}
++		tbl++;
++	}
++
++	return -EINVAL;
++}
++
++static int lookup_u16(const char *arg, u16 *result,
++		      const struct lookup_entry_u16 *tbl)
++{
++	if (!arg)
++		return -EINVAL;
++	while (tbl->arg) {
++		if (!strcmp(tbl->arg, arg)) {
++			*result = tbl->val;
++			return 0;
++		}
++		tbl++;
++	}
++
++	return -EINVAL;
++}
++
++static int lookup_u8(const char *arg, u8 *result,
++		     const struct lookup_entry_u8 *tbl)
++{
++	if (!arg)
++		return -EINVAL;
++	while (tbl->arg) {
++		if (!strcmp(tbl->arg, arg)) {
++			*result = tbl->val;
++			return 0;
++		}
++		tbl++;
++	}
++
++	return -EINVAL;
++}
++
++static int nl_parse_direct_u32(struct nl_context *nlctx, uint16_t type,
++			       const void *data)
++{
++	const char *arg = *nlctx->argp;
++	u32 val;
++	int ret;
++
++	nlctx->argp++;
++	nlctx->argc--;
++	ret = parse_u32(arg, &val);
++	if (ret < 0) {
++		parser_err_invalid_value(nlctx, arg);
++		return ret;
++	}
++
++	return ethnla_put_u32(nlctx, type, val) ? -EMSGSIZE : 0;
++}
++
++static int nl_parse_direct_u8(struct nl_context *nlctx, uint16_t type,
++			      const void *data)
++{
++	const char *arg = *nlctx->argp;
++	u8 val;
++	int ret;
++
++	nlctx->argp++;
++	nlctx->argc--;
++	ret = parse_u8(arg, &val);
++	if (ret < 0) {
++		parser_err_invalid_value(nlctx, arg);
++		return ret;
++	}
++
++	return ethnla_put_u8(nlctx, type, val) ? -EMSGSIZE : 0;
++}
++
++static int nl_parse_lookup_u32(struct nl_context *nlctx, uint16_t type,
++			       const void *data)
++{
++	const char *arg = *nlctx->argp;
++	u32 val;
++	int ret;
++
++	nlctx->argp++;
++	nlctx->argc--;
++	ret = lookup_u32(arg, &val, data);
++	if (ret < 0) {
++		parser_err_invalid_value(nlctx, arg);
++		return ret;
++	}
++
++	return ethnla_put_u32(nlctx, type, val) ? -EMSGSIZE : 0;
++}
++
++static int nl_parse_lookup_u8(struct nl_context *nlctx, uint16_t type,
++			      const void *data)
++{
++	const char *arg = *nlctx->argp;
++	u8 val;
++	int ret;
++
++	nlctx->argp++;
++	nlctx->argc--;
++	ret = lookup_u8(arg, &val, data);
++	if (ret < 0) {
++		parser_err_invalid_value(nlctx, arg);
++		return ret;
++	}
++
++	return ethnla_put_u8(nlctx, type, val) ? -EMSGSIZE : 0;
++}
++
++static int nl_parse_bitfield32(struct nl_context *nlctx, uint16_t type,
++			       const void *data)
++{
++	const char *arg = *nlctx->argp;
++	char *mask = strchr(arg, '/');
++	u32 value, selector;
++	int ret;
++
++	nlctx->argp++;
++	nlctx->argc--;
++	if (mask) {
++		*mask = '\0';
++		mask++;
++	}
++
++	ret = __nl_parse_wol_modes(nlctx, arg, &value);
++	if (ret < 0)
++		return ret;
++
++	if (!mask) {
++		selector = ~(u32)0;
++	} else {
++		ret = __nl_parse_wol_modes(nlctx, mask, &selector);
++		if (ret < 0)
++			return ret;
++	}
++
++	return ethnla_put_bitfield32(nlctx, type, value, selector);
++}
++
++static int nl_parser(struct cmd_context *ctx, const struct param_parser *params,
++		     unsigned int max_type)
++{
++	struct nl_context *nlctx = ctx->nlctx;
++	bool attr_set[max_type];
++	int ret;
++
++	memset(attr_set, '\0', max_type * sizeof(attr_set[0]));
++
++	while (nlctx->argc > 0) {
++		const struct param_parser *parser = params;
++
++		nlctx->param = *nlctx->argp;
++		while (parser->arg) {
++			if (!strcmp(nlctx->param, parser->arg))
++				break;
++			parser++;
++		}
++		if (!parser->arg) {
++			parser_err_unknown_param(nlctx);
++			return -EINVAL;
++		}
++		nlctx->argp++;
++		nlctx->argc--;
++		if (attr_set[parser - params]) {
++			parser_err_dup_param(nlctx);
++			return -EINVAL;
++		}
++		if (nlctx->argc < parser->min_argc) {
++			parser_err_min_argc(nlctx, parser->min_argc);
++			return -EINVAL;
++		}
++
++		ret = parser->handler(nlctx, parser->type, parser->handler_data);
++		if (ret < 0)
++			return ret;
++	}
++
++	return 0;
++}
++
+ /* get ethtool family id */
+ 
+ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
+-- 
+2.15.0
+
