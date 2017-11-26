@@ -1,4 +1,4 @@
-From a2c3c05d568f7d5dcd1e4ce155e781686b4d4e51 Mon Sep 17 00:00:00 2001
+From 92677940a46d521cc067c3e5e921fbf14a1a130e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
 Subject: [PATCH 6/7] ethtool: implement GET_SETTINGS message
@@ -33,7 +33,7 @@ index 0412adb4f42f..1787359f9e5d 100644
 +
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index 6b274bfe489f..e392632affca 100644
+index ef789e1d679e..d2ea8fc196cd 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
 @@ -3503,6 +3503,8 @@ enum {
@@ -394,7 +394,7 @@ index 1f031c1d943a..92e236952f18 100644
  
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 963d1df78319..9edf72a9f44e 100644
+index e5f7d24563f6..f21c17df4815 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -4,11 +4,69 @@
@@ -467,7 +467,7 @@ index 963d1df78319..9edf72a9f44e 100644
  /* misc helper functions */
  
  static int ethnl_str_size(const char *s)
-@@ -559,6 +617,213 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
+@@ -563,6 +621,213 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
  	return -EMSGSIZE;
  }
  
@@ -681,7 +681,7 @@ index 963d1df78319..9edf72a9f44e 100644
  /* genetlink paperwork */
  
  static const struct genl_ops ethtool_nl_ops[] = {
-@@ -566,6 +831,10 @@ static const struct genl_ops ethtool_nl_ops[] = {
+@@ -570,6 +835,10 @@ static const struct genl_ops ethtool_nl_ops[] = {
  		.cmd	= ETHTOOL_CMD_GET_DRVINFO,
  		.doit	= ethnl_get_drvinfo,
  	},

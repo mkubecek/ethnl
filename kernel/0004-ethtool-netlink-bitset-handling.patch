@@ -1,4 +1,4 @@
-From 20729b9ea48e781cb97a8aff681a298a5c829ec5 Mon Sep 17 00:00:00 2001
+From 59426957473db89641d61ed4a5e8caaeefcbacff Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 4/7] ethtool: netlink bitset handling
@@ -9,8 +9,8 @@ arbitrary length bit sets.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  include/uapi/linux/ethtool_netlink.h |  31 ++++
- net/core/ethtool_netlink.c           | 319 +++++++++++++++++++++++++++++++++++
- 2 files changed, 350 insertions(+)
+ net/core/ethtool_netlink.c           | 321 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 352 insertions(+)
 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 index 8a78fcd69493..0eaabfa1ae5a 100644
@@ -55,7 +55,7 @@ index 8a78fcd69493..0eaabfa1ae5a 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 8a5bcba0805f..5211713f52f6 100644
+index 6c4b6a784997..3e2fddcb6722 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -3,6 +3,7 @@
@@ -66,7 +66,7 @@ index 8a5bcba0805f..5211713f52f6 100644
  #include <net/genetlink.h>
  #include "ethtool_common.h"
  
-@@ -121,6 +122,324 @@ static struct net_device *ethnl_get_dev(struct net *net,
+@@ -123,6 +124,326 @@ static struct net_device *ethnl_get_dev(struct net *net,
  	return ERR_PTR(-EINVAL);
  }
  
@@ -311,6 +311,8 @@ index 8a5bcba0805f..5211713f52f6 100644
 +	unsigned int change_bits = 0;
 +	bool mod = false;
 +
++	if (!attr)
++		return false;
 +	*err = nla_parse_nested(tb, ETHA_BITSET_MAX, attr, bitset_policy, NULL);
 +	if (*err < 0)
 +		return mod;

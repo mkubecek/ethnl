@@ -1,4 +1,4 @@
-From 8fde5243b47fe82b3823635c304821ed0b257861 Mon Sep 17 00:00:00 2001
+From 0a7b2a8db08a2da8ec4c295b28be8e6eeccd54e5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 3/7] ethtool: helper functions for netlink interface
@@ -7,14 +7,14 @@ Misc helpers used by ethtool netlink code.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/core/ethtool_netlink.c | 149 +++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 149 insertions(+)
+ net/core/ethtool_netlink.c | 151 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 151 insertions(+)
 
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 2421af2664a4..8a5bcba0805f 100644
+index 2421af2664a4..6c4b6a784997 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -8,6 +8,155 @@
+@@ -8,6 +8,157 @@
  
  static struct genl_family ethtool_genl_family;
  
@@ -58,7 +58,7 @@ index 2421af2664a4..8a5bcba0805f 100644
 +
 +	if (!attr)
 +		return false;
-+	val = nla_get_u32(attr);
++	val = nla_get_u8(attr);
 +	if (*dst == val)
 +		return false;
 +
@@ -68,6 +68,8 @@ index 2421af2664a4..8a5bcba0805f 100644
 +
 +static bool ethnl_update_binary(u8 *dst, unsigned int len, struct nlattr *attr)
 +{
++	if (!attr)
++		return false;
 +	if (nla_len(attr) < len)
 +		len = nla_len(attr);
 +	if (!memcmp(dst, nla_data(attr), len))
