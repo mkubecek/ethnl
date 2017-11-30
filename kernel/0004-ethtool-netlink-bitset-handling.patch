@@ -1,4 +1,4 @@
-From 59426957473db89641d61ed4a5e8caaeefcbacff Mon Sep 17 00:00:00 2001
+From dbe613665e6acfbbd374866b98efcad20b21e2c0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 4/7] ethtool: netlink bitset handling
@@ -9,11 +9,11 @@ arbitrary length bit sets.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  include/uapi/linux/ethtool_netlink.h |  31 ++++
- net/core/ethtool_netlink.c           | 321 +++++++++++++++++++++++++++++++++++
- 2 files changed, 352 insertions(+)
+ net/core/ethtool_netlink.c           | 331 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 362 insertions(+)
 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 8a78fcd69493..0eaabfa1ae5a 100644
+index c1bfba375131..6906001116ed 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -25,6 +25,37 @@ enum {
@@ -55,7 +55,7 @@ index 8a78fcd69493..0eaabfa1ae5a 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 6c4b6a784997..3e2fddcb6722 100644
+index 5ded5a7d72ee..e220c84b0db5 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -3,6 +3,7 @@
@@ -66,7 +66,7 @@ index 6c4b6a784997..3e2fddcb6722 100644
  #include <net/genetlink.h>
  #include "ethtool_common.h"
  
-@@ -123,6 +124,326 @@ static struct net_device *ethnl_get_dev(struct net *net,
+@@ -110,6 +111,336 @@ static struct net_device *ethnl_dev_get(struct genl_info *info)
  	return ERR_PTR(-EINVAL);
  }
  
@@ -259,53 +259,61 @@ index 6c4b6a784997..3e2fddcb6722 100644
 +	return n_names;
 +}
 +
-+static void ethnl_update_bit(unsigned long *bitmap, unsigned int nbits,
-+			     struct nlattr *bit_attr, int *err,
-+			     const char *const *names)
++static int ethnl_update_bit(unsigned long *bitmap, unsigned int nbits,
++			    struct nlattr *bit_attr, const char *const *names,
++			    struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHA_BIT_MAX + 1];
-+	int idx;
++	int ret, idx;
 +
-+	*err = -EINVAL;
-+	if (nla_type(bit_attr) != ETHA_BITS_BIT)
-+		return;
-+	*err = nla_parse_nested(tb, ETHA_BIT_MAX, bit_attr,
-+				bit_policy, NULL);
-+	if (*err < 0)
-+		return;
++	if (nla_type(bit_attr) != ETHA_BITS_BIT) {
++		GENL_SET_ERR_MSG(info,
++				 "ETHA_BITSET_BITS can contain only ETHA_BITS_BIT");
++		return genl_err_attr(info, -EINVAL, bit_attr);
++	}
++	ret = nla_parse_nested(tb, ETHA_BIT_MAX, bit_attr, bit_policy,
++			       info->extack);
++	if (ret < 0)
++		return ret;
 +
 +	if (tb[ETHA_BIT_INDEX]) {
 +		idx = nla_get_u32(tb[ETHA_BIT_INDEX]);
-+		*err = -EOPNOTSUPP;
-+		if (idx >= nbits)
-+			return;
-+		*err = -EINVAL;
++		if (idx >= nbits) {
++			GENL_SET_ERR_MSG(info, "bit index too high");
++			return genl_err_attr(info, -EOPNOTSUPP,
++					     tb[ETHA_BIT_INDEX]);
++		}
 +		if (tb[ETHA_BIT_NAME] &&
 +		    strncmp(nla_data(tb[ETHA_BIT_NAME]), names[idx],
-+			    nla_len(tb[ETHA_BIT_NAME])))
-+			return;
++			    nla_len(tb[ETHA_BIT_NAME]))) {
++			GENL_SET_ERR_MSG(info, "bit index and name mismatch");
++			return genl_err_attr(info, -EINVAL, bit_attr);
++		}
 +	} else if (tb[ETHA_BIT_NAME]) {
-+		*err = -EOPNOTSUPP;
 +		idx = ethnl_name_to_idx(names, nbits,
 +					nla_data(tb[ETHA_BIT_NAME]),
 +					nla_len(tb[ETHA_BIT_NAME]));
-+		if (idx >= nbits)
-+			return;
++		if (idx >= nbits) {
++			GENL_SET_ERR_MSG(info, "bit index too high");
++			return genl_err_attr(info, -EOPNOTSUPP,
++					     tb[ETHA_BIT_NAME]);
++		}
 +	} else {
-+		*err = -EOPNOTSUPP;
-+		return;
++		GENL_SET_ERR_MSG(info, "neither bit index nor name specified");
++		return genl_err_attr(info, -EINVAL, bit_attr);
 +	}
 +
 +	if (tb[ETHA_BIT_VALUE])
 +		set_bit(idx, bitmap);
 +	else
 +		clear_bit(idx, bitmap);
-+	*err = 0;
++	return 0;
 +}
 +
 +static bool ethnl_update_bitset(unsigned long *bitmap, unsigned int nbits,
 +				struct nlattr *attr, int *err,
-+				const char *const *names)
++				const char *const *names,
++				struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHA_BITSET_MAX + 1];
 +	unsigned int change_bits = 0;
@@ -313,7 +321,8 @@ index 6c4b6a784997..3e2fddcb6722 100644
 +
 +	if (!attr)
 +		return false;
-+	*err = nla_parse_nested(tb, ETHA_BITSET_MAX, attr, bitset_policy, NULL);
++	*err = nla_parse_nested(tb, ETHA_BITSET_MAX, attr, bitset_policy,
++				info->extack);
 +	if (*err < 0)
 +		return mod;
 +
@@ -335,12 +344,13 @@ index 6c4b6a784997..3e2fddcb6722 100644
 +			return mod;
 +		bitmap_copy(val, bitmap, __ETHTOOL_LINK_MODE_MASK_NBITS);
 +		nla_for_each_nested(bit_attr, attr, rem) {
-+			ethnl_update_bit(val, nbits, bit_attr, err, names);
++			*err = ethnl_update_bit(val, nbits, bit_attr, names,
++						info);
 +			if (*err < 0)
 +				return mod;
 +		}
 +		mod = !bitmap_equal(val, bitmap, nbits);
-+		if (!mod)
++		if (mod)
 +			bitmap_copy(bitmap, val, nbits);
 +	} else {
 +		const unsigned int max_bits =
@@ -390,9 +400,9 @@ index 6c4b6a784997..3e2fddcb6722 100644
 +	return mod;
 +}
 +
- /* create skb for a reply
-  * payload: payload length (without netlink, genetlink and ethnl headers)
-  * dev:     device the reply is about
+ /* Check user privileges explicitly to allow finer access control based on
+  * context of the request or hiding part of the information from unprivileged
+  * users
 -- 
 2.15.0
 

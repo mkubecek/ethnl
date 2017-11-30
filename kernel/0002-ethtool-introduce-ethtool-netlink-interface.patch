@@ -1,4 +1,4 @@
-From 26f46adf70c0786d65ff0bfefe73743eee474954 Mon Sep 17 00:00:00 2001
+From a74342ec1371b669c5e8624ff1ab3d608ab3b47b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 2/7] ethtool: introduce ethtool netlink interface
@@ -37,7 +37,7 @@ index 000000000000..0412adb4f42f
 +#endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..8a78fcd69493
+index 000000000000..c1bfba375131
 --- /dev/null
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -0,0 +1,32 @@
@@ -53,13 +53,13 @@ index 000000000000..8a78fcd69493
 + * - for dumps and messages not related to a particular devices, fill neither
 + * - info_mask is a bitfield, interpretation depends on the command
 + */
-+struct ethtool_nl_msghdr {
++struct ethnlmsghdr {
 +	__u32	ifindex;		/* device ifindex */
 +	__u16	flags;			/* request/response flags */
 +	__u16	info_mask;		/* request/response info mask */
 +	char	ifname[IFNAMSIZ];	/* device name */
 +};
-+#define ETHNL_HDRLEN NLMSG_ALIGN(sizeof(struct ethtool_nl_msghdr))
++#define ETHNL_HDRLEN NLMSG_ALIGN(sizeof(struct ethnlmsghdr))
 +
 +enum {
 +	ETHTOOL_CMD_NOOP,
@@ -102,7 +102,7 @@ index 1fd0a9c88b1b..617ab2abecdf 100644
 +obj-$(CONFIG_ETHTOOL_NETLINK) += ethtool_netlink.o
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
 new file mode 100644
-index 000000000000..2421af2664a4
+index 000000000000..46a226bb9a2c
 --- /dev/null
 +++ b/net/core/ethtool_netlink.c
 @@ -0,0 +1,46 @@
@@ -118,16 +118,16 @@ index 000000000000..2421af2664a4
 +
 +/* genetlink paperwork */
 +
-+static const struct genl_ops ethtool_nl_ops[] = {
++static const struct genl_ops ethtool_genl_ops[] = {
 +};
 +
 +static struct genl_family ethtool_genl_family = {
-+	.hdrsize	= sizeof(struct ethtool_nl_msghdr),
++	.hdrsize	= ETHNL_HDRLEN,
 +	.name		= ETHTOOL_GENL_NAME,
 +	.version	= ETHTOOL_GENL_VERSION,
 +	.netnsok	= true,
-+	.ops		= ethtool_nl_ops,
-+	.n_ops		= ARRAY_SIZE(ethtool_nl_ops),
++	.ops		= ethtool_genl_ops,
++	.n_ops		= ARRAY_SIZE(ethtool_genl_ops),
 +};
 +
 +/* module paperwork */

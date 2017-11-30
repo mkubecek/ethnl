@@ -1,4 +1,4 @@
-From 9c8eaf87d32c5778fe32928095407f87bdeb6776 Mon Sep 17 00:00:00 2001
+From 155a8e758fbf5b06d5fa04ec15391e9878342e9e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
 Subject: [PATCH 5/7] ethtool: implement GET_DRVINFO message
@@ -15,16 +15,16 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/core/ethtool.c                   | 42 +++--------------
  net/core/ethtool_common.c            | 46 +++++++++++++++++++
  net/core/ethtool_common.h            | 11 +++++
- net/core/ethtool_netlink.c           | 87 ++++++++++++++++++++++++++++++++++++
- 6 files changed, 172 insertions(+), 37 deletions(-)
+ net/core/ethtool_netlink.c           | 89 ++++++++++++++++++++++++++++++++++++
+ 6 files changed, 174 insertions(+), 37 deletions(-)
  create mode 100644 net/core/ethtool_common.c
  create mode 100644 net/core/ethtool_common.h
 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 0eaabfa1ae5a..7ee6ae07c449 100644
+index 6906001116ed..b846ca97bb38 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -20,6 +20,8 @@ struct ethtool_nl_msghdr {
+@@ -20,6 +20,8 @@ struct ethnlmsghdr {
  
  enum {
  	ETHTOOL_CMD_NOOP,
@@ -205,10 +205,10 @@ index 000000000000..1f031c1d943a
 +
 +#endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 3e2fddcb6722..e5f7d24563f6 100644
+index e220c84b0db5..d27d25c748cc 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -480,9 +480,96 @@ static struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev,
+@@ -491,9 +491,98 @@ static struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev,
  	return rskb;
  }
  
@@ -245,20 +245,21 @@ index 3e2fddcb6722..e5f7d24563f6 100644
 +
 +static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
 +{
-+	struct net *net = genl_info_net(info);
-+	struct ethtool_nl_msghdr *ehdr;
++	struct ethnlmsghdr *ehdr;
 +	struct ethtool_drvinfo drvinfo;
 +	struct net_device *dev;
 +	struct sk_buff *rskb;
 +	int reply_len;
 +	int rc = 0;
 +
-+	dev = ethnl_get_dev(net, info->userhdr);
++	dev = ethnl_dev_get(info);
 +	if (IS_ERR(dev))
 +		return PTR_ERR(dev);
 +	rc = __ethtool_get_drvinfo(dev, &drvinfo);
 +	if (rc < 0) {
 +		dev_put(dev);
++		GENL_SET_ERR_MSG(info,
++				 "failed to retrieve driver info from driver");
 +		return rc;
 +	}
 +
@@ -290,6 +291,7 @@ index 3e2fddcb6722..e5f7d24563f6 100644
 +
 +err:
 +	nlmsg_free(rskb);
++	GENL_SET_ERR_MSG(info, "kernel error, see kernel log for details");
 +	WARN_ONCE(1, "calculated message payload length (%d) not sufficient\n",
 +		  reply_len);
 +	return -EMSGSIZE;
@@ -297,7 +299,7 @@ index 3e2fddcb6722..e5f7d24563f6 100644
 +
  /* genetlink paperwork */
  
- static const struct genl_ops ethtool_nl_ops[] = {
+ static const struct genl_ops ethtool_genl_ops[] = {
 +	{
 +		.cmd	= ETHTOOL_CMD_GET_DRVINFO,
 +		.doit	= ethnl_get_drvinfo,

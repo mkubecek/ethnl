@@ -1,4 +1,4 @@
-From 0a7b2a8db08a2da8ec4c295b28be8e6eeccd54e5 Mon Sep 17 00:00:00 2001
+From ce960f3e16cdb59c168b9d663ee6d30634545de4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 3/7] ethtool: helper functions for netlink interface
@@ -7,14 +7,14 @@ Misc helpers used by ethtool netlink code.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/core/ethtool_netlink.c | 151 +++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 151 insertions(+)
+ net/core/ethtool_netlink.c | 152 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 152 insertions(+)
 
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 2421af2664a4..6c4b6a784997 100644
+index 46a226bb9a2c..5ded5a7d72ee 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -8,6 +8,157 @@
+@@ -8,6 +8,158 @@
  
  static struct genl_family ethtool_genl_family;
  
@@ -95,26 +95,10 @@ index 2421af2664a4..6c4b6a784997 100644
 +	return true;
 +}
 +
-+static bool ethnl_update_bitfield8(u8 *dst, struct nlattr *attr)
++static struct net_device *ethnl_dev_get(struct genl_info *info)
 +{
-+	struct nla_bitfield32 change;
-+	u8 newval;
-+
-+	if (!attr)
-+		return false;
-+	change = nla_get_bitfield32(attr);
-+	newval = (*dst & ~(u8)change.selector) |
-+		 (u8)(change.value & change.selector);
-+	if (*dst == newval)
-+		return false;
-+
-+	*dst = newval;
-+	return true;
-+}
-+
-+static struct net_device *ethnl_get_dev(struct net *net,
-+					const struct ethtool_nl_msghdr *hdr)
-+{
++	const struct ethnlmsghdr *hdr = info->userhdr;
++	struct net *net = genl_info_net(info);
 +	struct net_device *dev;
 +
 +	if (hdr->ifindex) {
@@ -122,8 +106,11 @@ index 2421af2664a4..6c4b6a784997 100644
 +		if (!dev)
 +			return ERR_PTR(-ENODEV);
 +		/* if both ifindex and ifname are passed, both must match */
-+		if (hdr->ifname && strncmp(dev->name, hdr->ifname, IFNAMSIZ))
++		if (hdr->ifname && strncmp(dev->name, hdr->ifname, IFNAMSIZ)) {
++			GENL_SET_ERR_MSG(info,
++					 "ifindex and ifname do not match");
 +			return ERR_PTR(-ENODEV);
++		}
 +		return dev;
 +	} else if (hdr->ifname[0]) {
 +		dev = dev_get_by_name(net, hdr->ifname);
@@ -133,26 +120,40 @@ index 2421af2664a4..6c4b6a784997 100644
 +	return ERR_PTR(-EINVAL);
 +}
 +
++/* Check user privileges explicitly to allow finer access control based on
++ * context of the request or hiding part of the information from unprivileged
++ * users
++ */
++static bool ethnl_is_privileged(struct sk_buff *skb, struct genl_info *info)
++{
++	struct net *net = genl_info_net(info);
++
++	return netlink_ns_capable(skb, net->user_ns, CAP_NET_ADMIN);
++}
++
 +/* create skb for a reply
 + * payload: payload length (without netlink, genetlink and ethnl headers)
 + * dev:     device the reply is about
 + * cmd:     ETHTOOL_CMD_* command for reply
-+ * oinfo:   info for the received packet we respond to
++ * info:   info for the received packet we respond to
 + * ehdrp:   place to store pointer to ethtool specific header (may be null)
 + * returns: skb or null on error
 + */
 +static struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev,
-+					u8 cmd, struct genl_info *oinfo,
-+					struct ethtool_nl_msghdr **ehdrp)
++					u8 cmd, struct genl_info *info,
++					struct ethnlmsghdr **ehdrp)
 +{
-+	struct ethtool_nl_msghdr *ehdr;
++	struct ethnlmsghdr *ehdr;
 +	struct sk_buff *rskb;
 +
-+	rskb = genlmsg_new(sizeof(*ehdr) + payload, GFP_KERNEL);
-+	if (!rskb)
++	rskb = genlmsg_new(ETHNL_HDRLEN + payload, GFP_KERNEL);
++	if (!rskb) {
++		GENL_SET_ERR_MSG(info,
++				 "failed to allocate reply message");
 +		return NULL;
++	}
 +
-+	ehdr = genlmsg_put_reply(rskb, oinfo, &ethtool_genl_family, 0, cmd);
++	ehdr = genlmsg_put_reply(rskb, info, &ethtool_genl_family, 0, cmd);
 +	if (!ehdr) {
 +		nlmsg_free(rskb);
 +		return NULL;
@@ -171,7 +172,7 @@ index 2421af2664a4..6c4b6a784997 100644
 +
  /* genetlink paperwork */
  
- static const struct genl_ops ethtool_nl_ops[] = {
+ static const struct genl_ops ethtool_genl_ops[] = {
 -- 
 2.15.0
 
