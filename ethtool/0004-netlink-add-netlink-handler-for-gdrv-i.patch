@@ -1,4 +1,4 @@
-From fa002b4d0876f7250e8a1bcb8cea519396db2724 Mon Sep 17 00:00:00 2001
+From 54bbb26f72af7ff223399dca6a971a07675a8f86 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
 Subject: [PATCH 4/7] netlink: add netlink handler for gdrv (-i)
@@ -34,10 +34,10 @@ index 1cec0db8f7d1..7244c9122412 100644
  	{ "-d|--register-dump", 1, do_gregs, NULL,
  	  "Do a register dump",
 diff --git a/netlink.c b/netlink.c
-index ca834275f371..c025f728250b 100644
+index f2188965eb20..b0071d790a63 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -376,3 +376,52 @@ int netlink_done(struct cmd_context *ctx)
+@@ -420,3 +420,52 @@ int netlink_done(struct cmd_context *ctx)
  
  	return 0;
  }

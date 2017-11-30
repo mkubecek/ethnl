@@ -1,4 +1,4 @@
-From c2a692ddb0dbfd00b5f911455466f7d6ca17c265 Mon Sep 17 00:00:00 2001
+From 534391117e151e01e931a98564abf84ac280657c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 3/7] netlink: add netlink interface
@@ -18,16 +18,16 @@ completely.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Makefile.am                  |  10 ++
+ Makefile.am                  |  10 +
  configure.ac                 |  12 ++
- ethtool.c                    | 160 ++++++++++++------
+ ethtool.c                    | 160 ++++++++++------
  internal.h                   |   8 +
- netlink.c                    | 378 +++++++++++++++++++++++++++++++++++++++++++
- netlink.h                    |  10 ++
- uapi/linux/ethtool_netlink.h | 119 ++++++++++++++
- uapi/linux/genetlink.h       |  89 ++++++++++
- uapi/linux/netlink.h         | 247 ++++++++++++++++++++++++++++
- 9 files changed, 980 insertions(+), 53 deletions(-)
+ netlink.c                    | 422 +++++++++++++++++++++++++++++++++++++++++++
+ netlink.h                    |  10 +
+ uapi/linux/ethtool_netlink.h | 119 ++++++++++++
+ uapi/linux/genetlink.h       |  89 +++++++++
+ uapi/linux/netlink.h         | 247 +++++++++++++++++++++++++
+ 9 files changed, 1024 insertions(+), 53 deletions(-)
  create mode 100644 netlink.c
  create mode 100644 netlink.h
  create mode 100644 uapi/linux/ethtool_netlink.h
@@ -412,10 +412,10 @@ index 2907679c30f2..23573a6a4694 100644
  #ifdef TEST_ETHTOOL
 diff --git a/netlink.c b/netlink.c
 new file mode 100644
-index 000000000000..ca834275f371
+index 000000000000..f2188965eb20
 --- /dev/null
 +++ b/netlink.c
-@@ -0,0 +1,378 @@
+@@ -0,0 +1,422 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -440,7 +440,7 @@ index 000000000000..ca834275f371
 +	unsigned int seq;
 +	struct nlmsghdr *nlhdr;
 +	struct genlmsghdr *gnlhdr;
-+	struct ethtool_nl_msghdr *enlhdr;
++	struct ethnlmsghdr *enlhdr;
 +	int exit_code;
 +};
 +
@@ -568,7 +568,7 @@ index 000000000000..ca834275f371
 +		nlctx->nlhdr = (struct nlmsghdr *)(new_buff + nlhdr_offset);
 +		nlctx->gnlhdr = (struct genlmsghdr *)(new_buff + gnlhdr_offset);
 +		nlctx->enlhdr =
-+			(struct ethtool_nl_msghdr *)(new_buff + enlhdr_offset);
++			(struct ethnlmsghdr *)(new_buff + enlhdr_offset);
 +		nlctx->buff = new_buff;
 +	}
 +	nlctx->buffsize = new_size;
@@ -579,7 +579,7 @@ index 000000000000..ca834275f371
 +static int msg_init(struct nl_context *nlctx, int cmd, unsigned int flags,
 +		    const char *ifname, unsigned int req_mask,
 +		    unsigned int req_flags) {
-+	struct ethtool_nl_msghdr *enlhdr;
++	struct ethnlmsghdr *enlhdr;
 +	int ret;
 +
 +	ret = __msg_init(nlctx, nlctx->ethnl_fam, cmd, flags,
@@ -604,8 +604,41 @@ index 000000000000..ca834275f371
 +	return mnl_socket_sendto(nlctx->sk, nlhdr, nlhdr->nlmsg_len);
 +}
 +
++static int ethnl_process_ack(struct nl_context *nlctx, ssize_t len)
++{
++	struct nlmsghdr *nlhdr = (struct nlmsghdr *)nlctx->buff;
++	struct nlmsgerr *nlerr = mnl_nlmsg_get_payload(nlhdr);
++	const struct nlattr *tb[NLMSGERR_ATTR_MAX + 1] = {};
++	DECLARE_ATTR_TB_INFO(tb);
++	unsigned int tlv_offset = sizeof(*nlerr);
++
++	if (len < NLMSG_HDRLEN + sizeof(*nlerr))
++		return -EFAULT;
++	if (!(nlhdr->nlmsg_flags & NLM_F_ACK_TLVS))
++		goto out;
++	if (!(nlhdr->nlmsg_flags & NLM_F_CAPPED))
++		tlv_offset += MNL_ALIGN(mnl_nlmsg_get_payload_len(&nlerr->msg));
++
++	if (mnl_attr_parse(nlhdr, tlv_offset, attr_cb, &tb_info) < 0)
++		goto out;
++	if (tb[NLMSGERR_ATTR_MSG]) {
++		const char *msg = mnl_attr_get_str(tb[NLMSGERR_ATTR_MSG]);
++
++		fprintf(stderr, "netlink %s: %s\n",
++			nlerr->error ? "error" : "warning", msg);
++	}
++
++out:
++	if (nlerr->error) {
++		errno = -nlerr->error;
++		perror("netlink error");
++	}
++	return nlerr->error;
++}
++
 +static int ethnl_process_reply(struct nl_context *nlctx, mnl_cb_t reply_cb)
 +{
++	struct nlmsghdr *nlhdr;
 +	ssize_t len;
 +	int ret;
 +
@@ -614,6 +647,15 @@ index 000000000000..ca834275f371
 +					  nlctx->buffsize);
 +		if (len <= 0)
 +			return (len ? -EFAULT : 0);
++		mnl_nlmsg_fprintf(stdout, nlctx->buff, len,
++				  GENL_HDRLEN + ETHNL_HDRLEN);
++		if (len < NLMSG_HDRLEN)
++			return -EFAULT;
++
++		nlhdr = (struct nlmsghdr *)nlctx->buff;
++		if (nlhdr->nlmsg_type == NLMSG_ERROR)
++			return ethnl_process_ack(nlctx, len);
++
 +		ret = mnl_cb_run(nlctx->buff, len, nlctx->seq, nlctx->port,
 +				 reply_cb, nlctx);
 +	} while (ret > 0);
@@ -627,7 +669,8 @@ index 000000000000..ca834275f371
 +	struct nl_context *nlctx = ctx->nlctx;
 +	int ret;
 +
-+	ret = msg_init(nlctx, nlcmd, NLM_F_REQUEST | NLM_F_ACK, ctx->devname,
++	ret = msg_init(nlctx, nlcmd, NLM_F_REQUEST | NLM_F_ACK,
++		       ctx->devname,
 +		       0, 0);
 +	if (ret < 0)
 +		goto err;
@@ -638,8 +681,6 @@ index 000000000000..ca834275f371
 +	if (ret == 0)
 +		return 0;
 +err:
-+	errno = -ret;
-+	perror("netlink error");
 +	return nlctx->exit_code ?: 1;
 +}
 +
@@ -733,12 +774,15 @@ index 000000000000..ca834275f371
 +static int nlctx_init(struct nl_context *nlctx)
 +{
 +	int ret;
++	int val;
 +
 +	memset(nlctx, '\0', sizeof(*nlctx));
 +	nlctx->seq = (int)time(NULL);
 +	nlctx->sk = mnl_socket_open(NETLINK_GENERIC);
 +	if (!nlctx->sk)
 +		return -ECONNREFUSED;
++	val = 1;
++	mnl_socket_setsockopt(nlctx->sk, NETLINK_EXT_ACK, &val, sizeof(val));
 +	ret = mnl_socket_bind(nlctx->sk, 0, MNL_SOCKET_AUTOPID);
 +	if (ret < 0)
 +		return ret;
@@ -812,7 +856,7 @@ index 000000000000..b10b168b1f5b
 +#endif /* ETHTOOL_NETLINK_H__ */
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..9a81d232efb8
+index 000000000000..9452f2ea92ef
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
 @@ -0,0 +1,119 @@
@@ -828,13 +872,13 @@ index 000000000000..9a81d232efb8
 + * - for dumps and messages not related to a particular devices, fill neither
 + * - info_mask is a bitfield, interpretation depends on the command
 + */
-+struct ethtool_nl_msghdr {
++struct ethnlmsghdr {
 +	__u32	ifindex;		/* device ifindex */
 +	__u16	flags;			/* request/response flags */
 +	__u16	info_mask;		/* request/response info mask */
 +	char	ifname[IFNAMSIZ];	/* device name */
 +};
-+#define ETHNL_HDRLEN NLMSG_ALIGN(sizeof(struct ethtool_nl_msghdr))
++#define ETHNL_HDRLEN NLMSG_ALIGN(sizeof(struct ethnlmsghdr))
 +
 +enum {
 +	ETHTOOL_CMD_NOOP,
