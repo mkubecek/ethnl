@@ -1,4 +1,4 @@
-From a74342ec1371b669c5e8624ff1ab3d608ab3b47b Mon Sep 17 00:00:00 2001
+From 9c968b0ab51e411021fd35ce6b6e4b9f34d9e84e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 2/7] ethtool: introduce ethtool netlink interface
@@ -153,5 +153,5 @@ index 000000000000..46a226bb9a2c
 +MODULE_DESCRIPTION("Netlink interface for ethtool");
 +MODULE_LICENSE("GPL");
 -- 
-2.15.0
+2.15.1
 

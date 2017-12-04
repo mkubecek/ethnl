@@ -1,4 +1,4 @@
-From ee8793f55fdd804932dfdd3796b877488cfa0189 Mon Sep 17 00:00:00 2001
+From 80271ee15c319296e934e5ce6fe77837b2d08c74 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
 Subject: [PATCH 6/7] ethtool: implement GET_SETTINGS message
@@ -46,7 +46,7 @@ index ef789e1d679e..d2ea8fc196cd 100644
  
  #define netif_msg_drv(p)	((p)->msg_enable & NETIF_MSG_DRV)
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
-index ac71559314e7..29448b9d2338 100644
+index 44a0b675a6bc..a9076a76cdb4 100644
 --- a/include/uapi/linux/ethtool.h
 +++ b/include/uapi/linux/ethtool.h
 @@ -143,6 +143,9 @@ static inline __u32 ethtool_cmd_speed(const struct ethtool_cmd *ep)
@@ -394,7 +394,7 @@ index 1f031c1d943a..92e236952f18 100644
  
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index d27d25c748cc..d5d9bc1613f9 100644
+index 7600095df2f5..feedf5bcc2e5 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -4,11 +4,69 @@
@@ -724,5 +724,5 @@ index d27d25c748cc..d5d9bc1613f9 100644
  
  static struct genl_family ethtool_genl_family = {
 -- 
-2.15.0
+2.15.1
 

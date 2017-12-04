@@ -1,4 +1,4 @@
-From b0ed42364e2f6eb7be06e067a4bf492b9b42c1a3 Mon Sep 17 00:00:00 2001
+From d0c8cfa8ee4725292a27e043c02b210b635b11c8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 7/7] ethtool: implement SET_SETTINGS message
@@ -15,7 +15,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  1 file changed, 141 insertions(+), 2 deletions(-)
 
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index d5d9bc1613f9..c702494d5e42 100644
+index feedf5bcc2e5..bbe94901dbdf 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -636,6 +636,12 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
@@ -199,5 +199,5 @@ index d5d9bc1613f9..c702494d5e42 100644
  
  static struct genl_family ethtool_genl_family = {
 -- 
-2.15.0
+2.15.1
 

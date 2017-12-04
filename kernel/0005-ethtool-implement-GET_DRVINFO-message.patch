@@ -1,4 +1,4 @@
-From 155a8e758fbf5b06d5fa04ec15391e9878342e9e Mon Sep 17 00:00:00 2001
+From f13fb6894584f25f863618339f599961682cf91c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
 Subject: [PATCH 5/7] ethtool: implement GET_DRVINFO message
@@ -205,7 +205,7 @@ index 000000000000..1f031c1d943a
 +
 +#endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index e220c84b0db5..d27d25c748cc 100644
+index c1748a2ea44b..7600095df2f5 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -491,9 +491,98 @@ static struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev,
@@ -308,5 +308,5 @@ index e220c84b0db5..d27d25c748cc 100644
  
  static struct genl_family ethtool_genl_family = {
 -- 
-2.15.0
+2.15.1
 

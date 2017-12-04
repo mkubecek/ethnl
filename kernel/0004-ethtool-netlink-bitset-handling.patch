@@ -1,4 +1,4 @@
-From dbe613665e6acfbbd374866b98efcad20b21e2c0 Mon Sep 17 00:00:00 2001
+From 50640022c37456cbb92a1ef2fabdd9be1d0feb71 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 4/7] ethtool: netlink bitset handling
@@ -55,7 +55,7 @@ index c1bfba375131..6906001116ed 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 5ded5a7d72ee..e220c84b0db5 100644
+index 5ded5a7d72ee..c1748a2ea44b 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -3,6 +3,7 @@
@@ -343,7 +343,7 @@ index 5ded5a7d72ee..e220c84b0db5 100644
 +		if (tb[ETHA_BITSET_VALUE] || tb[ETHA_BITSET_MASK])
 +			return mod;
 +		bitmap_copy(val, bitmap, __ETHTOOL_LINK_MODE_MASK_NBITS);
-+		nla_for_each_nested(bit_attr, attr, rem) {
++		nla_for_each_nested(bit_attr, tb[ETHA_BITSET_BITS], rem) {
 +			*err = ethnl_update_bit(val, nbits, bit_attr, names,
 +						info);
 +			if (*err < 0)
@@ -404,5 +404,5 @@ index 5ded5a7d72ee..e220c84b0db5 100644
   * context of the request or hiding part of the information from unprivileged
   * users
 -- 
-2.15.0
+2.15.1
 
