@@ -1,4 +1,4 @@
-From 229000ac9d83837320837d77a692a1a1b8fe595c Mon Sep 17 00:00:00 2001
+From 0af8684d9941dd0f88406083ae1c332a49203d7f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:42:26 +0100
 Subject: [PATCH 6/7] netlink: add helpers for command line parsing
@@ -9,14 +9,22 @@ ioctl() interface and using them would be often inconvenient.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- netlink.c | 318 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 318 insertions(+)
+ netlink.c | 600 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 600 insertions(+)
 
 diff --git a/netlink.c b/netlink.c
-index d2dc32bc8538..cd23f9891309 100644
+index 93eb40ef6565..9deecf56ec3f 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -24,6 +24,10 @@ struct nl_context {
+@@ -2,6 +2,7 @@
+ #include <string.h>
+ #include <time.h>
+ #include <errno.h>
++#include <ctype.h>
+ 
+ #include "internal.h"
+ #include "common.h"
+@@ -24,6 +25,10 @@ struct nl_context {
  	struct nlmsghdr *nlhdr;
  	struct genlmsghdr *gnlhdr;
  	struct ethnlmsghdr *enlhdr;
@@ -27,7 +35,7 @@ index d2dc32bc8538..cd23f9891309 100644
  	int exit_code;
  };
  
-@@ -317,6 +321,320 @@ static bool ethnla_put_strz(struct nl_context *nlctx, uint16_t type,
+@@ -329,6 +334,601 @@ static bool ethnla_put_strz(struct nl_context *nlctx, uint16_t type,
  	return ethnla_put(nlctx, type, strlen(data) + 1, data);
  }
  
@@ -85,6 +93,13 @@ index d2dc32bc8538..cd23f9891309 100644
 +{
 +	fprintf(stderr, "ethtool (%s): invalid value '%s' for parameter '%s'\n",
 +		nlctx->cmd, val, nlctx->param);
++}
++
++static void parser_err_invalid_flag(struct nl_context *nlctx, const char *flag)
++{
++	fprintf(stderr, "ethtool (%s): flag '%s' for parameter '%s' is not "
++			"followed by 'on' or 'off'\n",
++		nlctx->cmd, flag, nlctx->param);
 +}
 +
 +static int __parse_u32(const char *arg, u32 *result, u32 min, u32 max, int base)
@@ -147,8 +162,10 @@ index d2dc32bc8538..cd23f9891309 100644
 +	u32 val;
 +	int ret = parse_u32(arg, &val);
 +
-+	if (ret < 0 || val > UINT8_MAX)
++	if (ret < 0)
 +		return ret;
++	if (val > UINT8_MAX)
++		return -EINVAL;
 +
 +	*result = (u8)val;
 +	return 0;
@@ -278,30 +295,302 @@ index d2dc32bc8538..cd23f9891309 100644
 +			       const void *data)
 +{
 +	const char *arg = *nlctx->argp;
-+	char *mask = strchr(arg, '/');
++	const struct flag_info *flags = data;
 +	u32 value, selector;
 +	int ret;
 +
-+	nlctx->argp++;
-+	nlctx->argc--;
-+	if (mask) {
-+		*mask = '\0';
-+		mask++;
-+	}
++	ret = parse_u32(arg, &value);
++	if (isdigit(arg[0])) {
++		char *mask = strchr(arg, '/');
 +
-+	ret = __nl_parse_wol_modes(nlctx, arg, &value);
-+	if (ret < 0)
-+		return ret;
-+
-+	if (!mask) {
-+		selector = ~(u32)0;
-+	} else {
-+		ret = __nl_parse_wol_modes(nlctx, mask, &selector);
-+		if (ret < 0)
++		if (mask) {
++			/* numeric value / mask */
++			*mask = '\0';
++			mask++;
++			ret = parse_u32(mask, &selector);
++			if (ret < 0) {
++				parser_err_invalid_value(nlctx, mask);
++				return ret;
++			}
++		} else {
++			/* numeric value */
++			selector = ~(u32)0;
++		}
++		ret = parse_u32(arg, &value);
++		if (ret < 0) {
++			parser_err_invalid_value(nlctx, arg);
 +			return ret;
++		}
++		nlctx->argp++;
++		nlctx->argc--;
++	} else {
++		/* flag on/off... [--] */
++		while (nlctx->argc > 0) {
++			const struct flag_info *flag = flags;
++
++			if (!strcmp(*nlctx->argp, "--")) {
++				nlctx->argp++;
++				nlctx->argc--;
++				break;
++			}
++			if (nlctx->argc < 2 ||
++			    (strcmp(nlctx->argp[1], "on") &&
++			     strcmp(nlctx->argp[1], "off"))) {
++				parser_err_invalid_flag(nlctx, *nlctx->argp);
++				return -EINVAL;
++			}
++			while (flag->name && strcmp(*nlctx->argp, flag->name))
++				flag++;
++			if (!flag->name) {
++				parser_err_invalid_value(nlctx, *nlctx->argp);
++				return -EINVAL;
++			}
++			selector |= flag->value;
++			if (!strcmp(nlctx->argp[1], "on"))
++				value |= flag->value;
++
++			nlctx->argp += 2;
++			nlctx->argc -= 2;
++		}
 +	}
 +
 +	return ethnla_put_bitfield32(nlctx, type, value, selector);
++}
++
++static bool is_hex(char c)
++{
++	if (isdigit(c))
++		return true;
++	else
++		return (c >= 'a' && c <= 'f');
++}
++
++/* Return true if a bitset argument should be parsed as numeric, i.e.
++ * (a) it starts with '0x'
++ * (b) it consists only of hex digits and at most one slash which can be
++ *     optionally followed by "0x"
++ */
++static bool is_numeric_bitset(const char *arg)
++{
++	const char *p = arg;
++	bool has_slash = false;
++
++	if (arg[0] == '0' && arg[1] == 'x')
++		return true;
++	while (*p) {
++		if (*p == '/') {
++			if (has_slash)
++				return false;
++			has_slash = true;
++			p++;
++			if (p[0] == '0' && p[1] == 'x')
++				p += 2;
++			continue;
++		}
++		if (!is_hex(*p))
++			return false;
++		p++;
++	}
++	return true;
++}
++
++/* number of significant bits */
++static unsigned int nsb(u32 x)
++{
++	unsigned int ret = 0;
++
++	if (!(x & 0xffff0000U)) {
++		x >>= 16;
++		ret += 16;
++	}
++	if (!(x & 0xff00U)) {
++		x >>= 8;
++		ret += 8;
++	}
++	if (!(x & 0xf0U)) {
++		x >>= 4;
++		ret += 4;
++	}
++	if (!(x & 0xcU)) {
++		x >>= 2;
++		ret += 2;
++	}
++	if (!(x & 0x2U)) {
++		x >>= 1;
++		ret += 1;
++	}
++
++	return ret + x;
++}
++
++/* Parse hex string (without leading "0x") into a bitmap consisting of 32-bit
++ * words. Caller must make sure arg is at least len characters long and dst has
++ * place for at least (len + 7) / 8 32-bit words.
++ * Returns number of significant bits in the bitmap on success and negative
++ * value on error.
++ */
++static int parse_hex_string(const char *arg, unsigned int len, u32 *dst)
++{
++	const char *p = arg;
++	unsigned int nwords = (len + 7) / 8;
++	unsigned int nbits = 0;
++	char buff[9];
++
++	memset(dst, '\0', nwords * sizeof(u32));
++	while (len > 0) {
++		unsigned int chunk = (len % 8) ?: 8;
++		unsigned long val;
++		char *endp;
++
++		memcpy(buff, p, chunk);
++		buff[chunk] = '\0';
++		val = strtoul(buff, &endp, 16);
++		if (*endp)
++			return -EINVAL;
++		*dst++ = (u32)val;
++		if (nbits)
++			nbits += 8 * chunk;
++		else
++			nbits = nsb(val);
++
++		p += chunk;
++		len -= chunk;
++	}
++	return nbits;
++}
++
++static int nl_parse_bitset_compact(struct nl_context *nlctx, uint16_t type)
++{
++	const char *arg = *nlctx->argp;
++	unsigned int nwords, len1, len2;
++	bool has_mask = false;
++	struct nlattr *nest;
++	const char *maskptr;
++	u32 *value = NULL;
++	u32 *mask = NULL;
++	int nbits;
++	int ret;
++
++	if (arg[0] == '0' && arg[1] == 'x')
++		arg += 2;
++
++	maskptr = strchr(arg, '/');
++	len1 = maskptr - arg;
++	nwords = (len1 + 7) / 8;
++	nbits = 0;
++
++	value = malloc(nwords * sizeof(u32));
++	if (!value)
++		return -ENOMEM;
++	ret = -ENOMEM;
++	mask = malloc(nwords * sizeof(u32));
++	if (!mask)
++		goto free_value;
++
++	if (*maskptr) {
++		has_mask = true;
++		maskptr++;
++		if (maskptr[0] == '0' && maskptr[1] == 'x')
++			maskptr += 2;
++		len2 = strlen(maskptr);
++		if (len2 > len1)
++			nwords = (len2 + 7) / 8;
++		mask = malloc(nwords * sizeof(u32));
++		if (!mask)
++			return -ENOMEM;
++		ret = parse_hex_string(maskptr, strlen(maskptr),
++					  mask);
++		if (ret < 0)
++			goto free_mask;
++		nbits = ret;
++	}
++
++	ret = parse_hex_string(arg, len1, value);
++	if (ret < 0)
++		goto free_value;
++	nbits = nbits ?: ret;
++	nwords = (nbits + 31) / 32;
++
++	ret = -EMSGSIZE;
++	if (!(nest = ethnla_nest_start(nlctx, type)) ||
++	    ethnla_put_u32(nlctx, ETHA_BITSET_SIZE, nbits) ||
++	    ethnla_put(nlctx, ETHA_BITSET_VALUE, nwords * sizeof(u32), value) ||
++	    (has_mask &&
++	     ethnla_put(nlctx, ETHA_BITSET_MASK, nwords * sizeof(u32), mask)))
++		goto free_mask;
++	mnl_attr_nest_end(nlctx->nlhdr, nest);
++	ret = 0;
++
++free_mask:
++	free(mask);
++free_value:
++	free(value);
++	nlctx->argp++;
++	nlctx->argc--;
++	return ret;
++}
++
++static int nl_parse_bitset_list(struct nl_context *nlctx, uint16_t type,
++				const void *data)
++{
++	struct nlmsghdr *nlhdr = nlctx->nlhdr;
++	struct nlattr *bitset_attr;
++	struct nlattr *bits_attr;
++	struct nlattr *bit_attr;
++	int ret;
++
++	ret = -EMSGSIZE;
++	bitset_attr = ethnla_nest_start(nlctx, type);
++	if (!bitset_attr)
++		return ret;
++	bits_attr = ethnla_nest_start(nlctx, ETHA_BITSET_BITS);
++	if (!bits_attr)
++		goto err;
++
++	while (nlctx->argc > 0) {
++		if (!strcmp(*nlctx->argp, "--")) {
++			nlctx->argp++;
++			nlctx->argc--;
++			break;
++		}
++		ret = -EINVAL;
++		if (nlctx->argc < 2 ||
++		    (strcmp(nlctx->argp[1], "on") &&
++		     strcmp(nlctx->argp[1], "off"))) {
++			parser_err_invalid_flag(nlctx, *nlctx->argp);
++			goto err;
++		}
++
++		ret = -EMSGSIZE;
++		bit_attr = ethnla_nest_start(nlctx, ETHA_BITS_BIT);
++		if (!bit_attr)
++			goto err;
++		if (ethnla_put_strz(nlctx, ETHA_BIT_NAME, nlctx->argp[0]))
++			goto err;
++		if (ethnla_put_flag(nlctx, ETHA_BIT_VALUE,
++				    !strcmp(nlctx->argp[1], "on")))
++			goto err;
++		mnl_attr_nest_end(nlhdr, bit_attr);
++
++		nlctx->argp += 2;
++		nlctx->argc -= 2;
++	}
++
++	mnl_attr_nest_end(nlhdr, bits_attr);
++	mnl_attr_nest_end(nlhdr, bitset_attr);
++	return 0;
++err:
++	mnl_attr_nest_cancel(nlhdr, bitset_attr);
++	return ret;
++}
++
++static int nl_parse_bitset(struct nl_context *nlctx, uint16_t type,
++			   const void *data)
++{
++	if (is_numeric_bitset(*nlctx->argp))
++		return nl_parse_bitset_compact(nlctx, type);
++	else
++		return nl_parse_bitset_list(nlctx, type, data);
 +}
 +
 +static int nl_parser(struct cmd_context *ctx, const struct param_parser *params,
@@ -349,5 +638,5 @@ index d2dc32bc8538..cd23f9891309 100644
  
  static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
 -- 
-2.15.0
+2.15.1
 

@@ -1,4 +1,4 @@
-From 534391117e151e01e931a98564abf84ac280657c Mon Sep 17 00:00:00 2001
+From 4a642ee96f094422056a2188ba1b04cf57d6c25a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 3/7] netlink: add netlink interface
@@ -22,12 +22,12 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  configure.ac                 |  12 ++
  ethtool.c                    | 160 ++++++++++------
  internal.h                   |   8 +
- netlink.c                    | 422 +++++++++++++++++++++++++++++++++++++++++++
+ netlink.c                    | 434 +++++++++++++++++++++++++++++++++++++++++++
  netlink.h                    |  10 +
  uapi/linux/ethtool_netlink.h | 119 ++++++++++++
  uapi/linux/genetlink.h       |  89 +++++++++
- uapi/linux/netlink.h         | 247 +++++++++++++++++++++++++
- 9 files changed, 1024 insertions(+), 53 deletions(-)
+ uapi/linux/netlink.h         | 247 ++++++++++++++++++++++++
+ 9 files changed, 1036 insertions(+), 53 deletions(-)
  create mode 100644 netlink.c
  create mode 100644 netlink.h
  create mode 100644 uapi/linux/ethtool_netlink.h
@@ -412,10 +412,10 @@ index 2907679c30f2..23573a6a4694 100644
  #ifdef TEST_ETHTOOL
 diff --git a/netlink.c b/netlink.c
 new file mode 100644
-index 000000000000..f2188965eb20
+index 000000000000..49e22557bff4
 --- /dev/null
 +++ b/netlink.c
-@@ -0,0 +1,422 @@
+@@ -0,0 +1,434 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -647,8 +647,6 @@ index 000000000000..f2188965eb20
 +					  nlctx->buffsize);
 +		if (len <= 0)
 +			return (len ? -EFAULT : 0);
-+		mnl_nlmsg_fprintf(stdout, nlctx->buff, len,
-+				  GENL_HDRLEN + ETHNL_HDRLEN);
 +		if (len < NLMSG_HDRLEN)
 +			return -EFAULT;
 +
@@ -699,6 +697,20 @@ index 000000000000..f2188965eb20
 +	}
 +
 +	return false;
++}
++
++static struct nlattr *ethnla_nest_start(struct nl_context *nlctx, uint16_t type)
++{
++	struct nlmsghdr *nlhdr = nlctx->nlhdr;
++	struct nlattr *attr;
++
++	do {
++		attr = mnl_attr_nest_start_check(nlhdr, nlctx->buffsize, type);
++		if (attr)
++			return attr;
++	} while (msg_realloc(nlctx) == 0);
++
++	return NULL;
 +}
 +
 +#define DEFINE_ETHNLA_PUT(typeid) \
@@ -1328,5 +1340,5 @@ index 000000000000..0b2c29bd081f
 +
 +#endif /* __LINUX_NETLINK_H */
 -- 
-2.15.0
+2.15.1
 

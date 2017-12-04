@@ -1,4 +1,4 @@
-From 834b5d624dc7472525b0d973ce720e04dc02ebba Mon Sep 17 00:00:00 2001
+From d35524681602c0ed8a74b70b1356abc2ca7b0653 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 7/7] netlink: add netlink handler for sset (-s)
@@ -37,10 +37,10 @@ index 7847008cc221..5d3bb768dc70 100644
  	  "		[ speed %d ]\n"
  	  "		[ duplex half|full ]\n"
 diff --git a/netlink.c b/netlink.c
-index cd23f9891309..705a1888445b 100644
+index 9deecf56ec3f..79c26f486934 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -31,6 +31,16 @@ struct nl_context {
+@@ -32,6 +32,16 @@ struct nl_context {
  	int exit_code;
  };
  
@@ -57,7 +57,7 @@ index cd23f9891309..705a1888445b 100644
  struct attr_tb_info {
  	const struct nlattr **tb;
  	unsigned int max_type;
-@@ -564,6 +574,83 @@ static int nl_parse_lookup_u8(struct nl_context *nlctx, uint16_t type,
+@@ -586,6 +596,83 @@ static int nl_parse_lookup_u8(struct nl_context *nlctx, uint16_t type,
  	return ethnla_put_u8(nlctx, type, val) ? -EMSGSIZE : 0;
  }
  
@@ -141,8 +141,8 @@ index cd23f9891309..705a1888445b 100644
  static int nl_parse_bitfield32(struct nl_context *nlctx, uint16_t type,
  			       const void *data)
  {
-@@ -594,6 +681,39 @@ static int nl_parse_bitfield32(struct nl_context *nlctx, uint16_t type,
- 	return ethnla_put_bitfield32(nlctx, type, value, selector);
+@@ -888,6 +975,39 @@ static int nl_parse_bitset(struct nl_context *nlctx, uint16_t type,
+ 		return nl_parse_bitset_list(nlctx, type, data);
  }
  
 +static int nl_parse_mac_addr(struct nl_context *nlctx, uint16_t type,
@@ -181,7 +181,7 @@ index cd23f9891309..705a1888445b 100644
  static int nl_parser(struct cmd_context *ctx, const struct param_parser *params,
  		     unsigned int max_type)
  {
-@@ -1066,3 +1186,139 @@ int nl_gset(struct cmd_context *ctx)
+@@ -1360,3 +1480,139 @@ int nl_gset(struct cmd_context *ctx)
  	return ethnl_std_get_request(ctx, ETHTOOL_CMD_GET_SETTINGS,
  				     settings_reply_cb);
  }
@@ -254,6 +254,7 @@ index cd23f9891309..705a1888445b 100644
 +	{
 +		.arg		= "advertise",
 +		.type		= ETHA_SETTINGS_LINK_MODES,
++		.handler	= nl_parse_bitset,
 +		.min_argc	= 1,
 +	},
 +	{
@@ -310,7 +311,6 @@ index cd23f9891309..705a1888445b 100644
 +	if (ret < 0)
 +		return 2;
 +
-+	mnl_nlmsg_fprintf(stdout, nlctx->buff, nlctx->nlhdr->nlmsg_len, GENL_HDRLEN + ETHNL_HDRLEN);
 +	ret = ethnl_sendmsg(nlctx);
 +	if (ret < 0)
 +		return 75;
@@ -333,5 +333,5 @@ index 9de571fcc959..7c071474c9cd 100644
  
  #endif /* ETHTOOL_NETLINK_H__ */
 -- 
-2.15.0
+2.15.1
 
