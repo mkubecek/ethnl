@@ -1,4 +1,4 @@
-From 80271ee15c319296e934e5ce6fe77837b2d08c74 Mon Sep 17 00:00:00 2001
+From 2a6f1303eb7fd23770964ec43a828e304614ec79 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
 Subject: [PATCH 6/7] ethtool: implement GET_SETTINGS message
@@ -33,10 +33,10 @@ index 0412adb4f42f..1787359f9e5d 100644
 +
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index ef789e1d679e..d2ea8fc196cd 100644
+index cc4ce7456e38..0e1d0a04c3cc 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -3503,6 +3503,8 @@ enum {
+@@ -3506,6 +3506,8 @@ enum {
  	NETIF_MSG_PKTDATA	= 0x1000,
  	NETIF_MSG_HW		= 0x2000,
  	NETIF_MSG_WOL		= 0x4000,
@@ -394,7 +394,7 @@ index 1f031c1d943a..92e236952f18 100644
  
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 7600095df2f5..feedf5bcc2e5 100644
+index 7600095df2f5..9ff376d60109 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -4,11 +4,69 @@
@@ -551,9 +551,7 @@ index 7600095df2f5..feedf5bcc2e5 100644
 +{
 +	int ret;
 +
-+	rtnl_lock();
 +	ret = __ethtool_get_link_ksettings(dev, ksettings);
-+	rtnl_unlock();
 +
 +	if (ret < 0)
 +		GENL_SET_ERR_MSG(info, "failed to retrieve link settings");
@@ -579,7 +577,7 @@ index 7600095df2f5..feedf5bcc2e5 100644
 +	struct net_device *dev;
 +	struct sk_buff *rskb;
 +	unsigned int reply_len;
-+	bool lp_modes_empty = true;
++	bool lpm_empty = true;
 +	u16 req_mask;
 +	u16 req_flags;
 +	int ret = 0;
@@ -596,19 +594,21 @@ index 7600095df2f5..feedf5bcc2e5 100644
 +	if (IS_ERR(dev))
 +		return PTR_ERR(dev);
 +	if (req_mask & (ETH_SETTINGS_IM_LINKINFO | ETH_SETTINGS_IM_LINKMODES)) {
++		rtnl_lock();
 +		ret = ethnl_get_link_ksettings(info, dev, &ksettings);
++		rtnl_unlock();
 +		if (ret < 0)
 +			goto err_putdev;
-+		if (req_mask & ETH_SETTINGS_IM_LINKMODES) {
-+			lp_modes_empty = bitmap_empty(ksettings.link_modes.lp_advertising,
-+						      __ETHTOOL_LINK_MODE_MASK_NBITS);
-+			ethnl_bitmap_to_u32(ksettings.link_modes.supported,
-+					    __ETHTOOL_LINK_MODE_MASK_NWORDS);
-+			ethnl_bitmap_to_u32(ksettings.link_modes.advertising,
-+					    __ETHTOOL_LINK_MODE_MASK_NWORDS);
-+			ethnl_bitmap_to_u32(ksettings.link_modes.lp_advertising,
-+					    __ETHTOOL_LINK_MODE_MASK_NWORDS);
-+		}
++	}
++	if (req_mask & ETH_SETTINGS_IM_LINKMODES) {
++		lpm_empty = bitmap_empty(ksettings.link_modes.lp_advertising,
++					 __ETHTOOL_LINK_MODE_MASK_NBITS);
++		ethnl_bitmap_to_u32(ksettings.link_modes.supported,
++				    __ETHTOOL_LINK_MODE_MASK_NWORDS);
++		ethnl_bitmap_to_u32(ksettings.link_modes.advertising,
++				    __ETHTOOL_LINK_MODE_MASK_NWORDS);
++		ethnl_bitmap_to_u32(ksettings.link_modes.lp_advertising,
++				    __ETHTOOL_LINK_MODE_MASK_NWORDS);
 +	}
 +	if (req_mask & ETH_SETTINGS_IM_WOLINFO) {
 +		ret = ethnl_get_wol(info, dev, &wolinfo);
@@ -679,7 +679,7 @@ index 7600095df2f5..feedf5bcc2e5 100644
 +				       advertising, supported, link_mode_names);
 +		if (ret < 0)
 +			goto err;
-+		if (!lp_modes_empty) {
++		if (!lpm_empty) {
 +			ret = ethnl_put_bitset(rskb, ETHA_SETTINGS_PEER_MODES,
 +					       compact,
 +					       __ETHTOOL_LINK_MODE_MASK_NBITS,

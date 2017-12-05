@@ -1,4 +1,4 @@
-From d0c8cfa8ee4725292a27e043c02b210b635b11c8 Mon Sep 17 00:00:00 2001
+From 617199c3dd7239eb125a4df4c03d70f98ab58d50 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 7/7] ethtool: implement SET_SETTINGS message
@@ -11,14 +11,237 @@ some setting).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/core/ethtool_netlink.c | 143 ++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 141 insertions(+), 2 deletions(-)
+ net/core/ethtool_netlink.c | 531 ++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 529 insertions(+), 2 deletions(-)
 
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index feedf5bcc2e5..bbe94901dbdf 100644
+index 9ff376d60109..5b16b1eeb202 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -636,6 +636,12 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
+@@ -67,6 +67,222 @@ static const char *const link_mode_names[] = {
+ 	[ETHTOOL_LINK_MODE_FEC_BASER_BIT]		= "BASER",
+ };
+ 
++struct link_mode_info {
++	int speed;
++	u8 duplex;
++};
++
++static const struct link_mode_info link_mode_params[] = {
++	[ETHTOOL_LINK_MODE_10baseT_Half_BIT]		= {
++		.speed	= 10,
++		.duplex	= DUPLEX_HALF,
++	},
++	[ETHTOOL_LINK_MODE_10baseT_Full_BIT]		= {
++		.speed	= 10,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_100baseT_Half_BIT]		= {
++		.speed	= 100,
++		.duplex	= DUPLEX_HALF,
++	},
++	[ETHTOOL_LINK_MODE_100baseT_Full_BIT]		= {
++		.speed	= 100,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_1000baseT_Half_BIT]		= {
++		.speed	= 1000,
++		.duplex	= DUPLEX_HALF,
++	},
++	[ETHTOOL_LINK_MODE_1000baseT_Full_BIT]		= {
++		.speed	= 1000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_Autoneg_BIT]			= {
++		.speed	= SPEED_UNKNOWN,
++		.duplex	= DUPLEX_UNKNOWN,
++	},
++	[ETHTOOL_LINK_MODE_TP_BIT]			= {
++		.speed	= SPEED_UNKNOWN,
++		.duplex	= DUPLEX_UNKNOWN,
++	},
++	[ETHTOOL_LINK_MODE_AUI_BIT]			= {
++		.speed	= SPEED_UNKNOWN,
++		.duplex	= DUPLEX_UNKNOWN,
++	},
++	[ETHTOOL_LINK_MODE_MII_BIT]			= {
++		.speed	= SPEED_UNKNOWN,
++		.duplex	= DUPLEX_UNKNOWN,
++	},
++	[ETHTOOL_LINK_MODE_FIBRE_BIT]			= {
++		.speed	= SPEED_UNKNOWN,
++		.duplex	= DUPLEX_UNKNOWN,
++	},
++	[ETHTOOL_LINK_MODE_BNC_BIT]			= {
++		.speed	= SPEED_UNKNOWN,
++		.duplex	= DUPLEX_UNKNOWN,
++	},
++	[ETHTOOL_LINK_MODE_10000baseT_Full_BIT]		= {
++		.speed	= 10000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_Pause_BIT]			= {
++		.speed	= SPEED_UNKNOWN,
++		.duplex	= DUPLEX_UNKNOWN,
++	},
++	[ETHTOOL_LINK_MODE_Asym_Pause_BIT]		= {
++		.speed	= SPEED_UNKNOWN,
++		.duplex	= DUPLEX_UNKNOWN,
++	},
++	[ETHTOOL_LINK_MODE_2500baseX_Full_BIT]		= {
++		.speed	= 2500,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_Backplane_BIT]		= {
++		.speed	= SPEED_UNKNOWN,
++		.duplex	= DUPLEX_UNKNOWN,
++	},
++	[ETHTOOL_LINK_MODE_1000baseKX_Full_BIT]		= {
++		.speed	= 1000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_10000baseKX4_Full_BIT]	= {
++		.speed	= 10000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_10000baseKR_Full_BIT]	= {
++		.speed	= 10000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_10000baseR_FEC_BIT]		= {
++		.speed	= 10000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_20000baseMLD2_Full_BIT]	= {
++		.speed	= 20000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_20000baseKR2_Full_BIT]	= {
++		.speed	= 20000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_40000baseKR4_Full_BIT]	= {
++		.speed	= 40000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_40000baseCR4_Full_BIT]	= {
++		.speed	= 40000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_40000baseSR4_Full_BIT]	= {
++		.speed	= 40000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_40000baseLR4_Full_BIT]	= {
++		.speed	= 40000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_56000baseKR4_Full_BIT]	= {
++		.speed	= 56000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_56000baseCR4_Full_BIT]	= {
++		.speed	= 56000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_56000baseSR4_Full_BIT]	= {
++		.speed	= 56000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_56000baseLR4_Full_BIT]	= {
++		.speed	= 56000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_25000baseCR_Full_BIT]	= {
++		.speed	= 25000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_25000baseKR_Full_BIT]	= {
++		.speed	= 25000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_25000baseSR_Full_BIT]	= {
++		.speed	= 25000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_50000baseCR2_Full_BIT]	= {
++		.speed	= 50000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_50000baseKR2_Full_BIT]	= {
++		.speed	= 50000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT]	= {
++		.speed	= 100000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_100000baseSR4_Full_BIT]	= {
++		.speed	= 100000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT]	= {
++		.speed	= 100000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT]	= {
++		.speed	= 100000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_50000baseSR2_Full_BIT]	= {
++		.speed	= 50000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_1000baseX_Full_BIT]		= {
++		.speed	= 1000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_10000baseCR_Full_BIT]	= {
++		.speed	= 10000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_10000baseSR_Full_BIT]	= {
++		.speed	= 10000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_10000baseLR_Full_BIT]	= {
++		.speed	= 10000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_10000baseLRM_Full_BIT]	= {
++		.speed	= 10000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_10000baseER_Full_BIT]	= {
++		.speed	= 10000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_2500baseT_Full_BIT]		= {
++		.speed	= 2500,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_5000baseT_Full_BIT]		= {
++		.speed	= 5000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_FEC_NONE_BIT]		= {
++		.speed	= SPEED_UNKNOWN,
++		.duplex	= DUPLEX_UNKNOWN,
++	},
++	[ETHTOOL_LINK_MODE_FEC_RS_BIT]			= {
++		.speed	= SPEED_UNKNOWN,
++		.duplex	= DUPLEX_UNKNOWN,
++	},
++	[ETHTOOL_LINK_MODE_FEC_BASER_BIT]		= {
++		.speed	= SPEED_UNKNOWN,
++		.duplex	= DUPLEX_UNKNOWN,
++	},
++};
++
+ /* misc helper functions */
+ 
+ static int ethnl_str_size(const char *s)
+@@ -636,6 +852,12 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
  
  /* GET_SETTINGS */
  
@@ -31,7 +254,7 @@ index feedf5bcc2e5..bbe94901dbdf 100644
  static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
  	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_UNSPEC },
  	[ETHA_SETTINGS_SPEED]		= { .type = NLA_U32 },
-@@ -647,10 +653,12 @@ static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
+@@ -647,10 +869,12 @@ static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
  	[ETHA_SETTINGS_TP_MDIX]		= { .type = NLA_U8 },
  	[ETHA_SETTINGS_TP_MDIX_CTRL]	= { .type = NLA_U8 },
  	[ETHA_SETTINGS_TRANSCEIVER]	= { .type = NLA_U8 },
@@ -46,7 +269,32 @@ index feedf5bcc2e5..bbe94901dbdf 100644
  	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
  	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_NESTED },
  	[ETHA_SETTINGS_LINK]		= { .type = NLA_FLAG },
-@@ -733,6 +741,27 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
+@@ -721,6 +945,24 @@ static int ethnl_get_link_ksettings(struct genl_info *info,
+ 	return ret;
+ }
+ 
++static int ethnl_get_legacy_settings(struct genl_info *info,
++				     struct net_device *dev,
++				     struct ethtool_cmd *cmd)
++{
++	int ret;
++
++	if (!dev->ethtool_ops->get_settings) {
++		/* we already tried ->get_link_ksettings */
++		GENL_SET_ERR_MSG(info, "link settings retrieval unsupported");
++		return -EOPNOTSUPP;
++	}
++	ret = dev->ethtool_ops->get_settings(dev, cmd);
++	if (ret < 0)
++		GENL_SET_ERR_MSG(info, "failed to retrieve link settings");
++
++	return ret;
++}
++
+ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
+ 			 struct ethtool_wolinfo *wolinfo)
+ {
+@@ -731,6 +973,79 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
  	return ret;
  }
  
@@ -61,6 +309,24 @@ index feedf5bcc2e5..bbe94901dbdf 100644
 +	return ret;
 +}
 +
++static int ethnl_set_legacy_settings(struct genl_info *info,
++				     struct net_device *dev,
++				     struct ethtool_cmd *cmd)
++{
++	int ret;
++
++	if (!dev->ethtool_ops->set_settings) {
++		/* we already tried ->set_link_ksettings */
++		GENL_SET_ERR_MSG(info, "link settings update unsupported");
++		return -EOPNOTSUPP;
++	}
++	ret = dev->ethtool_ops->set_settings(dev, cmd);
++	if (ret < 0)
++		GENL_SET_ERR_MSG(info, "link settings update failed");
++
++	return ret;
++}
++
 +static int ethnl_set_wol(struct genl_info *info, struct net_device *dev,
 +			 struct ethtool_wolinfo *wolinfo)
 +{
@@ -71,25 +337,184 @@ index feedf5bcc2e5..bbe94901dbdf 100644
 +	return ret;
 +}
 +
++/* Set advertised link modes to all supported modes matching requested speed
++ * and duplex values. Called when autonegotiation is on, speed or duplex is
++ * requested but no link mode change. This is done in userspace with ioctl()
++ * interface, move it into kernel for netlink.
++ * Returns true if advertised modes bitmap was modified.
++ */
++static bool auto_link_modes(unsigned long *supported,
++			    unsigned long *advertising, unsigned int nbits,
++			    struct nlattr *speed_attr,
++			    struct nlattr *duplex_attr)
++{
++	u8 duplex = duplex_attr ? nla_get_u8(duplex_attr) : DUPLEX_UNKNOWN;
++	u32 speed = speed_attr ? nla_get_u32(speed_attr) : SPEED_UNKNOWN;
++	DECLARE_BITMAP(old_adv, nbits);
++	unsigned int i;
++
++	bitmap_copy(old_adv, advertising, nbits);
++
++	for (i = 0; i < nbits; i++) {
++		const struct link_mode_info *info = &link_mode_params[i];
++
++		if (info->speed == SPEED_UNKNOWN)
++			continue;
++		if (test_bit(i, supported) &&
++		    (!speed_attr || info->speed == speed) &&
++		    (!duplex_attr || info->duplex == duplex))
++			set_bit(i, advertising);
++		else
++			clear_bit(i, advertising);
++	}
++
++	return !bitmap_equal(old_adv, advertising, nbits);
++}
++
  static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct ethtool_link_ksettings ksettings;
-@@ -872,6 +901,110 @@ static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -872,6 +1187,212 @@ static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
  	return ret;
  }
  
++/* Update device settings using ->set_link_ksettings() callback */
++static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
++				  struct net_device *dev)
++{
++	struct ethtool_link_ksettings ksettings;
++	struct ethtool_link_settings *lsettings;
++	bool mod = false;
++	int ret;
++
++	rtnl_lock();
++	ret = ethnl_get_link_ksettings(info, dev, &ksettings);
++	if (ret < 0)
++		goto out_unlock;
++	lsettings = &ksettings.base;
++
++	mod = false;
++	if (ethnl_update_u32(&lsettings->speed, tb[ETHA_SETTINGS_SPEED]))
++		mod = true;
++	if (ethnl_update_u8(&lsettings->duplex, tb[ETHA_SETTINGS_DUPLEX]))
++		mod = true;
++	if (ethnl_update_u8(&lsettings->port, tb[ETHA_SETTINGS_PORT]))
++		mod = true;
++	if (ethnl_update_u8(&lsettings->phy_address, tb[ETHA_SETTINGS_PHYADDR]))
++		mod = true;
++	if (ethnl_update_u8(&lsettings->autoneg, tb[ETHA_SETTINGS_AUTONEG]))
++		mod = true;
++	if (ethnl_update_u8(&lsettings->eth_tp_mdix_ctrl,
++			    tb[ETHA_SETTINGS_TP_MDIX_CTRL]))
++		mod = true;
++	if (ethnl_update_bitset(ksettings.link_modes.advertising,
++				__ETHTOOL_LINK_MODE_MASK_NBITS,
++				tb[ETHA_SETTINGS_LINK_MODES],
++				&ret, link_mode_names, info))
++		mod = true;
++	if (ret < 0)
++		goto out_unlock;
++
++	if (!tb[ETHA_SETTINGS_LINK_MODES] && lsettings->autoneg &&
++	    (tb[ETHA_SETTINGS_SPEED] || tb[ETHA_SETTINGS_DUPLEX])) {
++		if (auto_link_modes(ksettings.link_modes.supported,
++				    ksettings.link_modes.advertising,
++				    __ETHTOOL_LINK_MODE_MASK_NBITS,
++				    tb[ETHA_SETTINGS_SPEED],
++				    tb[ETHA_SETTINGS_DUPLEX]))
++			mod = true;
++	}
++
++	if (mod) {
++		ret = ethnl_set_link_ksettings(info, dev, &ksettings);
++		if (ret < 0)
++			goto out_unlock;
++	}
++
++	ret = 0;
++out_unlock:
++	rtnl_unlock();
++	return ret;
++}
++
++/* Update legacy settings using ->set_settings() callback. */
++static int ethnl_update_lsettings(struct genl_info *info, struct nlattr **tb,
++				  struct net_device *dev)
++{
++	struct ethtool_cmd cmd;
++	DECLARE_BITMAP(advertising, sizeof(u32));
++	DECLARE_BITMAP(supported, sizeof(u32));
++	bool mod = false;
++	u32 speed;
++	int ret;
++
++	rtnl_lock();
++	ret = ethnl_get_legacy_settings(info, dev, &cmd);
++	if (ret < 0)
++		goto out_unlock;
++	bitmap_from_u32array(supported, sizeof(u32), &cmd.supported, 1);
++	bitmap_from_u32array(advertising, sizeof(u32), &cmd.advertising, 1);
++
++	mod = false;
++	speed = ethtool_cmd_speed(&cmd);
++	if (ethnl_update_u32(&speed, tb[ETHA_SETTINGS_SPEED])) {
++		ethtool_cmd_speed_set(&cmd, speed);
++		mod = true;
++	}
++	if (ethnl_update_u8(&cmd.duplex, tb[ETHA_SETTINGS_DUPLEX]))
++		mod = true;
++	if (ethnl_update_u8(&cmd.port, tb[ETHA_SETTINGS_PORT]))
++		mod = true;
++	if (ethnl_update_u8(&cmd.phy_address, tb[ETHA_SETTINGS_PHYADDR]))
++		mod = true;
++	if (ethnl_update_u8(&cmd.autoneg, tb[ETHA_SETTINGS_AUTONEG]))
++		mod = true;
++	if (ethnl_update_u8(&cmd.eth_tp_mdix_ctrl,
++			    tb[ETHA_SETTINGS_TP_MDIX_CTRL]))
++		mod = true;
++	if (ethnl_update_bitset(advertising, sizeof(cmd.advertising),
++				tb[ETHA_SETTINGS_LINK_MODES],
++				&ret, link_mode_names, info)) {
++		bitmap_to_u32array(&cmd.advertising, 1, advertising,
++				   sizeof(cmd.advertising));
++		mod = true;
++	}
++	if (ret < 0)
++		goto out_unlock;
++
++	if (!tb[ETHA_SETTINGS_LINK_MODES] && cmd.autoneg &&
++	    (tb[ETHA_SETTINGS_SPEED] || tb[ETHA_SETTINGS_DUPLEX])) {
++		if (auto_link_modes(supported, advertising,
++				    sizeof(cmd.advertising),
++				    tb[ETHA_SETTINGS_SPEED],
++				    tb[ETHA_SETTINGS_DUPLEX])) {
++			bitmap_to_u32array(&cmd.advertising, 1, advertising,
++					   sizeof(cmd.advertising));
++			mod = true;
++		}
++	}
++
++	if (mod) {
++		ret = ethnl_set_legacy_settings(info, dev, &cmd);
++		if (ret < 0)
++			goto out_unlock;
++	}
++
++	ret = 0;
++out_unlock:
++	rtnl_unlock();
++	return ret;
++}
++
 +static int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-+	struct ethtool_link_ksettings ksettings;
-+	struct ethtool_link_settings *lsettings;
 +	struct ethnlmsghdr *ehdr;
 +	struct ethtool_wolinfo wolinfo;
 +	struct net_device *dev;
 +	bool mod;
 +	int ret;
 +
-+	lsettings = &ksettings.base;
 +	ehdr = info->userhdr;
 +	dev = ethnl_dev_get(info);
 +	if (IS_ERR(dev))
@@ -113,44 +538,25 @@ index feedf5bcc2e5..bbe94901dbdf 100644
 +	    tb[ETHA_SETTINGS_PORT] || tb[ETHA_SETTINGS_PHYADDR] ||
 +	    tb[ETHA_SETTINGS_AUTONEG] || tb[ETHA_SETTINGS_TP_MDIX_CTRL] ||
 +	    tb[ETHA_SETTINGS_LINK_MODES]) {
-+		ret = ethnl_get_link_ksettings(info, dev, &ksettings);
++		if (dev->ethtool_ops->get_link_ksettings)
++			ret = ethnl_update_ksettings(info, tb, dev);
++		else
++			ret = ethnl_update_lsettings(info, tb, dev);
 +		if (ret < 0)
-+			goto err_unlock;
-+
-+		mod = ethnl_update_u32(&lsettings->speed,
-+				       tb[ETHA_SETTINGS_SPEED]) ||
-+		      ethnl_update_u8(&lsettings->duplex,
-+				      tb[ETHA_SETTINGS_DUPLEX]) ||
-+		      ethnl_update_u8(&lsettings->port,
-+				      tb[ETHA_SETTINGS_PORT]) ||
-+		      ethnl_update_u8(&lsettings->phy_address,
-+				      tb[ETHA_SETTINGS_PHYADDR]) ||
-+		      ethnl_update_u8(&lsettings->autoneg,
-+				      tb[ETHA_SETTINGS_AUTONEG]) ||
-+		      ethnl_update_u8(&lsettings->eth_tp_mdix_ctrl,
-+				      tb[ETHA_SETTINGS_TP_MDIX_CTRL]) ||
-+		      ethnl_update_bitset(ksettings.link_modes.advertising,
-+					  __ETHTOOL_LINK_MODE_MASK_NBITS,
-+					  tb[ETHA_SETTINGS_LINK_MODES],
-+					  &ret, link_mode_names, info);
-+		if (ret < 0)
-+			goto err_unlock;
-+		if (mod) {
-+			ret = ethnl_set_link_ksettings(info, dev, &ksettings);
-+			if (ret < 0)
-+				goto err_unlock;
-+		}
-+		rtnl_unlock();
++			goto err_putdev;
 +	}
 +	if (tb[ETHA_SETTINGS_WOL_MODES] || tb[ETHA_SETTINGS_SOPASS]) {
 +		ret = ethnl_get_wol(info, dev, &wolinfo);
 +		if (ret < 0)
 +			goto err_putdev;
 +
-+		mod = ethnl_update_bitfield32(&wolinfo.wolopts,
-+					      tb[ETHA_SETTINGS_WOL_MODES]) ||
-+		      ethnl_update_binary(wolinfo.sopass, SOPASS_MAX,
-+					  tb[ETHA_SETTINGS_SOPASS]);
++		mod = false;
++		if (ethnl_update_bitfield32(&wolinfo.wolopts,
++					    tb[ETHA_SETTINGS_WOL_MODES]))
++			mod = true;
++		if (ethnl_update_binary(wolinfo.sopass, SOPASS_MAX,
++					tb[ETHA_SETTINGS_SOPASS]))
++			mod = true;
 +		if (mod) {
 +			ret = ethnl_set_wol(info, dev, &wolinfo);
 +			if (ret < 0)
@@ -172,11 +578,7 @@ index feedf5bcc2e5..bbe94901dbdf 100644
 +			dev->ethtool_ops->set_msglevel(dev, msglvl);
 +	}
 +
-+	dev_put(dev);
-+	return 0;
-+
-+err_unlock:
-+	rtnl_unlock();
++	ret = 0;
 +err_putdev:
 +	dev_put(dev);
 +	return ret;
@@ -185,7 +587,7 @@ index feedf5bcc2e5..bbe94901dbdf 100644
  /* genetlink paperwork */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -883,6 +1016,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -883,6 +1404,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.cmd	= ETHTOOL_CMD_GET_SETTINGS,
  		.doit	= ethnl_get_settings,
  	},

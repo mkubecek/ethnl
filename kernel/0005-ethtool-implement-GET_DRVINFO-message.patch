@@ -1,4 +1,4 @@
-From f13fb6894584f25f863618339f599961682cf91c Mon Sep 17 00:00:00 2001
+From 2e90ff872577e7fc9e71300782adb68b404380e0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
 Subject: [PATCH 5/7] ethtool: implement GET_DRVINFO message
