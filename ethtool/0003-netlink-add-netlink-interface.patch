@@ -1,4 +1,4 @@
-From 4a642ee96f094422056a2188ba1b04cf57d6c25a Mon Sep 17 00:00:00 2001
+From 1ffa3aeab5a9e91a713191d5a251ce19bfe90823 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 3/7] netlink: add netlink interface
@@ -24,10 +24,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  internal.h                   |   8 +
  netlink.c                    | 434 +++++++++++++++++++++++++++++++++++++++++++
  netlink.h                    |  10 +
- uapi/linux/ethtool_netlink.h | 119 ++++++++++++
+ uapi/linux/ethtool_netlink.h | 120 ++++++++++++
  uapi/linux/genetlink.h       |  89 +++++++++
  uapi/linux/netlink.h         | 247 ++++++++++++++++++++++++
- 9 files changed, 1036 insertions(+), 53 deletions(-)
+ 9 files changed, 1037 insertions(+), 53 deletions(-)
  create mode 100644 netlink.c
  create mode 100644 netlink.h
  create mode 100644 uapi/linux/ethtool_netlink.h
@@ -868,10 +868,10 @@ index 000000000000..b10b168b1f5b
 +#endif /* ETHTOOL_NETLINK_H__ */
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..9452f2ea92ef
+index 000000000000..910c74dc18ac
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,119 @@
+@@ -0,0 +1,120 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#ifndef _LINUX_ETHTOOL_NETLINK_H_
@@ -979,12 +979,13 @@ index 000000000000..9452f2ea92ef
 +
 +#define ETH_SETTINGS_RF_COMPACT_BITSETS		0x1
 +
-+#define ETH_SETTINGS_IM_LINKINFO		0x1
-+#define ETH_SETTINGS_IM_LINKMODES		0x2
-+#define ETH_SETTINGS_IM_WOLINFO			0x4
-+#define ETH_SETTINGS_IM_LINK			0x8
++#define ETH_SETTINGS_IM_LINKINFO		0x01
++#define ETH_SETTINGS_IM_LINKMODES		0x02
++#define ETH_SETTINGS_IM_MSGLEVEL		0x04
++#define ETH_SETTINGS_IM_WOLINFO			0x08
++#define ETH_SETTINGS_IM_LINK			0x10
 +
-+#define ETH_SETTINGS_IM_DEFAULT			0xf
++#define ETH_SETTINGS_IM_DEFAULT			0x1f
 +
 +/* generic netlink info */
 +#define ETHTOOL_GENL_NAME "ethtool"
