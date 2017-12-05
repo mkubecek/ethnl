@@ -1,4 +1,4 @@
-From c19ad39b1ff7b44a3faebd29d3d02af63e45bf94 Mon Sep 17 00:00:00 2001
+From afa801c44ea42139184f9b6db5b2b9aa44331862 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 2/7] ethtool: introduce ethtool netlink interface
@@ -10,16 +10,145 @@ probably prefer "y").
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- include/linux/ethtool_netlink.h      |  9 +++++++
- include/uapi/linux/ethtool_netlink.h | 32 +++++++++++++++++++++++++
- net/Kconfig                          |  7 ++++++
- net/core/Makefile                    |  1 +
- net/core/ethtool_netlink.c           | 46 ++++++++++++++++++++++++++++++++++++
- 5 files changed, 95 insertions(+)
+ Documentation/networking/ethtool-netlink.txt | 121 +++++++++++++++++++++++++++
+ include/linux/ethtool_netlink.h              |   9 ++
+ include/uapi/linux/ethtool_netlink.h         |  32 +++++++
+ net/Kconfig                                  |   7 ++
+ net/core/Makefile                            |   1 +
+ net/core/ethtool_netlink.c                   |  46 ++++++++++
+ 6 files changed, 216 insertions(+)
+ create mode 100644 Documentation/networking/ethtool-netlink.txt
  create mode 100644 include/linux/ethtool_netlink.h
  create mode 100644 include/uapi/linux/ethtool_netlink.h
  create mode 100644 net/core/ethtool_netlink.c
 
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+new file mode 100644
+index 000000000000..d4c2e22ecaa1
+--- /dev/null
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -0,0 +1,121 @@
++                        Netlink interface for ethtool
++                        =============================
++
++
++Basic information
++-----------------
++
++Netlink interface for ethtool uses generic netlink family "ethtool" (userspace
++application should use macros ETHTOOL_GENL_NAME and ETHTOOL_GENL_VERSION
++defined in <linux/ethtool_netlink.h> uapi header). This family uses a message
++header of 24 bytes:
++
++struct ethnlmsghdr {
++	__u32   ifindex;
++	__u16   flags;
++	union {
++		__u16   info_mask;
++		__u16	index;
++	}
++	char    ifname[IFNAMSIZ];
++};
++
++In requests, device can be identified by ifindex or by name; if both are used,
++they must match. In replies, kernel fills both. The meaning of flags,
++info_mask and index fields depends on request type.
++
++The ethtool netlink interface uses extended ACK for error and warning
++reporting, userspace application developers are encouraged to make these
++messages available to user in a suitable way.
++
++
++Request translation
++-------------------
++
++The following table maps iosctl commands to netlink commands providing their
++functionality. Entries with "n/a" in right column are commands which do not
++have their netlink replacement yet.
++
++ioctl command			netlink command
++---------------------------------------------------------------------
++ETHTOOL_GSET			n/a
++ETHTOOL_SSET			n/a
++ETHTOOL_GDRVINFO		n/a
++ETHTOOL_GREGS			n/a
++ETHTOOL_GWOL			n/a
++ETHTOOL_SWOL			n/a
++ETHTOOL_GMSGLVL			n/a
++ETHTOOL_SMSGLVL			n/a
++ETHTOOL_NWAY_RST		n/a
++ETHTOOL_GLINK			n/a
++ETHTOOL_GEEPROM			n/a
++ETHTOOL_SEEPROM			n/a
++ETHTOOL_GCOALESCE		n/a
++ETHTOOL_SCOALESCE		n/a
++ETHTOOL_GRINGPARAM		n/a
++ETHTOOL_SRINGPARAM		n/a
++ETHTOOL_GPAUSEPARAM		n/a
++ETHTOOL_SPAUSEPARAM		n/a
++ETHTOOL_GRXCSUM			n/a
++ETHTOOL_SRXCSUM			n/a
++ETHTOOL_GTXCSUM			n/a
++ETHTOOL_STXCSUM			n/a
++ETHTOOL_GSG			n/a
++ETHTOOL_SSG			n/a
++ETHTOOL_TEST			n/a
++ETHTOOL_GSTRINGS		n/a
++ETHTOOL_PHYS_ID			n/a
++ETHTOOL_GSTATS			n/a
++ETHTOOL_GTSO			n/a
++ETHTOOL_STSO			n/a
++ETHTOOL_GPERMADDR		n/a
++ETHTOOL_GUFO			n/a
++ETHTOOL_SUFO			n/a
++ETHTOOL_GGSO			n/a
++ETHTOOL_SGSO			n/a
++ETHTOOL_GFLAGS			n/a
++ETHTOOL_SFLAGS			n/a
++ETHTOOL_GPFLAGS			n/a
++ETHTOOL_SPFLAGS			n/a
++ETHTOOL_GRXFH			n/a
++ETHTOOL_SRXFH			n/a
++ETHTOOL_GGRO			n/a
++ETHTOOL_SGRO			n/a
++ETHTOOL_GRXRINGS		n/a
++ETHTOOL_GRXCLSRLCNT		n/a
++ETHTOOL_GRXCLSRULE		n/a
++ETHTOOL_GRXCLSRLALL		n/a
++ETHTOOL_SRXCLSRLDEL		n/a
++ETHTOOL_SRXCLSRLINS		n/a
++ETHTOOL_FLASHDEV		n/a
++ETHTOOL_RESET			n/a
++ETHTOOL_SRXNTUPLE		n/a
++ETHTOOL_GRXNTUPLE		n/a
++ETHTOOL_GSSET_INFO		n/a
++ETHTOOL_GRXFHINDIR		n/a
++ETHTOOL_SRXFHINDIR		n/a
++ETHTOOL_GFEATURES		n/a
++ETHTOOL_SFEATURES		n/a
++ETHTOOL_GCHANNELS		n/a
++ETHTOOL_SCHANNELS		n/a
++ETHTOOL_SET_DUMP		n/a
++ETHTOOL_GET_DUMP_FLAG		n/a
++ETHTOOL_GET_DUMP_DATA		n/a
++ETHTOOL_GET_TS_INFO		n/a
++ETHTOOL_GMODULEINFO		n/a
++ETHTOOL_GMODULEEEPROM		n/a
++ETHTOOL_GEEE			n/a
++ETHTOOL_SEEE			n/a
++ETHTOOL_GRSSH			n/a
++ETHTOOL_SRSSH			n/a
++ETHTOOL_GTUNABLE		n/a
++ETHTOOL_STUNABLE		n/a
++ETHTOOL_GPHYSTATS		n/a
++ETHTOOL_PERQUEUE		n/a
++ETHTOOL_GLINKSETTINGS		n/a
++ETHTOOL_SLINKSETTINGS		n/a
++ETHTOOL_PHY_GTUNABLE		n/a
++ETHTOOL_PHY_STUNABLE		n/a
++ETHTOOL_GFECPARAM		n/a
++ETHTOOL_SFECPARAM		n/a
++
 diff --git a/include/linux/ethtool_netlink.h b/include/linux/ethtool_netlink.h
 new file mode 100644
 index 000000000000..0412adb4f42f

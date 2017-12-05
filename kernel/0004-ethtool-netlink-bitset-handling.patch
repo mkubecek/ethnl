@@ -1,4 +1,4 @@
-From 08931a89762be60b7ecb9f1f123c72499a4669fe Mon Sep 17 00:00:00 2001
+From aa64c33f67aa799f535ee5d13cd4d438e866c9a5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 4/7] ethtool: netlink bitset handling
@@ -8,10 +8,78 @@ arbitrary length bit sets.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- include/uapi/linux/ethtool_netlink.h |  31 ++++
- net/core/ethtool_netlink.c           | 331 +++++++++++++++++++++++++++++++++++
- 2 files changed, 362 insertions(+)
+ Documentation/networking/ethtool-netlink.txt |  56 +++++
+ include/uapi/linux/ethtool_netlink.h         |  31 +++
+ net/core/ethtool_netlink.c                   | 331 +++++++++++++++++++++++++++
+ 3 files changed, 418 insertions(+)
 
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index d4c2e22ecaa1..f3c995df89f7 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -29,6 +29,62 @@ reporting, userspace application developers are encouraged to make these
+ messages available to user in a suitable way.
+ 
+ 
++Bit sets
++--------
++
++For short bitmaps of (reasonably) fixed length, standard NLA_BITFIELD32 type
++is used. For arbitrary length bitmaps, ethtool netlink uses a nested attribute
++with contents of one of two forms: compact (two binary bitmaps representing
++bit values and mask of affected bits) and bit-by-bit (list of bits identified
++by either index or name).
++
++Compact form: nested (bitset) atrribute contents:
++
++    ETHA_BITSET_SIZE	(u32)		number of significant bits
++    ETHA_BITSET_VALUE	(binary)	bitmap of bit values
++    ETHA_BITSET_MASK	(binary)	bitmap of valid bits
++
++Value and mask must have lenght at least ETHA_BITSET_SIZE bits rounded up to
++a multiple of 32 bits. They consist of 32-bit words in host byt order, words
++ordered from least significant to most significant (i.e. the same way as
++bitmaps are passed with ioctl interface).
++
++For compact form, ETHA_BITSET_SIZE and ETHA_BITSET_VALUE are mandatory.
++Similar to BITFIELD32, a compact form bit set requests to set bits in the mask
++to 1 (if set in value) or 0 (if not) and preserve the rest. If the mask is
++omitted, it is supposed to be "all ones", i.e. set all bits according to
++value.
++
++Kernel bit set length may differ from userspace length if older application is
++used on newer kernel or vice versa. If userspace bitmaps are longer, error is
++only issued if request actually tries to set bits not implemented in kernel.
++
++Bit-by-bit form: nested (bitset) attribute contents:
++
++    ETHA_BITSET_SIZE	(u32)		number of significant bits (optional)
++    ETHA_BITSET_BITS	(nested)	array of bits
++	ETHA_BITSET_BIT
++	    ETHA_BIT_INDEX	(u32)		bit index (0 for LSB)
++            ETHA_BIT_NAME	(string)	bit name
++	    ETHA_BIT_VALUE	(flag)		present if bit is set
++        ETHA_BITSET_BIT
++	...
++
++Bit size is optional for bit-by-bit form. ETHA_BITSET_BITS nest can only
++contain ETHA_BITS_BIT attributes but there can be an arbitrary number of them.
++A bit may be identified by its index or by its name. When used in requests,
++listed bits are set to 0 or 1 according to ETHA_BIT_VALUE, the rest is
++preserved. A request fails if index exceeds kernel bit length or if name is
++not recognized.
++
++In requests, application can use either form. Form used by kernel in reply is
++determined by a flag in flags field of request header. Semantics of value and
++mask depends on the attribute. General idea is that flags control request
++processing, info_mask control which parts of the information are returned in
++"get" request and index identifies a particular subcommand or an object to
++which the request applies.
++
++
+ Request translation
+ -------------------
+ 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 index c1bfba375131..6906001116ed 100644
 --- a/include/uapi/linux/ethtool_netlink.h

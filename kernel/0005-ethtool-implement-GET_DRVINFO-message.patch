@@ -1,4 +1,4 @@
-From 2e90ff872577e7fc9e71300782adb68b404380e0 Mon Sep 17 00:00:00 2001
+From 55ed4404e74f5a951c926fcac6ef59b59d5f7917 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
 Subject: [PATCH 5/7] ethtool: implement GET_DRVINFO message
@@ -10,16 +10,62 @@ a new file ethtool_common.c so that both interfaces can use it.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- include/uapi/linux/ethtool_netlink.h | 21 +++++++++
- net/core/Makefile                    |  2 +-
- net/core/ethtool.c                   | 42 +++--------------
- net/core/ethtool_common.c            | 46 +++++++++++++++++++
- net/core/ethtool_common.h            | 11 +++++
- net/core/ethtool_netlink.c           | 89 ++++++++++++++++++++++++++++++++++++
- 6 files changed, 174 insertions(+), 37 deletions(-)
+ Documentation/networking/ethtool-netlink.txt | 27 ++++++++-
+ include/uapi/linux/ethtool_netlink.h         | 21 +++++++
+ net/core/Makefile                            |  2 +-
+ net/core/ethtool.c                           | 42 ++-----------
+ net/core/ethtool_common.c                    | 46 ++++++++++++++
+ net/core/ethtool_common.h                    | 11 ++++
+ net/core/ethtool_netlink.c                   | 89 ++++++++++++++++++++++++++++
+ 7 files changed, 200 insertions(+), 38 deletions(-)
  create mode 100644 net/core/ethtool_common.c
  create mode 100644 net/core/ethtool_common.h
 
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index f3c995df89f7..4d5a9ea6982a 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -85,6 +85,31 @@ processing, info_mask control which parts of the information are returned in
+ which the request applies.
+ 
+ 
++GET_DRVINFO
++-----------
++
++GET_DRVINFO request corresponds to ETHTOOL_GDRVINFO ioctl command and provides
++basic driver information. The request doesn't use any attributes and flags,
++info_mask and index field in request header are ignored. Kernel response
++contents:
++
++    ETHA_DRVINFO_DRIVER		(string)	driver name
++    ETHA_DRVINFO_VERSION	(string)	driver version
++    ETHA_DRVINFO_FWVERSION	(string)	firmware version
++    ETHA_DRVINFO_BUSINFO	(string)	device bus address
++    ETHA_DRVINFO_EROM_VER	(string)	expansion ROM version
++    ETHA_DRVINFO_N_PRIV_FLAGS	(u32)		number of private flags
++    ETHA_DRVINFO_N_STATS	(u32)		number of device stats
++    ETHA_DRVINFO_TESTINFO_LEN	(u32)		number of test results
++    ETHA_DRVINFO_EEDUMP_LEN	(u32)		EEPROM dump size
++    ETHA_DRVINFO_REGDUMP_LEN	(u32)		register dump size
++
++The meaning of these follows the corresponding fields of ETHTOOL_GDRVINFO
++response.
++
++All information is read only, there is no SET_DRVINFO request.
++
++
+ Request translation
+ -------------------
+ 
+@@ -96,7 +121,7 @@ ioctl command			netlink command
+ ---------------------------------------------------------------------
+ ETHTOOL_GSET			n/a
+ ETHTOOL_SSET			n/a
+-ETHTOOL_GDRVINFO		n/a
++ETHTOOL_GDRVINFO		ETHTOOL_CMD_GET_DRVINFO
+ ETHTOOL_GREGS			n/a
+ ETHTOOL_GWOL			n/a
+ ETHTOOL_SWOL			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 index 6906001116ed..b846ca97bb38 100644
 --- a/include/uapi/linux/ethtool_netlink.h

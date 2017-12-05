@@ -1,4 +1,4 @@
-From 617199c3dd7239eb125a4df4c03d70f98ab58d50 Mon Sep 17 00:00:00 2001
+From a9ea12e5b299c32fb7ddb246dd1d9a2f730f503a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 7/7] ethtool: implement SET_SETTINGS message
@@ -11,11 +11,81 @@ some setting).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/core/ethtool_netlink.c | 531 ++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 529 insertions(+), 2 deletions(-)
+ Documentation/networking/ethtool-netlink.txt |  40 +-
+ net/core/ethtool_netlink.c                   | 531 ++++++++++++++++++++++++++-
+ 2 files changed, 565 insertions(+), 6 deletions(-)
 
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index eac3d4f52bec..52da9e6de61b 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -160,6 +160,38 @@ is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
+ requests.
+ 
+ 
++SET_SETTINGS
++------------
++
++SET_SETTINGS request allows setting some of the data reported by GET_SETTINGS.
++Request flags, info_mask and index are ignored. These attributes are allowed
++to be passed with SET_SETTINGS request:
++
++    ETHA_SETTINGS_SPEED         (u32)           link speed (Mb/s)
++    ETHA_SETTINGS_DUPLEX        (u8)            duplex mode
++    ETHA_SETTINGS_PORT          (u8)            physical port
++    ETHA_SETTINGS_PHYADDR       (u8)            MDIO address of phy
++    ETHA_SETTINGS_AUTONEG       (u8)            autoneotiation status
++    ETHA_SETTINGS_TP_MDIX_CTRL  (u8)            MDI(-X) control
++    ETHA_SETTINGS_WOL_MODES     (bitfield32)    wake-on-lan modes
++    ETHA_SETTINGS_SOPASS        (binary)        SecureOn(tm) password
++    ETHA_SETTINGS_MSGLVL        (bitfield32)    debug level
++    ETHA_SETTINGS_LINK_MODES    (bitset)        device link modes
++
++For both bitfield32 types, value and selector work the usual way, i.e. bits
++set in selector are set to corresponding bits from value and the rest is
++preserved. In a similar fashion, ETHA_SETTINGS_LINK_MODES allows setting
++advertised link modes.
++
++If autonegotiation is on (either set now or kept from before), advertised
++modes are not changed (no ETHA_SETTINGS_LINK_MODES attribute) and at least one
++of speed and duplex is specified, kernel adjusts advertised modes to all
++supported modes matching speed, duplex or both (whatever is specified). This
++autoselection is done on ethtool side with ioctl interface, netlink interface
++is supposed to allow requesting changes without knowing what exactly kernel
++supports.
++
++
+ Request translation
+ -------------------
+ 
+@@ -170,13 +202,13 @@ have their netlink replacement yet.
+ ioctl command			netlink command
+ ---------------------------------------------------------------------
+ ETHTOOL_GSET			ETHTOOL_CMD_GET_SETTINGS
+-ETHTOOL_SSET			n/a
++ETHTOOL_SSET			ETHTOOL_CMD_SET_SETTINGS
+ ETHTOOL_GDRVINFO		ETHTOOL_CMD_GET_DRVINFO
+ ETHTOOL_GREGS			n/a
+ ETHTOOL_GWOL			ETHTOOL_CMD_GET_SETTINGS
+-ETHTOOL_SWOL			n/a
++ETHTOOL_SWOL			ETHTOOL_CMD_SET_SETTINGS
+ ETHTOOL_GMSGLVL			ETHTOOL_CMD_GET_SETTINGS
+-ETHTOOL_SMSGLVL			n/a
++ETHTOOL_SMSGLVL			ETHTOOL_CMD_SET_SETTINGS
+ ETHTOOL_NWAY_RST		n/a
+ ETHTOOL_GLINK			ETHTOOL_CMD_GET_SETTINGS
+ ETHTOOL_GEEPROM			n/a
+@@ -244,7 +276,7 @@ ETHTOOL_STUNABLE		n/a
+ ETHTOOL_GPHYSTATS		n/a
+ ETHTOOL_PERQUEUE		n/a
+ ETHTOOL_GLINKSETTINGS		ETHTOOL_CMD_GET_SETTINGS
+-ETHTOOL_SLINKSETTINGS		n/a
++ETHTOOL_SLINKSETTINGS		ETHTOOL_CMD_SET_SETTINGS
+ ETHTOOL_PHY_GTUNABLE		n/a
+ ETHTOOL_PHY_STUNABLE		n/a
+ ETHTOOL_GFECPARAM		n/a
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 9ff376d60109..5b16b1eeb202 100644
+index b39c0c39ad51..01bff2c53708 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -67,6 +67,222 @@ static const char *const link_mode_names[] = {
@@ -269,7 +339,7 @@ index 9ff376d60109..5b16b1eeb202 100644
  	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
  	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_NESTED },
  	[ETHA_SETTINGS_LINK]		= { .type = NLA_FLAG },
-@@ -721,6 +945,24 @@ static int ethnl_get_link_ksettings(struct genl_info *info,
+@@ -722,6 +946,24 @@ static int ethnl_get_link_ksettings(struct genl_info *info,
  	return ret;
  }
  
@@ -294,7 +364,7 @@ index 9ff376d60109..5b16b1eeb202 100644
  static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
  			 struct ethtool_wolinfo *wolinfo)
  {
-@@ -731,6 +973,79 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
+@@ -732,6 +974,79 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
  	return ret;
  }
  
@@ -374,7 +444,7 @@ index 9ff376d60109..5b16b1eeb202 100644
  static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct ethtool_link_ksettings ksettings;
-@@ -872,6 +1187,212 @@ static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -880,6 +1195,212 @@ static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
  	return ret;
  }
  
@@ -587,7 +657,7 @@ index 9ff376d60109..5b16b1eeb202 100644
  /* genetlink paperwork */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -883,6 +1404,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -891,6 +1412,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.cmd	= ETHTOOL_CMD_GET_SETTINGS,
  		.doit	= ethnl_get_settings,
  	},
