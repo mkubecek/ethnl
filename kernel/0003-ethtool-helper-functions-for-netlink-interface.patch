@@ -1,4 +1,4 @@
-From dbed9ef0de7df117bdeb3589a97481b09a402b2c Mon Sep 17 00:00:00 2001
+From 9a07a79f43bcbdd7bb859ad3d2939fcc116e98fe Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 3/7] ethtool: helper functions for netlink interface
@@ -7,14 +7,14 @@ Misc helpers used by ethtool netlink code.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/core/ethtool_netlink.c | 152 +++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 152 insertions(+)
+ net/core/ethtool_netlink.c | 157 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 157 insertions(+)
 
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 46a226bb9a2c..5ded5a7d72ee 100644
+index 46a226bb9a2c..73216dd2891e 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -8,6 +8,158 @@
+@@ -8,6 +8,163 @@
  
  static struct genl_family ethtool_genl_family;
  
@@ -118,6 +118,11 @@ index 46a226bb9a2c..5ded5a7d72ee 100644
 +	}
 +
 +	return ERR_PTR(-EINVAL);
++}
++
++static void warn_partial_info(struct genl_info *info)
++{
++	GENL_SET_ERR_MSG(info, "not all requested data could be retrieved");
 +}
 +
 +/* Check user privileges explicitly to allow finer access control based on

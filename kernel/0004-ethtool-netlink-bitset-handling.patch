@@ -1,4 +1,4 @@
-From aa64c33f67aa799f535ee5d13cd4d438e866c9a5 Mon Sep 17 00:00:00 2001
+From e38d26da5dbf1c4f3df37fbe15a00f8845cb05b0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 4/7] ethtool: netlink bitset handling
@@ -10,11 +10,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  56 +++++
  include/uapi/linux/ethtool_netlink.h         |  31 +++
- net/core/ethtool_netlink.c                   | 331 +++++++++++++++++++++++++++
- 3 files changed, 418 insertions(+)
+ net/core/ethtool_netlink.c                   | 329 +++++++++++++++++++++++++++
+ 3 files changed, 416 insertions(+)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index d4c2e22ecaa1..f3c995df89f7 100644
+index d4c2e22ecaa1..1141706b12b7 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -29,6 +29,62 @@ reporting, userspace application developers are encouraged to make these
@@ -36,7 +36,7 @@ index d4c2e22ecaa1..f3c995df89f7 100644
 +    ETHA_BITSET_VALUE	(binary)	bitmap of bit values
 +    ETHA_BITSET_MASK	(binary)	bitmap of valid bits
 +
-+Value and mask must have lenght at least ETHA_BITSET_SIZE bits rounded up to
++Value and mask must have length at least ETHA_BITSET_SIZE bits rounded up to
 +a multiple of 32 bits. They consist of 32-bit words in host byt order, words
 +ordered from least significant to most significant (i.e. the same way as
 +bitmaps are passed with ioctl interface).
@@ -81,10 +81,10 @@ index d4c2e22ecaa1..f3c995df89f7 100644
  -------------------
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index c1bfba375131..6906001116ed 100644
+index 06cff2b52dfe..6db35f00ea32 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -25,6 +25,37 @@ enum {
+@@ -26,6 +26,37 @@ enum {
  	ETHTOOL_CMD_MAX = (__ETHTOOL_CMD_MAX - 1),
  };
  
@@ -123,7 +123,7 @@ index c1bfba375131..6906001116ed 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 5ded5a7d72ee..c1748a2ea44b 100644
+index 73216dd2891e..6aa82a6939b6 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -3,6 +3,7 @@
@@ -134,7 +134,7 @@ index 5ded5a7d72ee..c1748a2ea44b 100644
  #include <net/genetlink.h>
  #include "ethtool_common.h"
  
-@@ -110,6 +111,336 @@ static struct net_device *ethnl_dev_get(struct genl_info *info)
+@@ -110,6 +111,334 @@ static struct net_device *ethnl_dev_get(struct genl_info *info)
  	return ERR_PTR(-EINVAL);
  }
  
@@ -171,8 +171,7 @@ index 5ded5a7d72ee..c1748a2ea44b 100644
 + * documented so we cannot rely on it; moreover, we can use the fact that this
 + * conversion is no-op except for 64-bit big endian architectures
 + */
-+static void ethnl_bitmap_to_u32(unsigned long *bitmap,
-+				       unsigned int nwords)
++static void ethnl_bitmap_to_u32(unsigned long *bitmap, unsigned int nwords)
 +{
 +#if BITS_PER_LONG == 64 && defined(__BIG_ENDIAN)
 +	u32 *dst = (u32 *)bitmap;
@@ -461,16 +460,15 @@ index 5ded5a7d72ee..c1748a2ea44b 100644
 +			if (mod)
 +				bitmap_copy(bitmap, val, nbits);
 +		}
-+
 +	}
 +
 +	*err = 0;
 +	return mod;
 +}
 +
- /* Check user privileges explicitly to allow finer access control based on
-  * context of the request or hiding part of the information from unprivileged
-  * users
+ static void warn_partial_info(struct genl_info *info)
+ {
+ 	GENL_SET_ERR_MSG(info, "not all requested data could be retrieved");
 -- 
 2.15.1
 

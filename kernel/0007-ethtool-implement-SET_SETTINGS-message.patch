@@ -1,4 +1,4 @@
-From a9ea12e5b299c32fb7ddb246dd1d9a2f730f503a Mon Sep 17 00:00:00 2001
+From 19dcb60afe9a57593911f70c5b3738f175a4fd8a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 7/7] ethtool: implement SET_SETTINGS message
@@ -16,7 +16,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 565 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index eac3d4f52bec..52da9e6de61b 100644
+index 927d278e4e0a..48e7a3ad7d37 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -160,6 +160,38 @@ is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
@@ -85,7 +85,7 @@ index eac3d4f52bec..52da9e6de61b 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index b39c0c39ad51..01bff2c53708 100644
+index cd89db981ffd..a615024e649d 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -67,6 +67,222 @@ static const char *const link_mode_names[] = {
@@ -311,7 +311,7 @@ index b39c0c39ad51..01bff2c53708 100644
  /* misc helper functions */
  
  static int ethnl_str_size(const char *s)
-@@ -636,6 +852,12 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
+@@ -625,6 +841,12 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
  
  /* GET_SETTINGS */
  
@@ -324,7 +324,7 @@ index b39c0c39ad51..01bff2c53708 100644
  static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
  	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_UNSPEC },
  	[ETHA_SETTINGS_SPEED]		= { .type = NLA_U32 },
-@@ -647,10 +869,12 @@ static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
+@@ -636,10 +858,12 @@ static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
  	[ETHA_SETTINGS_TP_MDIX]		= { .type = NLA_U8 },
  	[ETHA_SETTINGS_TP_MDIX_CTRL]	= { .type = NLA_U8 },
  	[ETHA_SETTINGS_TRANSCEIVER]	= { .type = NLA_U8 },
@@ -339,7 +339,7 @@ index b39c0c39ad51..01bff2c53708 100644
  	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
  	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_NESTED },
  	[ETHA_SETTINGS_LINK]		= { .type = NLA_FLAG },
-@@ -722,6 +946,24 @@ static int ethnl_get_link_ksettings(struct genl_info *info,
+@@ -710,6 +934,24 @@ static int ethnl_get_link_ksettings(struct genl_info *info,
  	return ret;
  }
  
@@ -364,7 +364,7 @@ index b39c0c39ad51..01bff2c53708 100644
  static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
  			 struct ethtool_wolinfo *wolinfo)
  {
-@@ -732,6 +974,79 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
+@@ -720,6 +962,79 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
  	return ret;
  }
  

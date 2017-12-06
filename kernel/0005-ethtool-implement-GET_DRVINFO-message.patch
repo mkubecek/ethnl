@@ -1,4 +1,4 @@
-From 55ed4404e74f5a951c926fcac6ef59b59d5f7917 Mon Sep 17 00:00:00 2001
+From 8b2ef45bf51e5806415c4a58b7bc1a6418c58337 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
 Subject: [PATCH 5/7] ethtool: implement GET_DRVINFO message
@@ -10,19 +10,19 @@ a new file ethtool_common.c so that both interfaces can use it.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 27 ++++++++-
- include/uapi/linux/ethtool_netlink.h         | 21 +++++++
+ Documentation/networking/ethtool-netlink.txt | 27 +++++++++-
+ include/uapi/linux/ethtool_netlink.h         | 21 ++++++++
  net/core/Makefile                            |  2 +-
- net/core/ethtool.c                           | 42 ++-----------
- net/core/ethtool_common.c                    | 46 ++++++++++++++
+ net/core/ethtool.c                           | 42 +++-------------
+ net/core/ethtool_common.c                    | 46 +++++++++++++++++
  net/core/ethtool_common.h                    | 11 ++++
- net/core/ethtool_netlink.c                   | 89 ++++++++++++++++++++++++++++
- 7 files changed, 200 insertions(+), 38 deletions(-)
+ net/core/ethtool_netlink.c                   | 75 ++++++++++++++++++++++++++++
+ 7 files changed, 186 insertions(+), 38 deletions(-)
  create mode 100644 net/core/ethtool_common.c
  create mode 100644 net/core/ethtool_common.h
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index f3c995df89f7..4d5a9ea6982a 100644
+index 1141706b12b7..c4b33afe19d2 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -85,6 +85,31 @@ processing, info_mask control which parts of the information are returned in
@@ -67,10 +67,10 @@ index f3c995df89f7..4d5a9ea6982a 100644
  ETHTOOL_GWOL			n/a
  ETHTOOL_SWOL			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 6906001116ed..b846ca97bb38 100644
+index 6db35f00ea32..d6ab1d73d494 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -20,6 +20,8 @@ struct ethnlmsghdr {
+@@ -21,6 +21,8 @@ struct ethnlmsghdr {
  
  enum {
  	ETHTOOL_CMD_NOOP,
@@ -79,7 +79,7 @@ index 6906001116ed..b846ca97bb38 100644
  
  	__ETHTOOL_CMD_MAX,
  	ETHTOOL_CMD_MAX = (__ETHTOOL_CMD_MAX - 1),
-@@ -56,6 +58,25 @@ enum {
+@@ -57,6 +59,25 @@ enum {
  	ETHA_BITSET_MAX = (__ETHA_BITSET_MAX - 1),
  };
  
@@ -251,28 +251,14 @@ index 000000000000..1f031c1d943a
 +
 +#endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index c1748a2ea44b..7600095df2f5 100644
+index 6aa82a6939b6..3f5f5b3fadbf 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -491,9 +491,98 @@ static struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev,
+@@ -494,9 +494,84 @@ static struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev,
  	return rskb;
  }
  
 +/* GET_DRVINFO */
-+
-+static const struct nla_policy drvinfo_policy[ETHA_DRVINFO_MAX + 1] = {
-+	[ETHA_DRVINFO_UNSPEC]		= { .type = NLA_UNSPEC },
-+	[ETHA_DRVINFO_DRIVER]		= { .type = NLA_STRING },
-+	[ETHA_DRVINFO_VERSION]		= { .type = NLA_STRING },
-+	[ETHA_DRVINFO_FWVERSION]	= { .type = NLA_STRING },
-+	[ETHA_DRVINFO_BUSINFO]		= { .type = NLA_STRING },
-+	[ETHA_DRVINFO_EROM_VER]		= { .type = NLA_STRING },
-+	[ETHA_DRVINFO_N_PRIV_FLAGS]	= { .type = NLA_U32 },
-+	[ETHA_DRVINFO_N_STATS]		= { .type = NLA_U32 },
-+	[ETHA_DRVINFO_TESTINFO_LEN]	= { .type = NLA_U32 },
-+	[ETHA_DRVINFO_EEDUMP_LEN]	= { .type = NLA_U32 },
-+	[ETHA_DRVINFO_REGDUMP_LEN]	= { .type = NLA_U32 },
-+};
 +
 +static int ethnl_drvinfo_size(struct ethtool_drvinfo *drvinfo)
 +{
