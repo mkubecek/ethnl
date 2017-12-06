@@ -1,4 +1,4 @@
-From 4935ddeca4e50f2f7c1e79f3bda2e75848d92436 Mon Sep 17 00:00:00 2001
+From b858c0a9a74a29a89902e450701ed0a1bbc6887f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
 Subject: [PATCH 4/7] netlink: add netlink handler for gdrv (-i)
@@ -13,10 +13,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 53 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 1cec0db8f7d1..7244c9122412 100644
+index a6ba76476e30..bf77d1d6b87d 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4750,6 +4750,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4739,6 +4739,7 @@ static int show_usage(struct cmd_context *ctx);
  
  #ifndef ETHTOOL_ENABLE_NETLINK
  /* Stubs to (not) use when building without netlink support */
@@ -24,7 +24,7 @@ index 1cec0db8f7d1..7244c9122412 100644
  #endif
  
  static const struct option {
-@@ -4820,7 +4821,7 @@ static const struct option {
+@@ -4809,7 +4810,7 @@ static const struct option {
  	{ "-K|--features|--offload", 1, do_sfeatures, NULL,
  	  "Set protocol offload and other features",
  	  "		FEATURE on|off ...\n" },

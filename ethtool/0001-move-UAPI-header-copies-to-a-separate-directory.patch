@@ -1,4 +1,4 @@
-From c70a69019fb9a383b55ed0f3c3376c3e9962444d Mon Sep 17 00:00:00 2001
+From f8dec32c25a0d9dde2ab521e47885c5cf865990a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 09:02:44 +0100
 Subject: [PATCH 1/7] move UAPI header copies to a separate directory

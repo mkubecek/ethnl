@@ -1,4 +1,4 @@
-From 1ffa3aeab5a9e91a713191d5a251ce19bfe90823 Mon Sep 17 00:00:00 2001
+From 3703944442bbe3173bdb7f0177ad5e18c82605bf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 3/7] netlink: add netlink interface
@@ -85,7 +85,7 @@ index ce23a43a3a00..01b9950a9803 100644
  AC_CONFIG_FILES([Makefile ethtool.spec ethtool.8])
  AC_OUTPUT
 diff --git a/ethtool.c b/ethtool.c
-index 1a2b7ccd2edf..1cec0db8f7d1 100644
+index 30e9b3d66138..a6ba76476e30 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -30,6 +30,7 @@
@@ -96,7 +96,7 @@ index 1a2b7ccd2edf..1cec0db8f7d1 100644
  #include <string.h>
  #include <stdlib.h>
  #include <sys/stat.h>
-@@ -4747,14 +4748,20 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
+@@ -4736,14 +4737,20 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
  
  static int show_usage(struct cmd_context *ctx);
  
@@ -118,7 +118,7 @@ index 1a2b7ccd2edf..1cec0db8f7d1 100644
  	  "		[ speed %d ]\n"
  	  "		[ duplex half|full ]\n"
  	  "		[ port tp|aui|bnc|mii|fibre ]\n"
-@@ -4766,13 +4773,17 @@ static const struct option {
+@@ -4755,13 +4762,17 @@ static const struct option {
  	  "		[ wol p|u|m|b|a|g|s|d... ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
  	  "		[ msglvl %d | msglvl type on|off ... ]\n" },
@@ -140,7 +140,7 @@ index 1a2b7ccd2edf..1cec0db8f7d1 100644
  	  "		[adaptive-rx on|off]\n"
  	  "		[adaptive-tx on|off]\n"
  	  "		[rx-usecs N]\n"
-@@ -4796,46 +4807,54 @@ static const struct option {
+@@ -4785,46 +4796,54 @@ static const struct option {
  	  "		[tx-frames-high N]\n"
  	  "		[sample-interval N]\n"
  	  "		[dmac N]\n" },
@@ -210,7 +210,7 @@ index 1a2b7ccd2edf..1cec0db8f7d1 100644
  	  "Configure Rx network flow classification options or rules",
  	  "		rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 m|v|t|s|d|f|n|r... |\n"
-@@ -4859,53 +4878,63 @@ static const struct option {
+@@ -4848,53 +4867,63 @@ static const struct option {
  	  "			[ action %d ]\n"
  	  "			[ loc %d]] |\n"
  	  "		delete %d\n" },
@@ -251,9 +251,9 @@ index 1a2b7ccd2edf..1cec0db8f7d1 100644
  	  "               [ tx N ]\n"
  	  "               [ other N ]\n"
  	  "               [ combined N ]\n" },
--	{ "--show-priv-flags" , 1, do_gprivflags, "Query private flags" },
+-	{ "--show-priv-flags", 1, do_gprivflags, "Query private flags" },
 -	{ "--set-priv-flags", 1, do_sprivflags, "Set private flags",
-+	{ "--show-priv-flags" , 1, do_gprivflags, NULL,
++	{ "--show-priv-flags", 1, do_gprivflags, NULL,
 +	  "Query private flags" },
 +	{ "--set-priv-flags", 1, do_sprivflags, NULL,
 +	  "Set private flags",
@@ -292,7 +292,7 @@ index 1a2b7ccd2edf..1cec0db8f7d1 100644
  	{}
  };
  
-@@ -4932,11 +4961,35 @@ static int show_usage(struct cmd_context *ctx)
+@@ -4921,11 +4950,35 @@ static int show_usage(struct cmd_context *ctx)
  	return 0;
  }
  
@@ -328,7 +328,7 @@ index 1a2b7ccd2edf..1cec0db8f7d1 100644
  	int k;
  
  	init_global_link_mode_masks();
-@@ -4962,6 +5015,7 @@ int main(int argc, char **argp)
+@@ -4951,6 +5004,7 @@ int main(int argc, char **argp)
  				argp++;
  				argc--;
  				func = args[k].func;
@@ -336,7 +336,7 @@ index 1a2b7ccd2edf..1cec0db8f7d1 100644
  				want_device = args[k].want_device;
  				goto opt_found;
  			}
-@@ -4976,6 +5030,15 @@ int main(int argc, char **argp)
+@@ -4965,6 +5019,15 @@ int main(int argc, char **argp)
  	want_device = 1;
  
  opt_found:
@@ -352,7 +352,7 @@ index 1a2b7ccd2edf..1cec0db8f7d1 100644
  	if (want_device) {
  		ctx.devname = *argp++;
  		argc--;
-@@ -4984,25 +5047,16 @@ opt_found:
+@@ -4973,25 +5036,16 @@ opt_found:
  			exit_bad_args();
  		if (strlen(ctx.devname) >= IFNAMSIZ)
  			exit_bad_args();
