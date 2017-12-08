@@ -1,7 +1,7 @@
-From 19dcb60afe9a57593911f70c5b3738f175a4fd8a Mon Sep 17 00:00:00 2001
+From 261b15d5dfa97bcc851a426601b5f8d819209f38 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
-Subject: [PATCH 7/7] ethtool: implement SET_SETTINGS message
+Subject: [PATCH 7/8] ethtool: implement SET_SETTINGS message
 
 Sets the information provided by ETHTOOL_SLINKSETTINGS, ETHTOOL_SWOL and
 ETHTOOL_SMSGLVL. Unlike with ioctl(), userspace can send only some
@@ -11,15 +11,24 @@ some setting).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  40 +-
+ Documentation/networking/ethtool-netlink.txt |  42 ++-
  net/core/ethtool_netlink.c                   | 531 ++++++++++++++++++++++++++-
- 2 files changed, 565 insertions(+), 6 deletions(-)
+ 2 files changed, 566 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 927d278e4e0a..48e7a3ad7d37 100644
+index 7aabc87c9f09..187fab33f721 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -160,6 +160,38 @@ is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
+@@ -110,7 +110,7 @@ List of message types
+     ETHTOOL_CMD_GET_DRVINFO
+     ETHTOOL_CMD_SET_DRVINFO		response only
+     ETHTOOL_CMD_GET_SETTINGS
+-    ETHTOOL_CMD_SET_SETTINGS		response only (for now)
++    ETHTOOL_CMD_SET_SETTINGS
+ 
+ All constants use ETHTOOL_CMD_ prefix followed by "GET", "SET" or "ACT" to
+ indicate the type.
+@@ -199,6 +199,38 @@ is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
  requests.
  
  
@@ -58,7 +67,7 @@ index 927d278e4e0a..48e7a3ad7d37 100644
  Request translation
  -------------------
  
-@@ -170,13 +202,13 @@ have their netlink replacement yet.
+@@ -209,13 +241,13 @@ have their netlink replacement yet.
  ioctl command			netlink command
  ---------------------------------------------------------------------
  ETHTOOL_GSET			ETHTOOL_CMD_GET_SETTINGS
@@ -75,7 +84,7 @@ index 927d278e4e0a..48e7a3ad7d37 100644
  ETHTOOL_NWAY_RST		n/a
  ETHTOOL_GLINK			ETHTOOL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
-@@ -244,7 +276,7 @@ ETHTOOL_STUNABLE		n/a
+@@ -283,7 +315,7 @@ ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
  ETHTOOL_GLINKSETTINGS		ETHTOOL_CMD_GET_SETTINGS

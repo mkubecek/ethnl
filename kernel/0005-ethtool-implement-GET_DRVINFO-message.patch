@@ -1,7 +1,7 @@
-From 8b2ef45bf51e5806415c4a58b7bc1a6418c58337 Mon Sep 17 00:00:00 2001
+From 7fd24347dc76d6de99fbe0000b44ddf3d2753be1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
-Subject: [PATCH 5/7] ethtool: implement GET_DRVINFO message
+Subject: [PATCH 5/8] ethtool: implement GET_DRVINFO message
 
 Request the same information as ETHTOOL_GDRVINFO. This is read-only so that
 corresponding SET_DRVINFO exists but is only used in kernel replies. Rip
@@ -10,23 +10,33 @@ a new file ethtool_common.c so that both interfaces can use it.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 27 +++++++++-
+ Documentation/networking/ethtool-netlink.txt | 30 ++++++++++-
  include/uapi/linux/ethtool_netlink.h         | 21 ++++++++
  net/core/Makefile                            |  2 +-
  net/core/ethtool.c                           | 42 +++-------------
  net/core/ethtool_common.c                    | 46 +++++++++++++++++
  net/core/ethtool_common.h                    | 11 ++++
  net/core/ethtool_netlink.c                   | 75 ++++++++++++++++++++++++++++
- 7 files changed, 186 insertions(+), 38 deletions(-)
+ 7 files changed, 189 insertions(+), 38 deletions(-)
  create mode 100644 net/core/ethtool_common.c
  create mode 100644 net/core/ethtool_common.h
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 1141706b12b7..c4b33afe19d2 100644
+index 893e5156f6a7..cb992180b211 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -85,6 +85,31 @@ processing, info_mask control which parts of the information are returned in
- which the request applies.
+@@ -107,6 +107,9 @@ which the request applies.
+ List of message types
+ ---------------------
+ 
++    ETHTOOL_CMD_GET_DRVINFO
++    ETHTOOL_CMD_SET_DRVINFO		response only
++
+ All constants use ETHTOOL_CMD_ prefix followed by "GET", "SET" or "ACT" to
+ indicate the type.
+ 
+@@ -119,6 +122,31 @@ messages marked as "response only" in the table above.
+ Later sections describe the format and semantics of these request messages.
  
  
 +GET_DRVINFO
@@ -51,13 +61,13 @@ index 1141706b12b7..c4b33afe19d2 100644
 +The meaning of these follows the corresponding fields of ETHTOOL_GDRVINFO
 +response.
 +
-+All information is read only, there is no SET_DRVINFO request.
++All information is read only, SET_DRVINFO request is not implemented.
 +
 +
  Request translation
  -------------------
  
-@@ -96,7 +121,7 @@ ioctl command			netlink command
+@@ -130,7 +158,7 @@ ioctl command			netlink command
  ---------------------------------------------------------------------
  ETHTOOL_GSET			n/a
  ETHTOOL_SSET			n/a

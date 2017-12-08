@@ -1,7 +1,7 @@
-From e38d26da5dbf1c4f3df37fbe15a00f8845cb05b0 Mon Sep 17 00:00:00 2001
+From 75236fbc3e8de4f40335dbbcee5c0360b4904d7b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
-Subject: [PATCH 4/7] ethtool: netlink bitset handling
+Subject: [PATCH 4/8] ethtool: netlink bitset handling
 
 Declare attribute type constants and add helper functions to handle
 arbitrary length bit sets.
@@ -14,11 +14,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 416 insertions(+)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index d4c2e22ecaa1..1141706b12b7 100644
+index c94da66cb5fb..893e5156f6a7 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -29,6 +29,62 @@ reporting, userspace application developers are encouraged to make these
- messages available to user in a suitable way.
+@@ -48,6 +48,62 @@ in "set" requests). For these attributes, the "true" value should be passed as
+ number 1 but any non-zero value should be understood as "true" by recipient.
  
  
 +Bit sets
@@ -77,8 +77,8 @@ index d4c2e22ecaa1..1141706b12b7 100644
 +which the request applies.
 +
 +
- Request translation
- -------------------
+ List of message types
+ ---------------------
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 index 06cff2b52dfe..6db35f00ea32 100644

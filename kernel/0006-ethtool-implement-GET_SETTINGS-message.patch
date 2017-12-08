@@ -1,7 +1,7 @@
-From 670c4e70f55b58baf44d7c444d91ca8c16af07a5 Mon Sep 17 00:00:00 2001
+From 609694d21601f0e3854e9ee12809717559bf53b5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
-Subject: [PATCH 6/7] ethtool: implement GET_SETTINGS message
+Subject: [PATCH 6/8] ethtool: implement GET_SETTINGS message
 
 Requests the information provided by ETHTOOL_GLINKSETTINGS, ETHTOOL_GWOL
 and ETHTOOL_GMSGLVL. The info_mask header field can be used to request only
@@ -10,7 +10,7 @@ between flag-by-flag list and compact bitmaps for link modes in the reply.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  60 ++++-
+ Documentation/networking/ethtool-netlink.txt |  62 +++++-
  include/linux/ethtool_netlink.h              |   3 +
  include/linux/netdevice.h                    |   2 +
  include/uapi/linux/ethtool.h                 |   3 +
@@ -19,14 +19,23 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/core/ethtool_common.c                    | 112 ++++++++++
  net/core/ethtool_common.h                    |   8 +
  net/core/ethtool_netlink.c                   | 319 +++++++++++++++++++++++++++
- 9 files changed, 546 insertions(+), 105 deletions(-)
+ 9 files changed, 548 insertions(+), 105 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index c4b33afe19d2..927d278e4e0a 100644
+index cb992180b211..7aabc87c9f09 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -110,6 +110,56 @@ response.
- All information is read only, there is no SET_DRVINFO request.
+@@ -109,6 +109,8 @@ List of message types
+ 
+     ETHTOOL_CMD_GET_DRVINFO
+     ETHTOOL_CMD_SET_DRVINFO		response only
++    ETHTOOL_CMD_GET_SETTINGS
++    ETHTOOL_CMD_SET_SETTINGS		response only (for now)
+ 
+ All constants use ETHTOOL_CMD_ prefix followed by "GET", "SET" or "ACT" to
+ indicate the type.
+@@ -147,6 +149,56 @@ response.
+ All information is read only, SET_DRVINFO request is not implemented.
  
  
 +GET_SETTINGS
@@ -82,7 +91,7 @@ index c4b33afe19d2..927d278e4e0a 100644
  Request translation
  -------------------
  
-@@ -119,16 +169,16 @@ have their netlink replacement yet.
+@@ -156,16 +208,16 @@ have their netlink replacement yet.
  
  ioctl command			netlink command
  ---------------------------------------------------------------------
@@ -103,7 +112,7 @@ index c4b33afe19d2..927d278e4e0a 100644
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		n/a
-@@ -193,7 +243,7 @@ ETHTOOL_GTUNABLE		n/a
+@@ -230,7 +282,7 @@ ETHTOOL_GTUNABLE		n/a
  ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a

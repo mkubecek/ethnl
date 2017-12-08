@@ -1,7 +1,7 @@
-From b43fc9cb63897e2825f45ed2aab95fa69d2de3d0 Mon Sep 17 00:00:00 2001
+From d308f242634c29914da189d3313a2ce973301810 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
-Subject: [PATCH 2/7] ethtool: introduce ethtool netlink interface
+Subject: [PATCH 2/8] ethtool: introduce ethtool netlink interface
 
 No function implemented yet, only genetlink and module infrastructure.
 Register/unregister genetlink family "ethtool" and allow the module to be
@@ -10,13 +10,13 @@ probably prefer "y").
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 121 +++++++++++++++++++++++++++
+ Documentation/networking/ethtool-netlink.txt | 155 +++++++++++++++++++++++++++
  include/linux/ethtool_netlink.h              |   9 ++
- include/uapi/linux/ethtool_netlink.h         |  33 ++++++++
+ include/uapi/linux/ethtool_netlink.h         |  33 ++++++
  net/Kconfig                                  |   7 ++
  net/core/Makefile                            |   1 +
- net/core/ethtool_netlink.c                   |  46 ++++++++++
- 6 files changed, 217 insertions(+)
+ net/core/ethtool_netlink.c                   |  46 ++++++++
+ 6 files changed, 251 insertions(+)
  create mode 100644 Documentation/networking/ethtool-netlink.txt
  create mode 100644 include/linux/ethtool_netlink.h
  create mode 100644 include/uapi/linux/ethtool_netlink.h
@@ -24,10 +24,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 new file mode 100644
-index 000000000000..d4c2e22ecaa1
+index 000000000000..c94da66cb5fb
 --- /dev/null
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -0,0 +1,121 @@
+@@ -0,0 +1,155 @@
 +                        Netlink interface for ethtool
 +                        =============================
 +
@@ -57,6 +57,40 @@ index 000000000000..d4c2e22ecaa1
 +The ethtool netlink interface uses extended ACK for error and warning
 +reporting, userspace application developers are encouraged to make these
 +messages available to user in a suitable way.
++
++Requests can be divided into three categories: "get" (retrieving information),
++"set" (setting parameters) and "action" (invoking an action).
++
++All "set" and "action" type requests require admin privileges (CAP_NET_ADMIN
++in the namespace). Most "get" type request are allowed for anyone but there
++are exceptions (where the response contains sensitive information). In some
++cases, the request as such is allowed for anyone but unprivileged users have
++attributes with sensitive information (e.g. wake-on-lan password) omitted.
++
++
++Conventions
++-----------
++
++Attributes which represent a boolean value usually use u8 type so that we can
++distinguish three states: "on", "off" and "not present" (meaning the
++information is not available in "get" requests or value is not to be changed
++in "set" requests). For these attributes, the "true" value should be passed as
++number 1 but any non-zero value should be understood as "true" by recipient.
++
++
++List of message types
++---------------------
++
++All constants use ETHTOOL_CMD_ prefix followed by "GET", "SET" or "ACT" to
++indicate the type.
++
++Messages of type "get" are used by userspace to request information and
++usually do not contain any attributes (that may be added later for dump
++filtering). Kernel response is in the form of corresopinding "set" message;
++the same message can be also used to set (some of) the parameters, except for
++messages marked as "response only" in the table above.
++
++Later sections describe the format and semantics of these request messages.
 +
 +
 +Request translation
