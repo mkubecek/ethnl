@@ -1,4 +1,4 @@
-From ef401d779cb2d4b29692eee678219d2bd7b8b82c Mon Sep 17 00:00:00 2001
+From b595376cb5ee304c43328addbceaa44a1ffa1f4a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 3/8] ethtool: helper functions for netlink interface
@@ -7,14 +7,14 @@ Misc helpers used by ethtool netlink code.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/core/ethtool_netlink.c | 157 +++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 157 insertions(+)
+ net/core/ethtool_netlink.c | 162 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 162 insertions(+)
 
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 46a226bb9a2c..73216dd2891e 100644
+index 46a226bb9a2c..644d63e1ec2e 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -8,6 +8,163 @@
+@@ -8,6 +8,168 @@
  
  static struct genl_family ethtool_genl_family;
  
@@ -35,6 +35,11 @@ index 46a226bb9a2c..73216dd2891e 100644
 +	if (!s[0])
 +		return 0;
 +	return nla_put_string(skb, attrtype, s);
++}
++
++static struct nlattr *ethnl_nest_start(struct sk_buff *skb, int attrtype)
++{
++	return nla_nest_start(skb, attrtype | NLA_F_NESTED);
 +}
 +
 +/* ethnl_update_* return true if the value is changed */

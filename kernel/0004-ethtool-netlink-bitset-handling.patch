@@ -1,4 +1,4 @@
-From 75236fbc3e8de4f40335dbbcee5c0360b4904d7b Mon Sep 17 00:00:00 2001
+From 6651bbb1ce7cc9d28d63b011b902be9eea8a81e9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 4/8] ethtool: netlink bitset handling
@@ -123,7 +123,7 @@ index 06cff2b52dfe..6db35f00ea32 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 73216dd2891e..6aa82a6939b6 100644
+index 644d63e1ec2e..b3fcba453c2a 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -3,6 +3,7 @@
@@ -134,7 +134,7 @@ index 73216dd2891e..6aa82a6939b6 100644
  #include <net/genetlink.h>
  #include "ethtool_common.h"
  
-@@ -110,6 +111,334 @@ static struct net_device *ethnl_dev_get(struct genl_info *info)
+@@ -115,6 +116,334 @@ static struct net_device *ethnl_dev_get(struct genl_info *info)
  	return ERR_PTR(-EINVAL);
  }
  
@@ -247,7 +247,7 @@ index 73216dd2891e..6aa82a6939b6 100644
 +
 +	if (WARN_ON(!compact && !names))
 +		return -EINVAL;
-+	nest = nla_nest_start(skb, attrtype);
++	nest = ethnl_nest_start(skb, attrtype);
 +	if (!nest)
 +		return -EMSGSIZE;
 +
@@ -273,13 +273,13 @@ index 73216dd2891e..6aa82a6939b6 100644
 +		struct nlattr *bits;
 +		unsigned int i;
 +
-+		bits = nla_nest_start(skb, ETHA_BITSET_BITS);
++		bits = ethnl_nest_start(skb, ETHA_BITSET_BITS);
 +		if (!bits)
 +			goto err;
 +		for (i = 0; i < size; i++) {
 +			if (!ethnl_test_bit(mask, i))
 +				continue;
-+			attr = nla_nest_start(skb, ETHA_BITS_BIT);
++			attr = ethnl_nest_start(skb, ETHA_BITS_BIT);
 +			if (!attr ||
 +			    nla_put_u32(skb, ETHA_BIT_INDEX, i) ||
 +			    nla_put_string(skb, ETHA_BIT_NAME, names[i]))
@@ -292,8 +292,8 @@ index 73216dd2891e..6aa82a6939b6 100644
 +		nla_nest_end(skb, bits);
 +	}
 +
-+	return nla_nest_end(skb, nest);
-+
++	nla_nest_end(skb, nest);
++	return 0;
 +err:
 +	nla_nest_cancel(skb, nest);
 +	return ret;

@@ -1,4 +1,4 @@
-From 261b15d5dfa97bcc851a426601b5f8d819209f38 Mon Sep 17 00:00:00 2001
+From bef654057334088df425b3077fd78f7c081e0d1a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 7/8] ethtool: implement SET_SETTINGS message
@@ -94,7 +94,7 @@ index 7aabc87c9f09..187fab33f721 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index cd89db981ffd..a615024e649d 100644
+index be479a962c52..5add4094b7d5 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -67,6 +67,222 @@ static const char *const link_mode_names[] = {
@@ -320,7 +320,7 @@ index cd89db981ffd..a615024e649d 100644
  /* misc helper functions */
  
  static int ethnl_str_size(const char *s)
-@@ -625,6 +841,12 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
+@@ -630,6 +846,12 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
  
  /* GET_SETTINGS */
  
@@ -333,7 +333,7 @@ index cd89db981ffd..a615024e649d 100644
  static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
  	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_UNSPEC },
  	[ETHA_SETTINGS_SPEED]		= { .type = NLA_U32 },
-@@ -636,10 +858,12 @@ static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
+@@ -641,10 +863,12 @@ static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
  	[ETHA_SETTINGS_TP_MDIX]		= { .type = NLA_U8 },
  	[ETHA_SETTINGS_TP_MDIX_CTRL]	= { .type = NLA_U8 },
  	[ETHA_SETTINGS_TRANSCEIVER]	= { .type = NLA_U8 },
@@ -348,7 +348,7 @@ index cd89db981ffd..a615024e649d 100644
  	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
  	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_NESTED },
  	[ETHA_SETTINGS_LINK]		= { .type = NLA_FLAG },
-@@ -710,6 +934,24 @@ static int ethnl_get_link_ksettings(struct genl_info *info,
+@@ -715,6 +939,24 @@ static int ethnl_get_link_ksettings(struct genl_info *info,
  	return ret;
  }
  
@@ -373,7 +373,7 @@ index cd89db981ffd..a615024e649d 100644
  static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
  			 struct ethtool_wolinfo *wolinfo)
  {
-@@ -720,6 +962,79 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
+@@ -725,6 +967,79 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
  	return ret;
  }
  
@@ -453,7 +453,7 @@ index cd89db981ffd..a615024e649d 100644
  static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct ethtool_link_ksettings ksettings;
-@@ -880,6 +1195,212 @@ static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -885,6 +1200,212 @@ static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
  	return ret;
  }
  
@@ -666,7 +666,7 @@ index cd89db981ffd..a615024e649d 100644
  /* genetlink paperwork */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -891,6 +1412,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -896,6 +1417,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.cmd	= ETHTOOL_CMD_GET_SETTINGS,
  		.doit	= ethnl_get_settings,
  	},

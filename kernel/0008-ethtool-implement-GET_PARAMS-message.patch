@@ -1,4 +1,4 @@
-From 0f5926a500810a354da15aec9a776ab6407f12fc Mon Sep 17 00:00:00 2001
+From b6e0ca8f86b1f4bb695f9a518e092cf18fa023b2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
 Subject: [PATCH 8/8] ethtool: implement GET_PARAMS message
@@ -10,9 +10,9 @@ Flags in info_mask allow selecting only some (or on) of these categories.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  98 ++++++-
- include/uapi/linux/ethtool_netlink.h         | 111 ++++++++
- net/core/ethtool_netlink.c                   | 398 +++++++++++++++++++++++++++
- 3 files changed, 601 insertions(+), 6 deletions(-)
+ include/uapi/linux/ethtool_netlink.h         | 118 ++++++++
+ net/core/ethtool_netlink.c                   | 399 +++++++++++++++++++++++++++
+ 3 files changed, 609 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 187fab33f721..b27507ce9e40 100644
@@ -160,7 +160,7 @@ index 187fab33f721..b27507ce9e40 100644
  ETHTOOL_SFECPARAM		n/a
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 9520d13fc9ab..a4f48c282eab 100644
+index 9520d13fc9ab..8621e0a9d481 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -25,6 +25,8 @@ enum {
@@ -172,13 +172,14 @@ index 9520d13fc9ab..a4f48c282eab 100644
  
  	__ETHTOOL_CMD_MAX,
  	ETHTOOL_CMD_MAX = (__ETHTOOL_CMD_MAX - 1),
-@@ -114,6 +116,115 @@ enum {
+@@ -114,6 +116,122 @@ enum {
  
  #define ETH_SETTINGS_IM_DEFAULT			0x1f
  
 +/* GET_PARAMS / SET_PARAMS */
 +
 +enum {
++	ETHA_PARAMS_UNSPEC,
 +	ETHA_PARAMS_COALESCE,			/* nest - ETHA_COALESCE_* */
 +	ETHA_PARAMS_RING,			/* nest - ETHA_RING_* */
 +	ETHA_PARAMS_PAUSE,			/* nest - ETHA_PAUSE_* */
@@ -202,6 +203,7 @@ index 9520d13fc9ab..a4f48c282eab 100644
 +#define ETH_PARAMS_IM_DEFAULT			0x3f
 +
 +enum {
++	ETHA_COALESCE_UNSPEC,
 +	ETHA_COALESCE_RX_USECS,			/* u32 */
 +	ETHA_COALESCE_RX_MAXFRM,		/* u32 */
 +	ETHA_COALESCE_RX_USECS_IRQ,		/* u32 */
@@ -230,6 +232,7 @@ index 9520d13fc9ab..a4f48c282eab 100644
 +};
 +
 +enum {
++	ETHA_RING_UNSPEC,
 +	ETHA_RING_RX_MAX_PENDING,		/* u32 */
 +	ETHA_RING_RX_MINI_MAX_PENDING,		/* u32 */
 +	ETHA_RING_RX_JUMBO_MAX_PENDING,		/* u32 */
@@ -244,6 +247,7 @@ index 9520d13fc9ab..a4f48c282eab 100644
 +};
 +
 +enum {
++	ETHA_PAUSE_UNSPEC,
 +	ETHA_PAUSE_AUTONEG,			/* u8 */
 +	ETHA_PAUSE_RX,				/* u8 */
 +	ETHA_PAUSE_TX,				/* u8 */
@@ -253,6 +257,7 @@ index 9520d13fc9ab..a4f48c282eab 100644
 +};
 +
 +enum {
++	ETHA_CHANNELS_UNSPEC,
 +	ETHA_CHANNELS_MAX_RX,			/* u32 */
 +	ETHA_CHANNELS_MAX_TX,			/* u32 */
 +	ETHA_CHANNELS_MAX_OTHER,		/* u32 */
@@ -267,6 +272,7 @@ index 9520d13fc9ab..a4f48c282eab 100644
 +};
 +
 +enum {
++	ETHA_EEE_UNSPEC,
 +	ETHA_EEE_LINK_MODES,			/* bitset */
 +	ETHA_EEE_PEER_MODES,			/* bitset */
 +	ETHA_EEE_ACTIVE,			/* u8 */
@@ -279,6 +285,7 @@ index 9520d13fc9ab..a4f48c282eab 100644
 +};
 +
 +enum {
++	ETHA_FEC_UNSPEC,
 +	ETHA_FEC_MODES,				/* bitfield32 */
 +
 +	__ETHA_FEC_MAX,
@@ -289,10 +296,10 @@ index 9520d13fc9ab..a4f48c282eab 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index a615024e649d..666bd71c7e1a 100644
+index 5add4094b7d5..9ee0267d4c69 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -1401,6 +1401,400 @@ static int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -1406,6 +1406,401 @@ static int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  	return ret;
  }
  
@@ -364,24 +371,24 @@ index a615024e649d..666bd71c7e1a 100644
 +		int nlen = 0;
 +		int ret;
 +
-+		/* active, enabled, tx_lpi_enabled */
-+		nlen += 3 * nla_total_size(sizeof(u8));
-+		/* tx_lpi_timer */
-+		nlen += nla_total_size(sizeof(u32));
 +		/* link_modes */
 +		ret = ethnl_bitset_size(flags & ETH_PARAMS_RF_COMPACT_BITSETS,
-+					sizeof(u32), &eee->advertised,
++					sizeof(u32) * 8, &eee->advertised,
 +					&eee->supported, link_mode_names);
 +		if (ret < 0)
 +			return ret;
 +		nlen += ret;
 +		/* peer_modes */
 +		ret = ethnl_bitset_size(flags & ETH_PARAMS_RF_COMPACT_BITSETS,
-+					sizeof(u32), &eee->lp_advertised,
++					sizeof(u32) * 8, &eee->lp_advertised,
 +					&eee->lp_advertised, link_mode_names);
 +		if (ret < 0)
 +			return ret;
 +		nlen += ret;
++		/* active, enabled, tx_lpi_enabled */
++		nlen += 3 * nla_total_size(sizeof(u8));
++		/* tx_lpi_timer */
++		nlen += nla_total_size(sizeof(u32));
 +		/* nest */
 +		len += nla_total_size(nlen);
 +	}
@@ -396,7 +403,7 @@ index a615024e649d..666bd71c7e1a 100644
 +
 +static int fill_coalesce(struct sk_buff *skb, struct ethtool_coalesce *data)
 +{
-+	struct nlattr *nest = nla_nest_start(skb, ETHA_PARAMS_COALESCE);
++	struct nlattr *nest = ethnl_nest_start(skb, ETHA_PARAMS_COALESCE);
 +
 +	if (!nest)
 +		return -EMSGSIZE;
@@ -454,7 +461,7 @@ index a615024e649d..666bd71c7e1a 100644
 +
 +static int fill_ring(struct sk_buff *skb, struct ethtool_ringparam *data)
 +{
-+	struct nlattr *nest = nla_nest_start(skb, ETHA_PARAMS_RING);
++	struct nlattr *nest = ethnl_nest_start(skb, ETHA_PARAMS_RING);
 +
 +	if (!nest)
 +		return -EMSGSIZE;
@@ -484,7 +491,7 @@ index a615024e649d..666bd71c7e1a 100644
 +
 +static int fill_pause(struct sk_buff *skb, struct ethtool_pauseparam *data)
 +{
-+	struct nlattr *nest = nla_nest_start(skb, ETHA_PARAMS_PAUSE);
++	struct nlattr *nest = ethnl_nest_start(skb, ETHA_PARAMS_PAUSE);
 +
 +	if (!nest)
 +		return -EMSGSIZE;
@@ -501,7 +508,7 @@ index a615024e649d..666bd71c7e1a 100644
 +
 +static int fill_channels(struct sk_buff *skb, struct ethtool_channels *data)
 +{
-+	struct nlattr *nest = nla_nest_start(skb, ETHA_PARAMS_CHANNELS);
++	struct nlattr *nest = ethnl_nest_start(skb, ETHA_PARAMS_CHANNELS);
 +
 +	if (!nest)
 +		return -EMSGSIZE;
@@ -523,7 +530,7 @@ index a615024e649d..666bd71c7e1a 100644
 +
 +static int fill_eee(struct sk_buff *skb, struct ethtool_eee *data, u16 flags)
 +{
-+	struct nlattr *nest = nla_nest_start(skb, ETHA_PARAMS_EEE);
++	struct nlattr *nest = ethnl_nest_start(skb, ETHA_PARAMS_EEE);
 +	int ret;
 +
 +	if (!nest)
@@ -550,7 +557,8 @@ index a615024e649d..666bd71c7e1a 100644
 +		goto err;
 +	}
 +
-+	return nla_nest_end(skb, nest);
++	nla_nest_end(skb, nest);
++	return 0;
 +err:
 +	nla_nest_cancel(skb, nest);
 +	return ret;
@@ -558,7 +566,7 @@ index a615024e649d..666bd71c7e1a 100644
 +
 +static int fill_fec(struct sk_buff *skb, struct ethtool_fecparam *data)
 +{
-+	struct nlattr *nest = nla_nest_start(skb, ETHA_PARAMS_FEC);
++	struct nlattr *nest = ethnl_nest_start(skb, ETHA_PARAMS_FEC);
 +
 +	if (!nest)
 +		return -EMSGSIZE;
@@ -693,7 +701,7 @@ index a615024e649d..666bd71c7e1a 100644
  /* genetlink paperwork */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -1418,6 +1812,10 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -1423,6 +1818,10 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.policy	= settings_policy,
  		.doit	= ethnl_set_settings,
  	},
