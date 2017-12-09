@@ -1,0 +1,116 @@
+From 7ab5574a213232c69a27d919b6448b9f725ff97c Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Sat, 9 Dec 2017 00:05:40 +0100
+Subject: [PATCH 11/13] netlink: add netlink handler for gchannels (-l)
+
+Implement "ethtool -l <dev>" subcommand using netlink interface command
+ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_CHANNELS mask.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ ethtool.c |  3 ++-
+ netlink.c | 44 ++++++++++++++++++++++++++++++++++++++++++++
+ netlink.h |  1 +
+ 3 files changed, 47 insertions(+), 1 deletion(-)
+
+diff --git a/ethtool.c b/ethtool.c
+index b51ff586d22f..cb0266ff5945 100644
+--- a/ethtool.c
++++ b/ethtool.c
+@@ -4610,6 +4610,7 @@ int nl_sset(struct cmd_context *ctx) { return 0; }
+ int nl_gcoalesce(struct cmd_context *ctx) { return 0; }
+ int nl_gring(struct cmd_context *ctx) { return 0; }
+ int nl_gpause(struct cmd_context *ctx) { return 0; }
++int nl_gchannels(struct cmd_context *ctx) { return 0; }
+ #endif
+ 
+ static const struct option {
+@@ -4758,7 +4759,7 @@ static const struct option {
+ 	{ "-W|--set-dump", 1, do_setfwdump, NULL,
+ 	  "Set dump flag of the device",
+ 	  "		N\n"},
+-	{ "-l|--show-channels", 1, do_gchannels, NULL,
++	{ "-l|--show-channels", 1, do_gchannels, nl_gchannels,
+ 	  "Query Channels" },
+ 	{ "-L|--set-channels", 1, do_schannels, NULL,
+ 	  "Set Channels",
+diff --git a/netlink.c b/netlink.c
+index 8f1568d39317..7353b0659ddf 100644
+--- a/netlink.c
++++ b/netlink.c
+@@ -1777,6 +1777,34 @@ static int show_pause(struct nl_context *nlctx, const struct nlattr *nest)
+ 	return 0;
+ }
+ 
++static int show_channels(struct nl_context *nlctx, const struct nlattr *nest)
++{
++	const struct nlattr *tb[ETHA_CHANNELS_MAX + 1] = {};
++	DECLARE_ATTR_TB_INFO(tb);
++	int ret;
++
++	if (!nest)
++		return -EOPNOTSUPP;
++	ret = mnl_attr_parse_nested(nest, attr_cb, &tb_info);
++	if (ret < 0)
++		return ret;
++
++	printf("Channel parameters for %s:\n", nlctx->enlhdr->ifname);
++	printf("Pre-set maximums:\n");
++	show_u32(tb[ETHA_CHANNELS_MAX_RX], "RX:\t\t");
++	show_u32(tb[ETHA_CHANNELS_MAX_TX], "TX:\t\t");
++	show_u32(tb[ETHA_CHANNELS_MAX_OTHER], "Other:\t\t");
++	show_u32(tb[ETHA_CHANNELS_MAX_COMBINED], "Combined:\t");
++	printf("Current hardware settings:\n");
++	show_u32(tb[ETHA_CHANNELS_RX_COUNT], "RX:\t\t");
++	show_u32(tb[ETHA_CHANNELS_TX_COUNT], "TX:\t\t");
++	show_u32(tb[ETHA_CHANNELS_OTHER_COUNT], "Other:\t\t");
++	show_u32(tb[ETHA_CHANNELS_COMBINED_COUNT], "Combined:\t");
++	putchar('\n');
++
++	return 0;
++}
++
+ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ {
+ 	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
+@@ -1817,6 +1845,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ 			return MNL_CB_ERROR;
+ 		}
+ 	}
++	if (!req_mask || req_mask & ETH_PARAMS_IM_CHANNELS) {
++		ret = show_channels(nlctx, tb[ETHA_PARAMS_CHANNELS]);
++		if ((ret < 0) && !(req_mask & ~ETH_PARAMS_IM_CHANNELS)) {
++			nlctx->exit_code = 1;
++			errno = -ret;
++			perror("Cannot get device channel parameters");
++			return MNL_CB_ERROR;
++		}
++	}
+ 
+ 	return MNL_CB_OK;
+ }
+@@ -1841,3 +1878,10 @@ int nl_gpause(struct cmd_context *ctx)
+ 				     get_params_reply_cb,
+ 				     ETH_PARAMS_IM_PAUSE, 0);
+ }
++
++int nl_gchannels(struct cmd_context *ctx)
++{
++	return ethnl_std_get_request(ctx, ETHTOOL_CMD_GET_PARAMS,
++				     get_params_reply_cb,
++				     ETH_PARAMS_IM_CHANNELS, 0);
++}
+diff --git a/netlink.h b/netlink.h
+index 58eba5780179..3e8593621671 100644
+--- a/netlink.h
++++ b/netlink.h
+@@ -13,5 +13,6 @@ int nl_sset(struct cmd_context *ctx);
+ int nl_gcoalesce(struct cmd_context *ctx);
+ int nl_gring(struct cmd_context *ctx);
+ int nl_gpause(struct cmd_context *ctx);
++int nl_gchannels(struct cmd_context *ctx);
+ 
+ #endif /* ETHTOOL_NETLINK_H__ */
+-- 
+2.15.1
+

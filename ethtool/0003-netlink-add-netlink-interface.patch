@@ -1,7 +1,7 @@
-From 3703944442bbe3173bdb7f0177ad5e18c82605bf Mon Sep 17 00:00:00 2001
+From e966e987a269c72ae236d638edffd30ba8fed27b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
-Subject: [PATCH 3/7] netlink: add netlink interface
+Subject: [PATCH 03/13] netlink: add netlink interface
 
 Add basic netlink interface based on genetlink and libmnl. This commit only
 adds the generic infrastructure but does not override any ethtool command
@@ -19,15 +19,15 @@ completely.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am                  |  10 +
- configure.ac                 |  12 ++
- ethtool.c                    | 160 ++++++++++------
+ configure.ac                 |  12 +
+ ethtool.c                    | 160 +++++++++-----
  internal.h                   |   8 +
- netlink.c                    | 434 +++++++++++++++++++++++++++++++++++++++++++
+ netlink.c                    | 510 +++++++++++++++++++++++++++++++++++++++++++
  netlink.h                    |  10 +
- uapi/linux/ethtool_netlink.h | 120 ++++++++++++
- uapi/linux/genetlink.h       |  89 +++++++++
- uapi/linux/netlink.h         | 247 ++++++++++++++++++++++++
- 9 files changed, 1037 insertions(+), 53 deletions(-)
+ uapi/linux/ethtool_netlink.h | 239 ++++++++++++++++++++
+ uapi/linux/genetlink.h       |  89 ++++++++
+ uapi/linux/netlink.h         | 247 +++++++++++++++++++++
+ 9 files changed, 1232 insertions(+), 53 deletions(-)
  create mode 100644 netlink.c
  create mode 100644 netlink.h
  create mode 100644 uapi/linux/ethtool_netlink.h
@@ -412,10 +412,10 @@ index 2907679c30f2..23573a6a4694 100644
  #ifdef TEST_ETHTOOL
 diff --git a/netlink.c b/netlink.c
 new file mode 100644
-index 000000000000..49e22557bff4
+index 000000000000..80afc5c338ef
 --- /dev/null
 +++ b/netlink.c
-@@ -0,0 +1,434 @@
+@@ -0,0 +1,510 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -517,9 +517,46 @@ index 000000000000..49e22557bff4
 +
 +	return false;
 +err:
-+	fprintf(stderr, "malformed netlink message (link_modes)\n");
++	fprintf(stderr, "malformed netlink message (bitset)\n");
 +	*retptr = ret;
 +	return false;
++}
++
++static bool bitset_is_empty(const struct nlattr *bitset, bool mask, int *retptr)
++{
++	const struct nlattr *bitset_tb[ETHA_BIT_MAX + 1] = {};
++	DECLARE_ATTR_TB_INFO(bitset_tb);
++	const struct nlattr *bits;
++	const struct nlattr *bit;
++	int ret;
++
++	*retptr = 0;
++	ret = mnl_attr_parse_nested(bitset, attr_cb, &bitset_tb_info);
++	bits = bitset_tb[ETHA_BITSET_BITS];
++	if (ret < 0 || !bits)
++		goto err;
++
++	mnl_attr_for_each_nested(bit, bits) {
++		const struct nlattr *tb[ETHA_BIT_MAX + 1] = {};
++		DECLARE_ATTR_TB_INFO(tb);
++
++		if (mnl_attr_get_type(bit) != ETHA_BITS_BIT)
++			continue;
++		if (mask)
++			return false;
++
++		ret = mnl_attr_parse_nested(bit, attr_cb, &tb_info);
++		if (ret < 0)
++			goto err;
++		if (tb[ETHA_BIT_VALUE])
++			return false;
++	}
++
++	return true;
++err:
++	fprintf(stderr, "malformed netlink message (bitset)\n");
++	*retptr = ret;
++	return true;
 +}
 +
 +static int __msg_init(struct nl_context *nlctx, int family, int cmd,
@@ -654,6 +691,10 @@ index 000000000000..49e22557bff4
 +		if (nlhdr->nlmsg_type == NLMSG_ERROR)
 +			return ethnl_process_ack(nlctx, len);
 +
++		nlctx->nlhdr = nlhdr;
++		nlctx->gnlhdr = mnl_nlmsg_get_payload(nlhdr);
++		nlctx->enlhdr = mnl_nlmsg_get_payload_offset(nlhdr,
++							     GENL_HDRLEN);
 +		ret = mnl_cb_run(nlctx->buff, len, nlctx->seq, nlctx->port,
 +				 reply_cb, nlctx);
 +	} while (ret > 0);
@@ -662,14 +703,14 @@ index 000000000000..49e22557bff4
 +}
 +
 +static int ethnl_std_get_request(struct cmd_context *ctx, unsigned int nlcmd,
-+				 mnl_cb_t cb)
++				 mnl_cb_t cb, u16 req_mask, u16 req_flags)
 +{
 +	struct nl_context *nlctx = ctx->nlctx;
 +	int ret;
 +
 +	ret = msg_init(nlctx, nlcmd, NLM_F_REQUEST | NLM_F_ACK,
 +		       ctx->devname,
-+		       0, 0);
++		       req_mask, req_flags);
 +	if (ret < 0)
 +		goto err;
 +	ret = ethnl_sendmsg(nlctx);
@@ -746,6 +787,41 @@ index 000000000000..49e22557bff4
 +	return ethnla_put(nlctx, type, strlen(data) + 1, data);
 +}
 +
++/* dump helpers */
++
++static const char *u8_to_bool(const struct nlattr *attr)
++{
++	if (attr)
++		return mnl_attr_get_u8(attr) ? "on" : "off";
++	else
++		return "n/a";
++}
++
++static void show_u32(const struct nlattr *attr, const char *lbl)
++{
++	if (attr)
++		printf("%s%u\n", lbl, mnl_attr_get_u32(attr));
++}
++
++static void show_bool(const struct nlattr *attr, const char *lbl)
++{
++	if (attr)
++		printf("%s%s\n", lbl, mnl_attr_get_u8(attr) ? "on" : "off");
++}
++
++static void show_string(const struct nlattr **tb, unsigned int idx,
++			      const char *label)
++{
++	printf("%s: %s\n", label, tb[idx] ? mnl_attr_get_str(tb[idx]) : "");
++}
++
++static void show_u32_yn(const struct nlattr **tb, unsigned int idx,
++			const char *label)
++{
++	if (tb[idx])
++		printf("%s: %s\n", label,
++		       mnl_attr_get_u32(tb[idx]) ? "yes" : "no");
++}
 +/* get ethtool family id */
 +
 +static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -868,10 +944,10 @@ index 000000000000..b10b168b1f5b
 +#endif /* ETHTOOL_NETLINK_H__ */
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..910c74dc18ac
+index 000000000000..ffcd141dcb28
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,120 @@
+@@ -0,0 +1,239 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#ifndef _LINUX_ETHTOOL_NETLINK_H_
@@ -890,6 +966,7 @@ index 000000000000..910c74dc18ac
 +	__u16	info_mask;		/* request/response info mask */
 +	char	ifname[IFNAMSIZ];	/* device name */
 +};
++
 +#define ETHNL_HDRLEN NLMSG_ALIGN(sizeof(struct ethnlmsghdr))
 +
 +enum {
@@ -898,6 +975,8 @@ index 000000000000..910c74dc18ac
 +	ETHTOOL_CMD_SET_DRVINFO,	/* only for reply */
 +	ETHTOOL_CMD_GET_SETTINGS,
 +	ETHTOOL_CMD_SET_SETTINGS,
++	ETHTOOL_CMD_GET_PARAMS,
++	ETHTOOL_CMD_SET_PARAMS,
 +
 +	__ETHTOOL_CMD_MAX,
 +	ETHTOOL_CMD_MAX = (__ETHTOOL_CMD_MAX - 1),
@@ -986,6 +1065,122 @@ index 000000000000..910c74dc18ac
 +#define ETH_SETTINGS_IM_LINK			0x10
 +
 +#define ETH_SETTINGS_IM_DEFAULT			0x1f
++
++/* GET_PARAMS / SET_PARAMS */
++
++enum {
++	ETHA_PARAMS_UNSPEC,
++	ETHA_PARAMS_COALESCE,			/* nest - ETHA_COALESCE_* */
++	ETHA_PARAMS_RING,			/* nest - ETHA_RING_* */
++	ETHA_PARAMS_PAUSE,			/* nest - ETHA_PAUSE_* */
++	ETHA_PARAMS_CHANNELS,			/* nest - ETHA_CHANNELS_* */
++	ETHA_PARAMS_EEE,			/* nest - ETHA_EEE_* */
++	ETHA_PARAMS_FEC,			/* nest - ETHA_FEC_* */
++
++	__ETHA_PARAMS_MAX,
++	ETHA_PARAMS_MAX = (__ETHA_PARAMS_MAX - 1),
++};
++
++#define ETH_PARAMS_RF_COMPACT_BITSETS		0x1
++
++#define ETH_PARAMS_IM_COALESCE			0x01
++#define ETH_PARAMS_IM_RING			0x02
++#define ETH_PARAMS_IM_PAUSE			0x04
++#define ETH_PARAMS_IM_CHANNELS			0x08
++#define ETH_PARAMS_IM_EEE			0x10
++#define ETH_PARAMS_IM_FEC			0x20
++
++#define ETH_PARAMS_IM_DEFAULT			0x3f
++
++enum {
++	ETHA_COALESCE_UNSPEC,
++	ETHA_COALESCE_RX_USECS,			/* u32 */
++	ETHA_COALESCE_RX_MAXFRM,		/* u32 */
++	ETHA_COALESCE_RX_USECS_IRQ,		/* u32 */
++	ETHA_COALESCE_RX_MAXFRM_IRQ,		/* u32 */
++	ETHA_COALESCE_RX_USECS_LOW,		/* u32 */
++	ETHA_COALESCE_RX_MAXFRM_LOW,		/* u32 */
++	ETHA_COALESCE_RX_USECS_HIGH,		/* u32 */
++	ETHA_COALESCE_RX_MAXFRM_HIGH,		/* u32 */
++	ETHA_COALESCE_TX_USECS,			/* u32 */
++	ETHA_COALESCE_TX_MAXFRM,		/* u32 */
++	ETHA_COALESCE_TX_USECS_IRQ,		/* u32 */
++	ETHA_COALESCE_TX_MAXFRM_IRQ,		/* u32 */
++	ETHA_COALESCE_TX_USECS_LOW,		/* u32 */
++	ETHA_COALESCE_TX_MAXFRM_LOW,		/* u32 */
++	ETHA_COALESCE_TX_USECS_HIGH,		/* u32 */
++	ETHA_COALESCE_TX_MAXFRM_HIGH,		/* u32 */
++	ETHA_COALESCE_PKT_RATE_LOW,		/* u32 */
++	ETHA_COALESCE_PKT_RATE_HIGH,		/* u32 */
++	ETHA_COALESCE_RX_USE_ADAPTIVE,		/* u8 */
++	ETHA_COALESCE_TX_USE_ADAPTIVE,		/* u8 */
++	ETHA_COALESCE_RATE_SAMPLE_INTERVAL,	/* u32 */
++	ETHA_COALESCE_STATS_BLOCK_USECS,	/* u32 */
++
++	__ETHA_COALESCE_MAX,
++	ETHA_COALESCE_MAX = (__ETHA_COALESCE_MAX - 1),
++};
++
++enum {
++	ETHA_RING_UNSPEC,
++	ETHA_RING_RX_MAX_PENDING,		/* u32 */
++	ETHA_RING_RX_MINI_MAX_PENDING,		/* u32 */
++	ETHA_RING_RX_JUMBO_MAX_PENDING,		/* u32 */
++	ETHA_RING_TX_MAX_PENDING,		/* u32 */
++	ETHA_RING_RX_PENDING,			/* u32 */
++	ETHA_RING_RX_MINI_PENDING,		/* u32 */
++	ETHA_RING_RX_JUMBO_PENDING,		/* u32 */
++	ETHA_RING_TX_PENDING,			/* u32 */
++
++	__ETHA_RING_MAX,
++	ETHA_RING_MAX = (__ETHA_RING_MAX - 1),
++};
++
++enum {
++	ETHA_PAUSE_UNSPEC,
++	ETHA_PAUSE_AUTONEG,			/* u8 */
++	ETHA_PAUSE_RX,				/* u8 */
++	ETHA_PAUSE_TX,				/* u8 */
++
++	__ETHA_PAUSE_MAX,
++	ETHA_PAUSE_MAX = (__ETHA_PAUSE_MAX - 1),
++};
++
++enum {
++	ETHA_CHANNELS_UNSPEC,
++	ETHA_CHANNELS_MAX_RX,			/* u32 */
++	ETHA_CHANNELS_MAX_TX,			/* u32 */
++	ETHA_CHANNELS_MAX_OTHER,		/* u32 */
++	ETHA_CHANNELS_MAX_COMBINED,		/* u32 */
++	ETHA_CHANNELS_RX_COUNT,			/* u32 */
++	ETHA_CHANNELS_TX_COUNT,			/* u32 */
++	ETHA_CHANNELS_OTHER_COUNT,		/* u32 */
++	ETHA_CHANNELS_COMBINED_COUNT,		/* u32 */
++
++	__ETHA_CHANNELS_MAX,
++	ETHA_CHANNELS_MAX = (__ETHA_CHANNELS_MAX - 1),
++};
++
++enum {
++	ETHA_EEE_UNSPEC,
++	ETHA_EEE_LINK_MODES,			/* bitset */
++	ETHA_EEE_PEER_MODES,			/* bitset */
++	ETHA_EEE_ACTIVE,			/* u8 */
++	ETHA_EEE_ENABLED,			/* u8 */
++	ETHA_EEE_TX_LPI_ENABLED,		/* u8 */
++	ETHA_EEE_TX_LPI_TIMER,			/* u32 */
++
++	__ETHA_EEE_MAX,
++	ETHA_EEE_MAX = (__ETHA_EEE_MAX - 1),
++};
++
++enum {
++	ETHA_FEC_UNSPEC,
++	ETHA_FEC_MODES,				/* bitfield32 */
++
++	__ETHA_FEC_MAX,
++	ETHA_FEC_MAX = (__ETHA_FEC_MAX - 1),
++};
 +
 +/* generic netlink info */
 +#define ETHTOOL_GENL_NAME "ethtool"

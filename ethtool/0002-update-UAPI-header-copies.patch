@@ -1,7 +1,7 @@
 From 5e3e8c602dbe23b297de4fd28f0d050fcfda0815 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 24 Nov 2017 01:02:29 +0100
-Subject: [PATCH 2/7] update UAPI header copies
+Subject: [PATCH 02/13] update UAPI header copies
 
 Update to current net-next (commit 0c86a6bd85ff). The only exception is
 dmac member of struct ethtool_coalesce added by ethtool commit 5dd7bfbc5079

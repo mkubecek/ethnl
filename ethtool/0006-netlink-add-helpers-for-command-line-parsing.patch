@@ -1,7 +1,7 @@
-From 580a4ba8bb7d836208521668832ad47fbb007532 Mon Sep 17 00:00:00 2001
+From 98c504ff157a926bdb546b1791b7d518d46e174b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:42:26 +0100
-Subject: [PATCH 6/7] netlink: add helpers for command line parsing
+Subject: [PATCH 06/13] netlink: add helpers for command line parsing
 
 Support for easier parsing of subcommand parameters and their values from
 command line. Existing parser helpers in ethtool.c are closely tied to
@@ -9,11 +9,11 @@ ioctl() interface and using them would be often inconvenient.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- netlink.c | 602 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 602 insertions(+)
+ netlink.c | 603 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 603 insertions(+)
 
 diff --git a/netlink.c b/netlink.c
-index 93eb40ef6565..8744ae950e73 100644
+index 84e09d25e01b..4ec2b1868fe8 100644
 --- a/netlink.c
 +++ b/netlink.c
 @@ -2,6 +2,7 @@
@@ -35,10 +35,11 @@ index 93eb40ef6565..8744ae950e73 100644
  	int exit_code;
  };
  
-@@ -329,6 +334,603 @@ static bool ethnla_put_strz(struct nl_context *nlctx, uint16_t type,
- 	return ethnla_put(nlctx, type, strlen(data) + 1, data);
+@@ -405,6 +410,604 @@ static void show_u32_yn(const struct nlattr **tb, unsigned int idx,
+ 		printf("%s: %s\n", label,
+ 		       mnl_attr_get_u32(tb[idx]) ? "yes" : "no");
  }
- 
++
 +/* command line parsing */
 +
 +struct lookup_entry_u32 {
