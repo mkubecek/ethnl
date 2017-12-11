@@ -1,7 +1,7 @@
-From 58120a3892e0e1860421eca1b7d3a9c542149b3f Mon Sep 17 00:00:00 2001
+From b0f18e4de86fb2f6d900f8960ab4a0b43c7b8e14 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
-Subject: [PATCH 6/8] ethtool: implement GET_SETTINGS message
+Subject: [PATCH 6/9] ethtool: implement GET_SETTINGS message
 
 Requests the information provided by ETHTOOL_GLINKSETTINGS, ETHTOOL_GWOL
 and ETHTOOL_GMSGLVL. The info_mask header field can be used to request only
@@ -14,12 +14,12 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/linux/ethtool_netlink.h              |   3 +
  include/linux/netdevice.h                    |   2 +
  include/uapi/linux/ethtool.h                 |   3 +
- include/uapi/linux/ethtool_netlink.h         |  36 +++
- net/core/ethtool.c                           | 108 +--------
+ include/uapi/linux/ethtool_netlink.h         |  36 ++++
+ net/core/ethtool.c                           | 108 +---------
  net/core/ethtool_common.c                    | 112 ++++++++++
  net/core/ethtool_common.h                    |   8 +
- net/core/ethtool_netlink.c                   | 319 +++++++++++++++++++++++++++
- 9 files changed, 548 insertions(+), 105 deletions(-)
+ net/core/ethtool_netlink.c                   | 299 +++++++++++++++++++++++++++
+ 9 files changed, 528 insertions(+), 105 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index cb992180b211..7aabc87c9f09 100644
@@ -496,7 +496,7 @@ index 1f031c1d943a..92e236952f18 100644
  
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 20d1a234fb60..be479a962c52 100644
+index 077814fd36bd..0c2bed7850bc 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -4,11 +4,69 @@
@@ -569,31 +569,11 @@ index 20d1a234fb60..be479a962c52 100644
  /* misc helper functions */
  
  static int ethnl_str_size(const char *s)
-@@ -570,6 +628,263 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
+@@ -602,6 +660,243 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
  	return -EMSGSIZE;
  }
  
 +/* GET_SETTINGS */
-+
-+static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
-+	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_UNSPEC },
-+	[ETHA_SETTINGS_SPEED]		= { .type = NLA_U32 },
-+	[ETHA_SETTINGS_DUPLEX]		= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_PORT]		= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_PHYADDR]		= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_AUTONEG]		= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_MDIO_SUPPORT]	= { .type = NLA_BITFIELD32 },
-+	[ETHA_SETTINGS_TP_MDIX]		= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_TP_MDIX_CTRL]	= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_TRANSCEIVER]	= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_WOL_MODES]	= { .type = NLA_BITFIELD32 },
-+	[ETHA_SETTINGS_SOPASS]		= { .type = NLA_BINARY,
-+					    .len = SOPASS_MAX },
-+	[ETHA_SETTINGS_MSGLVL]		= { .type = NLA_BITFIELD32 },
-+	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
-+	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_NESTED },
-+	[ETHA_SETTINGS_LINK]		= { .type = NLA_FLAG },
-+};
 +
 +/* To keep things simple, reserve space for some attributes which may not
 + * be added to the message (e.g. ETHA_SETTINGS_SOPASS); therefore the length
@@ -672,7 +652,7 @@ index 20d1a234fb60..be479a962c52 100644
 +
 +static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
 +{
-+	struct ethtool_link_ksettings ksettings;
++	struct ethtool_link_ksettings ksettings = {};
 +	struct ethtool_link_settings *lsettings;
 +	struct ethnlmsghdr *ehdr;
 +	struct ethtool_wolinfo wolinfo = {};
@@ -833,7 +813,7 @@ index 20d1a234fb60..be479a962c52 100644
  /* genetlink paperwork */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -577,6 +892,10 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -609,6 +904,10 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.cmd	= ETHTOOL_CMD_GET_DRVINFO,
  		.doit	= ethnl_get_drvinfo,
  	},

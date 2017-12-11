@@ -1,7 +1,7 @@
-From 6651bbb1ce7cc9d28d63b011b902be9eea8a81e9 Mon Sep 17 00:00:00 2001
+From cca3985b9b67eeee009617460c7acb7f29108a8c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
-Subject: [PATCH 4/8] ethtool: netlink bitset handling
+Subject: [PATCH 4/9] ethtool: netlink bitset handling
 
 Declare attribute type constants and add helper functions to handle
 arbitrary length bit sets.
@@ -10,8 +10,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  56 +++++
  include/uapi/linux/ethtool_netlink.h         |  31 +++
- net/core/ethtool_netlink.c                   | 329 +++++++++++++++++++++++++++
- 3 files changed, 416 insertions(+)
+ net/core/ethtool_netlink.c                   | 346 +++++++++++++++++++++++++++
+ 3 files changed, 433 insertions(+)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index c94da66cb5fb..893e5156f6a7 100644
@@ -123,7 +123,7 @@ index 06cff2b52dfe..6db35f00ea32 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 644d63e1ec2e..b3fcba453c2a 100644
+index 22d23d057623..9f287e67f30b 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -3,6 +3,7 @@
@@ -134,7 +134,7 @@ index 644d63e1ec2e..b3fcba453c2a 100644
  #include <net/genetlink.h>
  #include "ethtool_common.h"
  
-@@ -115,6 +116,334 @@ static struct net_device *ethnl_dev_get(struct genl_info *info)
+@@ -130,6 +131,351 @@ static struct net_device *ethnl_dev_get(struct genl_info *info)
  	return ERR_PTR(-EINVAL);
  }
  
@@ -452,18 +452,35 @@ index 644d63e1ec2e..b3fcba453c2a 100644
 +			*err = -EINVAL;
 +			if (idx >= nbits)
 +				return mod;
-+			bitmap_and(val, val, mask, nbits);
-+			bitmap_complement(mask, mask, nbits);
-+			bitmap_and(mask, mask, bitmap, nbits);
-+			bitmap_or(val, val, mask, nbits);
-+			mod = !bitmap_equal(val, bitmap, nbits);
-+			if (mod)
-+				bitmap_copy(bitmap, val, nbits);
 +		}
++
++		bitmap_and(val, val, mask, nbits);
++		bitmap_complement(mask, mask, nbits);
++		bitmap_and(mask, mask, bitmap, nbits);
++		bitmap_or(val, val, mask, nbits);
++		mod = !bitmap_equal(val, bitmap, nbits);
++		if (mod)
++			bitmap_copy(bitmap, val, nbits);
 +	}
 +
 +	*err = 0;
 +	return mod;
++}
++
++static bool ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
++				  struct nlattr *attr, int *err,
++				  const char *const *names,
++				  struct genl_info *info)
++{
++	unsigned int nwords = (nbits + 31) / 32;
++	DECLARE_BITMAP(tmp, nbits);
++	bool mod;
++
++	bitmap_from_u32array(tmp, nbits, bitmap, nwords);
++	mod = ethnl_update_bitset(tmp, nbits, attr, err, names, info);
++	if (!*err && mod)
++		bitmap_to_u32array(bitmap, nwords, tmp, nbits);
++	return (!*err && mod);
 +}
 +
  static void warn_partial_info(struct genl_info *info)

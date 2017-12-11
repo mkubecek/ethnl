@@ -1,7 +1,7 @@
-From bef654057334088df425b3077fd78f7c081e0d1a Mon Sep 17 00:00:00 2001
+From 12192c66beef43b40f50714b99251bb405bd0cbe Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
-Subject: [PATCH 7/8] ethtool: implement SET_SETTINGS message
+Subject: [PATCH 7/9] ethtool: implement SET_SETTINGS message
 
 Sets the information provided by ETHTOOL_SLINKSETTINGS, ETHTOOL_SWOL and
 ETHTOOL_SMSGLVL. Unlike with ioctl(), userspace can send only some
@@ -11,9 +11,9 @@ some setting).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  42 ++-
- net/core/ethtool_netlink.c                   | 531 ++++++++++++++++++++++++++-
- 2 files changed, 566 insertions(+), 7 deletions(-)
+ Documentation/networking/ethtool-netlink.txt |  42 +-
+ net/core/ethtool_netlink.c                   | 547 +++++++++++++++++++++++++++
+ 2 files changed, 584 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 7aabc87c9f09..187fab33f721 100644
@@ -94,7 +94,7 @@ index 7aabc87c9f09..187fab33f721 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index be479a962c52..5add4094b7d5 100644
+index 0c2bed7850bc..4b14a02be12a 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -67,6 +67,222 @@ static const char *const link_mode_names[] = {
@@ -320,7 +320,7 @@ index be479a962c52..5add4094b7d5 100644
  /* misc helper functions */
  
  static int ethnl_str_size(const char *s)
-@@ -630,6 +846,12 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
+@@ -662,6 +878,34 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
  
  /* GET_SETTINGS */
  
@@ -330,25 +330,32 @@ index be479a962c52..5add4094b7d5 100644
 + */
 +static u32 all_bits = ~(u32)0;
 +
- static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
- 	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_UNSPEC },
- 	[ETHA_SETTINGS_SPEED]		= { .type = NLA_U32 },
-@@ -641,10 +863,12 @@ static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
- 	[ETHA_SETTINGS_TP_MDIX]		= { .type = NLA_U8 },
- 	[ETHA_SETTINGS_TP_MDIX_CTRL]	= { .type = NLA_U8 },
- 	[ETHA_SETTINGS_TRANSCEIVER]	= { .type = NLA_U8 },
--	[ETHA_SETTINGS_WOL_MODES]	= { .type = NLA_BITFIELD32 },
++static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
++	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_UNSPEC },
++	[ETHA_SETTINGS_SPEED]		= { .type = NLA_U32 },
++	[ETHA_SETTINGS_DUPLEX]		= { .type = NLA_U8 },
++	[ETHA_SETTINGS_PORT]		= { .type = NLA_U8 },
++	[ETHA_SETTINGS_PHYADDR]		= { .type = NLA_U8 },
++	[ETHA_SETTINGS_AUTONEG]		= { .type = NLA_U8 },
++	[ETHA_SETTINGS_MDIO_SUPPORT]	= { .type = NLA_BITFIELD32 },
++	[ETHA_SETTINGS_TP_MDIX]		= { .type = NLA_U8 },
++	[ETHA_SETTINGS_TP_MDIX_CTRL]	= { .type = NLA_U8 },
++	[ETHA_SETTINGS_TRANSCEIVER]	= { .type = NLA_U8 },
 +	[ETHA_SETTINGS_WOL_MODES]	= { .type = NLA_BITFIELD32,
 +					    .validation_data = &all_bits },
- 	[ETHA_SETTINGS_SOPASS]		= { .type = NLA_BINARY,
- 					    .len = SOPASS_MAX },
--	[ETHA_SETTINGS_MSGLVL]		= { .type = NLA_BITFIELD32 },
++	[ETHA_SETTINGS_SOPASS]		= { .type = NLA_BINARY,
++					    .len = SOPASS_MAX },
 +	[ETHA_SETTINGS_MSGLVL]		= { .type = NLA_BITFIELD32,
 +					    .validation_data = &all_bits },
- 	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
- 	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_NESTED },
- 	[ETHA_SETTINGS_LINK]		= { .type = NLA_FLAG },
-@@ -715,6 +939,24 @@ static int ethnl_get_link_ksettings(struct genl_info *info,
++	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
++	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_NESTED },
++	[ETHA_SETTINGS_LINK]		= { .type = NLA_FLAG },
++};
++
+ /* To keep things simple, reserve space for some attributes which may not
+  * be added to the message (e.g. ETHA_SETTINGS_SOPASS); therefore the length
+  * returned may be bigger than the actual length of the message sent
+@@ -727,6 +971,24 @@ static int ethnl_get_link_ksettings(struct genl_info *info,
  	return ret;
  }
  
@@ -373,7 +380,7 @@ index be479a962c52..5add4094b7d5 100644
  static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
  			 struct ethtool_wolinfo *wolinfo)
  {
-@@ -725,6 +967,79 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
+@@ -737,6 +999,79 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
  	return ret;
  }
  
@@ -452,8 +459,8 @@ index be479a962c52..5add4094b7d5 100644
 +
  static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
  {
- 	struct ethtool_link_ksettings ksettings;
-@@ -885,6 +1200,212 @@ static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
+ 	struct ethtool_link_ksettings ksettings = {};
+@@ -897,6 +1232,212 @@ static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
  	return ret;
  }
  
@@ -461,7 +468,7 @@ index be479a962c52..5add4094b7d5 100644
 +static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
 +				  struct net_device *dev)
 +{
-+	struct ethtool_link_ksettings ksettings;
++	struct ethtool_link_ksettings ksettings = {};
 +	struct ethtool_link_settings *lsettings;
 +	bool mod = false;
 +	int ret;
@@ -520,7 +527,7 @@ index be479a962c52..5add4094b7d5 100644
 +static int ethnl_update_lsettings(struct genl_info *info, struct nlattr **tb,
 +				  struct net_device *dev)
 +{
-+	struct ethtool_cmd cmd;
++	struct ethtool_cmd cmd = {};
 +	DECLARE_BITMAP(advertising, sizeof(u32));
 +	DECLARE_BITMAP(supported, sizeof(u32));
 +	bool mod = false;
@@ -589,7 +596,7 @@ index be479a962c52..5add4094b7d5 100644
 +{
 +	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
 +	struct ethnlmsghdr *ehdr;
-+	struct ethtool_wolinfo wolinfo;
++	struct ethtool_wolinfo wolinfo = {};
 +	struct net_device *dev;
 +	bool mod;
 +	int ret;
@@ -666,7 +673,7 @@ index be479a962c52..5add4094b7d5 100644
  /* genetlink paperwork */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -896,6 +1417,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -908,6 +1449,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.cmd	= ETHTOOL_CMD_GET_SETTINGS,
  		.doit	= ethnl_get_settings,
  	},

@@ -1,7 +1,7 @@
-From b6e0ca8f86b1f4bb695f9a518e092cf18fa023b2 Mon Sep 17 00:00:00 2001
+From 2b9543671158e63659570b019f4450de5189cbdd Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
-Subject: [PATCH 8/8] ethtool: implement GET_PARAMS message
+Subject: [PATCH 8/9] ethtool: implement GET_PARAMS message
 
 Requests the information provide by ETHTOOL_GCOALESCE, ETHTOOL_GRINGPARAM,
 ETHTOOL_GPAUSEPARAM, ETHTOOL_GCHANNELS, ETHTOOL_GEEE and ETHTOOL_GFECPARAM.
@@ -11,11 +11,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  98 ++++++-
  include/uapi/linux/ethtool_netlink.h         | 118 ++++++++
- net/core/ethtool_netlink.c                   | 399 +++++++++++++++++++++++++++
- 3 files changed, 609 insertions(+), 6 deletions(-)
+ net/core/ethtool_netlink.c                   | 411 +++++++++++++++++++++++++++
+ 3 files changed, 621 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 187fab33f721..b27507ce9e40 100644
+index 187fab33f721..45ed1801ab50 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -111,6 +111,8 @@ List of message types
@@ -102,7 +102,7 @@ index 187fab33f721..b27507ce9e40 100644
 +        ETHA_CHANNELS_COMBINED_COUNT		(u32)
 +    ETHA_PARAMS_EEE		(nest)		EEE settings
 +        ETHA_EEE_LINK_MODES			(bitset)
-+		- modes for which EEE is advertised (value) and supported
++		- modes for which EEE is advertised (value) or supported (mask)
 +        ETHA_EEE_PEER_MODES			(bitset)
 +		- modes for which link partner advertises EEE
 +        ETHA_EEE_ACTIVE				(bool)
@@ -296,10 +296,10 @@ index 9520d13fc9ab..8621e0a9d481 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 5add4094b7d5..9ee0267d4c69 100644
+index 4b14a02be12a..3fb49427f211 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -1406,6 +1406,401 @@ static int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -1438,6 +1438,413 @@ static int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  	return ret;
  }
  
@@ -662,24 +662,36 @@ index 5add4094b7d5..9ee0267d4c69 100644
 +	if (req_mask != ETH_SETTINGS_IM_DEFAULT)
 +		ehdr->info_mask = req_mask;
 +
-+	if ((req_mask & ETH_PARAMS_IM_COALESCE) &&
-+	    (ret = fill_coalesce(rskb, &coalesce)) < 0)
-+		goto err;
-+	if ((req_mask & ETH_PARAMS_IM_RING) &&
-+	    (ret = fill_ring(rskb, &ring)) < 0)
-+		goto err;
-+	if ((req_mask & ETH_PARAMS_IM_PAUSE) &&
-+	    (ret = fill_pause(rskb, &pause)) < 0)
-+		goto err;
-+	if ((req_mask & ETH_PARAMS_IM_CHANNELS) &&
-+	    (ret = fill_channels(rskb, &channels)) < 0)
-+		goto err;
-+	if ((req_mask & ETH_PARAMS_IM_EEE) &&
-+	    (ret = fill_eee(rskb, &eee, req_flags)) < 0)
-+		goto err;
-+	if ((req_mask & ETH_PARAMS_IM_FEC) &&
-+	    (ret = fill_fec(rskb, &fec)) < 0)
-+		goto err;
++	if (req_mask & ETH_PARAMS_IM_COALESCE) {
++		ret = fill_coalesce(rskb, &coalesce);
++		if (ret < 0)
++			goto err;
++	}
++	if (req_mask & ETH_PARAMS_IM_RING) {
++		ret = fill_ring(rskb, &ring);
++		if (ret < 0)
++			goto err;
++	}
++	if (req_mask & ETH_PARAMS_IM_PAUSE) {
++		ret = fill_pause(rskb, &pause);
++		if (ret < 0)
++			goto err;
++	}
++	if (req_mask & ETH_PARAMS_IM_CHANNELS) {
++		ret = fill_channels(rskb, &channels);
++		if (ret < 0)
++			goto err;
++	}
++	if (req_mask & ETH_PARAMS_IM_EEE) {
++		ret = fill_eee(rskb, &eee, req_flags);
++		if (ret < 0)
++			goto err;
++	}
++	if (req_mask & ETH_PARAMS_IM_FEC) {
++		ret = fill_fec(rskb, &fec);
++		if (ret < 0)
++			goto err;
++	}
 +
 +	dev_put(dev);
 +	genlmsg_end(rskb, ehdr);
@@ -701,7 +713,7 @@ index 5add4094b7d5..9ee0267d4c69 100644
  /* genetlink paperwork */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -1423,6 +1818,10 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -1455,6 +1862,10 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.policy	= settings_policy,
  		.doit	= ethnl_set_settings,
  	},

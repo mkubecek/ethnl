@@ -1,7 +1,7 @@
-From dfe787f50b62243824df25e92f6f83a49262225e Mon Sep 17 00:00:00 2001
+From 219f457821c4cbca64ead6a8f8a92246ed7f32a3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
-Subject: [PATCH 5/8] ethtool: implement GET_DRVINFO message
+Subject: [PATCH 5/9] ethtool: implement GET_DRVINFO message
 
 Request the same information as ETHTOOL_GDRVINFO. This is read-only so that
 corresponding SET_DRVINFO exists but is only used in kernel replies. Rip
@@ -261,10 +261,10 @@ index 000000000000..1f031c1d943a
 +
 +#endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index b3fcba453c2a..20d1a234fb60 100644
+index 9f287e67f30b..077814fd36bd 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -499,9 +499,84 @@ static struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev,
+@@ -531,9 +531,84 @@ static struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev,
  	return rskb;
  }
  
@@ -288,7 +288,7 @@ index b3fcba453c2a..20d1a234fb60 100644
 +static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
 +{
 +	struct ethnlmsghdr *ehdr;
-+	struct ethtool_drvinfo drvinfo;
++	struct ethtool_drvinfo drvinfo = {};
 +	struct net_device *dev;
 +	struct sk_buff *rskb;
 +	int reply_len;

@@ -1,20 +1,20 @@
-From b595376cb5ee304c43328addbceaa44a1ffa1f4a Mon Sep 17 00:00:00 2001
+From 0fc799575dd3893a386cfa9be35b17bf9ced4094 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
-Subject: [PATCH 3/8] ethtool: helper functions for netlink interface
+Subject: [PATCH 3/9] ethtool: helper functions for netlink interface
 
 Misc helpers used by ethtool netlink code.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/core/ethtool_netlink.c | 162 +++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 162 insertions(+)
+ net/core/ethtool_netlink.c | 177 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 177 insertions(+)
 
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 46a226bb9a2c..644d63e1ec2e 100644
+index 46a226bb9a2c..22d23d057623 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -8,6 +8,168 @@
+@@ -8,6 +8,183 @@
  
  static struct genl_family ethtool_genl_family;
  
@@ -65,6 +65,21 @@ index 46a226bb9a2c..644d63e1ec2e 100644
 +		return false;
 +	val = nla_get_u8(attr);
 +	if (*dst == val)
++		return false;
++
++	*dst = val;
++	return true;
++}
++
++/* update u32 value used as bool from NLA_U8 */
++static bool ethnl_update_bool32(u32 *dst, struct nlattr *attr)
++{
++	u8 val;
++
++	if (!attr)
++		return false;
++	val = !!nla_get_u8(attr);
++	if (!!*dst == val)
 +		return false;
 +
 +	*dst = val;
