@@ -1,7 +1,7 @@
-From 152e34653137b3c3df99092baf3b86cbf28cbead Mon Sep 17 00:00:00 2001
+From 71237884d6a6e31f286206075a5988ed9025fc76 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
-Subject: [PATCH 13/13] netlink: add netlink handler for gfec (--show-fec)
+Subject: [PATCH 13/19] netlink: add netlink handler for gfec (--show-fec)
 
 Implement "ethtool --show-fec <dev>" subcommand showing Forward Error
 Correction (FEC) settings using netlink interface command
@@ -57,7 +57,7 @@ index a980b844a0ed..aafd98530fe8 100644
  
  enum link_mode_class {
 diff --git a/ethtool.c b/ethtool.c
-index 7312ab43e7cc..ffdf48317439 100644
+index ef31c621d12d..d39b0d9b6854 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4612,6 +4612,7 @@ int nl_gring(struct cmd_context *ctx) { return 0; }
@@ -78,10 +78,10 @@ index 7312ab43e7cc..ffdf48317439 100644
  	 "Show this help" },
  	{ "--version", 0, do_version, NULL,
 diff --git a/netlink.c b/netlink.c
-index 9a1c3dd83448..bbdad7794da9 100644
+index 03ec6223c0d3..093a19cf0a20 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -1857,6 +1857,35 @@ static int show_eee(struct nl_context *nlctx, const struct nlattr *nest)
+@@ -1808,6 +1808,35 @@ static int show_eee(struct nl_context *nlctx, const struct nlattr *nest)
  	return 0;
  }
  
@@ -117,7 +117,7 @@ index 9a1c3dd83448..bbdad7794da9 100644
  static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
-@@ -1915,6 +1944,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -1866,6 +1895,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_ERROR;
  		}
  	}
@@ -133,7 +133,7 @@ index 9a1c3dd83448..bbdad7794da9 100644
  
  	return MNL_CB_OK;
  }
-@@ -1953,3 +1991,10 @@ int nl_geee(struct cmd_context *ctx)
+@@ -1904,3 +1942,10 @@ int nl_geee(struct cmd_context *ctx)
  				     get_params_reply_cb,
  				     ETH_PARAMS_IM_EEE, 0);
  }

@@ -1,7 +1,7 @@
-From 4da2779073544289bf67e7a371560bf8442ed40d Mon Sep 17 00:00:00 2001
+From f34d777f06bfd7a3cee9324cdc6e167e9c97cb5d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
-Subject: [PATCH 08/13] netlink: add netlink handler for gcoalesce (-c)
+Subject: [PATCH 08/19] netlink: add netlink handler for gcoalesce (-c)
 
 Implement "ethtool -c <dev>" subcommand using netlink interface command
 ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_COALESCE mask.
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 83 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 2baf99aa60d0..c32fcaa71396 100644
+index 174fa92966d2..48c1f46d64ef 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4607,6 +4607,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -35,10 +35,10 @@ index 2baf99aa60d0..c32fcaa71396 100644
  	{ "-C|--coalesce", 1, do_scoalesce, NULL,
  	  "Set coalesce options",
 diff --git a/netlink.c b/netlink.c
-index 7e733f6d6952..130c35b44345 100644
+index 2ccecf35db9a..a562b0372c1c 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -1679,3 +1679,83 @@ int nl_sset(struct cmd_context *ctx)
+@@ -1630,3 +1630,83 @@ int nl_sset(struct cmd_context *ctx)
  	perror("netlink error");
  	return nlctx->exit_code ?: 75;
  }

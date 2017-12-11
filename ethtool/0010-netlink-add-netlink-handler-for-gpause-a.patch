@@ -1,7 +1,7 @@
-From d9683392aa3bd26b389c0f2b47eba036791cfea2 Mon Sep 17 00:00:00 2001
+From 0395759a8c05ffec7ee4f9b2c2519c6fce2a9c30 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:04:09 +0100
-Subject: [PATCH 10/13] netlink: add netlink handler for gpause (-a)
+Subject: [PATCH 10/19] netlink: add netlink handler for gpause (-a)
 
 Implement "ethtool -a <dev>" subcommand using netlink interface command
 ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_PAUSE mask.
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 41 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index dd9fe252ea9f..b51ff586d22f 100644
+index 23f910868ef0..30b2b5671c96 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4609,6 +4609,7 @@ int nl_gset(struct cmd_context *ctx) { return 0; }
@@ -28,17 +28,17 @@ index dd9fe252ea9f..b51ff586d22f 100644
 @@ -4632,7 +4633,7 @@ static const struct option {
  	  "		[ wol %d[/%d] |  p|u|m|b|a|g|s|d...[/p|u|m|b|a|g|s|d...] ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
- 	  "		[ msglvl %d | msglvl type on|off ... [--] ]\n" },
+ 	  "		[ msglvl %d[/%d] | type on|off ... [--] ]\n" },
 -	{ "-a|--show-pause", 1, do_gpause, NULL,
 +	{ "-a|--show-pause", 1, do_gpause, nl_gpause,
  	  "Show pause options" },
  	{ "-A|--pause", 1, do_spause, NULL,
  	  "Set pause options",
 diff --git a/netlink.c b/netlink.c
-index d729ce1f1a18..8f1568d39317 100644
+index 1d9e47a6c8a4..35e66f697ff9 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -1755,6 +1755,28 @@ static int show_ring(struct nl_context *nlctx, const struct nlattr *nest)
+@@ -1706,6 +1706,28 @@ static int show_ring(struct nl_context *nlctx, const struct nlattr *nest)
  	return 0;
  }
  
@@ -67,7 +67,7 @@ index d729ce1f1a18..8f1568d39317 100644
  static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
-@@ -1786,6 +1808,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -1737,6 +1759,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_ERROR;
  		}
  	}
@@ -83,7 +83,7 @@ index d729ce1f1a18..8f1568d39317 100644
  
  	return MNL_CB_OK;
  }
-@@ -1803,3 +1834,10 @@ int nl_gring(struct cmd_context *ctx)
+@@ -1754,3 +1785,10 @@ int nl_gring(struct cmd_context *ctx)
  				     get_params_reply_cb,
  				     ETH_PARAMS_IM_RING, 0);
  }

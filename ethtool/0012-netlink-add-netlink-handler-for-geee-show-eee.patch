@@ -1,7 +1,7 @@
-From d33c872a578abbf6c7b188f325fa233f9983146b Mon Sep 17 00:00:00 2001
+From 3009947d5e9f47e1122b256f27187a42890446fa Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:08:21 +0100
-Subject: [PATCH 12/13] netlink: add netlink handler for geee (--show-eee)
+Subject: [PATCH 12/19] netlink: add netlink handler for geee (--show-eee)
 
 Implement "ethtool --show-eee <dev>" subcommand using netlink interface
 command ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_EEE mask.
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 71 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index cb0266ff5945..7312ab43e7cc 100644
+index a737b3b10be1..ef31c621d12d 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4611,6 +4611,7 @@ int nl_gcoalesce(struct cmd_context *ctx) { return 0; }
@@ -35,10 +35,10 @@ index cb0266ff5945..7312ab43e7cc 100644
  	{ "--set-eee", 1, do_seee, NULL,
  	  "Set EEE settings",
 diff --git a/netlink.c b/netlink.c
-index 7353b0659ddf..9a1c3dd83448 100644
+index 5f58f5a6c59d..03ec6223c0d3 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -1805,6 +1805,58 @@ static int show_channels(struct nl_context *nlctx, const struct nlattr *nest)
+@@ -1756,6 +1756,58 @@ static int show_channels(struct nl_context *nlctx, const struct nlattr *nest)
  	return 0;
  }
  
@@ -97,7 +97,7 @@ index 7353b0659ddf..9a1c3dd83448 100644
  static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
-@@ -1854,6 +1906,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -1805,6 +1857,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_ERROR;
  		}
  	}
@@ -113,7 +113,7 @@ index 7353b0659ddf..9a1c3dd83448 100644
  
  	return MNL_CB_OK;
  }
-@@ -1885,3 +1946,10 @@ int nl_gchannels(struct cmd_context *ctx)
+@@ -1836,3 +1897,10 @@ int nl_gchannels(struct cmd_context *ctx)
  				     get_params_reply_cb,
  				     ETH_PARAMS_IM_CHANNELS, 0);
  }

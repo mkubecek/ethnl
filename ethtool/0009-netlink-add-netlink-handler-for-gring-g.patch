@@ -1,7 +1,7 @@
-From 32dc61567fc3c51e025cf00b1fc3331a28776f17 Mon Sep 17 00:00:00 2001
+From a04c4b5a20bcfa6bc3a2170504058328ad65a6f8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:59:50 +0100
-Subject: [PATCH 09/13] netlink: add netlink handler for gring (-g)
+Subject: [PATCH 09/19] netlink: add netlink handler for gring (-g)
 
 Implement "ethtool -g <dev>" subcommand using netlink interface command
 ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_RING mask.
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 47 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index c32fcaa71396..dd9fe252ea9f 100644
+index 48c1f46d64ef..23f910868ef0 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4608,6 +4608,7 @@ int nl_gdrv(struct cmd_context *ctx) { return 0; }
@@ -35,10 +35,10 @@ index c32fcaa71396..dd9fe252ea9f 100644
  	{ "-G|--set-ring", 1, do_sring, NULL,
  	  "Set RX/TX ring parameters",
 diff --git a/netlink.c b/netlink.c
-index 130c35b44345..d729ce1f1a18 100644
+index a562b0372c1c..1d9e47a6c8a4 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -1727,6 +1727,34 @@ static int show_coalesce(struct nl_context *nlctx, const struct nlattr *nest)
+@@ -1678,6 +1678,34 @@ static int show_coalesce(struct nl_context *nlctx, const struct nlattr *nest)
  	return 0;
  }
  
@@ -73,7 +73,7 @@ index 130c35b44345..d729ce1f1a18 100644
  static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
-@@ -1749,6 +1777,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -1700,6 +1728,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_ERROR;
  		}
  	}
@@ -89,7 +89,7 @@ index 130c35b44345..d729ce1f1a18 100644
  
  	return MNL_CB_OK;
  }
-@@ -1759,3 +1796,10 @@ int nl_gcoalesce(struct cmd_context *ctx)
+@@ -1710,3 +1747,10 @@ int nl_gcoalesce(struct cmd_context *ctx)
  				     get_params_reply_cb,
  				     ETH_PARAMS_IM_COALESCE, 0);
  }

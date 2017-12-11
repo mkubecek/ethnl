@@ -1,0 +1,92 @@
+From 7f4a657518bb759f17ffccb3b05de8afe3c72201 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Mon, 11 Dec 2017 08:32:39 +0100
+Subject: [PATCH 17/19] netlink: add netlink handler for schannels (-L)
+
+Implement "ethtool -L <dev>" subcommand using netlink interface command
+ETHTOOL_CMD_SET_PARAMS.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ ethtool.c |  3 ++-
+ netlink.c | 34 ++++++++++++++++++++++++++++++++++
+ netlink.h |  1 +
+ 3 files changed, 37 insertions(+), 1 deletion(-)
+
+diff --git a/ethtool.c b/ethtool.c
+index 26efc2ddbaf0..ebd55974638f 100644
+--- a/ethtool.c
++++ b/ethtool.c
+@@ -4616,6 +4616,7 @@ int nl_gfec(struct cmd_context *ctx) { return 0; }
+ int nl_scoalesce(struct cmd_context *ctx) { return 0; }
+ int nl_sring(struct cmd_context *ctx) { return 0; }
+ int nl_spause(struct cmd_context *ctx) { return 0; }
++int nl_schannels(struct cmd_context *ctx) { return 0; }
+ #endif
+ 
+ static const struct option {
+@@ -4766,7 +4767,7 @@ static const struct option {
+ 	  "		N\n"},
+ 	{ "-l|--show-channels", 1, do_gchannels, nl_gchannels,
+ 	  "Query Channels" },
+-	{ "-L|--set-channels", 1, do_schannels, NULL,
++	{ "-L|--set-channels", 1, do_schannels, nl_schannels,
+ 	  "Set Channels",
+ 	  "               [ rx N ]\n"
+ 	  "               [ tx N ]\n"
+diff --git a/netlink.c b/netlink.c
+index 6466c728880c..880efdd45aab 100644
+--- a/netlink.c
++++ b/netlink.c
+@@ -2196,3 +2196,37 @@ int nl_spause(struct cmd_context *ctx)
+ 	return nl_set_param(ctx, "-A", spause_params, ETHA_PARAMS_PAUSE,
+ 			    ETHA_PAUSE_MAX);
+ }
++
++static const struct param_parser schannels_params[] = {
++	{
++		.arg		= "rx",
++		.type		= ETHA_CHANNELS_RX_COUNT,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "tx",
++		.type		= ETHA_CHANNELS_TX_COUNT,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "other",
++		.type		= ETHA_CHANNELS_OTHER_COUNT,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "combined",
++		.type		= ETHA_CHANNELS_COMBINED_COUNT,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{}
++};
++
++int nl_schannels(struct cmd_context *ctx)
++{
++	return nl_set_param(ctx, "-L", schannels_params, ETHA_PARAMS_CHANNELS,
++			    ETHA_CHANNELS_MAX);
++}
+diff --git a/netlink.h b/netlink.h
+index a94cfce9a424..1c8445be66c7 100644
+--- a/netlink.h
++++ b/netlink.h
+@@ -19,5 +19,6 @@ int nl_gfec(struct cmd_context *ctx);
+ int nl_scoalesce(struct cmd_context *ctx);
+ int nl_sring(struct cmd_context *ctx);
+ int nl_spause(struct cmd_context *ctx);
++int nl_schannels(struct cmd_context *ctx);
+ 
+ #endif /* ETHTOOL_NETLINK_H__ */
+-- 
+2.15.1
+

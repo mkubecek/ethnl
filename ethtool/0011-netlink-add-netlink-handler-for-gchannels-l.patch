@@ -1,7 +1,7 @@
-From 7ab5574a213232c69a27d919b6448b9f725ff97c Mon Sep 17 00:00:00 2001
+From f1201253b22b9fceec68958a608d3fc56c9f252a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:05:40 +0100
-Subject: [PATCH 11/13] netlink: add netlink handler for gchannels (-l)
+Subject: [PATCH 11/19] netlink: add netlink handler for gchannels (-l)
 
 Implement "ethtool -l <dev>" subcommand using netlink interface command
 ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_CHANNELS mask.
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 47 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index b51ff586d22f..cb0266ff5945 100644
+index 30b2b5671c96..a737b3b10be1 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4610,6 +4610,7 @@ int nl_sset(struct cmd_context *ctx) { return 0; }
@@ -35,10 +35,10 @@ index b51ff586d22f..cb0266ff5945 100644
  	{ "-L|--set-channels", 1, do_schannels, NULL,
  	  "Set Channels",
 diff --git a/netlink.c b/netlink.c
-index 8f1568d39317..7353b0659ddf 100644
+index 35e66f697ff9..5f58f5a6c59d 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -1777,6 +1777,34 @@ static int show_pause(struct nl_context *nlctx, const struct nlattr *nest)
+@@ -1728,6 +1728,34 @@ static int show_pause(struct nl_context *nlctx, const struct nlattr *nest)
  	return 0;
  }
  
@@ -73,7 +73,7 @@ index 8f1568d39317..7353b0659ddf 100644
  static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
-@@ -1817,6 +1845,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -1768,6 +1796,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_ERROR;
  		}
  	}
@@ -89,7 +89,7 @@ index 8f1568d39317..7353b0659ddf 100644
  
  	return MNL_CB_OK;
  }
-@@ -1841,3 +1878,10 @@ int nl_gpause(struct cmd_context *ctx)
+@@ -1792,3 +1829,10 @@ int nl_gpause(struct cmd_context *ctx)
  				     get_params_reply_cb,
  				     ETH_PARAMS_IM_PAUSE, 0);
  }

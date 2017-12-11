@@ -1,0 +1,243 @@
+From 43cb46bcd9bec3eed44a93d9d2cd1f0528d4eeae Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Mon, 11 Dec 2017 07:27:00 +0100
+Subject: [PATCH 14/19] netlink: add netlink handler for scoalesce (-C)
+
+Implement "ethtool -C <dev>" subcommand using netlink interface command
+ETHTOOL_CMD_SET_PARAMS.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ ethtool.c |   3 +-
+ netlink.c | 185 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink.h |   1 +
+ 3 files changed, 188 insertions(+), 1 deletion(-)
+
+diff --git a/ethtool.c b/ethtool.c
+index d39b0d9b6854..4d629e089c28 100644
+--- a/ethtool.c
++++ b/ethtool.c
+@@ -4613,6 +4613,7 @@ int nl_gpause(struct cmd_context *ctx) { return 0; }
+ int nl_gchannels(struct cmd_context *ctx) { return 0; }
+ int nl_geee(struct cmd_context *ctx) { return 0; }
+ int nl_gfec(struct cmd_context *ctx) { return 0; }
++int nl_scoalesce(struct cmd_context *ctx) { return 0; }
+ #endif
+ 
+ static const struct option {
+@@ -4645,7 +4646,7 @@ static const struct option {
+ 	  "		[ tx on|off ]\n" },
+ 	{ "-c|--show-coalesce", 1, do_gcoalesce, nl_gcoalesce,
+ 	  "Show coalesce options" },
+-	{ "-C|--coalesce", 1, do_scoalesce, NULL,
++	{ "-C|--coalesce", 1, do_scoalesce, nl_scoalesce,
+ 	  "Set coalesce options",
+ 	  "		[adaptive-rx on|off]\n"
+ 	  "		[adaptive-tx on|off]\n"
+diff --git a/netlink.c b/netlink.c
+index 093a19cf0a20..159bee3c7c68 100644
+--- a/netlink.c
++++ b/netlink.c
+@@ -1949,3 +1949,188 @@ int nl_gfec(struct cmd_context *ctx)
+ 				     get_params_reply_cb,
+ 				     ETH_PARAMS_IM_FEC, 0);
+ }
++
++/* SET_PARAMS */
++
++static int nl_set_param(struct cmd_context *ctx, const char *opt,
++			const struct param_parser *params, u16 nest_type,
++			u16 max_type)
++{
++	struct nl_context *nlctx = ctx->nlctx;
++	struct nlattr *nest;
++	int ret;
++
++	nlctx->cmd = opt;
++	nlctx->argp = ctx->argp;
++	nlctx->argc = ctx->argc;
++	ret = msg_init(nlctx, ETHTOOL_CMD_SET_PARAMS,
++		       NLM_F_REQUEST | NLM_F_ACK, ctx->devname, 0, 0);
++	if (ret < 0)
++		return 2;
++
++	nest = ethnla_nest_start(nlctx, nest_type);
++	if (!nest) {
++		fprintf(stderr, "ethtool(%s): failed to allocate message\n",
++			opt);
++		return 76;
++	}
++
++	ret = nl_parser(ctx, params, max_type);
++	if (ret < 0)
++		return 2;
++	mnl_attr_nest_end(nlctx->nlhdr, nest);
++
++	mnl_nlmsg_fprintf(stdout, nlctx->buff, nlctx->nlhdr->nlmsg_len,
++			  GENL_HDRLEN + ETHNL_HDRLEN);
++	ret = ethnl_sendmsg(nlctx);
++	if (ret < 0)
++		return 75;
++	ret = ethnl_process_reply(nlctx, nomsg_reply_cb);
++	if (ret == 0)
++		return 0;
++	errno = -ret;
++	perror("netlink error");
++	return nlctx->exit_code ?: 81;
++}
++
++static const struct param_parser scoalesce_params[] = {
++	{
++		.arg		= "adaptive-rx",
++		.type		= ETHA_COALESCE_RX_USE_ADAPTIVE,
++		.handler	= nl_parse_bool,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "adaptive-tx",
++		.type		= ETHA_COALESCE_TX_USE_ADAPTIVE,
++		.handler	= nl_parse_bool,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "sample-interval",
++		.type		= ETHA_COALESCE_RATE_SAMPLE_INTERVAL,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "stats-block-usecs",
++		.type		= ETHA_COALESCE_STATS_BLOCK_USECS,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "pkt-rate-low",
++		.type		= ETHA_COALESCE_PKT_RATE_LOW,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "pkt-rate-high",
++		.type		= ETHA_COALESCE_PKT_RATE_HIGH,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "rx-usecs",
++		.type		= ETHA_COALESCE_RX_USECS,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "rx-frames",
++		.type		= ETHA_COALESCE_RX_MAXFRM,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "rx-usecs-irq",
++		.type		= ETHA_COALESCE_RX_USECS_IRQ,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "rx-frames-irq",
++		.type		= ETHA_COALESCE_RX_MAXFRM_IRQ,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "tx-usecs",
++		.type		= ETHA_COALESCE_TX_USECS,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "tx-frames",
++		.type		= ETHA_COALESCE_TX_MAXFRM,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "tx-usecs-irq",
++		.type		= ETHA_COALESCE_TX_USECS_IRQ,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "tx-frames-irq",
++		.type		= ETHA_COALESCE_TX_MAXFRM_IRQ,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "rx-usecs-low",
++		.type		= ETHA_COALESCE_RX_USECS_LOW,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "rx-frames-low",
++		.type		= ETHA_COALESCE_RX_MAXFRM_LOW,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "tx-usecs-low",
++		.type		= ETHA_COALESCE_TX_USECS_LOW,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "tx-frames-low",
++		.type		= ETHA_COALESCE_TX_MAXFRM_LOW,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "rx-usecs-high",
++		.type		= ETHA_COALESCE_RX_USECS_HIGH,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "rx-frames-high",
++		.type		= ETHA_COALESCE_RX_MAXFRM_HIGH,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "tx-usecs-high",
++		.type		= ETHA_COALESCE_TX_USECS_HIGH,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "tx-frames-high",
++		.type		= ETHA_COALESCE_TX_MAXFRM_HIGH,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{}
++};
++
++int nl_scoalesce(struct cmd_context *ctx)
++{
++	return nl_set_param(ctx, "-C", scoalesce_params, ETHA_PARAMS_COALESCE,
++			    ETHA_COALESCE_MAX);
++}
+diff --git a/netlink.h b/netlink.h
+index dcfa50fd3477..de7d5c975008 100644
+--- a/netlink.h
++++ b/netlink.h
+@@ -16,5 +16,6 @@ int nl_gpause(struct cmd_context *ctx);
+ int nl_gchannels(struct cmd_context *ctx);
+ int nl_geee(struct cmd_context *ctx);
+ int nl_gfec(struct cmd_context *ctx);
++int nl_scoalesce(struct cmd_context *ctx);
+ 
+ #endif /* ETHTOOL_NETLINK_H__ */
+-- 
+2.15.1
+

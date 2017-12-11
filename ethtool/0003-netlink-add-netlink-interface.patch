@@ -1,7 +1,7 @@
-From e966e987a269c72ae236d638edffd30ba8fed27b Mon Sep 17 00:00:00 2001
+From f9d0e142d9adc95ef2a4101657496a9e65571575 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
-Subject: [PATCH 03/13] netlink: add netlink interface
+Subject: [PATCH 03/19] netlink: add netlink interface
 
 Add basic netlink interface based on genetlink and libmnl. This commit only
 adds the generic infrastructure but does not override any ethtool command
@@ -22,12 +22,12 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  configure.ac                 |  12 +
  ethtool.c                    | 160 +++++++++-----
  internal.h                   |   8 +
- netlink.c                    | 510 +++++++++++++++++++++++++++++++++++++++++++
+ netlink.c                    | 512 +++++++++++++++++++++++++++++++++++++++++++
  netlink.h                    |  10 +
  uapi/linux/ethtool_netlink.h | 239 ++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 ++++++++
  uapi/linux/netlink.h         | 247 +++++++++++++++++++++
- 9 files changed, 1232 insertions(+), 53 deletions(-)
+ 9 files changed, 1234 insertions(+), 53 deletions(-)
  create mode 100644 netlink.c
  create mode 100644 netlink.h
  create mode 100644 uapi/linux/ethtool_netlink.h
@@ -412,10 +412,10 @@ index 2907679c30f2..23573a6a4694 100644
  #ifdef TEST_ETHTOOL
 diff --git a/netlink.c b/netlink.c
 new file mode 100644
-index 000000000000..80afc5c338ef
+index 000000000000..d516623ae4fc
 --- /dev/null
 +++ b/netlink.c
-@@ -0,0 +1,510 @@
+@@ -0,0 +1,512 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -754,13 +754,15 @@ index 000000000000..80afc5c338ef
 +	return NULL;
 +}
 +
-+#define DEFINE_ETHNLA_PUT(typeid) \
-+	static bool ethnla_put_ ## typeid(struct nl_context *nlctx, uint16_t type, typeid data) \
-+	{ return ethnla_put(nlctx, type, sizeof(typeid), &data); }
-+DEFINE_ETHNLA_PUT(u64);
-+DEFINE_ETHNLA_PUT(u32);
-+DEFINE_ETHNLA_PUT(u16);
-+DEFINE_ETHNLA_PUT(u8);
++static bool ethnla_put_u32(struct nl_context *nlctx, uint16_t type, u32 data)
++{
++	return ethnla_put(nlctx, type, sizeof(u32), &data);
++}
++
++static bool ethnla_put_u8(struct nl_context *nlctx, uint16_t type, u8 data)
++{
++	return ethnla_put(nlctx, type, sizeof(u8), &data);
++}
 +
 +static bool ethnla_put_flag(struct nl_context *nlctx, uint16_t type, bool val)
 +{

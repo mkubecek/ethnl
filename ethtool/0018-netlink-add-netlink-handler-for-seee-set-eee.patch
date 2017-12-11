@@ -1,0 +1,96 @@
+From df0d4eb148358f52633c616cf06029f27bb9eb5c Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Mon, 11 Dec 2017 08:43:19 +0100
+Subject: [PATCH 18/19] netlink: add netlink handler for seee (--set-eee)
+
+Implement "ethtool --set-eee <dev>" subcommand using netlink interface
+command ETHTOOL_CMD_SET_PARAMS.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ ethtool.c |  5 +++--
+ netlink.c | 34 ++++++++++++++++++++++++++++++++++
+ netlink.h |  1 +
+ 3 files changed, 38 insertions(+), 2 deletions(-)
+
+diff --git a/ethtool.c b/ethtool.c
+index ebd55974638f..9150fa2e2762 100644
+--- a/ethtool.c
++++ b/ethtool.c
+@@ -4617,6 +4617,7 @@ int nl_scoalesce(struct cmd_context *ctx) { return 0; }
+ int nl_sring(struct cmd_context *ctx) { return 0; }
+ int nl_spause(struct cmd_context *ctx) { return 0; }
+ int nl_schannels(struct cmd_context *ctx) { return 0; }
++int nl_seee(struct cmd_context *ctx) { return 0; }
+ #endif
+ 
+ static const struct option {
+@@ -4786,10 +4787,10 @@ static const struct option {
+ 	  "		[ length N ]\n" },
+ 	{ "--show-eee", 1, do_geee, nl_geee,
+ 	  "Show EEE settings"},
+-	{ "--set-eee", 1, do_seee, NULL,
++	{ "--set-eee", 1, do_seee, nl_seee,
+ 	  "Set EEE settings",
+ 	  "		[ eee on|off ]\n"
+-	  "		[ advertise %x ]\n"
++	  "		[ advertise %x[/%x] | mode on|off ... ]\n"
+ 	  "		[ tx-lpi on|off ]\n"
+ 	  "		[ tx-timer %d ]\n"},
+ 	{ "--set-phy-tunable", 1, do_set_phy_tunable, NULL,
+diff --git a/netlink.c b/netlink.c
+index 880efdd45aab..7ba0d87e6812 100644
+--- a/netlink.c
++++ b/netlink.c
+@@ -2230,3 +2230,37 @@ int nl_schannels(struct cmd_context *ctx)
+ 	return nl_set_param(ctx, "-L", schannels_params, ETHA_PARAMS_CHANNELS,
+ 			    ETHA_CHANNELS_MAX);
+ }
++
++static const struct param_parser seee_params[] = {
++	{
++		.arg		= "advertise",
++		.type		= ETHA_EEE_LINK_MODES,
++		.handler	= nl_parse_bitset,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "tx-lpi",
++		.type		= ETHA_EEE_TX_LPI_ENABLED,
++		.handler	= nl_parse_bool,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "tx-timer",
++		.type		= ETHA_EEE_TX_LPI_TIMER,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "eee",
++		.type		= ETHA_EEE_ENABLED,
++		.handler	= nl_parse_bool,
++		.min_argc	= 1,
++	},
++	{}
++};
++
++int nl_seee(struct cmd_context *ctx)
++{
++	return nl_set_param(ctx, "--set-eee", seee_params, ETHA_PARAMS_EEE,
++			    ETHA_EEE_MAX);
++}
+diff --git a/netlink.h b/netlink.h
+index 1c8445be66c7..2d8e55930270 100644
+--- a/netlink.h
++++ b/netlink.h
+@@ -20,5 +20,6 @@ int nl_scoalesce(struct cmd_context *ctx);
+ int nl_sring(struct cmd_context *ctx);
+ int nl_spause(struct cmd_context *ctx);
+ int nl_schannels(struct cmd_context *ctx);
++int nl_seee(struct cmd_context *ctx);
+ 
+ #endif /* ETHTOOL_NETLINK_H__ */
+-- 
+2.15.1
+

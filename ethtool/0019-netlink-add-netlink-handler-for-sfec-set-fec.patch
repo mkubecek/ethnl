@@ -1,0 +1,80 @@
+From 39c6c23bec2e051e3d3d8f7257a480628d9a4eda Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Mon, 11 Dec 2017 08:51:36 +0100
+Subject: [PATCH 19/19] netlink: add netlink handler for sfec (--set-fec)
+
+Implement "ethtool --set-fec <dev>" subcommand using netlink interface
+command ETHTOOL_CMD_SET_PARAMS.
+
+This command is not implemented yet in ioctl interface but kernel side
+implementation is ready since kernel 4.14-rc1. The command line syntax was
+taken from the example in commit message of kernel commit 1a5f3da20bd9
+("net: ethtool: add support for forward error correction modes").
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ ethtool.c |  3 +++
+ netlink.c | 17 +++++++++++++++++
+ netlink.h |  1 +
+ 3 files changed, 21 insertions(+)
+
+diff --git a/ethtool.c b/ethtool.c
+index 9150fa2e2762..af491de845cf 100644
+--- a/ethtool.c
++++ b/ethtool.c
+@@ -4618,6 +4618,7 @@ int nl_sring(struct cmd_context *ctx) { return 0; }
+ int nl_spause(struct cmd_context *ctx) { return 0; }
+ int nl_schannels(struct cmd_context *ctx) { return 0; }
+ int nl_seee(struct cmd_context *ctx) { return 0; }
++int nl_sfec(struct cmd_context *ctx) { return 0; }
+ #endif
+ 
+ static const struct option {
+@@ -4801,6 +4802,8 @@ static const struct option {
+ 	  "		[ downshift ]\n"},
+ 	{ "--show-fec", 1, NULL, nl_gfec,
+ 	  "Show FEC parameters" },
++	{ "--set-fec", 1, NULL, nl_sfec,
++	  "		[ modes %x[/%x] | mode on|off ... [--] ]\n" },
+ 	{ "-h|--help", 0, show_usage, NULL,
+ 	 "Show this help" },
+ 	{ "--version", 0, do_version, NULL,
+diff --git a/netlink.c b/netlink.c
+index 7ba0d87e6812..2fb442e190ce 100644
+--- a/netlink.c
++++ b/netlink.c
+@@ -2264,3 +2264,20 @@ int nl_seee(struct cmd_context *ctx)
+ 	return nl_set_param(ctx, "--set-eee", seee_params, ETHA_PARAMS_EEE,
+ 			    ETHA_EEE_MAX);
+ }
++
++static const struct param_parser sfec_params[] = {
++	{
++		.arg		= "modes",
++		.type		= ETHA_FEC_MODES,
++		.handler	= nl_parse_bitfield32,
++		.handler_data	= flags_fecenc,
++		.min_argc	= 1,
++	},
++	{}
++};
++
++int nl_sfec(struct cmd_context *ctx)
++{
++	return nl_set_param(ctx, "--set-eee", seee_params, ETHA_PARAMS_EEE,
++			    ETHA_EEE_MAX);
++}
+diff --git a/netlink.h b/netlink.h
+index 2d8e55930270..ae33460191a4 100644
+--- a/netlink.h
++++ b/netlink.h
+@@ -21,5 +21,6 @@ int nl_sring(struct cmd_context *ctx);
+ int nl_spause(struct cmd_context *ctx);
+ int nl_schannels(struct cmd_context *ctx);
+ int nl_seee(struct cmd_context *ctx);
++int nl_sfec(struct cmd_context *ctx);
+ 
+ #endif /* ETHTOOL_NETLINK_H__ */
+-- 
+2.15.1
+

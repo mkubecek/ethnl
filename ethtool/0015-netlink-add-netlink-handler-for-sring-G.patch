@@ -1,0 +1,92 @@
+From 20f558067b801f5e55fc96744a0d0b96da99992e Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Mon, 11 Dec 2017 08:04:49 +0100
+Subject: [PATCH 15/19] netlink: add netlink handler for sring (-G)
+
+Implement "ethtool -G <dev>" subcommand using netlink interface command
+ETHTOOL_CMD_SET_PARAMS.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ ethtool.c |  3 ++-
+ netlink.c | 34 ++++++++++++++++++++++++++++++++++
+ netlink.h |  1 +
+ 3 files changed, 37 insertions(+), 1 deletion(-)
+
+diff --git a/ethtool.c b/ethtool.c
+index 4d629e089c28..59f3da82c39c 100644
+--- a/ethtool.c
++++ b/ethtool.c
+@@ -4614,6 +4614,7 @@ int nl_gchannels(struct cmd_context *ctx) { return 0; }
+ int nl_geee(struct cmd_context *ctx) { return 0; }
+ int nl_gfec(struct cmd_context *ctx) { return 0; }
+ int nl_scoalesce(struct cmd_context *ctx) { return 0; }
++int nl_sring(struct cmd_context *ctx) { return 0; }
+ #endif
+ 
+ static const struct option {
+@@ -4673,7 +4674,7 @@ static const struct option {
+ 	  "		[dmac N]\n" },
+ 	{ "-g|--show-ring", 1, do_gring, nl_gring,
+ 	  "Query RX/TX ring parameters" },
+-	{ "-G|--set-ring", 1, do_sring, NULL,
++	{ "-G|--set-ring", 1, do_sring, nl_sring,
+ 	  "Set RX/TX ring parameters",
+ 	  "		[ rx N ]\n"
+ 	  "		[ rx-mini N ]\n"
+diff --git a/netlink.c b/netlink.c
+index 159bee3c7c68..16caceeae882 100644
+--- a/netlink.c
++++ b/netlink.c
+@@ -2134,3 +2134,37 @@ int nl_scoalesce(struct cmd_context *ctx)
+ 	return nl_set_param(ctx, "-C", scoalesce_params, ETHA_PARAMS_COALESCE,
+ 			    ETHA_COALESCE_MAX);
+ }
++
++static const struct param_parser sring_params[] = {
++	{
++		.arg		= "rx",
++		.type		= ETHA_RING_RX_PENDING,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "rx-mini",
++		.type		= ETHA_RING_RX_MINI_PENDING,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "rx-jumbo",
++		.type		= ETHA_RING_RX_JUMBO_PENDING,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "tx",
++		.type		= ETHA_RING_TX_PENDING,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{}
++};
++
++int nl_sring(struct cmd_context *ctx)
++{
++	return nl_set_param(ctx, "-G", sring_params, ETHA_PARAMS_RING,
++			    ETHA_RING_MAX);
++}
+diff --git a/netlink.h b/netlink.h
+index de7d5c975008..1e79086e49fe 100644
+--- a/netlink.h
++++ b/netlink.h
+@@ -17,5 +17,6 @@ int nl_gchannels(struct cmd_context *ctx);
+ int nl_geee(struct cmd_context *ctx);
+ int nl_gfec(struct cmd_context *ctx);
+ int nl_scoalesce(struct cmd_context *ctx);
++int nl_sring(struct cmd_context *ctx);
+ 
+ #endif /* ETHTOOL_NETLINK_H__ */
+-- 
+2.15.1
+
