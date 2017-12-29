@@ -1,4 +1,4 @@
-From 0fc799575dd3893a386cfa9be35b17bf9ced4094 Mon Sep 17 00:00:00 2001
+From ff56eed6a8f8daaf5f3a5ee9532db57c44f46f38 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 3/9] ethtool: helper functions for netlink interface
@@ -11,7 +11,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  1 file changed, 177 insertions(+)
 
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 46a226bb9a2c..22d23d057623 100644
+index 46a226bb9a2c..7449d8317c2a 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -8,6 +8,183 @@
@@ -159,7 +159,7 @@ index 46a226bb9a2c..22d23d057623 100644
 +/* create skb for a reply
 + * payload: payload length (without netlink, genetlink and ethnl headers)
 + * dev:     device the reply is about
-+ * cmd:     ETHTOOL_CMD_* command for reply
++ * cmd:     ETHNL_CMD_* command for reply
 + * info:   info for the received packet we respond to
 + * ehdrp:   place to store pointer to ethtool specific header (may be null)
 + * returns: skb or null on error

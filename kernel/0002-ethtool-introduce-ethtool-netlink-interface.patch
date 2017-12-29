@@ -1,4 +1,4 @@
-From 37174026f818dd1a61ca1b37bef2f1b114198de2 Mon Sep 17 00:00:00 2001
+From 15d62980d96c3572d2fa5158a2d46f4f9863472a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 2/9] ethtool: introduce ethtool netlink interface
@@ -24,7 +24,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 new file mode 100644
-index 000000000000..c94da66cb5fb
+index 000000000000..d3982a20a32a
 --- /dev/null
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -0,0 +1,155 @@
@@ -81,7 +81,7 @@ index 000000000000..c94da66cb5fb
 +List of message types
 +---------------------
 +
-+All constants use ETHTOOL_CMD_ prefix followed by "GET", "SET" or "ACT" to
++All constants use ETHNL_CMD_ prefix followed by "GET", "SET" or "ACT" to
 +indicate the type.
 +
 +Messages of type "get" are used by userspace to request information and
@@ -200,7 +200,7 @@ index 000000000000..0412adb4f42f
 +#endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..06cff2b52dfe
+index 000000000000..03c3d94cbb9d
 --- /dev/null
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -0,0 +1,33 @@
@@ -226,10 +226,10 @@ index 000000000000..06cff2b52dfe
 +#define ETHNL_HDRLEN NLMSG_ALIGN(sizeof(struct ethnlmsghdr))
 +
 +enum {
-+	ETHTOOL_CMD_NOOP,
++	ETHNL_CMD_NOOP,
 +
-+	__ETHTOOL_CMD_MAX,
-+	ETHTOOL_CMD_MAX = (__ETHTOOL_CMD_MAX - 1),
++	__ETHNL_CMD_MAX,
++	ETHNL_CMD_MAX = (__ETHNL_CMD_MAX - 1),
 +};
 +
 +/* generic netlink info */

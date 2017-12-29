@@ -1,4 +1,4 @@
-From 219f457821c4cbca64ead6a8f8a92246ed7f32a3 Mon Sep 17 00:00:00 2001
+From 8fc0fc46df89f53730ef375ddf0b0cf24dcb25c8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
 Subject: [PATCH 5/9] ethtool: implement GET_DRVINFO message
@@ -22,17 +22,17 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/core/ethtool_common.h
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 893e5156f6a7..cb992180b211 100644
+index 293af5db8100..ee25d405eeb9 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -107,6 +107,9 @@ which the request applies.
  List of message types
  ---------------------
  
-+    ETHTOOL_CMD_GET_DRVINFO
-+    ETHTOOL_CMD_SET_DRVINFO		response only
++    ETHNL_CMD_GET_DRVINFO
++    ETHNL_CMD_SET_DRVINFO		response only
 +
- All constants use ETHTOOL_CMD_ prefix followed by "GET", "SET" or "ACT" to
+ All constants use ETHNL_CMD_ prefix followed by "GET", "SET" or "ACT" to
  indicate the type.
  
 @@ -119,6 +122,31 @@ messages marked as "response only" in the table above.
@@ -72,23 +72,23 @@ index 893e5156f6a7..cb992180b211 100644
  ETHTOOL_GSET			n/a
  ETHTOOL_SSET			n/a
 -ETHTOOL_GDRVINFO		n/a
-+ETHTOOL_GDRVINFO		ETHTOOL_CMD_GET_DRVINFO
++ETHTOOL_GDRVINFO		ETHNL_CMD_GET_DRVINFO
  ETHTOOL_GREGS			n/a
  ETHTOOL_GWOL			n/a
  ETHTOOL_SWOL			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 6db35f00ea32..d6ab1d73d494 100644
+index b068e81b7ef0..cef4d3e47a88 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -21,6 +21,8 @@ struct ethnlmsghdr {
  
  enum {
- 	ETHTOOL_CMD_NOOP,
-+	ETHTOOL_CMD_GET_DRVINFO,
-+	ETHTOOL_CMD_SET_DRVINFO,	/* only for reply */
+ 	ETHNL_CMD_NOOP,
++	ETHNL_CMD_GET_DRVINFO,
++	ETHNL_CMD_SET_DRVINFO,		/* only for reply */
  
- 	__ETHTOOL_CMD_MAX,
- 	ETHTOOL_CMD_MAX = (__ETHTOOL_CMD_MAX - 1),
+ 	__ETHNL_CMD_MAX,
+ 	ETHNL_CMD_MAX = (__ETHNL_CMD_MAX - 1),
 @@ -57,6 +59,25 @@ enum {
  	ETHA_BITSET_MAX = (__ETHA_BITSET_MAX - 1),
  };
@@ -129,7 +129,7 @@ index 617ab2abecdf..3196641c0e70 100644
  obj-y += net-sysfs.o
  obj-$(CONFIG_PROC_FS) += net-procfs.o
 diff --git a/net/core/ethtool.c b/net/core/ethtool.c
-index f8fcf450a36e..09e780a748f9 100644
+index 50a79203043b..e654ff1ebabf 100644
 --- a/net/core/ethtool.c
 +++ b/net/core/ethtool.c
 @@ -26,6 +26,7 @@
@@ -140,7 +140,7 @@ index f8fcf450a36e..09e780a748f9 100644
  
  /*
   * Some useful ethtool_ops methods that're device independent.
-@@ -885,45 +886,14 @@ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
+@@ -886,45 +887,14 @@ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
  						  void __user *useraddr)
  {
  	struct ethtool_drvinfo info;
@@ -261,7 +261,7 @@ index 000000000000..1f031c1d943a
 +
 +#endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 9f287e67f30b..077814fd36bd 100644
+index e3e7347b5fc7..97eec0496309 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -531,9 +531,84 @@ static struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev,
@@ -306,7 +306,7 @@ index 9f287e67f30b..077814fd36bd 100644
 +	}
 +
 +	reply_len = ethnl_drvinfo_size(&drvinfo);
-+	rskb = ethnl_reply_init(reply_len, dev, ETHTOOL_CMD_SET_DRVINFO, info,
++	rskb = ethnl_reply_init(reply_len, dev, ETHNL_CMD_SET_DRVINFO, info,
 +				&ehdr);
 +	dev_put(dev);
 +	if (!rskb)
@@ -343,7 +343,7 @@ index 9f287e67f30b..077814fd36bd 100644
  
  static const struct genl_ops ethtool_genl_ops[] = {
 +	{
-+		.cmd	= ETHTOOL_CMD_GET_DRVINFO,
++		.cmd	= ETHNL_CMD_GET_DRVINFO,
 +		.doit	= ethnl_get_drvinfo,
 +	},
  };

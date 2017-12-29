@@ -1,4 +1,4 @@
-From 2b9543671158e63659570b019f4450de5189cbdd Mon Sep 17 00:00:00 2001
+From e2d7e5b8ca6af631c6deb936fc2652cb88d3ce51 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
 Subject: [PATCH 8/9] ethtool: implement GET_PARAMS message
@@ -15,17 +15,17 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 621 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 187fab33f721..45ed1801ab50 100644
+index 75e304c3bdf2..e915464d8d2e 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -111,6 +111,8 @@ List of message types
-     ETHTOOL_CMD_SET_DRVINFO		response only
-     ETHTOOL_CMD_GET_SETTINGS
-     ETHTOOL_CMD_SET_SETTINGS
-+    ETHTOOL_CMD_GET_PARAMS
-+    ETHTOOL_CMD_SET_PARAMS		response only (for now)
+     ETHNL_CMD_SET_DRVINFO		response only
+     ETHNL_CMD_GET_SETTINGS
+     ETHNL_CMD_SET_SETTINGS
++    ETHNL_CMD_GET_PARAMS
++    ETHNL_CMD_SET_PARAMS		response only (for now)
  
- All constants use ETHTOOL_CMD_ prefix followed by "GET", "SET" or "ACT" to
+ All constants use ETHNL_CMD_ prefix followed by "GET", "SET" or "ACT" to
  indicate the type.
 @@ -231,6 +233,90 @@ is supposed to allow requesting changes without knowing what exactly kernel
  supports.
@@ -119,17 +119,17 @@ index 187fab33f721..45ed1801ab50 100644
  -------------------
  
 @@ -252,11 +338,11 @@ ETHTOOL_NWAY_RST		n/a
- ETHTOOL_GLINK			ETHTOOL_CMD_GET_SETTINGS
+ ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
 -ETHTOOL_GCOALESCE		n/a
-+ETHTOOL_GCOALESCE		ETHTOOL_CMD_GET_PARAMS
++ETHTOOL_GCOALESCE		ETHNL_CMD_GET_PARAMS
  ETHTOOL_SCOALESCE		n/a
 -ETHTOOL_GRINGPARAM		n/a
-+ETHTOOL_GRINGPARAM		ETHTOOL_CMD_GET_PARAMS
++ETHTOOL_GRINGPARAM		ETHNL_CMD_GET_PARAMS
  ETHTOOL_SRINGPARAM		n/a
 -ETHTOOL_GPAUSEPARAM		n/a
-+ETHTOOL_GPAUSEPARAM		ETHTOOL_CMD_GET_PARAMS
++ETHTOOL_GPAUSEPARAM		ETHNL_CMD_GET_PARAMS
  ETHTOOL_SPAUSEPARAM		n/a
  ETHTOOL_GRXCSUM			n/a
  ETHTOOL_SRXCSUM			n/a
@@ -138,7 +138,7 @@ index 187fab33f721..45ed1801ab50 100644
  ETHTOOL_GFEATURES		n/a
  ETHTOOL_SFEATURES		n/a
 -ETHTOOL_GCHANNELS		n/a
-+ETHTOOL_GCHANNELS		ETHTOOL_CMD_GET_PARAMS
++ETHTOOL_GCHANNELS		ETHNL_CMD_GET_PARAMS
  ETHTOOL_SCHANNELS		n/a
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
@@ -147,31 +147,31 @@ index 187fab33f721..45ed1801ab50 100644
  ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a
 -ETHTOOL_GEEE			n/a
-+ETHTOOL_GEEE			ETHTOOL_CMD_GET_PARAMS
++ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
  ETHTOOL_SEEE			n/a
  ETHTOOL_GRSSH			n/a
  ETHTOOL_SRSSH			n/a
-@@ -318,6 +404,6 @@ ETHTOOL_GLINKSETTINGS		ETHTOOL_CMD_GET_SETTINGS
- ETHTOOL_SLINKSETTINGS		ETHTOOL_CMD_SET_SETTINGS
+@@ -318,6 +404,6 @@ ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a
 -ETHTOOL_GFECPARAM		n/a
-+ETHTOOL_GFECPARAM		ETHTOOL_CMD_GET_PARAMS
++ETHTOOL_GFECPARAM		ETHNL_CMD_GET_PARAMS
  ETHTOOL_SFECPARAM		n/a
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 9520d13fc9ab..8621e0a9d481 100644
+index 0ad51e533a2b..63f02668440a 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -25,6 +25,8 @@ enum {
- 	ETHTOOL_CMD_SET_DRVINFO,	/* only for reply */
- 	ETHTOOL_CMD_GET_SETTINGS,
- 	ETHTOOL_CMD_SET_SETTINGS,
-+	ETHTOOL_CMD_GET_PARAMS,
-+	ETHTOOL_CMD_SET_PARAMS,
+ 	ETHNL_CMD_SET_DRVINFO,		/* only for reply */
+ 	ETHNL_CMD_GET_SETTINGS,
+ 	ETHNL_CMD_SET_SETTINGS,
++	ETHNL_CMD_GET_PARAMS,
++	ETHNL_CMD_SET_PARAMS,
  
- 	__ETHTOOL_CMD_MAX,
- 	ETHTOOL_CMD_MAX = (__ETHTOOL_CMD_MAX - 1),
+ 	__ETHNL_CMD_MAX,
+ 	ETHNL_CMD_MAX = (__ETHNL_CMD_MAX - 1),
 @@ -114,6 +116,122 @@ enum {
  
  #define ETH_SETTINGS_IM_DEFAULT			0x1f
@@ -296,7 +296,7 @@ index 9520d13fc9ab..8621e0a9d481 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 4b14a02be12a..3fb49427f211 100644
+index 34072fd72404..80f3bf1a548f 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -1438,6 +1438,413 @@ static int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
@@ -654,7 +654,7 @@ index 4b14a02be12a..3fb49427f211 100644
 +		goto err_putdev;
 +	else
 +		reply_len = ret;
-+	rskb = ethnl_reply_init(reply_len, dev, ETHTOOL_CMD_SET_PARAMS, info,
++	rskb = ethnl_reply_init(reply_len, dev, ETHNL_CMD_SET_PARAMS, info,
 +				&ehdr);
 +	ret = -ENOMEM;
 +	if (!rskb)
@@ -718,7 +718,7 @@ index 4b14a02be12a..3fb49427f211 100644
  		.doit	= ethnl_set_settings,
  	},
 +	{
-+		.cmd	= ETHTOOL_CMD_GET_PARAMS,
++		.cmd	= ETHNL_CMD_GET_PARAMS,
 +		.doit	= ethnl_get_params,
 +	},
  };

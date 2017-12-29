@@ -1,4 +1,4 @@
-From b0f18e4de86fb2f6d900f8960ab4a0b43c7b8e14 Mon Sep 17 00:00:00 2001
+From 64a1e2c16d3cf08a56db0b2fcbbd5a65438e7b98 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
 Subject: [PATCH 6/9] ethtool: implement GET_SETTINGS message
@@ -22,17 +22,17 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  9 files changed, 528 insertions(+), 105 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index cb992180b211..7aabc87c9f09 100644
+index ee25d405eeb9..994aed9aa488 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -109,6 +109,8 @@ List of message types
  
-     ETHTOOL_CMD_GET_DRVINFO
-     ETHTOOL_CMD_SET_DRVINFO		response only
-+    ETHTOOL_CMD_GET_SETTINGS
-+    ETHTOOL_CMD_SET_SETTINGS		response only (for now)
+     ETHNL_CMD_GET_DRVINFO
+     ETHNL_CMD_SET_DRVINFO		response only
++    ETHNL_CMD_GET_SETTINGS
++    ETHNL_CMD_SET_SETTINGS		response only (for now)
  
- All constants use ETHTOOL_CMD_ prefix followed by "GET", "SET" or "ACT" to
+ All constants use ETHNL_CMD_ prefix followed by "GET", "SET" or "ACT" to
  indicate the type.
 @@ -147,6 +149,56 @@ response.
  All information is read only, SET_DRVINFO request is not implemented.
@@ -96,19 +96,19 @@ index cb992180b211..7aabc87c9f09 100644
  ioctl command			netlink command
  ---------------------------------------------------------------------
 -ETHTOOL_GSET			n/a
-+ETHTOOL_GSET			ETHTOOL_CMD_GET_SETTINGS
++ETHTOOL_GSET			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SSET			n/a
- ETHTOOL_GDRVINFO		ETHTOOL_CMD_GET_DRVINFO
+ ETHTOOL_GDRVINFO		ETHNL_CMD_GET_DRVINFO
  ETHTOOL_GREGS			n/a
 -ETHTOOL_GWOL			n/a
-+ETHTOOL_GWOL			ETHTOOL_CMD_GET_SETTINGS
++ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SWOL			n/a
 -ETHTOOL_GMSGLVL			n/a
-+ETHTOOL_GMSGLVL			ETHTOOL_CMD_GET_SETTINGS
++ETHTOOL_GMSGLVL			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SMSGLVL			n/a
  ETHTOOL_NWAY_RST		n/a
 -ETHTOOL_GLINK			n/a
-+ETHTOOL_GLINK			ETHTOOL_CMD_GET_SETTINGS
++ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		n/a
@@ -117,7 +117,7 @@ index cb992180b211..7aabc87c9f09 100644
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
 -ETHTOOL_GLINKSETTINGS		n/a
-+ETHTOOL_GLINKSETTINGS		ETHTOOL_CMD_GET_SETTINGS
++ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SLINKSETTINGS		n/a
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a
@@ -134,10 +134,10 @@ index 0412adb4f42f..1787359f9e5d 100644
 +
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index cc4ce7456e38..0e1d0a04c3cc 100644
+index 352066e4eeef..1ebbd4db8014 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -3506,6 +3506,8 @@ enum {
+@@ -3508,6 +3508,8 @@ enum {
  	NETIF_MSG_PKTDATA	= 0x1000,
  	NETIF_MSG_HW		= 0x2000,
  	NETIF_MSG_WOL		= 0x4000,
@@ -161,18 +161,18 @@ index 44a0b675a6bc..a9076a76cdb4 100644
  #define ETHTOOL_BUSINFO_LEN	32
  #define ETHTOOL_EROMVERS_LEN	32
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index d6ab1d73d494..9520d13fc9ab 100644
+index cef4d3e47a88..0ad51e533a2b 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -23,6 +23,8 @@ enum {
- 	ETHTOOL_CMD_NOOP,
- 	ETHTOOL_CMD_GET_DRVINFO,
- 	ETHTOOL_CMD_SET_DRVINFO,	/* only for reply */
-+	ETHTOOL_CMD_GET_SETTINGS,
-+	ETHTOOL_CMD_SET_SETTINGS,
+ 	ETHNL_CMD_NOOP,
+ 	ETHNL_CMD_GET_DRVINFO,
+ 	ETHNL_CMD_SET_DRVINFO,		/* only for reply */
++	ETHNL_CMD_GET_SETTINGS,
++	ETHNL_CMD_SET_SETTINGS,
  
- 	__ETHTOOL_CMD_MAX,
- 	ETHTOOL_CMD_MAX = (__ETHTOOL_CMD_MAX - 1),
+ 	__ETHNL_CMD_MAX,
+ 	ETHNL_CMD_MAX = (__ETHNL_CMD_MAX - 1),
 @@ -78,6 +80,40 @@ enum {
  	ETHA_DRVINFO_MAX = (__ETHA_DRVINFO_MAX - 1),
  };
@@ -215,10 +215,10 @@ index d6ab1d73d494..9520d13fc9ab 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/ethtool.c b/net/core/ethtool.c
-index 09e780a748f9..b08a2efa2e89 100644
+index e654ff1ebabf..606fd1878896 100644
 --- a/net/core/ethtool.c
 +++ b/net/core/ethtool.c
-@@ -452,54 +452,6 @@ bool ethtool_convert_link_mode_to_legacy_u32(u32 *legacy_u32,
+@@ -453,54 +453,6 @@ bool ethtool_convert_link_mode_to_legacy_u32(u32 *legacy_u32,
  }
  EXPORT_SYMBOL(ethtool_convert_link_mode_to_legacy_u32);
  
@@ -273,7 +273,7 @@ index 09e780a748f9..b08a2efa2e89 100644
  /* return false if ksettings link modes had higher bits
   * set. legacy_settings always updated (best effort)
   */
-@@ -560,50 +512,6 @@ struct ethtool_link_usettings {
+@@ -561,50 +513,6 @@ struct ethtool_link_usettings {
  	} link_modes;
  };
  
@@ -324,7 +324,7 @@ index 09e780a748f9..b08a2efa2e89 100644
  /* convert ethtool_link_usettings in user space to a kernel internal
   * ethtool_link_ksettings. return 0 on success, errno on error.
   */
-@@ -1437,11 +1345,11 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
+@@ -1438,11 +1346,11 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
  static int ethtool_get_wol(struct net_device *dev, char __user *useraddr)
  {
  	struct ethtool_wolinfo wol = { .cmd = ETHTOOL_GWOL };
@@ -340,7 +340,7 @@ index 09e780a748f9..b08a2efa2e89 100644
  
  	if (copy_to_user(useraddr, &wol, sizeof(wol)))
  		return -EFAULT;
-@@ -1506,12 +1414,12 @@ static int ethtool_nway_reset(struct net_device *dev)
+@@ -1507,12 +1415,12 @@ static int ethtool_nway_reset(struct net_device *dev)
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
  {
  	struct ethtool_value edata = { .cmd = ETHTOOL_GLINK };
@@ -496,7 +496,7 @@ index 1f031c1d943a..92e236952f18 100644
  
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 077814fd36bd..0c2bed7850bc 100644
+index 97eec0496309..0fe9022acffc 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -4,11 +4,69 @@
@@ -719,7 +719,7 @@ index 077814fd36bd..0c2bed7850bc 100644
 +		goto err_putdev;
 +	else
 +		reply_len = ret;
-+	rskb = ethnl_reply_init(reply_len, dev, ETHTOOL_CMD_SET_SETTINGS, info,
++	rskb = ethnl_reply_init(reply_len, dev, ETHNL_CMD_SET_SETTINGS, info,
 +				&ehdr);
 +	ret = -ENOMEM;
 +	if (!rskb)
@@ -814,11 +814,11 @@ index 077814fd36bd..0c2bed7850bc 100644
  
  static const struct genl_ops ethtool_genl_ops[] = {
 @@ -609,6 +904,10 @@ static const struct genl_ops ethtool_genl_ops[] = {
- 		.cmd	= ETHTOOL_CMD_GET_DRVINFO,
+ 		.cmd	= ETHNL_CMD_GET_DRVINFO,
  		.doit	= ethnl_get_drvinfo,
  	},
 +	{
-+		.cmd	= ETHTOOL_CMD_GET_SETTINGS,
++		.cmd	= ETHNL_CMD_GET_SETTINGS,
 +		.doit	= ethnl_get_settings,
 +	},
  };

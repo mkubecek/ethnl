@@ -1,4 +1,4 @@
-From cca3985b9b67eeee009617460c7acb7f29108a8c Mon Sep 17 00:00:00 2001
+From 87fbce6d1844cb59eebd3dc5954f5cdad2915cad Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 4/9] ethtool: netlink bitset handling
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 433 insertions(+)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index c94da66cb5fb..893e5156f6a7 100644
+index d3982a20a32a..293af5db8100 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -48,6 +48,62 @@ in "set" requests). For these attributes, the "true" value should be passed as
@@ -81,11 +81,11 @@ index c94da66cb5fb..893e5156f6a7 100644
  ---------------------
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 06cff2b52dfe..6db35f00ea32 100644
+index 03c3d94cbb9d..b068e81b7ef0 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -26,6 +26,37 @@ enum {
- 	ETHTOOL_CMD_MAX = (__ETHTOOL_CMD_MAX - 1),
+ 	ETHNL_CMD_MAX = (__ETHNL_CMD_MAX - 1),
  };
  
 +/* bit sets */
@@ -123,7 +123,7 @@ index 06cff2b52dfe..6db35f00ea32 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 22d23d057623..9f287e67f30b 100644
+index 7449d8317c2a..e3e7347b5fc7 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -3,6 +3,7 @@

@@ -1,4 +1,4 @@
-From a3ffaa24fd3da256b082d8d82a56efaba4beb07a Mon Sep 17 00:00:00 2001
+From 89c17c26f9507f982734aec79d8b996cb972f2c0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 9/9] ethtool: implement SET_PARAMS message
@@ -16,17 +16,17 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 486 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 45ed1801ab50..e96c18f52356 100644
+index e915464d8d2e..f3b64d7c3761 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -112,7 +112,7 @@ List of message types
-     ETHTOOL_CMD_GET_SETTINGS
-     ETHTOOL_CMD_SET_SETTINGS
-     ETHTOOL_CMD_GET_PARAMS
--    ETHTOOL_CMD_SET_PARAMS		response only (for now)
-+    ETHTOOL_CMD_SET_PARAMS
+     ETHNL_CMD_GET_SETTINGS
+     ETHNL_CMD_SET_SETTINGS
+     ETHNL_CMD_GET_PARAMS
+-    ETHNL_CMD_SET_PARAMS		response only (for now)
++    ETHNL_CMD_SET_PARAMS
  
- All constants use ETHTOOL_CMD_ prefix followed by "GET", "SET" or "ACT" to
+ All constants use ETHNL_CMD_ prefix followed by "GET", "SET" or "ACT" to
  indicate the type.
 @@ -316,6 +316,63 @@ the information is nested in it.
  		- active (value) and configured (selector) FEC encodings
@@ -92,48 +92,48 @@ index 45ed1801ab50..e96c18f52356 100644
  
  Request translation
  -------------------
-@@ -339,11 +396,11 @@ ETHTOOL_GLINK			ETHTOOL_CMD_GET_SETTINGS
+@@ -339,11 +396,11 @@ ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
- ETHTOOL_GCOALESCE		ETHTOOL_CMD_GET_PARAMS
+ ETHTOOL_GCOALESCE		ETHNL_CMD_GET_PARAMS
 -ETHTOOL_SCOALESCE		n/a
-+ETHTOOL_SCOALESCE		ETHTOOL_CMD_SET_PARAMS
- ETHTOOL_GRINGPARAM		ETHTOOL_CMD_GET_PARAMS
++ETHTOOL_SCOALESCE		ETHNL_CMD_SET_PARAMS
+ ETHTOOL_GRINGPARAM		ETHNL_CMD_GET_PARAMS
 -ETHTOOL_SRINGPARAM		n/a
-+ETHTOOL_SRINGPARAM		ETHTOOL_CMD_SET_PARAMS
- ETHTOOL_GPAUSEPARAM		ETHTOOL_CMD_GET_PARAMS
++ETHTOOL_SRINGPARAM		ETHNL_CMD_SET_PARAMS
+ ETHTOOL_GPAUSEPARAM		ETHNL_CMD_GET_PARAMS
 -ETHTOOL_SPAUSEPARAM		n/a
-+ETHTOOL_SPAUSEPARAM		ETHTOOL_CMD_SET_PARAMS
++ETHTOOL_SPAUSEPARAM		ETHNL_CMD_SET_PARAMS
  ETHTOOL_GRXCSUM			n/a
  ETHTOOL_SRXCSUM			n/a
  ETHTOOL_GTXCSUM			n/a
 @@ -385,7 +442,7 @@ ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		n/a
  ETHTOOL_SFEATURES		n/a
- ETHTOOL_GCHANNELS		ETHTOOL_CMD_GET_PARAMS
+ ETHTOOL_GCHANNELS		ETHNL_CMD_GET_PARAMS
 -ETHTOOL_SCHANNELS		n/a
-+ETHTOOL_SCHANNELS		ETHTOOL_CMD_SET_PARAMS
++ETHTOOL_SCHANNELS		ETHNL_CMD_SET_PARAMS
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
  ETHTOOL_GET_DUMP_DATA		n/a
 @@ -393,7 +450,7 @@ ETHTOOL_GET_TS_INFO		n/a
  ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a
- ETHTOOL_GEEE			ETHTOOL_CMD_GET_PARAMS
+ ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
 -ETHTOOL_SEEE			n/a
-+ETHTOOL_SEEE			ETHTOOL_CMD_SET_PARAMS
++ETHTOOL_SEEE			ETHNL_CMD_SET_PARAMS
  ETHTOOL_GRSSH			n/a
  ETHTOOL_SRSSH			n/a
  ETHTOOL_GTUNABLE		n/a
-@@ -405,5 +462,5 @@ ETHTOOL_SLINKSETTINGS		ETHTOOL_CMD_SET_SETTINGS
+@@ -405,5 +462,5 @@ ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a
- ETHTOOL_GFECPARAM		ETHTOOL_CMD_GET_PARAMS
+ ETHTOOL_GFECPARAM		ETHNL_CMD_GET_PARAMS
 -ETHTOOL_SFECPARAM		n/a
-+ETHTOOL_SFECPARAM		ETHTOOL_CMD_SET_PARAMS
++ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
  
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 3fb49427f211..874716baaec3 100644
+index 80f3bf1a548f..d8871399bd5a 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -1845,6 +1845,422 @@ static int ethnl_get_params(struct sk_buff *skb, struct genl_info *info)
@@ -560,11 +560,11 @@ index 3fb49427f211..874716baaec3 100644
  
  static const struct genl_ops ethtool_genl_ops[] = {
 @@ -1866,6 +2282,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
- 		.cmd	= ETHTOOL_CMD_GET_PARAMS,
+ 		.cmd	= ETHNL_CMD_GET_PARAMS,
  		.doit	= ethnl_get_params,
  	},
 +	{
-+		.cmd	= ETHTOOL_CMD_SET_PARAMS,
++		.cmd	= ETHNL_CMD_SET_PARAMS,
 +		.flags	= GENL_UNS_ADMIN_PERM,
 +		.policy	= params_policy,
 +		.doit	= ethnl_set_params,
