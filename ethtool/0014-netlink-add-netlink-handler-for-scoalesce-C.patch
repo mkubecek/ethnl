@@ -1,4 +1,4 @@
-From 43cb46bcd9bec3eed44a93d9d2cd1f0528d4eeae Mon Sep 17 00:00:00 2001
+From 5d44463e366c198f092a8ceb0cbd5b9eb685b017 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 07:27:00 +0100
 Subject: [PATCH 14/19] netlink: add netlink handler for scoalesce (-C)
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 188 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index d39b0d9b6854..4d629e089c28 100644
+index d2a1429e9260..c5a86fe1444f 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4613,6 +4613,7 @@ int nl_gpause(struct cmd_context *ctx) { return 0; }
+@@ -4915,6 +4915,7 @@ int nl_gpause(struct cmd_context *ctx) { return 0; }
  int nl_gchannels(struct cmd_context *ctx) { return 0; }
  int nl_geee(struct cmd_context *ctx) { return 0; }
  int nl_gfec(struct cmd_context *ctx) { return 0; }
@@ -25,7 +25,7 @@ index d39b0d9b6854..4d629e089c28 100644
  #endif
  
  static const struct option {
-@@ -4645,7 +4646,7 @@ static const struct option {
+@@ -4947,7 +4948,7 @@ static const struct option {
  	  "		[ tx on|off ]\n" },
  	{ "-c|--show-coalesce", 1, do_gcoalesce, nl_gcoalesce,
  	  "Show coalesce options" },
@@ -35,7 +35,7 @@ index d39b0d9b6854..4d629e089c28 100644
  	  "		[adaptive-rx on|off]\n"
  	  "		[adaptive-tx on|off]\n"
 diff --git a/netlink.c b/netlink.c
-index 093a19cf0a20..159bee3c7c68 100644
+index 308a7dbecdcd..d477c9a39c7d 100644
 --- a/netlink.c
 +++ b/netlink.c
 @@ -1949,3 +1949,188 @@ int nl_gfec(struct cmd_context *ctx)
@@ -56,8 +56,8 @@ index 093a19cf0a20..159bee3c7c68 100644
 +	nlctx->cmd = opt;
 +	nlctx->argp = ctx->argp;
 +	nlctx->argc = ctx->argc;
-+	ret = msg_init(nlctx, ETHTOOL_CMD_SET_PARAMS,
-+		       NLM_F_REQUEST | NLM_F_ACK, ctx->devname, 0, 0);
++	ret = msg_init(nlctx, ETHNL_CMD_SET_PARAMS, NLM_F_REQUEST | NLM_F_ACK,
++		       ctx->devname, 0, 0);
 +	if (ret < 0)
 +		return 2;
 +
@@ -239,5 +239,5 @@ index dcfa50fd3477..de7d5c975008 100644
  
  #endif /* ETHTOOL_NETLINK_H__ */
 -- 
-2.15.1
+2.16.3
 

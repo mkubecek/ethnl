@@ -1,4 +1,4 @@
-From f34d777f06bfd7a3cee9324cdc6e167e9c97cb5d Mon Sep 17 00:00:00 2001
+From 180d7681f2ef0a4dff3e94b49e289c85fd2462ad Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
 Subject: [PATCH 08/19] netlink: add netlink handler for gcoalesce (-c)
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 83 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 174fa92966d2..48c1f46d64ef 100644
+index 20ce04c265d2..329384cf5636 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4607,6 +4607,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4909,6 +4909,7 @@ static int show_usage(struct cmd_context *ctx);
  int nl_gdrv(struct cmd_context *ctx) { return 0; }
  int nl_gset(struct cmd_context *ctx) { return 0; }
  int nl_sset(struct cmd_context *ctx) { return 0; }
@@ -25,7 +25,7 @@ index 174fa92966d2..48c1f46d64ef 100644
  #endif
  
  static const struct option {
-@@ -4637,7 +4638,7 @@ static const struct option {
+@@ -4939,7 +4940,7 @@ static const struct option {
  	  "		[ autoneg on|off ]\n"
  	  "		[ rx on|off ]\n"
  	  "		[ tx on|off ]\n" },
@@ -35,7 +35,7 @@ index 174fa92966d2..48c1f46d64ef 100644
  	{ "-C|--coalesce", 1, do_scoalesce, NULL,
  	  "Set coalesce options",
 diff --git a/netlink.c b/netlink.c
-index 2ccecf35db9a..a562b0372c1c 100644
+index bdb0d7c51a01..856a0ced9ea2 100644
 --- a/netlink.c
 +++ b/netlink.c
 @@ -1630,3 +1630,83 @@ int nl_sset(struct cmd_context *ctx)
@@ -118,7 +118,7 @@ index 2ccecf35db9a..a562b0372c1c 100644
 +
 +int nl_gcoalesce(struct cmd_context *ctx)
 +{
-+	return ethnl_std_get_request(ctx, ETHTOOL_CMD_GET_PARAMS,
++	return ethnl_std_get_request(ctx, ETHNL_CMD_GET_PARAMS,
 +				     get_params_reply_cb,
 +				     ETH_PARAMS_IM_COALESCE, 0);
 +}
@@ -134,5 +134,5 @@ index 7c071474c9cd..dbb1161ea48d 100644
  
  #endif /* ETHTOOL_NETLINK_H__ */
 -- 
-2.15.1
+2.16.3
 

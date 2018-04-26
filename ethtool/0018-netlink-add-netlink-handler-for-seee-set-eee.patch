@@ -1,4 +1,4 @@
-From df0d4eb148358f52633c616cf06029f27bb9eb5c Mon Sep 17 00:00:00 2001
+From 64e6dc7aa3e7bb06f46d076909c891dc84823976 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:43:19 +0100
 Subject: [PATCH 18/19] netlink: add netlink handler for seee (--set-eee)
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 38 insertions(+), 2 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index ebd55974638f..9150fa2e2762 100644
+index 167765da490f..14ee80a3d908 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4617,6 +4617,7 @@ int nl_scoalesce(struct cmd_context *ctx) { return 0; }
+@@ -4919,6 +4919,7 @@ int nl_scoalesce(struct cmd_context *ctx) { return 0; }
  int nl_sring(struct cmd_context *ctx) { return 0; }
  int nl_spause(struct cmd_context *ctx) { return 0; }
  int nl_schannels(struct cmd_context *ctx) { return 0; }
@@ -25,7 +25,7 @@ index ebd55974638f..9150fa2e2762 100644
  #endif
  
  static const struct option {
-@@ -4786,10 +4787,10 @@ static const struct option {
+@@ -5091,10 +5092,10 @@ static const struct option {
  	  "		[ length N ]\n" },
  	{ "--show-eee", 1, do_geee, nl_geee,
  	  "Show EEE settings"},
@@ -39,7 +39,7 @@ index ebd55974638f..9150fa2e2762 100644
  	  "		[ tx-timer %d ]\n"},
  	{ "--set-phy-tunable", 1, do_set_phy_tunable, NULL,
 diff --git a/netlink.c b/netlink.c
-index 880efdd45aab..7ba0d87e6812 100644
+index d40ce0eea417..0c1b879c949a 100644
 --- a/netlink.c
 +++ b/netlink.c
 @@ -2230,3 +2230,37 @@ int nl_schannels(struct cmd_context *ctx)
@@ -92,5 +92,5 @@ index 1c8445be66c7..2d8e55930270 100644
  
  #endif /* ETHTOOL_NETLINK_H__ */
 -- 
-2.15.1
+2.16.3
 

@@ -1,4 +1,4 @@
-From 71237884d6a6e31f286206075a5988ed9025fc76 Mon Sep 17 00:00:00 2001
+From e752c00c56e93352a2692eb42358c6583d4a8b7b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
 Subject: [PATCH 13/19] netlink: add netlink handler for gfec (--show-fec)
@@ -17,10 +17,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  common.c  | 10 ++++++++++
  common.h  |  2 ++
- ethtool.c |  3 +++
+ ethtool.c |  3 ++-
  netlink.c | 45 +++++++++++++++++++++++++++++++++++++++++++++
  netlink.h |  1 +
- 5 files changed, 61 insertions(+)
+ 5 files changed, 60 insertions(+), 1 deletion(-)
 
 diff --git a/common.c b/common.c
 index 59897acd2512..a065dde34101 100644
@@ -57,10 +57,10 @@ index a980b844a0ed..aafd98530fe8 100644
  
  enum link_mode_class {
 diff --git a/ethtool.c b/ethtool.c
-index ef31c621d12d..d39b0d9b6854 100644
+index 2f3c6c6fc569..d2a1429e9260 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4612,6 +4612,7 @@ int nl_gring(struct cmd_context *ctx) { return 0; }
+@@ -4914,6 +4914,7 @@ int nl_gring(struct cmd_context *ctx) { return 0; }
  int nl_gpause(struct cmd_context *ctx) { return 0; }
  int nl_gchannels(struct cmd_context *ctx) { return 0; }
  int nl_geee(struct cmd_context *ctx) { return 0; }
@@ -68,17 +68,17 @@ index ef31c621d12d..d39b0d9b6854 100644
  #endif
  
  static const struct option {
-@@ -4793,6 +4794,8 @@ static const struct option {
- 	{ "--get-phy-tunable", 1, do_get_phy_tunable, NULL,
- 	  "Get PHY tunable",
- 	  "		[ downshift ]\n"},
-+	{ "--show-fec", 1, NULL, nl_gfec,
-+	  "Show FEC parameters" },
- 	{ "-h|--help", 0, show_usage, NULL,
- 	 "Show this help" },
- 	{ "--version", 0, do_version, NULL,
+@@ -5121,7 +5122,7 @@ static const struct option {
+ 	  "		[ ap-shared ]\n"
+ 	  "		[ dedicated ]\n"
+ 	  "		[ all ]\n"},
+-	{ "--show-fec", 1, do_gfec, NULL,
++	{ "--show-fec", 1, do_gfec, nl_gfec,
+ 	  "Show FEC settings"},
+ 	{ "--set-fec", 1, do_sfec, NULL,
+ 	  "Set FEC settings",
 diff --git a/netlink.c b/netlink.c
-index 03ec6223c0d3..093a19cf0a20 100644
+index eea602ed84b3..308a7dbecdcd 100644
 --- a/netlink.c
 +++ b/netlink.c
 @@ -1808,6 +1808,35 @@ static int show_eee(struct nl_context *nlctx, const struct nlattr *nest)
@@ -140,7 +140,7 @@ index 03ec6223c0d3..093a19cf0a20 100644
 +
 +int nl_gfec(struct cmd_context *ctx)
 +{
-+	return ethnl_std_get_request(ctx, ETHTOOL_CMD_GET_PARAMS,
++	return ethnl_std_get_request(ctx, ETHNL_CMD_GET_PARAMS,
 +				     get_params_reply_cb,
 +				     ETH_PARAMS_IM_FEC, 0);
 +}
@@ -156,5 +156,5 @@ index 3163dcf36c37..dcfa50fd3477 100644
  
  #endif /* ETHTOOL_NETLINK_H__ */
 -- 
-2.15.1
+2.16.3
 

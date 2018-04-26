@@ -1,4 +1,4 @@
-From 0395759a8c05ffec7ee4f9b2c2519c6fce2a9c30 Mon Sep 17 00:00:00 2001
+From 7ba6bde72f160c188410b317142a2f1400105c6c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:04:09 +0100
 Subject: [PATCH 10/19] netlink: add netlink handler for gpause (-a)
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 41 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 23f910868ef0..30b2b5671c96 100644
+index 89dd47516d38..c02dc37e84be 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4609,6 +4609,7 @@ int nl_gset(struct cmd_context *ctx) { return 0; }
+@@ -4911,6 +4911,7 @@ int nl_gset(struct cmd_context *ctx) { return 0; }
  int nl_sset(struct cmd_context *ctx) { return 0; }
  int nl_gcoalesce(struct cmd_context *ctx) { return 0; }
  int nl_gring(struct cmd_context *ctx) { return 0; }
@@ -25,7 +25,7 @@ index 23f910868ef0..30b2b5671c96 100644
  #endif
  
  static const struct option {
-@@ -4632,7 +4633,7 @@ static const struct option {
+@@ -4934,7 +4935,7 @@ static const struct option {
  	  "		[ wol %d[/%d] |  p|u|m|b|a|g|s|d...[/p|u|m|b|a|g|s|d...] ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
  	  "		[ msglvl %d[/%d] | type on|off ... [--] ]\n" },
@@ -35,7 +35,7 @@ index 23f910868ef0..30b2b5671c96 100644
  	{ "-A|--pause", 1, do_spause, NULL,
  	  "Set pause options",
 diff --git a/netlink.c b/netlink.c
-index 1d9e47a6c8a4..35e66f697ff9 100644
+index ea1fd8dfd7c8..0da4bcdb4ee8 100644
 --- a/netlink.c
 +++ b/netlink.c
 @@ -1706,6 +1706,28 @@ static int show_ring(struct nl_context *nlctx, const struct nlattr *nest)
@@ -90,7 +90,7 @@ index 1d9e47a6c8a4..35e66f697ff9 100644
 +
 +int nl_gpause(struct cmd_context *ctx)
 +{
-+	return ethnl_std_get_request(ctx, ETHTOOL_CMD_GET_PARAMS,
++	return ethnl_std_get_request(ctx, ETHNL_CMD_GET_PARAMS,
 +				     get_params_reply_cb,
 +				     ETH_PARAMS_IM_PAUSE, 0);
 +}
@@ -106,5 +106,5 @@ index 8b7707c9a45b..58eba5780179 100644
  
  #endif /* ETHTOOL_NETLINK_H__ */
 -- 
-2.15.1
+2.16.3
 

@@ -1,4 +1,4 @@
-From f1201253b22b9fceec68958a608d3fc56c9f252a Mon Sep 17 00:00:00 2001
+From c6c5b8942785d729c34788397827b4fb624daed2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:05:40 +0100
 Subject: [PATCH 11/19] netlink: add netlink handler for gchannels (-l)
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 47 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 30b2b5671c96..a737b3b10be1 100644
+index c02dc37e84be..b131d181cc2c 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4610,6 +4610,7 @@ int nl_sset(struct cmd_context *ctx) { return 0; }
+@@ -4912,6 +4912,7 @@ int nl_sset(struct cmd_context *ctx) { return 0; }
  int nl_gcoalesce(struct cmd_context *ctx) { return 0; }
  int nl_gring(struct cmd_context *ctx) { return 0; }
  int nl_gpause(struct cmd_context *ctx) { return 0; }
@@ -25,7 +25,7 @@ index 30b2b5671c96..a737b3b10be1 100644
  #endif
  
  static const struct option {
-@@ -4758,7 +4759,7 @@ static const struct option {
+@@ -5063,7 +5064,7 @@ static const struct option {
  	{ "-W|--set-dump", 1, do_setfwdump, NULL,
  	  "Set dump flag of the device",
  	  "		N\n"},
@@ -35,7 +35,7 @@ index 30b2b5671c96..a737b3b10be1 100644
  	{ "-L|--set-channels", 1, do_schannels, NULL,
  	  "Set Channels",
 diff --git a/netlink.c b/netlink.c
-index 35e66f697ff9..5f58f5a6c59d 100644
+index 0da4bcdb4ee8..d2687f13234f 100644
 --- a/netlink.c
 +++ b/netlink.c
 @@ -1728,6 +1728,34 @@ static int show_pause(struct nl_context *nlctx, const struct nlattr *nest)
@@ -96,7 +96,7 @@ index 35e66f697ff9..5f58f5a6c59d 100644
 +
 +int nl_gchannels(struct cmd_context *ctx)
 +{
-+	return ethnl_std_get_request(ctx, ETHTOOL_CMD_GET_PARAMS,
++	return ethnl_std_get_request(ctx, ETHNL_CMD_GET_PARAMS,
 +				     get_params_reply_cb,
 +				     ETH_PARAMS_IM_CHANNELS, 0);
 +}
@@ -112,5 +112,5 @@ index 58eba5780179..3e8593621671 100644
  
  #endif /* ETHTOOL_NETLINK_H__ */
 -- 
-2.15.1
+2.16.3
 

@@ -1,4 +1,4 @@
-From 3009947d5e9f47e1122b256f27187a42890446fa Mon Sep 17 00:00:00 2001
+From c9ec50efe8f79fe3629cdb536e2e44daa3922ae4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:08:21 +0100
 Subject: [PATCH 12/19] netlink: add netlink handler for geee (--show-eee)
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 71 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index a737b3b10be1..ef31c621d12d 100644
+index b131d181cc2c..2f3c6c6fc569 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4611,6 +4611,7 @@ int nl_gcoalesce(struct cmd_context *ctx) { return 0; }
+@@ -4913,6 +4913,7 @@ int nl_gcoalesce(struct cmd_context *ctx) { return 0; }
  int nl_gring(struct cmd_context *ctx) { return 0; }
  int nl_gpause(struct cmd_context *ctx) { return 0; }
  int nl_gchannels(struct cmd_context *ctx) { return 0; }
@@ -25,7 +25,7 @@ index a737b3b10be1..ef31c621d12d 100644
  #endif
  
  static const struct option {
-@@ -4778,7 +4779,7 @@ static const struct option {
+@@ -5083,7 +5084,7 @@ static const struct option {
  	  "		[ hex on|off ]\n"
  	  "		[ offset N ]\n"
  	  "		[ length N ]\n" },
@@ -35,7 +35,7 @@ index a737b3b10be1..ef31c621d12d 100644
  	{ "--set-eee", 1, do_seee, NULL,
  	  "Set EEE settings",
 diff --git a/netlink.c b/netlink.c
-index 5f58f5a6c59d..03ec6223c0d3 100644
+index d2687f13234f..eea602ed84b3 100644
 --- a/netlink.c
 +++ b/netlink.c
 @@ -1756,6 +1756,58 @@ static int show_channels(struct nl_context *nlctx, const struct nlattr *nest)
@@ -120,7 +120,7 @@ index 5f58f5a6c59d..03ec6223c0d3 100644
 +
 +int nl_geee(struct cmd_context *ctx)
 +{
-+	return ethnl_std_get_request(ctx, ETHTOOL_CMD_GET_PARAMS,
++	return ethnl_std_get_request(ctx, ETHNL_CMD_GET_PARAMS,
 +				     get_params_reply_cb,
 +				     ETH_PARAMS_IM_EEE, 0);
 +}
@@ -136,5 +136,5 @@ index 3e8593621671..3163dcf36c37 100644
  
  #endif /* ETHTOOL_NETLINK_H__ */
 -- 
-2.15.1
+2.16.3
 

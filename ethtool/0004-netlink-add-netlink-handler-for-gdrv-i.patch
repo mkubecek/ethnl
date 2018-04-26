@@ -1,4 +1,4 @@
-From af4c2ce1b5092e5874f7476ea4d61d57a1cf099f Mon Sep 17 00:00:00 2001
+From f4dec070d42c87e9208fdaa32a668207aecda74a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
 Subject: [PATCH 04/19] netlink: add netlink handler for gdrv (-i)
@@ -13,10 +13,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 37 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index a6ba76476e30..bf77d1d6b87d 100644
+index f4fce23299ca..1ea77e785ee9 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4739,6 +4739,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5041,6 +5041,7 @@ static int show_usage(struct cmd_context *ctx);
  
  #ifndef ETHTOOL_ENABLE_NETLINK
  /* Stubs to (not) use when building without netlink support */
@@ -24,7 +24,7 @@ index a6ba76476e30..bf77d1d6b87d 100644
  #endif
  
  static const struct option {
-@@ -4809,7 +4810,7 @@ static const struct option {
+@@ -5110,7 +5111,7 @@ static const struct option {
  	{ "-K|--features|--offload", 1, do_sfeatures, NULL,
  	  "Set protocol offload and other features",
  	  "		FEATURE on|off ...\n" },
@@ -34,7 +34,7 @@ index a6ba76476e30..bf77d1d6b87d 100644
  	{ "-d|--register-dump", 1, do_gregs, NULL,
  	  "Do a register dump",
 diff --git a/netlink.c b/netlink.c
-index d516623ae4fc..cc1a6aa55ab9 100644
+index d516623ae4fc..aded8358c0b6 100644
 --- a/netlink.c
 +++ b/netlink.c
 @@ -510,3 +510,36 @@ int netlink_done(struct cmd_context *ctx)
@@ -71,7 +71,7 @@ index d516623ae4fc..cc1a6aa55ab9 100644
 +
 +int nl_gdrv(struct cmd_context *ctx)
 +{
-+	return ethnl_std_get_request(ctx, ETHTOOL_CMD_GET_DRVINFO,
++	return ethnl_std_get_request(ctx, ETHNL_CMD_GET_DRVINFO,
 +				     drvinfo_reply_cb, 0, 0);
 +}
 diff --git a/netlink.h b/netlink.h
@@ -86,5 +86,5 @@ index b10b168b1f5b..277cd543cee7 100644
 +
  #endif /* ETHTOOL_NETLINK_H__ */
 -- 
-2.15.1
+2.16.3
 

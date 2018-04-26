@@ -1,4 +1,4 @@
-From e7141326b910182c600c9a16ca7ee3f4d7855197 Mon Sep 17 00:00:00 2001
+From b2de1a3a8ab780ea27cf52f7062179e4ff544628 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:51:36 +0100
 Subject: [PATCH 19/19] netlink: add netlink handler for sfec (--set-fec)
@@ -13,16 +13,16 @@ taken from the example in commit message of kernel commit 1a5f3da20bd9
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- ethtool.c |  3 +++
+ ethtool.c |  3 ++-
  netlink.c | 17 +++++++++++++++++
  netlink.h |  1 +
- 3 files changed, 21 insertions(+)
+ 3 files changed, 20 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 9150fa2e2762..af491de845cf 100644
+index 14ee80a3d908..7c003266ed62 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4618,6 +4618,7 @@ int nl_sring(struct cmd_context *ctx) { return 0; }
+@@ -4920,6 +4920,7 @@ int nl_sring(struct cmd_context *ctx) { return 0; }
  int nl_spause(struct cmd_context *ctx) { return 0; }
  int nl_schannels(struct cmd_context *ctx) { return 0; }
  int nl_seee(struct cmd_context *ctx) { return 0; }
@@ -30,17 +30,17 @@ index 9150fa2e2762..af491de845cf 100644
  #endif
  
  static const struct option {
-@@ -4801,6 +4802,8 @@ static const struct option {
- 	  "		[ downshift ]\n"},
- 	{ "--show-fec", 1, NULL, nl_gfec,
- 	  "Show FEC parameters" },
-+	{ "--set-fec", 1, NULL, nl_sfec,
-+	  "		[ modes %x[/%x] | mode on|off ... [--] ]\n" },
+@@ -5129,7 +5130,7 @@ static const struct option {
+ 	  "		[ all ]\n"},
+ 	{ "--show-fec", 1, do_gfec, nl_gfec,
+ 	  "Show FEC settings"},
+-	{ "--set-fec", 1, do_sfec, NULL,
++	{ "--set-fec", 1, do_sfec, nl_sfec,
+ 	  "Set FEC settings",
+ 	  "		[ encoding auto|off|rs|baser ]\n"},
  	{ "-h|--help", 0, show_usage, NULL,
- 	 "Show this help" },
- 	{ "--version", 0, do_version, NULL,
 diff --git a/netlink.c b/netlink.c
-index 7ba0d87e6812..c3666b0a32f2 100644
+index 0c1b879c949a..c03f39de51bd 100644
 --- a/netlink.c
 +++ b/netlink.c
 @@ -2264,3 +2264,20 @@ int nl_seee(struct cmd_context *ctx)
@@ -76,5 +76,5 @@ index 2d8e55930270..ae33460191a4 100644
  
  #endif /* ETHTOOL_NETLINK_H__ */
 -- 
-2.15.1
+2.16.3
 

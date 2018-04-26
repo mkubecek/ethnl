@@ -1,4 +1,4 @@
-From d93c789c186b362fbc743b651689fa01a110fd2f Mon Sep 17 00:00:00 2001
+From c2ba5c2e3be86af46ba87a73002236be0c3262d9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 07/19] netlink: add netlink handler for sset (-s)
@@ -16,10 +16,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 262 insertions(+), 4 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index b76b98c844f4..174fa92966d2 100644
+index 7dda7ef95881..20ce04c265d2 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4606,6 +4606,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4908,6 +4908,7 @@ static int show_usage(struct cmd_context *ctx);
  /* Stubs to (not) use when building without netlink support */
  int nl_gdrv(struct cmd_context *ctx) { return 0; }
  int nl_gset(struct cmd_context *ctx) { return 0; }
@@ -27,7 +27,7 @@ index b76b98c844f4..174fa92966d2 100644
  #endif
  
  static const struct option {
-@@ -4616,19 +4617,19 @@ static const struct option {
+@@ -4918,19 +4919,19 @@ static const struct option {
  	char *help;
  	char *opthelp;
  } args[] = {
@@ -52,7 +52,7 @@ index b76b98c844f4..174fa92966d2 100644
  	  "Show pause options" },
  	{ "-A|--pause", 1, do_spause, NULL,
 diff --git a/netlink.c b/netlink.c
-index 261ee31c2949..2ccecf35db9a 100644
+index 139e2ec6ebbc..bdb0d7c51a01 100644
 --- a/netlink.c
 +++ b/netlink.c
 @@ -32,6 +32,16 @@ struct nl_context {
@@ -197,7 +197,7 @@ index 261ee31c2949..2ccecf35db9a 100644
  		     unsigned int max_type)
  {
 @@ -1374,3 +1494,139 @@ int nl_gset(struct cmd_context *ctx)
- 	return ethnl_std_get_request(ctx, ETHTOOL_CMD_GET_SETTINGS,
+ 	return ethnl_std_get_request(ctx, ETHNL_CMD_GET_SETTINGS,
  				     settings_reply_cb, 0, 0);
  }
 +
@@ -317,8 +317,8 @@ index 261ee31c2949..2ccecf35db9a 100644
 +	nlctx->cmd = "-s";
 +	nlctx->argp = ctx->argp;
 +	nlctx->argc = ctx->argc;
-+	ret = msg_init(nlctx, ETHTOOL_CMD_SET_SETTINGS,
-+		       NLM_F_REQUEST | NLM_F_ACK, ctx->devname, 0, 0);
++	ret = msg_init(nlctx, ETHNL_CMD_SET_SETTINGS, NLM_F_REQUEST | NLM_F_ACK,
++		       ctx->devname, 0, 0);
 +	if (ret < 0)
 +		return 2;
 +
@@ -348,5 +348,5 @@ index 9de571fcc959..7c071474c9cd 100644
  
  #endif /* ETHTOOL_NETLINK_H__ */
 -- 
-2.15.1
+2.16.3
 
