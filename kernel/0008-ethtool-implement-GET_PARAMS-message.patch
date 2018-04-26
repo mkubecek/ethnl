@@ -1,4 +1,4 @@
-From c3fac00ba5d1215362eb80cc206714548be0a750 Mon Sep 17 00:00:00 2001
+From c110f08f29f356d9b90b172d986e114181eb9573 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
 Subject: [PATCH 8/9] ethtool: implement GET_PARAMS message
@@ -296,10 +296,10 @@ index 0ad51e533a2b..63f02668440a 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 34072fd72404..80f3bf1a548f 100644
+index 761539b425e9..20cf2d902c3c 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -1438,6 +1438,413 @@ static int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -1434,6 +1434,413 @@ static int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  	return ret;
  }
  
@@ -713,7 +713,7 @@ index 34072fd72404..80f3bf1a548f 100644
  /* genetlink paperwork */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -1455,6 +1862,10 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -1451,6 +1858,10 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.policy	= settings_policy,
  		.doit	= ethnl_set_settings,
  	},

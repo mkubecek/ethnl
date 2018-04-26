@@ -1,4 +1,4 @@
-From acd1f8f1914c77666f1e86c34bb599b5ab4765b8 Mon Sep 17 00:00:00 2001
+From edf747d363ae295a06871e7ffc8af56002ac606e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 2/9] ethtool: introduce ethtool netlink interface
@@ -15,8 +15,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool_netlink.h         |  33 ++++++
  net/Kconfig                                  |   7 ++
  net/core/Makefile                            |   1 +
- net/core/ethtool_netlink.c                   |  46 ++++++++
- 6 files changed, 251 insertions(+)
+ net/core/ethtool_netlink.c                   |  44 ++++++++
+ 6 files changed, 249 insertions(+)
  create mode 100644 Documentation/networking/ethtool-netlink.txt
  create mode 100644 include/linux/ethtool_netlink.h
  create mode 100644 include/uapi/linux/ethtool_netlink.h
@@ -266,10 +266,10 @@ index 7080417f8bc8..5951d8f46602 100644
 +obj-$(CONFIG_ETHTOOL_NETLINK) += ethtool_netlink.o
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
 new file mode 100644
-index 000000000000..46a226bb9a2c
+index 000000000000..fc5e1c10595d
 --- /dev/null
 +++ b/net/core/ethtool_netlink.c
-@@ -0,0 +1,46 @@
+@@ -0,0 +1,44 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include <linux/module.h>
@@ -309,10 +309,8 @@ index 000000000000..46a226bb9a2c
 +module_init(ethtool_nl_init);
 +module_exit(ethtool_nl_exit);
 +
-+/* this alias is for autoload */
-+MODULE_ALIAS("net-pf-" __stringify(PF_NETLINK)
-+	     "-proto-" __stringify(NETLINK_GENERIC)
-+	     "-family-" ETHTOOL_GENL_NAME);
++/* alias for module autoload */
++MODULE_ALIAS_GENL_FAMILY(ETHTOOL_GENL_NAME);
 +MODULE_AUTHOR("Michal Kubecek <mkubecek@suse.cz>");
 +MODULE_DESCRIPTION("Netlink interface for ethtool");
 +MODULE_LICENSE("GPL");

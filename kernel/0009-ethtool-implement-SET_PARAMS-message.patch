@@ -1,4 +1,4 @@
-From 4cbd2f8602a6272a613e5e2ffa96d902d883e9c4 Mon Sep 17 00:00:00 2001
+From 1f6e0f5290f3fb3035c6f35a82684d5c1d09c37e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 9/9] ethtool: implement SET_PARAMS message
@@ -133,10 +133,10 @@ index e915464d8d2e..f3b64d7c3761 100644
 +ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
  
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 80f3bf1a548f..d8871399bd5a 100644
+index 20cf2d902c3c..f810c4d50d2e 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -1845,6 +1845,422 @@ static int ethnl_get_params(struct sk_buff *skb, struct genl_info *info)
+@@ -1841,6 +1841,422 @@ static int ethnl_get_params(struct sk_buff *skb, struct genl_info *info)
  	return ret;
  }
  
@@ -559,7 +559,7 @@ index 80f3bf1a548f..d8871399bd5a 100644
  /* genetlink paperwork */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -1866,6 +2282,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -1862,6 +2278,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.cmd	= ETHNL_CMD_GET_PARAMS,
  		.doit	= ethnl_get_params,
  	},

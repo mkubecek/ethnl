@@ -1,4 +1,4 @@
-From 4b6e2eda1b4359535aa7cc983c24db63d6506634 Mon Sep 17 00:00:00 2001
+From 368cb903f79d215ee5912736a92f5fd7c2a3e230 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
 Subject: [PATCH 6/9] ethtool: implement GET_SETTINGS message
@@ -496,7 +496,7 @@ index 1f031c1d943a..92e236952f18 100644
  
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 97eec0496309..0fe9022acffc 100644
+index 96e5b128d370..aabebda11064 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -4,11 +4,69 @@
@@ -569,7 +569,7 @@ index 97eec0496309..0fe9022acffc 100644
  /* misc helper functions */
  
  static int ethnl_str_size(const char *s)
-@@ -602,6 +660,243 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
+@@ -600,6 +658,243 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
  	return -EMSGSIZE;
  }
  
@@ -813,7 +813,7 @@ index 97eec0496309..0fe9022acffc 100644
  /* genetlink paperwork */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -609,6 +904,10 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -607,6 +902,10 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.cmd	= ETHNL_CMD_GET_DRVINFO,
  		.doit	= ethnl_get_drvinfo,
  	},

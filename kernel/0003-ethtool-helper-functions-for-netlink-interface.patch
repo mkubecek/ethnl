@@ -1,4 +1,4 @@
-From 890b8c06ed1d725ef26c08572014ecc129bdeba1 Mon Sep 17 00:00:00 2001
+From c0c740f7bb3df110e98319ccda36c813604cef30 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 3/9] ethtool: helper functions for netlink interface
@@ -11,7 +11,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  1 file changed, 177 insertions(+)
 
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 46a226bb9a2c..7449d8317c2a 100644
+index fc5e1c10595d..ff9c51e54be8 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -8,6 +8,183 @@

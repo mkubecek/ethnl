@@ -1,4 +1,4 @@
-From ce33eb61709830b9b66e68c2e955450c0672cc01 Mon Sep 17 00:00:00 2001
+From 56633a36ef02fdbde454519dea2ad9a1abb3e032 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 4/9] ethtool: netlink bitset handling
@@ -10,8 +10,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  56 +++++
  include/uapi/linux/ethtool_netlink.h         |  31 +++
- net/core/ethtool_netlink.c                   | 346 +++++++++++++++++++++++++++
- 3 files changed, 433 insertions(+)
+ net/core/ethtool_netlink.c                   | 344 +++++++++++++++++++++++++++
+ 3 files changed, 431 insertions(+)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index d3982a20a32a..293af5db8100 100644
@@ -123,7 +123,7 @@ index 03c3d94cbb9d..b068e81b7ef0 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 7449d8317c2a..e3e7347b5fc7 100644
+index ff9c51e54be8..e1ea4942c9bf 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -3,6 +3,7 @@
@@ -134,7 +134,7 @@ index 7449d8317c2a..e3e7347b5fc7 100644
  #include <net/genetlink.h>
  #include "ethtool_common.h"
  
-@@ -130,6 +131,351 @@ static struct net_device *ethnl_dev_get(struct genl_info *info)
+@@ -130,6 +131,349 @@ static struct net_device *ethnl_dev_get(struct genl_info *info)
  	return ERR_PTR(-EINVAL);
  }
  
@@ -167,9 +167,9 @@ index 7449d8317c2a..e3e7347b5fc7 100644
 +}
 +
 +/* convert standard kernel bitmap (long sized words) to ethtool one (u32 words)
-+ * bitmap_to_u32array() can in fact do an "in place" conversion but it's not
-+ * documented so we cannot rely on it; moreover, we can use the fact that this
-+ * conversion is no-op except for 64-bit big endian architectures
++ * bitmap_to_arr32() is not guaranteed to do "in place" conversion correctly;
++ * moreover, we can use the fact that the conversion is no-op except for 64-bit
++ * big endian architectures
 + */
 +static void ethnl_bitmap_to_u32(unsigned long *bitmap, unsigned int nwords)
 +{
@@ -436,13 +436,12 @@ index 7449d8317c2a..e3e7347b5fc7 100644
 +			return mod;
 +
 +		bitmap_zero(val, max_bits);
-+		bitmap_from_u32array(val, change_bits,
-+				     nla_data(tb[ETHA_BITSET_VALUE]), nwords);
++		bitmap_from_arr32(val, nla_data(tb[ETHA_BITSET_VALUE]),
++				  change_bits);
 +		bitmap_zero(mask, max_bits);
 +		if (tb[ETHA_BITSET_MASK])
-+			bitmap_from_u32array(mask, change_bits,
-+					     nla_data(tb[ETHA_BITSET_MASK]),
-+					     nwords);
++			bitmap_from_arr32(mask, nla_data(tb[ETHA_BITSET_MASK]),
++					  change_bits);
 +		else
 +			bitmap_fill(mask, change_bits);
 +
@@ -472,14 +471,13 @@ index 7449d8317c2a..e3e7347b5fc7 100644
 +				  const char *const *names,
 +				  struct genl_info *info)
 +{
-+	unsigned int nwords = (nbits + 31) / 32;
 +	DECLARE_BITMAP(tmp, nbits);
 +	bool mod;
 +
-+	bitmap_from_u32array(tmp, nbits, bitmap, nwords);
++	bitmap_from_arr32(tmp, bitmap, nbits);
 +	mod = ethnl_update_bitset(tmp, nbits, attr, err, names, info);
 +	if (!*err && mod)
-+		bitmap_to_u32array(bitmap, nwords, tmp, nbits);
++		bitmap_to_arr32(bitmap, tmp, nbits);
 +	return (!*err && mod);
 +}
 +
