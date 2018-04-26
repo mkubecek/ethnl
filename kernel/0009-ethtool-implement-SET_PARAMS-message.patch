@@ -1,4 +1,4 @@
-From 89c17c26f9507f982734aec79d8b996cb972f2c0 Mon Sep 17 00:00:00 2001
+From 4cbd2f8602a6272a613e5e2ffa96d902d883e9c4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 9/9] ethtool: implement SET_PARAMS message
@@ -573,5 +573,5 @@ index 80f3bf1a548f..d8871399bd5a 100644
  
  static struct genl_family ethtool_genl_family = {
 -- 
-2.15.1
+2.16.3
 

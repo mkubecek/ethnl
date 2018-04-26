@@ -1,4 +1,4 @@
-From 15d62980d96c3572d2fa5158a2d46f4f9863472a Mon Sep 17 00:00:00 2001
+From acd1f8f1914c77666f1e86c34bb599b5ab4765b8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 2/9] ethtool: introduce ethtool netlink interface
@@ -238,12 +238,12 @@ index 000000000000..03c3d94cbb9d
 +
 +#endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/Kconfig b/net/Kconfig
-index 9dba2715919d..a5e3c89a2495 100644
+index 6fa1a4493b8c..160c449a696c 100644
 --- a/net/Kconfig
 +++ b/net/Kconfig
-@@ -440,6 +440,13 @@ config MAY_USE_DEVLINK
- 	  on MAY_USE_DEVLINK to ensure they do not cause link errors when
- 	  devlink is a loadable module and the driver using it is built-in.
+@@ -426,6 +426,13 @@ config MAY_USE_DEVLINK
+ config PAGE_POOL
+        bool
  
 +config ETHTOOL_NETLINK
 +	tristate "Netlink interface for ethtool"
@@ -256,10 +256,10 @@ index 9dba2715919d..a5e3c89a2495 100644
  
  # Used by archs to tell that they support BPF JIT compiler plus which flavour.
 diff --git a/net/core/Makefile b/net/core/Makefile
-index 1fd0a9c88b1b..617ab2abecdf 100644
+index 7080417f8bc8..5951d8f46602 100644
 --- a/net/core/Makefile
 +++ b/net/core/Makefile
-@@ -30,3 +30,4 @@ obj-$(CONFIG_DST_CACHE) += dst_cache.o
+@@ -31,3 +31,4 @@ obj-$(CONFIG_DST_CACHE) += dst_cache.o
  obj-$(CONFIG_HWBM) += hwbm.o
  obj-$(CONFIG_NET_DEVLINK) += devlink.o
  obj-$(CONFIG_GRO_CELLS) += gro_cells.o
@@ -317,5 +317,5 @@ index 000000000000..46a226bb9a2c
 +MODULE_DESCRIPTION("Netlink interface for ethtool");
 +MODULE_LICENSE("GPL");
 -- 
-2.15.1
+2.16.3
 

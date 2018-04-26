@@ -1,4 +1,4 @@
-From ff56eed6a8f8daaf5f3a5ee9532db57c44f46f38 Mon Sep 17 00:00:00 2001
+From 890b8c06ed1d725ef26c08572014ecc129bdeba1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 3/9] ethtool: helper functions for netlink interface
@@ -199,5 +199,5 @@ index 46a226bb9a2c..7449d8317c2a 100644
  
  static const struct genl_ops ethtool_genl_ops[] = {
 -- 
-2.15.1
+2.16.3
 

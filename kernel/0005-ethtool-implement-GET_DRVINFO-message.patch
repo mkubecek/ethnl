@@ -1,4 +1,4 @@
-From 8fc0fc46df89f53730ef375ddf0b0cf24dcb25c8 Mon Sep 17 00:00:00 2001
+From 9d243c0071875363a88489c091b9695859f9cf5f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
 Subject: [PATCH 5/9] ethtool: implement GET_DRVINFO message
@@ -116,23 +116,23 @@ index b068e81b7ef0..cef4d3e47a88 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/Makefile b/net/core/Makefile
-index 617ab2abecdf..3196641c0e70 100644
+index 5951d8f46602..1a0a97c5072c 100644
 --- a/net/core/Makefile
 +++ b/net/core/Makefile
 @@ -11,7 +11,7 @@ obj-$(CONFIG_SYSCTL) += sysctl_net_core.o
  obj-y		     += dev.o ethtool.o dev_addr_lists.o dst.o netevent.o \
  			neighbour.o rtnetlink.o utils.o link_watch.o filter.o \
  			sock_diag.o dev_ioctl.o tso.o sock_reuseport.o \
--			fib_notifier.o
-+			fib_notifier.o ethtool_common.o
+-			fib_notifier.o xdp.o
++			fib_notifier.o xdp.o ethtool_common.o
  
  obj-y += net-sysfs.o
- obj-$(CONFIG_PROC_FS) += net-procfs.o
+ obj-$(CONFIG_PAGE_POOL) += page_pool.o
 diff --git a/net/core/ethtool.c b/net/core/ethtool.c
-index 50a79203043b..e654ff1ebabf 100644
+index 03416e6dd5d7..8b9552d4f5c5 100644
 --- a/net/core/ethtool.c
 +++ b/net/core/ethtool.c
-@@ -26,6 +26,7 @@
+@@ -27,6 +27,7 @@
  #include <linux/rtnetlink.h>
  #include <linux/sched/signal.h>
  #include <linux/net.h>
@@ -140,7 +140,7 @@ index 50a79203043b..e654ff1ebabf 100644
  
  /*
   * Some useful ethtool_ops methods that're device independent.
-@@ -886,45 +887,14 @@ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
+@@ -872,45 +873,14 @@ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
  						  void __user *useraddr)
  {
  	struct ethtool_drvinfo info;
@@ -350,5 +350,5 @@ index e3e7347b5fc7..97eec0496309 100644
  
  static struct genl_family ethtool_genl_family = {
 -- 
-2.15.1
+2.16.3
 

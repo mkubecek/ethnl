@@ -1,4 +1,4 @@
-From 87fbce6d1844cb59eebd3dc5954f5cdad2915cad Mon Sep 17 00:00:00 2001
+From ce33eb61709830b9b66e68c2e955450c0672cc01 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 4/9] ethtool: netlink bitset handling
@@ -487,5 +487,5 @@ index 7449d8317c2a..e3e7347b5fc7 100644
  {
  	GENL_SET_ERR_MSG(info, "not all requested data could be retrieved");
 -- 
-2.15.1
+2.16.3
 

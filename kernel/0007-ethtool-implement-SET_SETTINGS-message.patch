@@ -1,4 +1,4 @@
-From 0457d9ce7e4882c16df8dd3145923278414d5d3e Mon Sep 17 00:00:00 2001
+From a98679beb78212d69c5181597e2c7e75c93bed4d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 7/9] ethtool: implement SET_SETTINGS message
@@ -687,5 +687,5 @@ index 0fe9022acffc..34072fd72404 100644
  
  static struct genl_family ethtool_genl_family = {
 -- 
-2.15.1
+2.16.3
 
