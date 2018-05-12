@@ -1,4 +1,4 @@
-From c110f08f29f356d9b90b172d986e114181eb9573 Mon Sep 17 00:00:00 2001
+From 2bb26de4568420bd463943263a5908975ee253f4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
 Subject: [PATCH 8/9] ethtool: implement GET_PARAMS message
@@ -10,9 +10,9 @@ Flags in info_mask allow selecting only some (or on) of these categories.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  98 ++++++-
- include/uapi/linux/ethtool_netlink.h         | 118 ++++++++
- net/core/ethtool_netlink.c                   | 411 +++++++++++++++++++++++++++
- 3 files changed, 621 insertions(+), 6 deletions(-)
+ include/uapi/linux/ethtool_netlink.h         | 119 ++++++++
+ net/core/ethtool_netlink.c                   | 419 +++++++++++++++++++++++++++
+ 3 files changed, 630 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 75e304c3bdf2..e915464d8d2e 100644
@@ -160,10 +160,10 @@ index 75e304c3bdf2..e915464d8d2e 100644
  ETHTOOL_SFECPARAM		n/a
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 0ad51e533a2b..63f02668440a 100644
+index 675d0662e9ca..1d925737ff0a 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -25,6 +25,8 @@ enum {
+@@ -11,6 +11,8 @@ enum {
  	ETHNL_CMD_SET_DRVINFO,		/* only for reply */
  	ETHNL_CMD_GET_SETTINGS,
  	ETHNL_CMD_SET_SETTINGS,
@@ -171,8 +171,8 @@ index 0ad51e533a2b..63f02668440a 100644
 +	ETHNL_CMD_SET_PARAMS,
  
  	__ETHNL_CMD_MAX,
- 	ETHNL_CMD_MAX = (__ETHNL_CMD_MAX - 1),
-@@ -114,6 +116,122 @@ enum {
+ 	ETHNL_CMD_MAX = (__ETHNL_CMD_MAX - 1)
+@@ -113,6 +115,123 @@ enum {
  
  #define ETH_SETTINGS_IM_DEFAULT			0x1f
  
@@ -180,6 +180,9 @@ index 0ad51e533a2b..63f02668440a 100644
 +
 +enum {
 +	ETHA_PARAMS_UNSPEC,
++	ETHA_PARAMS_DEV,			/* nest - ETHA_DEV_* */
++	ETHA_PARAMS_INFOMASK,			/* u32 */
++	ETHA_PARAMS_COMPACT,			/* flag */
 +	ETHA_PARAMS_COALESCE,			/* nest - ETHA_COALESCE_* */
 +	ETHA_PARAMS_RING,			/* nest - ETHA_RING_* */
 +	ETHA_PARAMS_PAUSE,			/* nest - ETHA_PAUSE_* */
@@ -188,10 +191,8 @@ index 0ad51e533a2b..63f02668440a 100644
 +	ETHA_PARAMS_FEC,			/* nest - ETHA_FEC_* */
 +
 +	__ETHA_PARAMS_MAX,
-+	ETHA_PARAMS_MAX = (__ETHA_PARAMS_MAX - 1),
++	ETHA_PARAMS_MAX = (__ETHA_PARAMS_MAX - 1)
 +};
-+
-+#define ETH_PARAMS_RF_COMPACT_BITSETS		0x1
 +
 +#define ETH_PARAMS_IM_COALESCE			0x01
 +#define ETH_PARAMS_IM_RING			0x02
@@ -228,7 +229,7 @@ index 0ad51e533a2b..63f02668440a 100644
 +	ETHA_COALESCE_STATS_BLOCK_USECS,	/* u32 */
 +
 +	__ETHA_COALESCE_MAX,
-+	ETHA_COALESCE_MAX = (__ETHA_COALESCE_MAX - 1),
++	ETHA_COALESCE_MAX = (__ETHA_COALESCE_MAX - 1)
 +};
 +
 +enum {
@@ -243,7 +244,7 @@ index 0ad51e533a2b..63f02668440a 100644
 +	ETHA_RING_TX_PENDING,			/* u32 */
 +
 +	__ETHA_RING_MAX,
-+	ETHA_RING_MAX = (__ETHA_RING_MAX - 1),
++	ETHA_RING_MAX = (__ETHA_RING_MAX - 1)
 +};
 +
 +enum {
@@ -253,7 +254,7 @@ index 0ad51e533a2b..63f02668440a 100644
 +	ETHA_PAUSE_TX,				/* u8 */
 +
 +	__ETHA_PAUSE_MAX,
-+	ETHA_PAUSE_MAX = (__ETHA_PAUSE_MAX - 1),
++	ETHA_PAUSE_MAX = (__ETHA_PAUSE_MAX - 1)
 +};
 +
 +enum {
@@ -268,7 +269,7 @@ index 0ad51e533a2b..63f02668440a 100644
 +	ETHA_CHANNELS_COMBINED_COUNT,		/* u32 */
 +
 +	__ETHA_CHANNELS_MAX,
-+	ETHA_CHANNELS_MAX = (__ETHA_CHANNELS_MAX - 1),
++	ETHA_CHANNELS_MAX = (__ETHA_CHANNELS_MAX - 1)
 +};
 +
 +enum {
@@ -281,7 +282,7 @@ index 0ad51e533a2b..63f02668440a 100644
 +	ETHA_EEE_TX_LPI_TIMER,			/* u32 */
 +
 +	__ETHA_EEE_MAX,
-+	ETHA_EEE_MAX = (__ETHA_EEE_MAX - 1),
++	ETHA_EEE_MAX = (__ETHA_EEE_MAX - 1)
 +};
 +
 +enum {
@@ -289,21 +290,27 @@ index 0ad51e533a2b..63f02668440a 100644
 +	ETHA_FEC_MODES,				/* bitfield32 */
 +
 +	__ETHA_FEC_MAX,
-+	ETHA_FEC_MAX = (__ETHA_FEC_MAX - 1),
++	ETHA_FEC_MAX = (__ETHA_FEC_MAX - 1)
 +};
 +
  /* generic netlink info */
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 761539b425e9..20cf2d902c3c 100644
+index b10fc38078e7..1ebe36b06bb6 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -1434,6 +1434,413 @@ static int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -1499,6 +1499,420 @@ static int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  	return ret;
  }
  
 +/* GET_PARAMS */
++
++static const struct nla_policy get_params_policy[ETHA_PARAMS_MAX + 1] = {
++	[ETHA_PARAMS_DEV]		= { .type = NLA_NESTED },
++	[ETHA_PARAMS_INFOMASK]		= { .type = NLA_U32 },
++	[ETHA_PARAMS_COMPACT]		= { .type = NLA_FLAG },
++};
 +
 +static int ethnl_get_coalesce(struct net_device *dev,
 +			      struct ethtool_coalesce *data)
@@ -354,7 +361,7 @@ index 761539b425e9..20cf2d902c3c 100644
 +	return dev->ethtool_ops->get_fecparam(dev, data);
 +}
 +
-+static int ethnl_params_size(struct ethtool_eee *eee, u16 flags, u16 mask)
++static int ethnl_params_size(struct ethtool_eee *eee, u32 mask, bool compact)
 +{
 +	int len = 0;
 +
@@ -372,15 +379,15 @@ index 761539b425e9..20cf2d902c3c 100644
 +		int ret;
 +
 +		/* link_modes */
-+		ret = ethnl_bitset_size(flags & ETH_PARAMS_RF_COMPACT_BITSETS,
-+					sizeof(u32) * 8, &eee->advertised,
-+					&eee->supported, link_mode_names);
++		ret = ethnl_bitset_size(compact, sizeof(u32) * 8,
++					&eee->advertised, &eee->supported,
++					link_mode_names);
 +		if (ret < 0)
 +			return ret;
 +		nlen += ret;
 +		/* peer_modes */
-+		ret = ethnl_bitset_size(flags & ETH_PARAMS_RF_COMPACT_BITSETS,
-+					sizeof(u32) * 8, &eee->lp_advertised,
++		ret = ethnl_bitset_size(compact, sizeof(u32) * 8,
++					&eee->lp_advertised,
 +					&eee->lp_advertised, link_mode_names);
 +		if (ret < 0)
 +			return ret;
@@ -528,21 +535,19 @@ index 761539b425e9..20cf2d902c3c 100644
 +	return 0;
 +}
 +
-+static int fill_eee(struct sk_buff *skb, struct ethtool_eee *data, u16 flags)
++static int fill_eee(struct sk_buff *skb, struct ethtool_eee *data, bool compact)
 +{
 +	struct nlattr *nest = ethnl_nest_start(skb, ETHA_PARAMS_EEE);
 +	int ret;
 +
 +	if (!nest)
 +		return -EMSGSIZE;
-+	ret = ethnl_put_bitset(skb, ETHA_EEE_LINK_MODES,
-+			       flags & ETH_PARAMS_RF_COMPACT_BITSETS,
++	ret = ethnl_put_bitset(skb, ETHA_EEE_LINK_MODES, compact,
 +			       sizeof(data->advertised) * 8, &data->advertised,
 +			       &data->supported, link_mode_names);
 +	if (ret < 0)
 +		goto err;
-+	ret = ethnl_put_bitset(skb, ETHA_EEE_PEER_MODES,
-+			       flags & ETH_PARAMS_RF_COMPACT_BITSETS,
++	ret = ethnl_put_bitset(skb, ETHA_EEE_PEER_MODES, compact,
 +			       sizeof(data->advertised) * 8,
 +			       &data->lp_advertised, &data->lp_advertised,
 +			       link_mode_names);
@@ -582,6 +587,8 @@ index 761539b425e9..20cf2d902c3c 100644
 +
 +static int ethnl_get_params(struct sk_buff *skb, struct genl_info *info)
 +{
++	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
++	u32 req_mask = ETH_SETTINGS_IM_DEFAULT;
 +	struct ethtool_coalesce coalesce = {};
 +	struct ethtool_channels channels = {};
 +	struct ethtool_pauseparam pause = {};
@@ -589,20 +596,23 @@ index 761539b425e9..20cf2d902c3c 100644
 +	struct ethtool_fecparam fec = {};
 +	struct ethtool_eee eee = {};
 +	unsigned int reply_len = 0;
-+	struct ethnlmsghdr *ehdr;
 +	struct net_device *dev;
 +	struct sk_buff *rskb;
-+	u16 req_flags;
-+	u16 req_mask;
-+	int ret = 0;
++	bool compact = false;
++	void *ehdr;
++	int ret;
 +
-+	ehdr = info->userhdr;
-+	if (!ehdr->info_mask)
-+		ehdr->info_mask = ETH_PARAMS_IM_DEFAULT;
-+	req_mask = ehdr->info_mask;
-+	req_flags = ehdr->flags;
++	ret = genlmsg_parse(info->nlhdr, &ethtool_genl_family, tb,
++			    ETHA_PARAMS_MAX, get_params_policy,
++			    info->extack);
++	if (ret < 0)
++		return ret;
 +
-+	dev = ethnl_dev_get(info);
++	if (tb[ETHA_PARAMS_COMPACT])
++		compact = true;
++	if (tb[ETHA_PARAMS_INFOMASK])
++		req_mask = nla_get_u32(tb[ETHA_SETTINGS_INFOMASK]);
++	dev = ethnl_dev_get(info, tb[ETHA_SETTINGS_DEV]);
 +	if (IS_ERR(dev))
 +		return PTR_ERR(dev);
 +
@@ -649,18 +659,16 @@ index 761539b425e9..20cf2d902c3c 100644
 +		}
 +	}
 +
-+	ret = ethnl_params_size(&eee, req_flags, req_mask);
++	ret = ethnl_params_size(&eee, req_mask, compact);
 +	if (ret < 0)
 +		goto err_putdev;
 +	else
 +		reply_len = ret;
-+	rskb = ethnl_reply_init(reply_len, dev, ETHNL_CMD_SET_PARAMS, info,
-+				&ehdr);
++	rskb = ethnl_reply_init(reply_len, dev, ETHNL_CMD_SET_PARAMS,
++				ETHA_PARAMS_DEV, info, &ehdr);
 +	ret = -ENOMEM;
 +	if (!rskb)
 +		goto err_putdev;
-+	if (req_mask != ETH_SETTINGS_IM_DEFAULT)
-+		ehdr->info_mask = req_mask;
 +
 +	if (req_mask & ETH_PARAMS_IM_COALESCE) {
 +		ret = fill_coalesce(rskb, &coalesce);
@@ -683,7 +691,7 @@ index 761539b425e9..20cf2d902c3c 100644
 +			goto err;
 +	}
 +	if (req_mask & ETH_PARAMS_IM_EEE) {
-+		ret = fill_eee(rskb, &eee, req_flags);
++		ret = fill_eee(rskb, &eee, compact);
 +		if (ret < 0)
 +			goto err;
 +	}
@@ -710,15 +718,16 @@ index 761539b425e9..20cf2d902c3c 100644
 +	return ret;
 +}
 +
- /* genetlink paperwork */
+ /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -1451,6 +1858,10 @@ static const struct genl_ops ethtool_genl_ops[] = {
- 		.policy	= settings_policy,
+@@ -1518,6 +1932,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+ 		.policy	= set_settings_policy,
  		.doit	= ethnl_set_settings,
  	},
 +	{
 +		.cmd	= ETHNL_CMD_GET_PARAMS,
++		.policy	= get_params_policy,
 +		.doit	= ethnl_get_params,
 +	},
  };

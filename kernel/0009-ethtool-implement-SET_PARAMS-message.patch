@@ -1,4 +1,4 @@
-From 1f6e0f5290f3fb3035c6f35a82684d5c1d09c37e Mon Sep 17 00:00:00 2001
+From e8420fa4181ac611bbfef1f827afac1097a3ef56 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 9/9] ethtool: implement SET_PARAMS message
@@ -12,8 +12,8 @@ more of the legacy requests (and provide only part of the data to update).
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  71 ++++-
- net/core/ethtool_netlink.c                   | 422 +++++++++++++++++++++++++++
- 2 files changed, 486 insertions(+), 7 deletions(-)
+ net/core/ethtool_netlink.c                   | 420 +++++++++++++++++++++++++++
+ 2 files changed, 484 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index e915464d8d2e..f3b64d7c3761 100644
@@ -133,16 +133,17 @@ index e915464d8d2e..f3b64d7c3761 100644
 +ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
  
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 20cf2d902c3c..f810c4d50d2e 100644
+index 1ebe36b06bb6..f66298987595 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -1841,6 +1841,422 @@ static int ethnl_get_params(struct sk_buff *skb, struct genl_info *info)
+@@ -1913,6 +1913,420 @@ static int ethnl_get_params(struct sk_buff *skb, struct genl_info *info)
  	return ret;
  }
  
 +/* SET_PARAMS */
 +
-+static const struct nla_policy params_policy[ETHA_SETTINGS_MAX + 1] = {
++static const struct nla_policy set_params_policy[ETHA_SETTINGS_MAX + 1] = {
++	[ETHA_PARAMS_DEV]		= { .type = NLA_NESTED },
 +	[ETHA_PARAMS_UNSPEC]		= { .type = NLA_UNSPEC },
 +	[ETHA_PARAMS_COALESCE]		= { .type = NLA_NESTED },
 +	[ETHA_PARAMS_RING]		= { .type = NLA_NESTED },
@@ -517,19 +518,16 @@ index 20cf2d902c3c..f810c4d50d2e 100644
 +static int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHA_PARAMS_MAX + 1];
-+	struct ethnlmsghdr *ehdr;
 +	struct net_device *dev;
 +	int ret;
 +
-+	ehdr = info->userhdr;
-+	dev = ethnl_dev_get(info);
++	ret = genlmsg_parse(info->nlhdr, &ethtool_genl_family, tb,
++			    ETHA_PARAMS_MAX, set_params_policy, info->extack);
++	if (ret < 0)
++		return ret;
++	dev = ethnl_dev_get(info, tb[ETHA_PARAMS_DEV]);
 +	if (IS_ERR(dev))
 +		return PTR_ERR(dev);
-+
-+	ret = genlmsg_parse(info->nlhdr, &ethtool_genl_family, tb,
-+			    ETHA_PARAMS_MAX, params_policy, info->extack);
-+	if (ret < 0)
-+		goto err_putdev;
 +
 +	ret = update_coalesce(info, dev, tb[ETHA_PARAMS_COALESCE]);
 +	if (ret < 0)
@@ -556,17 +554,17 @@ index 20cf2d902c3c..f810c4d50d2e 100644
 +	return ret;
 +}
 +
- /* genetlink paperwork */
+ /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -1862,6 +2278,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
- 		.cmd	= ETHNL_CMD_GET_PARAMS,
+@@ -1937,6 +2351,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
+ 		.policy	= get_params_policy,
  		.doit	= ethnl_get_params,
  	},
 +	{
 +		.cmd	= ETHNL_CMD_SET_PARAMS,
 +		.flags	= GENL_UNS_ADMIN_PERM,
-+		.policy	= params_policy,
++		.policy	= set_params_policy,
 +		.doit	= ethnl_set_params,
 +	},
  };

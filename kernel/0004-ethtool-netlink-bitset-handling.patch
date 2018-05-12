@@ -1,4 +1,4 @@
-From 56633a36ef02fdbde454519dea2ad9a1abb3e032 Mon Sep 17 00:00:00 2001
+From dcc8a6da915782591bf8cc94bde0ccf154930000 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 4/9] ethtool: netlink bitset handling
@@ -81,11 +81,11 @@ index d3982a20a32a..293af5db8100 100644
  ---------------------
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 03c3d94cbb9d..b068e81b7ef0 100644
+index 1df263d9feb7..98d6fae315f3 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -26,6 +26,37 @@ enum {
- 	ETHNL_CMD_MAX = (__ETHNL_CMD_MAX - 1),
+@@ -23,6 +23,37 @@ enum {
+ 	ETHA_DEV_MAX = (__ETHA_DEV_MAX - 1)
  };
  
 +/* bit sets */
@@ -97,7 +97,7 @@ index 03c3d94cbb9d..b068e81b7ef0 100644
 +	ETHA_BIT_VALUE,				/* flag */
 +
 +	__ETHA_BIT_MAX,
-+	ETHA_BIT_MAX = (__ETHA_BIT_MAX - 1),
++	ETHA_BIT_MAX = (__ETHA_BIT_MAX - 1)
 +};
 +
 +enum {
@@ -105,7 +105,7 @@ index 03c3d94cbb9d..b068e81b7ef0 100644
 +	ETHA_BITS_BIT,
 +
 +	__ETHA_BITS_MAX,
-+	ETHA_BITS_MAX = (__ETHA_BITS_MAX - 1),
++	ETHA_BITS_MAX = (__ETHA_BITS_MAX - 1)
 +};
 +
 +enum {
@@ -116,14 +116,14 @@ index 03c3d94cbb9d..b068e81b7ef0 100644
 +	ETHA_BITSET_MASK,			/* binary */
 +
 +	__ETHA_BITSET_MAX,
-+	ETHA_BITSET_MAX = (__ETHA_BITSET_MAX - 1),
++	ETHA_BITSET_MAX = (__ETHA_BITSET_MAX - 1)
 +};
 +
  /* generic netlink info */
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index ff9c51e54be8..e1ea4942c9bf 100644
+index 5bf098691e4a..6880ddc98811 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -3,6 +3,7 @@
@@ -134,8 +134,8 @@ index ff9c51e54be8..e1ea4942c9bf 100644
  #include <net/genetlink.h>
  #include "ethtool_common.h"
  
-@@ -130,6 +131,349 @@ static struct net_device *ethnl_dev_get(struct genl_info *info)
- 	return ERR_PTR(-EINVAL);
+@@ -171,6 +172,349 @@ static int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev,
+ 	return ret;
  }
  
 +/* bitset helper functions */

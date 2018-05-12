@@ -1,4 +1,4 @@
-From c0c740f7bb3df110e98319ccda36c813604cef30 Mon Sep 17 00:00:00 2001
+From 0797e7398a595a574e638115ac6eb991f63ede81 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 3/9] ethtool: helper functions for netlink interface
@@ -7,14 +7,37 @@ Misc helpers used by ethtool netlink code.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/core/ethtool_netlink.c | 177 +++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 177 insertions(+)
+ include/uapi/linux/ethtool_netlink.h |  11 ++
+ net/core/ethtool_netlink.c           | 222 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 233 insertions(+)
 
+diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
+index 3c0c5c70692b..1df263d9feb7 100644
+--- a/include/uapi/linux/ethtool_netlink.h
++++ b/include/uapi/linux/ethtool_netlink.h
+@@ -12,6 +12,17 @@ enum {
+ 	ETHNL_CMD_MAX = (__ETHNL_CMD_MAX - 1)
+ };
+ 
++/* device specification */
++
++enum {
++	ETHA_DEV_UNSPEC,
++	ETHA_DEV_INDEX,				/* u32 */
++	ETHA_DEV_NAME,				/* string */
++
++	__ETHA_DEV_MAX,
++	ETHA_DEV_MAX = (__ETHA_DEV_MAX - 1)
++};
++
+ /* generic netlink info */
+ #define ETHTOOL_GENL_NAME "ethtool"
+ #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index fc5e1c10595d..ff9c51e54be8 100644
+index 24bb5c8c3578..5bf098691e4a 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
-@@ -8,6 +8,183 @@
+@@ -8,6 +8,228 @@
  
  static struct genl_family ethtool_genl_family;
  
@@ -115,29 +138,70 @@ index fc5e1c10595d..ff9c51e54be8 100644
 +	return true;
 +}
 +
-+static struct net_device *ethnl_dev_get(struct genl_info *info)
-+{
-+	const struct ethnlmsghdr *hdr = info->userhdr;
-+	struct net *net = genl_info_net(info);
-+	struct net_device *dev;
++/* device helper functions */
 +
-+	if (hdr->ifindex) {
-+		dev = dev_get_by_index(net, hdr->ifindex);
++static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
++	[ETHA_DEV_UNSPEC]	= { .type = NLA_UNSPEC },
++	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
++	[ETHA_DEV_NAME]		= { .type = NLA_STRING, .len = IFNAMSIZ - 1 },
++};
++
++static struct net_device *ethnl_dev_get(struct genl_info *info,
++					struct nlattr *nest)
++{
++	struct net *net = genl_info_net(info);
++	struct nlattr *tb[ETHA_DEV_MAX + 1];
++	struct net_device *dev;
++	int ret;
++
++	ret = nla_parse_nested(tb, ETHA_DEV_MAX, nest, dev_policy,
++			       info->extack);
++	if (ret < 0)
++		return ERR_PTR(ret);
++
++	if (tb[ETHA_DEV_INDEX]) {
++		dev = dev_get_by_index(net, nla_get_u32(tb[ETHA_BIT_INDEX]));
 +		if (!dev)
 +			return ERR_PTR(-ENODEV);
-+		/* if both ifindex and ifname are passed, both must match */
-+		if (hdr->ifname && strncmp(dev->name, hdr->ifname, IFNAMSIZ)) {
-+			GENL_SET_ERR_MSG(info,
-+					 "ifindex and ifname do not match");
-+			return ERR_PTR(-ENODEV);
++		/* if both ifindex and ifname are passed, they must match */
++		if (tb[ETHA_DEV_NAME]) {
++			const char *nl_name = nla_data(tb[ETHA_DEV_NAME]);
++
++			if (strncmp(dev->name, nl_name, IFNAMSIZ)) {
++				GENL_SET_ERR_MSG(info,
++						 "ifindex and ifname do not match");
++				return ERR_PTR(-ENODEV);
++			}
 +		}
 +		return dev;
-+	} else if (hdr->ifname[0]) {
-+		dev = dev_get_by_name(net, hdr->ifname);
++	} else if (tb[ETHA_DEV_NAME]) {
++		dev = dev_get_by_name(net, nla_data(tb[ETHA_DEV_NAME]));
 +		return dev ?: ERR_PTR(-ENODEV);
 +	}
 +
 +	return ERR_PTR(-EINVAL);
++}
++
++static int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev,
++			  u16 attrtype)
++{
++	struct nlattr *nest;
++	int ret = -EMSGSIZE;
++
++	nest = ethnl_nest_start(msg, attrtype);
++	if (!nest)
++		return -EMSGSIZE;
++
++	if (nla_put_u32(msg, ETHA_DEV_INDEX, (u32)dev->ifindex))
++		goto err;
++	if (nla_put_string(msg, ETHA_DEV_NAME, dev->name))
++		goto err;
++
++	nla_nest_end(msg, nest);
++	return 0;
++err:
++	nla_nest_cancel(msg, nest);
++	return ret;
 +}
 +
 +static void warn_partial_info(struct genl_info *info)
@@ -160,18 +224,21 @@ index fc5e1c10595d..ff9c51e54be8 100644
 + * payload: payload length (without netlink, genetlink and ethnl headers)
 + * dev:     device the reply is about
 + * cmd:     ETHNL_CMD_* command for reply
-+ * info:   info for the received packet we respond to
-+ * ehdrp:   place to store pointer to ethtool specific header (may be null)
++ * info:    info for the received packet we respond to
++ * ehdrp:   place to store payload pointer returned by genlmsg_new()
 + * returns: skb or null on error
 + */
 +static struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev,
-+					u8 cmd, struct genl_info *info,
-+					struct ethnlmsghdr **ehdrp)
++					u8 cmd, u16 dev_attrtype,
++					struct genl_info *info, void **ehdrp)
 +{
-+	struct ethnlmsghdr *ehdr;
++	void *ehdr;
 +	struct sk_buff *rskb;
 +
-+	rskb = genlmsg_new(ETHNL_HDRLEN + payload, GFP_KERNEL);
++	if (dev)
++		payload += nla_total_size(nla_total_size(sizeof(u32)) +
++					  nla_total_size(IFNAMSIZ));
++	rskb = genlmsg_new(payload, GFP_KERNEL);
 +	if (!rskb) {
 +		GENL_SET_ERR_MSG(info,
 +				 "failed to allocate reply message");
@@ -179,23 +246,24 @@ index fc5e1c10595d..ff9c51e54be8 100644
 +	}
 +
 +	ehdr = genlmsg_put_reply(rskb, info, &ethtool_genl_family, 0, cmd);
-+	if (!ehdr) {
-+		nlmsg_free(rskb);
-+		return NULL;
-+	}
++	if (!ehdr)
++		goto err;
 +	if (ehdrp)
 +		*ehdrp = ehdr;
++	if (dev) {
++		int ret = ethnl_fill_dev(rskb, dev, dev_attrtype);
 +
-+	ehdr->ifindex = dev->ifindex;
-+	ehdr->flags = 0;
-+	ehdr->info_mask = 0;
-+	strncpy(ehdr->ifname, dev->name, sizeof(ehdr->ifname));
-+	ehdr->ifname[sizeof(ehdr->ifname) - 1] = '\0';
++		if (ret < 0)
++			goto err;
++	}
 +
 +	return rskb;
++err:
++	nlmsg_free(rskb);
++	return NULL;
 +}
 +
- /* genetlink paperwork */
+ /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
 -- 

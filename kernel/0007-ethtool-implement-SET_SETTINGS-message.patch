@@ -1,4 +1,4 @@
-From 89f30221a46e483c236cf0c4d85e5e4644966c7e Mon Sep 17 00:00:00 2001
+From b815d6c09de7d705934f63a195ac95962b549c5f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 7/9] ethtool: implement SET_SETTINGS message
@@ -12,8 +12,8 @@ some setting).
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  42 ++-
- net/core/ethtool_netlink.c                   | 545 +++++++++++++++++++++++++++
- 2 files changed, 582 insertions(+), 5 deletions(-)
+ net/core/ethtool_netlink.c                   | 546 +++++++++++++++++++++++++++
+ 2 files changed, 583 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 994aed9aa488..75e304c3bdf2 100644
@@ -94,7 +94,7 @@ index 994aed9aa488..75e304c3bdf2 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index aabebda11064..761539b425e9 100644
+index 6ea78cc8936a..b10fc38078e7 100644
 --- a/net/core/ethtool_netlink.c
 +++ b/net/core/ethtool_netlink.c
 @@ -67,6 +67,222 @@ static const char *const link_mode_names[] = {
@@ -320,42 +320,7 @@ index aabebda11064..761539b425e9 100644
  /* misc helper functions */
  
  static int ethnl_str_size(const char *s)
-@@ -660,6 +876,34 @@ static int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
- 
- /* GET_SETTINGS */
- 
-+/* We want to allow ~0 as selector for backward compatibility (to just set
-+ * given set of modes, whatever kernel supports) so that we allow all bits
-+ * on validation and do our own sanity check later.
-+ */
-+static u32 all_bits = ~(u32)0;
-+
-+static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
-+	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_UNSPEC },
-+	[ETHA_SETTINGS_SPEED]		= { .type = NLA_U32 },
-+	[ETHA_SETTINGS_DUPLEX]		= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_PORT]		= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_PHYADDR]		= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_AUTONEG]		= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_MDIO_SUPPORT]	= { .type = NLA_BITFIELD32 },
-+	[ETHA_SETTINGS_TP_MDIX]		= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_TP_MDIX_CTRL]	= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_TRANSCEIVER]	= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_WOL_MODES]	= { .type = NLA_BITFIELD32,
-+					    .validation_data = &all_bits },
-+	[ETHA_SETTINGS_SOPASS]		= { .type = NLA_BINARY,
-+					    .len = SOPASS_MAX },
-+	[ETHA_SETTINGS_MSGLVL]		= { .type = NLA_BITFIELD32,
-+					    .validation_data = &all_bits },
-+	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
-+	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_NESTED },
-+	[ETHA_SETTINGS_LINK]		= { .type = NLA_FLAG },
-+};
-+
- /* To keep things simple, reserve space for some attributes which may not
-  * be added to the message (e.g. ETHA_SETTINGS_SOPASS); therefore the length
-  * returned may be bigger than the actual length of the message sent
-@@ -725,6 +969,24 @@ static int ethnl_get_link_ksettings(struct genl_info *info,
+@@ -786,6 +1002,24 @@ static int ethnl_get_link_ksettings(struct genl_info *info,
  	return ret;
  }
  
@@ -380,10 +345,41 @@ index aabebda11064..761539b425e9 100644
  static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
  			 struct ethtool_wolinfo *wolinfo)
  {
-@@ -735,6 +997,79 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
+@@ -959,6 +1193,312 @@ static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
  	return ret;
  }
  
++/* SET_SETTINGS */
++
++/* We want to allow ~0 as selector for backward compatibility (to just set
++ * given set of modes, whatever kernel supports) so that we allow all bits
++ * on validation and do our own sanity check later.
++ */
++static u32 all_bits = ~(u32)0;
++
++static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
++	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_UNSPEC },
++	[ETHA_SETTINGS_DEV]		= { .type = NLA_NESTED },
++	[ETHA_SETTINGS_SPEED]		= { .type = NLA_U32 },
++	[ETHA_SETTINGS_DUPLEX]		= { .type = NLA_U8 },
++	[ETHA_SETTINGS_PORT]		= { .type = NLA_U8 },
++	[ETHA_SETTINGS_PHYADDR]		= { .type = NLA_U8 },
++	[ETHA_SETTINGS_AUTONEG]		= { .type = NLA_U8 },
++	[ETHA_SETTINGS_MDIO_SUPPORT]	= { .type = NLA_BITFIELD32 },
++	[ETHA_SETTINGS_TP_MDIX]		= { .type = NLA_U8 },
++	[ETHA_SETTINGS_TP_MDIX_CTRL]	= { .type = NLA_U8 },
++	[ETHA_SETTINGS_TRANSCEIVER]	= { .type = NLA_U8 },
++	[ETHA_SETTINGS_WOL_MODES]	= { .type = NLA_BITFIELD32,
++					    .validation_data = &all_bits },
++	[ETHA_SETTINGS_SOPASS]		= { .type = NLA_BINARY,
++					    .len = SOPASS_MAX },
++	[ETHA_SETTINGS_MSGLVL]		= { .type = NLA_BITFIELD32,
++					    .validation_data = &all_bits },
++	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
++	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_NESTED },
++	[ETHA_SETTINGS_LINK]		= { .type = NLA_FLAG },
++};
++
 +static int ethnl_set_link_ksettings(struct genl_info *info,
 +				    struct net_device *dev,
 +				    struct ethtool_link_ksettings *ksettings)
@@ -457,13 +453,6 @@ index aabebda11064..761539b425e9 100644
 +	return !bitmap_equal(old_adv, advertising, nbits);
 +}
 +
- static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
- {
- 	struct ethtool_link_ksettings ksettings = {};
-@@ -895,6 +1230,210 @@ static int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info)
- 	return ret;
- }
- 
 +/* Update device settings using ->set_link_ksettings() callback */
 +static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
 +				  struct net_device *dev)
@@ -593,21 +582,19 @@ index aabebda11064..761539b425e9 100644
 +static int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-+	struct ethnlmsghdr *ehdr;
 +	struct ethtool_wolinfo wolinfo = {};
 +	struct net_device *dev;
 +	bool mod;
 +	int ret;
 +
-+	ehdr = info->userhdr;
-+	dev = ethnl_dev_get(info);
++	ret = genlmsg_parse(info->nlhdr, &ethtool_genl_family, tb,
++			    ETHA_SETTINGS_MAX, set_settings_policy,
++			    info->extack);
++	if (ret < 0)
++		return ret;
++	dev = ethnl_dev_get(info, tb[ETHA_SETTINGS_DEV]);
 +	if (IS_ERR(dev))
 +		return PTR_ERR(dev);
-+
-+	ret = genlmsg_parse(info->nlhdr, &ethtool_genl_family, tb,
-+			    ETHA_SETTINGS_MAX, settings_policy, info->extack);
-+	if (ret < 0)
-+		goto err_putdev;
 +
 +	/* read only attributes */
 +	ret = -EINVAL;
@@ -668,17 +655,17 @@ index aabebda11064..761539b425e9 100644
 +	return ret;
 +}
 +
- /* genetlink paperwork */
+ /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -906,6 +1445,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
- 		.cmd	= ETHNL_CMD_GET_SETTINGS,
+@@ -972,6 +1512,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
+ 		.policy	= get_settings_policy,
  		.doit	= ethnl_get_settings,
  	},
 +	{
 +		.cmd	= ETHNL_CMD_SET_SETTINGS,
 +		.flags	= GENL_UNS_ADMIN_PERM,
-+		.policy	= settings_policy,
++		.policy	= set_settings_policy,
 +		.doit	= ethnl_set_settings,
 +	},
  };
