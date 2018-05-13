@@ -1,7 +1,7 @@
-From e8420fa4181ac611bbfef1f827afac1097a3ef56 Mon Sep 17 00:00:00 2001
+From 228b93031ce11413132afca09c9a2f999b9b746d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
-Subject: [PATCH 9/9] ethtool: implement SET_PARAMS message
+Subject: [PATCH 10/10] ethtool: implement SET_PARAMS message
 
 Sets the information provided by ETHTOOL_SCOALESCE, ETHTOOL_SRINGPARAM,
 ETHTOOL_SPAUSEPARAM, ETHTOOL_SCHANNELS, ETHTOOL_SEEE and ETHTOOL_SFECPARAM.
@@ -12,8 +12,9 @@ more of the legacy requests (and provide only part of the data to update).
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  71 ++++-
- net/core/ethtool_netlink.c                   | 420 +++++++++++++++++++++++++++
- 2 files changed, 484 insertions(+), 7 deletions(-)
+ net/ethtool/netlink.c                        |   6 +
+ net/ethtool/params.c                         | 401 +++++++++++++++++++++++++++
+ 3 files changed, 471 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index e915464d8d2e..f3b64d7c3761 100644
@@ -132,26 +133,38 @@ index e915464d8d2e..f3b64d7c3761 100644
 -ETHTOOL_SFECPARAM		n/a
 +ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
  
-diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index 1ebe36b06bb6..f66298987595 100644
---- a/net/core/ethtool_netlink.c
-+++ b/net/core/ethtool_netlink.c
-@@ -1913,6 +1913,420 @@ static int ethnl_get_params(struct sk_buff *skb, struct genl_info *info)
+diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
+index aff5df4e213a..35257ea6a13d 100644
+--- a/net/ethtool/netlink.c
++++ b/net/ethtool/netlink.c
+@@ -512,6 +512,7 @@ int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
+ int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info);
+ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
+ int ethnl_get_params(struct sk_buff *skb, struct genl_info *info);
++int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
+ 
+ static const struct genl_ops ethtool_genl_ops[] = {
+ 	{
+@@ -531,6 +532,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+ 		.cmd	= ETHNL_CMD_GET_PARAMS,
+ 		.doit	= ethnl_get_params,
+ 	},
++	{
++		.cmd	= ETHNL_CMD_SET_PARAMS,
++		.flags	= GENL_UNS_ADMIN_PERM,
++		.doit	= ethnl_set_params,
++	},
+ };
+ 
+ struct genl_family ethtool_genl_family = {
+diff --git a/net/ethtool/params.c b/net/ethtool/params.c
+index bb79a5f45a98..235428172e16 100644
+--- a/net/ethtool/params.c
++++ b/net/ethtool/params.c
+@@ -420,3 +420,404 @@ int ethnl_get_params(struct sk_buff *skb, struct genl_info *info)
+ 		  reply_len);
  	return ret;
  }
- 
-+/* SET_PARAMS */
-+
-+static const struct nla_policy set_params_policy[ETHA_SETTINGS_MAX + 1] = {
-+	[ETHA_PARAMS_DEV]		= { .type = NLA_NESTED },
-+	[ETHA_PARAMS_UNSPEC]		= { .type = NLA_UNSPEC },
-+	[ETHA_PARAMS_COALESCE]		= { .type = NLA_NESTED },
-+	[ETHA_PARAMS_RING]		= { .type = NLA_NESTED },
-+	[ETHA_PARAMS_PAUSE]		= { .type = NLA_NESTED },
-+	[ETHA_PARAMS_CHANNELS]		= { .type = NLA_NESTED },
-+	[ETHA_PARAMS_EEE]		= { .type = NLA_NESTED },
-+	[ETHA_PARAMS_FEC]		= { .type = NLA_NESTED },
-+};
 +
 +static const struct nla_policy coalesce_policy[ETHA_COALESCE_MAX + 1] = {
 +	[ETHA_COALESCE_UNSPEC]			= { .type = NLA_UNSPEC },
@@ -515,14 +528,14 @@ index 1ebe36b06bb6..f66298987595 100644
 +		return 0;
 +}
 +
-+static int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
++int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHA_PARAMS_MAX + 1];
 +	struct net_device *dev;
 +	int ret;
 +
 +	ret = genlmsg_parse(info->nlhdr, &ethtool_genl_family, tb,
-+			    ETHA_PARAMS_MAX, set_params_policy, info->extack);
++			    ETHA_PARAMS_MAX, params_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +	dev = ethnl_dev_get(info, tb[ETHA_PARAMS_DEV]);
@@ -553,23 +566,6 @@ index 1ebe36b06bb6..f66298987595 100644
 +	dev_put(dev);
 +	return ret;
 +}
-+
- /* genetlink setup */
- 
- static const struct genl_ops ethtool_genl_ops[] = {
-@@ -1937,6 +2351,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
- 		.policy	= get_params_policy,
- 		.doit	= ethnl_get_params,
- 	},
-+	{
-+		.cmd	= ETHNL_CMD_SET_PARAMS,
-+		.flags	= GENL_UNS_ADMIN_PERM,
-+		.policy	= set_params_policy,
-+		.doit	= ethnl_set_params,
-+	},
- };
- 
- static struct genl_family ethtool_genl_family = {
 -- 
 2.16.3
 

@@ -1,7 +1,7 @@
-From 7250402a07a0085c4f317ac22eda79914b929897 Mon Sep 17 00:00:00 2001
+From 14e2ee40513c02681ebb16a8dd3b699c22ccf22c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
-Subject: [PATCH 2/9] ethtool: introduce ethtool netlink interface
+Subject: [PATCH 03/10] ethtool: introduce ethtool netlink interface
 
 No function implemented yet, only genetlink and module infrastructure.
 Register/unregister genetlink family "ethtool" and allow the module to be
@@ -14,13 +14,15 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/linux/ethtool_netlink.h              |   9 ++
  include/uapi/linux/ethtool_netlink.h         |  19 ++++
  net/Kconfig                                  |   7 ++
- net/core/Makefile                            |   1 +
- net/core/ethtool_netlink.c                   |  44 ++++++++
- 6 files changed, 235 insertions(+)
+ net/ethtool/Makefile                         |   6 +-
+ net/ethtool/netlink.c                        |  39 +++++++
+ net/ethtool/netlink.h                        |  12 +++
+ 7 files changed, 246 insertions(+), 1 deletion(-)
  create mode 100644 Documentation/networking/ethtool-netlink.txt
  create mode 100644 include/linux/ethtool_netlink.h
  create mode 100644 include/uapi/linux/ethtool_netlink.h
- create mode 100644 net/core/ethtool_netlink.c
+ create mode 100644 net/ethtool/netlink.c
+ create mode 100644 net/ethtool/netlink.h
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 new file mode 100644
@@ -241,37 +243,36 @@ index df8d45ef47d8..e585f1f218cb 100644
  endif   # if NET
  
  # Used by archs to tell that they support BPF JIT compiler plus which flavour.
-diff --git a/net/core/Makefile b/net/core/Makefile
-index 7080417f8bc8..5951d8f46602 100644
---- a/net/core/Makefile
-+++ b/net/core/Makefile
-@@ -31,3 +31,4 @@ obj-$(CONFIG_DST_CACHE) += dst_cache.o
- obj-$(CONFIG_HWBM) += hwbm.o
- obj-$(CONFIG_NET_DEVLINK) += devlink.o
- obj-$(CONFIG_GRO_CELLS) += gro_cells.o
-+obj-$(CONFIG_ETHTOOL_NETLINK) += ethtool_netlink.o
-diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
+diff --git a/net/ethtool/Makefile b/net/ethtool/Makefile
+index 3ebfab2bca66..f30e0da88be5 100644
+--- a/net/ethtool/Makefile
++++ b/net/ethtool/Makefile
+@@ -1,3 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0
+ 
+-obj-y		+= ioctl.o
++obj-y				+= ioctl.o
++
++obj-$(CONFIG_ETHTOOL_NETLINK)	+= ethtool_nl.o
++
++ethtool_nl-y	:= netlink.o
+diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
 new file mode 100644
-index 000000000000..24bb5c8c3578
+index 000000000000..7df281f2dc85
 --- /dev/null
-+++ b/net/core/ethtool_netlink.c
-@@ -0,0 +1,44 @@
++++ b/net/ethtool/netlink.c
+@@ -0,0 +1,39 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include <linux/module.h>
-+#include <linux/ethtool_netlink.h>
-+#include <linux/netdevice.h>
-+#include <net/genetlink.h>
-+#include "ethtool_common.h"
-+
-+static struct genl_family ethtool_genl_family;
++#include "netlink.h"
 +
 +/* genetlink setup */
 +
 +static const struct genl_ops ethtool_genl_ops[] = {
 +};
 +
-+static struct genl_family ethtool_genl_family = {
++struct genl_family ethtool_genl_family = {
 +	.hdrsize	= 0,
 +	.name		= ETHTOOL_GENL_NAME,
 +	.version	= ETHTOOL_GENL_VERSION,
@@ -300,6 +301,24 @@ index 000000000000..24bb5c8c3578
 +MODULE_AUTHOR("Michal Kubecek <mkubecek@suse.cz>");
 +MODULE_DESCRIPTION("Netlink interface for ethtool");
 +MODULE_LICENSE("GPL");
+diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
+new file mode 100644
+index 000000000000..63063b582ca2
+--- /dev/null
++++ b/net/ethtool/netlink.h
+@@ -0,0 +1,12 @@
++/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
++
++#ifndef _NET_ETHTOOL_NETLINK_H
++#define _NET_ETHTOOL_NETLINK_H
++
++#include <linux/ethtool_netlink.h>
++#include <linux/netdevice.h>
++#include <net/genetlink.h>
++
++extern struct genl_family ethtool_genl_family;
++
++#endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
 2.16.3
 

@@ -1,7 +1,7 @@
-From 2bb26de4568420bd463943263a5908975ee253f4 Mon Sep 17 00:00:00 2001
+From 692f64db1d091158b04f32c99831faa67ae11567 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
-Subject: [PATCH 8/9] ethtool: implement GET_PARAMS message
+Subject: [PATCH 09/10] ethtool: implement GET_PARAMS message
 
 Requests the information provide by ETHTOOL_GCOALESCE, ETHTOOL_GRINGPARAM,
 ETHTOOL_GPAUSEPARAM, ETHTOOL_GCHANNELS, ETHTOOL_GEEE and ETHTOOL_GFECPARAM.
@@ -11,8 +11,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  98 ++++++-
  include/uapi/linux/ethtool_netlink.h         | 119 ++++++++
- net/core/ethtool_netlink.c                   | 419 +++++++++++++++++++++++++++
- 3 files changed, 630 insertions(+), 6 deletions(-)
+ net/ethtool/Makefile                         |   2 +-
+ net/ethtool/netlink.c                        |   5 +
+ net/ethtool/params.c                         | 422 +++++++++++++++++++++++++++
+ 5 files changed, 639 insertions(+), 7 deletions(-)
+ create mode 100644 net/ethtool/params.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 75e304c3bdf2..e915464d8d2e 100644
@@ -296,20 +299,61 @@ index 675d0662e9ca..1d925737ff0a 100644
  /* generic netlink info */
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
-diff --git a/net/core/ethtool_netlink.c b/net/core/ethtool_netlink.c
-index b10fc38078e7..1ebe36b06bb6 100644
---- a/net/core/ethtool_netlink.c
-+++ b/net/core/ethtool_netlink.c
-@@ -1499,6 +1499,420 @@ static int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
- 	return ret;
- }
+diff --git a/net/ethtool/Makefile b/net/ethtool/Makefile
+index 4af6607d7c9c..cd27751de400 100644
+--- a/net/ethtool/Makefile
++++ b/net/ethtool/Makefile
+@@ -4,4 +4,4 @@ obj-y				+= ioctl.o common.o
  
-+/* GET_PARAMS */
+ obj-$(CONFIG_ETHTOOL_NETLINK)	+= ethtool_nl.o
+ 
+-ethtool_nl-y	:= netlink.o drvinfo.o settings.o
++ethtool_nl-y	:= netlink.o drvinfo.o settings.o params.o
+diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
+index 54fe8cff4056..aff5df4e213a 100644
+--- a/net/ethtool/netlink.c
++++ b/net/ethtool/netlink.c
+@@ -511,6 +511,7 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+ int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
+ int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info);
+ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
++int ethnl_get_params(struct sk_buff *skb, struct genl_info *info);
+ 
+ static const struct genl_ops ethtool_genl_ops[] = {
+ 	{
+@@ -526,6 +527,10 @@ static const struct genl_ops ethtool_genl_ops[] = {
+ 		.flags	= GENL_UNS_ADMIN_PERM,
+ 		.doit	= ethnl_set_settings,
+ 	},
++	{
++		.cmd	= ETHNL_CMD_GET_PARAMS,
++		.doit	= ethnl_get_params,
++	},
+ };
+ 
+ struct genl_family ethtool_genl_family = {
+diff --git a/net/ethtool/params.c b/net/ethtool/params.c
+new file mode 100644
+index 000000000000..bb79a5f45a98
+--- /dev/null
++++ b/net/ethtool/params.c
+@@ -0,0 +1,422 @@
++/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
-+static const struct nla_policy get_params_policy[ETHA_PARAMS_MAX + 1] = {
++#include "netlink.h"
++#include "common.h"
++
++static const struct nla_policy params_policy[ETHA_SETTINGS_MAX + 1] = {
++	[ETHA_PARAMS_UNSPEC]		= { .type = NLA_UNSPEC },
 +	[ETHA_PARAMS_DEV]		= { .type = NLA_NESTED },
 +	[ETHA_PARAMS_INFOMASK]		= { .type = NLA_U32 },
 +	[ETHA_PARAMS_COMPACT]		= { .type = NLA_FLAG },
++	[ETHA_PARAMS_COALESCE]		= { .type = NLA_NESTED },
++	[ETHA_PARAMS_RING]		= { .type = NLA_NESTED },
++	[ETHA_PARAMS_PAUSE]		= { .type = NLA_NESTED },
++	[ETHA_PARAMS_CHANNELS]		= { .type = NLA_NESTED },
++	[ETHA_PARAMS_EEE]		= { .type = NLA_NESTED },
++	[ETHA_PARAMS_FEC]		= { .type = NLA_NESTED },
 +};
 +
 +static int ethnl_get_coalesce(struct net_device *dev,
@@ -585,7 +629,7 @@ index b10fc38078e7..1ebe36b06bb6 100644
 +	return 0;
 +}
 +
-+static int ethnl_get_params(struct sk_buff *skb, struct genl_info *info)
++int ethnl_get_params(struct sk_buff *skb, struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
 +	u32 req_mask = ETH_SETTINGS_IM_DEFAULT;
@@ -603,8 +647,7 @@ index b10fc38078e7..1ebe36b06bb6 100644
 +	int ret;
 +
 +	ret = genlmsg_parse(info->nlhdr, &ethtool_genl_family, tb,
-+			    ETHA_PARAMS_MAX, get_params_policy,
-+			    info->extack);
++			    ETHA_PARAMS_MAX, params_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +
@@ -717,22 +760,6 @@ index b10fc38078e7..1ebe36b06bb6 100644
 +		  reply_len);
 +	return ret;
 +}
-+
- /* genetlink setup */
- 
- static const struct genl_ops ethtool_genl_ops[] = {
-@@ -1518,6 +1932,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
- 		.policy	= set_settings_policy,
- 		.doit	= ethnl_set_settings,
- 	},
-+	{
-+		.cmd	= ETHNL_CMD_GET_PARAMS,
-+		.policy	= get_params_policy,
-+		.doit	= ethnl_get_params,
-+	},
- };
- 
- static struct genl_family ethtool_genl_family = {
 -- 
 2.16.3
 
