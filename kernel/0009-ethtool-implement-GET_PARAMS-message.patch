@@ -1,4 +1,4 @@
-From 692f64db1d091158b04f32c99831faa67ae11567 Mon Sep 17 00:00:00 2001
+From df9ce30608a5cdfd399f2e20b0a95e3291cb148b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
 Subject: [PATCH 09/10] ethtool: implement GET_PARAMS message
@@ -9,12 +9,12 @@ Flags in info_mask allow selecting only some (or on) of these categories.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  98 ++++++-
- include/uapi/linux/ethtool_netlink.h         | 119 ++++++++
+ Documentation/networking/ethtool-netlink.txt |  98 +++-
+ include/uapi/linux/ethtool_netlink.h         | 119 +++++
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/netlink.c                        |   5 +
- net/ethtool/params.c                         | 422 +++++++++++++++++++++++++++
- 5 files changed, 639 insertions(+), 7 deletions(-)
+ net/ethtool/netlink.c                        |  12 +
+ net/ethtool/params.c                         | 533 +++++++++++++++++++
+ 5 files changed, 757 insertions(+), 7 deletions(-)
  create mode 100644 net/ethtool/params.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -310,40 +310,51 @@ index 4af6607d7c9c..cd27751de400 100644
 -ethtool_nl-y	:= netlink.o drvinfo.o settings.o
 +ethtool_nl-y	:= netlink.o drvinfo.o settings.o params.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 54fe8cff4056..aff5df4e213a 100644
+index ba089b09ef4f..8c687d36f228 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -511,6 +511,7 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -574,10 +574,15 @@ pr_info("%s[3]: len=%d dumpfn()=%d\n", __func__, skb->len, ret);
  int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
 +int ethnl_get_params(struct sk_buff *skb, struct genl_info *info);
  
+ int ethnl_drvinfo_start(struct netlink_callback *cb);
+ int ethnl_settings_start(struct netlink_callback *cb);
++int ethnl_params_start(struct netlink_callback *cb);
++
+ int ethnl_settings_done(struct netlink_callback *cb);
++int ethnl_params_done(struct netlink_callback *cb);
++
  static const struct genl_ops ethtool_genl_ops[] = {
  	{
-@@ -526,6 +527,10 @@ static const struct genl_ops ethtool_genl_ops[] = {
+ 		.cmd	= ETHNL_CMD_GET_DRVINFO,
+@@ -597,6 +602,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_settings,
  	},
 +	{
 +		.cmd	= ETHNL_CMD_GET_PARAMS,
 +		.doit	= ethnl_get_params,
++		.start	= ethnl_params_start,
++		.dumpit	= ethnl_dumpit,
++		.done	= ethnl_params_done,
 +	},
  };
  
  struct genl_family ethtool_genl_family = {
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
 new file mode 100644
-index 000000000000..bb79a5f45a98
+index 000000000000..b75ecc10e9f3
 --- /dev/null
 +++ b/net/ethtool/params.c
-@@ -0,0 +1,422 @@
+@@ -0,0 +1,533 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
 +#include "common.h"
 +
-+static const struct nla_policy params_policy[ETHA_SETTINGS_MAX + 1] = {
++static const struct nla_policy params_policy[ETHA_PARAMS_MAX + 1] = {
 +	[ETHA_PARAMS_UNSPEC]		= { .type = NLA_UNSPEC },
 +	[ETHA_PARAMS_DEV]		= { .type = NLA_NESTED },
 +	[ETHA_PARAMS_INFOMASK]		= { .type = NLA_U32 },
@@ -354,6 +365,22 @@ index 000000000000..bb79a5f45a98
 +	[ETHA_PARAMS_CHANNELS]		= { .type = NLA_NESTED },
 +	[ETHA_PARAMS_EEE]		= { .type = NLA_NESTED },
 +	[ETHA_PARAMS_FEC]		= { .type = NLA_NESTED },
++};
++
++struct params_data {
++	struct ethtool_coalesce coalesce;
++	struct ethtool_channels channels;
++	struct ethtool_pauseparam pause;
++	struct ethtool_ringparam ring;
++	struct ethtool_fecparam fec;
++	struct ethtool_eee eee;
++	u32 req_mask;
++};
++
++struct params_reqinfo {
++	struct net_device *dev;
++	u32 req_mask;
++	bool compact;
 +};
 +
 +static int ethnl_get_coalesce(struct net_device *dev,
@@ -405,20 +432,24 @@ index 000000000000..bb79a5f45a98
 +	return dev->ethtool_ops->get_fecparam(dev, data);
 +}
 +
-+static int ethnl_params_size(struct ethtool_eee *eee, u32 mask, bool compact)
++static int params_size(struct params_data *data,
++		       struct params_reqinfo *req_info)
 +{
++	struct ethtool_eee *eee = &data->eee;
++	u32 req_mask = req_info->req_mask;
++	bool compact = req_info->compact;
 +	int len = 0;
 +
-+	if (mask & ETH_PARAMS_IM_COALESCE)
++	if (req_mask & ETH_PARAMS_IM_COALESCE)
 +		len += nla_total_size(20 * nla_total_size(sizeof(u32)) +
 +				      2 * nla_total_size(sizeof(u8)));
-+	if (mask & ETH_PARAMS_IM_RING)
++	if (req_mask & ETH_PARAMS_IM_RING)
 +		len += nla_total_size(8 * nla_total_size(sizeof(u32)));
-+	if (mask & ETH_PARAMS_IM_PAUSE)
++	if (req_mask & ETH_PARAMS_IM_PAUSE)
 +		len += nla_total_size(3 * nla_total_size(sizeof(u8)));
-+	if (mask & ETH_PARAMS_IM_CHANNELS)
++	if (req_mask & ETH_PARAMS_IM_CHANNELS)
 +		len += nla_total_size(8 * nla_total_size(sizeof(u32)));
-+	if (mask & ETH_PARAMS_IM_EEE) {
++	if (req_mask & ETH_PARAMS_IM_EEE) {
 +		int nlen = 0;
 +		int ret;
 +
@@ -443,7 +474,7 @@ index 000000000000..bb79a5f45a98
 +		/* nest */
 +		len += nla_total_size(nlen);
 +	}
-+	if (mask & ETH_PARAMS_IM_FEC) {
++	if (req_mask & ETH_PARAMS_IM_FEC) {
 +		int nlen = nla_total_size(sizeof(struct nla_bitfield32));
 +
 +		len += nla_total_size(nlen);
@@ -629,137 +660,228 @@ index 000000000000..bb79a5f45a98
 +	return 0;
 +}
 +
-+int ethnl_get_params(struct sk_buff *skb, struct genl_info *info)
++static int parse_params_req(struct params_reqinfo *req_info,
++			    struct genl_info *info, struct sk_buff *skb,
++			    const struct nlmsghdr *nlhdr)
 +{
-+	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-+	u32 req_mask = ETH_SETTINGS_IM_DEFAULT;
-+	struct ethtool_coalesce coalesce = {};
-+	struct ethtool_channels channels = {};
-+	struct ethtool_pauseparam pause = {};
-+	struct ethtool_ringparam ring = {};
-+	struct ethtool_fecparam fec = {};
-+	struct ethtool_eee eee = {};
-+	unsigned int reply_len = 0;
-+	struct net_device *dev;
-+	struct sk_buff *rskb;
-+	bool compact = false;
-+	void *ehdr;
++	struct nlattr *tb[ETHA_PARAMS_MAX + 1];
 +	int ret;
 +
-+	ret = genlmsg_parse(info->nlhdr, &ethtool_genl_family, tb,
-+			    ETHA_PARAMS_MAX, params_policy, info->extack);
++	memset(req_info, '\0', sizeof(*req_info));
++
++	ret = genlmsg_parse(nlhdr, &ethtool_genl_family, tb,
++			    ETHA_PARAMS_MAX, params_policy,
++			    info ? info->extack : NULL);
 +	if (ret < 0)
 +		return ret;
 +
-+	if (tb[ETHA_PARAMS_COMPACT])
-+		compact = true;
++	if (tb[ETHA_PARAMS_DEV]) {
++		req_info->dev = ethnl_dev_get(info, tb[ETHA_PARAMS_DEV]);
++		if (IS_ERR(req_info->dev)) {
++			ret = PTR_ERR(req_info->dev);
++			req_info->dev = NULL;
++			return ret;
++		}
++	}
 +	if (tb[ETHA_PARAMS_INFOMASK])
-+		req_mask = nla_get_u32(tb[ETHA_SETTINGS_INFOMASK]);
-+	dev = ethnl_dev_get(info, tb[ETHA_SETTINGS_DEV]);
-+	if (IS_ERR(dev))
-+		return PTR_ERR(dev);
++		req_info->req_mask = nla_get_u32(tb[ETHA_PARAMS_INFOMASK]);
++	if (tb[ETHA_PARAMS_COMPACT])
++		req_info->compact = true;
++	if (req_info->req_mask == 0)
++		req_info->req_mask = ETH_PARAMS_IM_DEFAULT;
 +
++	return 0;
++}
++
++static int prepare_params(struct params_data *data,
++			  struct params_reqinfo *req_info,
++			  struct genl_info *info, struct net_device *dev)
++{
++	u32 req_mask = req_info->req_mask;
++	int ret;
++
++	memset(data, '\0', sizeof(*data));
 +	if (req_mask & ETH_PARAMS_IM_COALESCE) {
-+		ret = ethnl_get_coalesce(dev, &coalesce);
++		ret = ethnl_get_coalesce(dev, &data->coalesce);
 +		if (ret < 0) {
 +			warn_partial_info(info);
 +			req_mask &= ~ETH_PARAMS_IM_COALESCE;
 +		}
 +	}
 +	if (req_mask & ETH_PARAMS_IM_RING) {
-+		ret = ethnl_get_ring(dev, &ring);
++		ret = ethnl_get_ring(dev, &data->ring);
 +		if (ret < 0) {
 +			warn_partial_info(info);
 +			req_mask &= ~ETH_PARAMS_IM_RING;
 +		}
 +	}
 +	if (req_mask & ETH_PARAMS_IM_PAUSE) {
-+		ret = ethnl_get_pause(dev, &pause);
++		ret = ethnl_get_pause(dev, &data->pause);
 +		if (ret < 0) {
 +			warn_partial_info(info);
 +			req_mask &= ~ETH_PARAMS_IM_PAUSE;
 +		}
 +	}
 +	if (req_mask & ETH_PARAMS_IM_CHANNELS) {
-+		ret = ethnl_get_channels(dev, &channels);
++		ret = ethnl_get_channels(dev, &data->channels);
 +		if (ret < 0) {
 +			warn_partial_info(info);
 +			req_mask &= ~ETH_PARAMS_IM_CHANNELS;
 +		}
 +	}
 +	if (req_mask & ETH_PARAMS_IM_EEE) {
-+		ret = ethnl_get_eee(dev, &eee);
++		ret = ethnl_get_eee(dev, &data->eee);
 +		if (ret < 0) {
 +			warn_partial_info(info);
 +			req_mask &= ~ETH_PARAMS_IM_EEE;
 +		}
 +	}
 +	if (req_mask & ETH_PARAMS_IM_FEC) {
-+		ret = ethnl_get_fec(dev, &fec);
++		ret = ethnl_get_fec(dev, &data->fec);
 +		if (ret < 0) {
 +			warn_partial_info(info);
 +			req_mask &= ~ETH_PARAMS_IM_FEC;
 +		}
 +	}
 +
-+	ret = ethnl_params_size(&eee, req_mask, compact);
-+	if (ret < 0)
-+		goto err_putdev;
-+	else
-+		reply_len = ret;
-+	rskb = ethnl_reply_init(reply_len, dev, ETHNL_CMD_SET_PARAMS,
-+				ETHA_PARAMS_DEV, info, &ehdr);
-+	ret = -ENOMEM;
-+	if (!rskb)
-+		goto err_putdev;
++	data->req_mask = req_mask;
++	return 0;
++}
++
++static int fill_params(struct sk_buff *rskb, struct params_data *data,
++		       struct params_reqinfo *req_info)
++{
++	u32 req_mask = data->req_mask;
++	int ret;
 +
 +	if (req_mask & ETH_PARAMS_IM_COALESCE) {
-+		ret = fill_coalesce(rskb, &coalesce);
++		ret = fill_coalesce(rskb, &data->coalesce);
 +		if (ret < 0)
-+			goto err;
++			return ret;
 +	}
 +	if (req_mask & ETH_PARAMS_IM_RING) {
-+		ret = fill_ring(rskb, &ring);
++		ret = fill_ring(rskb, &data->ring);
 +		if (ret < 0)
-+			goto err;
++			return ret;
 +	}
 +	if (req_mask & ETH_PARAMS_IM_PAUSE) {
-+		ret = fill_pause(rskb, &pause);
++		ret = fill_pause(rskb, &data->pause);
 +		if (ret < 0)
-+			goto err;
++			return ret;
 +	}
 +	if (req_mask & ETH_PARAMS_IM_CHANNELS) {
-+		ret = fill_channels(rskb, &channels);
++		ret = fill_channels(rskb, &data->channels);
 +		if (ret < 0)
-+			goto err;
++			return ret;
 +	}
 +	if (req_mask & ETH_PARAMS_IM_EEE) {
-+		ret = fill_eee(rskb, &eee, compact);
++		ret = fill_eee(rskb, &data->eee, req_info->compact);
 +		if (ret < 0)
-+			goto err;
++			return ret;
 +	}
 +	if (req_mask & ETH_PARAMS_IM_FEC) {
-+		ret = fill_fec(rskb, &fec);
++		ret = fill_fec(rskb, &data->fec);
 +		if (ret < 0)
-+			goto err;
++			return ret;
 +	}
 +
-+	dev_put(dev);
++	return 0;
++}
++
++int ethnl_get_params(struct sk_buff *skb, struct genl_info *info)
++{
++	struct params_data data;
++	struct params_reqinfo req_info;
++	struct sk_buff *rskb;
++	int reply_len;
++	void *ehdr;
++	int ret;
++
++	ret = parse_params_req(&req_info, info, skb, info->nlhdr);
++	if (ret < 0)
++		goto err_dev;
++	ret = prepare_params(&data, &req_info, info, req_info.dev);
++	if (ret < 0)
++		goto err_dev;
++	reply_len = params_size(&data, &req_info);
++	if (ret < 0)
++		goto err_dev;
++	ret = -ENOMEM;
++	rskb = ethnl_reply_init(reply_len, req_info.dev, ETHNL_CMD_SET_PARAMS,
++				ETHA_PARAMS_DEV, info, &ehdr);
++	if (!rskb)
++		goto err_dev;
++	ret = fill_params(rskb, &data, &req_info);
++	if (ret < 0)
++		goto err;
++
 +	genlmsg_end(rskb, ehdr);
++	dev_put(req_info.dev);
 +	return genlmsg_reply(rskb, info);
 +
 +err:
-+	nlmsg_free(rskb);
-+err_putdev:
-+	dev_put(dev);
-+	if (ret == -EMSGSIZE)
-+		GENL_SET_ERR_MSG(info,
-+				 "kernel error, see kernel log for details");
 +	WARN_ONCE(ret == -EMSGSIZE,
 +		  "calculated message payload length (%d) not sufficient\n",
 +		  reply_len);
++	nlmsg_free(rskb);
++err_dev:
++	if (req_info.dev)
++		dev_put(req_info.dev);
 +	return ret;
 +}
++
++static int params_dump(struct sk_buff *skb, struct netlink_callback *cb,
++			struct net_device *dev)
++{
++	struct params_data data;
++	struct params_reqinfo *req_info;
++	int ret;
++
++	req_info = (struct params_reqinfo *)cb->args[4];
++	ret = prepare_params(&data, req_info, NULL, dev);
++	if (ret < 0)
++		return ret;
++	ret = ethnl_fill_dev(skb, dev, ETHA_PARAMS_DEV);
++	if (ret < 0)
++		return ret;
++	ret = fill_params(skb, &data, req_info);
++	return ret;
++}
++
++int ethnl_params_start(struct netlink_callback *cb)
++{
++	struct params_reqinfo *req_info;
++	int ret;
++
++	req_info = kmalloc(sizeof(*req_info), GFP_KERNEL);
++	if (!req_info)
++		return -ENOMEM;
++	ret = parse_params_req(req_info, NULL, cb->skb, cb->nlh);
++	if (ret < 0) {
++		if (req_info->dev)
++			dev_put(req_info->dev);
++		req_info->dev = NULL;
++		return ret;
++	}
++
++	cb->args[0] = (long)params_dump;
++	cb->args[1] = ETHNL_CMD_SET_PARAMS;
++	cb->args[4] = (long)req_info;
++
++	return 0;
++}
++
++int ethnl_params_done(struct netlink_callback *cb)
++{
++	struct params_reqinfo *req_info;
++
++	req_info = (struct params_reqinfo *)cb->args[4];
++	if (req_info->dev)
++		dev_put(req_info->dev);
++	kfree(req_info);
++
++	return 0;
++}
 -- 
-2.16.3
+2.18.0
 

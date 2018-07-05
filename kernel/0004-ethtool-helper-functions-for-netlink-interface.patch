@@ -1,4 +1,4 @@
-From 0fec98eac909d766e3e00891a69d2894a2ec78a6 Mon Sep 17 00:00:00 2001
+From 27ac90b107689b661eca39bfc64cdc80b36d0c1f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 04/10] ethtool: helper functions for netlink interface
@@ -7,10 +7,10 @@ Misc helpers used by ethtool netlink code.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- include/uapi/linux/ethtool_netlink.h |  11 ++++
- net/ethtool/netlink.c                | 105 ++++++++++++++++++++++++++++++
- net/ethtool/netlink.h                | 120 +++++++++++++++++++++++++++++++++++
- 3 files changed, 236 insertions(+)
+ include/uapi/linux/ethtool_netlink.h |  11 ++
+ net/ethtool/netlink.c                | 167 +++++++++++++++++++++++++++
+ net/ethtool/netlink.h                | 124 ++++++++++++++++++++
+ 3 files changed, 302 insertions(+)
 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 index 3c0c5c70692b..1df263d9feb7 100644
@@ -35,11 +35,15 @@ index 3c0c5c70692b..1df263d9feb7 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 7df281f2dc85..c9bce13a203a 100644
+index 1c6efb9b2eae..3d14f6ec83db 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -3,6 +3,111 @@
+@@ -1,9 +1,176 @@
+ /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
+ 
  #include <linux/module.h>
++#include <net/sock.h>
+ #include <linux/ethtool_netlink.h>
  #include "netlink.h"
  
 +static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
@@ -69,7 +73,7 @@ index 7df281f2dc85..c9bce13a203a 100644
 +			const char *nl_name = nla_data(tb[ETHA_DEV_NAME]);
 +
 +			if (strncmp(dev->name, nl_name, IFNAMSIZ)) {
-+				GENL_SET_ERR_MSG(info,
++				ETHNL_SET_ERRMSG(info,
 +						 "ifindex and ifname do not match");
 +				return ERR_PTR(-ENODEV);
 +			}
@@ -124,7 +128,7 @@ index 7df281f2dc85..c9bce13a203a 100644
 +					  nla_total_size(IFNAMSIZ));
 +	rskb = genlmsg_new(payload, GFP_KERNEL);
 +	if (!rskb) {
-+		GENL_SET_ERR_MSG(info,
++		ETHNL_SET_ERRMSG(info,
 +				 "failed to allocate reply message");
 +		return NULL;
 +	}
@@ -147,14 +151,82 @@ index 7df281f2dc85..c9bce13a203a 100644
 +	return NULL;
 +}
 +
++/* device iteration copied from rtnl_dump_ifinfo()
++ * cb->args[0]: command specific dump function
++ * cb->args[1]: ethnl command to use in reply
++ * cb->args[2]: position - hashbucket
++ * cb->args[3]: position - ifindex
++ */
++int ethnl_dumpit(struct sk_buff *skb, struct netlink_callback *cb)
++{
++	int (*dumpfn)(struct sk_buff *skb, struct netlink_callback *cb,
++		      struct net_device *dev);
++	struct net *net = sock_net(skb->sk);
++	struct hlist_head *head;
++	struct net_device *dev;
++	int h, s_h, idx = 0, s_idx;
++	int ret = 0;
++	void *ehdr;
++	u8 rcmd;
++
++	dumpfn = (void *)cb->args[0];
++	rcmd = cb->args[1];
++	s_h = cb->args[2];
++	s_idx = cb->args[3];
++pr_info("%s[0]: len=%d s_h=%d s_idx=%d\n", __func__, skb->len, s_h, s_idx);
++
++	for (h = s_h; h < NETDEV_HASHENTRIES; h++, s_idx = 0) {
++		idx = 0;
++		head = &net->dev_index_head[h];
++		hlist_for_each_entry(dev, head, index_hlist) {
++pr_info("%s[1]: len=%d h=%d idx=%d dev=%s\n", __func__, skb->len, h, idx, netdev_name(dev));
++			if (idx < s_idx)
++				goto cont;
++			ehdr = genlmsg_put(skb, NETLINK_CB(cb->skb).portid,
++					   cb->nlh->nlmsg_seq,
++					   &ethtool_genl_family, 0, rcmd);
++pr_info("%s[2]: len=%d nlhdr=%p ehdr=%p\n", __func__, skb->len, nlmsg_hdr(skb), ehdr);
++			ret = dumpfn(skb, cb, dev);
++pr_info("%s[3]: len=%d dumpfn()=%d\n", __func__, skb->len, ret);
++			if (ret < 0) {
++				genlmsg_cancel(skb, ehdr);
++				if (ret == -EOPNOTSUPP)
++					goto cont;
++				if (likely(skb->len))
++					goto out;
++				goto out_err;
++			}
++			genlmsg_end(skb, ehdr);
++cont:
++			idx++;
++		}
++	}
++out:
++	ret = skb->len;
++out_err:
++	cb->args[2] = h;
++	cb->args[3] = idx;
++	cb->seq = net->dev_base_seq;
++	nl_dump_check_consistent(cb, nlmsg_hdr(skb));
++
++	return ret;
++}
++
  /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 63063b582ca2..b5ea81066970 100644
+index 63063b582ca2..acfed5ba6b54 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -9,4 +9,124 @@
+@@ -6,7 +6,131 @@
+ #include <linux/ethtool_netlink.h>
+ #include <linux/netdevice.h>
+ #include <net/genetlink.h>
++#include <net/sock.h>
++
++#define ETHNL_SET_ERRMSG(info, msg) \
++	do { if (info) GENL_SET_ERR_MSG(info, msg); } while (0)
  
  extern struct genl_family ethtool_genl_family;
  
@@ -264,21 +336,21 @@ index 63063b582ca2..b5ea81066970 100644
 +
 +static inline void warn_partial_info(struct genl_info *info)
 +{
-+	GENL_SET_ERR_MSG(info, "not all requested data could be retrieved");
++	ETHNL_SET_ERRMSG(info, "not all requested data could be retrieved");
 +}
 +
 +/* Check user privileges explicitly to allow finer access control based on
 + * context of the request or hiding part of the information from unprivileged
 + * users
 + */
-+static inline bool ethnl_is_privileged(struct sk_buff *skb, struct genl_info *info)
++static inline bool ethnl_is_privileged(struct sk_buff *skb)
 +{
-+	struct net *net = genl_info_net(info);
++	struct net *net = sock_net(skb->sk);
 +
 +	return netlink_ns_capable(skb, net->user_ns, CAP_NET_ADMIN);
 +}
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
-2.16.3
+2.18.0
 

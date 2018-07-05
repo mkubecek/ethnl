@@ -1,4 +1,4 @@
-From 14e2ee40513c02681ebb16a8dd3b699c22ccf22c Mon Sep 17 00:00:00 2001
+From 86cd2a45d1456759b3b9942ac70090532d8940b5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 03/10] ethtool: introduce ethtool netlink interface
@@ -10,14 +10,14 @@ probably prefer "y").
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 155 +++++++++++++++++++++++++++
+ Documentation/networking/ethtool-netlink.txt | 155 +++++++++++++++++++
  include/linux/ethtool_netlink.h              |   9 ++
- include/uapi/linux/ethtool_netlink.h         |  19 ++++
- net/Kconfig                                  |   7 ++
+ include/uapi/linux/ethtool_netlink.h         |  19 +++
+ net/Kconfig                                  |   7 +
  net/ethtool/Makefile                         |   6 +-
- net/ethtool/netlink.c                        |  39 +++++++
- net/ethtool/netlink.h                        |  12 +++
- 7 files changed, 246 insertions(+), 1 deletion(-)
+ net/ethtool/netlink.c                        |  41 +++++
+ net/ethtool/netlink.h                        |  12 ++
+ 7 files changed, 248 insertions(+), 1 deletion(-)
  create mode 100644 Documentation/networking/ethtool-netlink.txt
  create mode 100644 include/linux/ethtool_netlink.h
  create mode 100644 include/uapi/linux/ethtool_netlink.h
@@ -226,12 +226,12 @@ index 000000000000..3c0c5c70692b
 +
 +#endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/Kconfig b/net/Kconfig
-index df8d45ef47d8..e585f1f218cb 100644
+index f738a6f27665..f7996dd11ae1 100644
 --- a/net/Kconfig
 +++ b/net/Kconfig
-@@ -430,6 +430,13 @@ config MAY_USE_DEVLINK
- config PAGE_POOL
-        bool
+@@ -445,6 +445,13 @@ config FAILOVER
+ 	  migration of VMs with direct attached VFs by failing over to the
+ 	  paravirtual datapath when the VF is unplugged.
  
 +config ETHTOOL_NETLINK
 +	tristate "Netlink interface for ethtool"
@@ -258,13 +258,14 @@ index 3ebfab2bca66..f30e0da88be5 100644
 +ethtool_nl-y	:= netlink.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
 new file mode 100644
-index 000000000000..7df281f2dc85
+index 000000000000..1c6efb9b2eae
 --- /dev/null
 +++ b/net/ethtool/netlink.c
-@@ -0,0 +1,39 @@
+@@ -0,0 +1,41 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include <linux/module.h>
++#include <linux/ethtool_netlink.h>
 +#include "netlink.h"
 +
 +/* genetlink setup */
@@ -277,6 +278,7 @@ index 000000000000..7df281f2dc85
 +	.name		= ETHTOOL_GENL_NAME,
 +	.version	= ETHTOOL_GENL_VERSION,
 +	.netnsok	= true,
++	.parallel_ops	= true,
 +	.ops		= ethtool_genl_ops,
 +	.n_ops		= ARRAY_SIZE(ethtool_genl_ops),
 +};
@@ -320,5 +322,5 @@ index 000000000000..63063b582ca2
 +
 +#endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
-2.16.3
+2.18.0
 

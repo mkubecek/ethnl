@@ -1,4 +1,4 @@
-From 0052f384152e4e9905e08c0b483b4cab2d5db8d7 Mon Sep 17 00:00:00 2001
+From e5ffab27d95a2a5ae0df0d40b7adbe1fb321c211 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 13 May 2018 02:35:53 +0200
 Subject: [PATCH 02/10] ethtool: move to its own directory
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  rename net/{core/ethtool.c => ethtool/ioctl.c} (100%)
 
 diff --git a/net/Makefile b/net/Makefile
-index 77aaddedbd29..49cb95185fab 100644
+index bdaf53925acd..6c68520e5eb9 100644
 --- a/net/Makefile
 +++ b/net/Makefile
 @@ -13,7 +13,7 @@ obj-$(CONFIG_NET)		+= $(tmp-y)
@@ -32,7 +32,7 @@ index 77aaddedbd29..49cb95185fab 100644
  obj-$(CONFIG_INET)		+= ipv4/
  obj-$(CONFIG_TLS)		+= tls/
 diff --git a/net/core/Makefile b/net/core/Makefile
-index 7080417f8bc8..14eb9c232b49 100644
+index 80175e6a2eb8..55734d0a1603 100644
 --- a/net/core/Makefile
 +++ b/net/core/Makefile
 @@ -8,7 +8,7 @@ obj-y := sock.o request_sock.o skbuff.o datagram.o stream.o scm.o \
@@ -58,5 +58,5 @@ similarity index 100%
 rename from net/core/ethtool.c
 rename to net/ethtool/ioctl.c
 -- 
-2.16.3
+2.18.0
 

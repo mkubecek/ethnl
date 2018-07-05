@@ -1,4 +1,4 @@
-From 228b93031ce11413132afca09c9a2f999b9b746d Mon Sep 17 00:00:00 2001
+From e1de5242afb377332020ebf928d4a4f59b4667e1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 10/10] ethtool: implement SET_PARAMS message
@@ -11,9 +11,9 @@ more of the legacy requests (and provide only part of the data to update).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  71 ++++-
+ Documentation/networking/ethtool-netlink.txt |  71 +++-
  net/ethtool/netlink.c                        |   6 +
- net/ethtool/params.c                         | 401 +++++++++++++++++++++++++++
+ net/ethtool/params.c                         | 401 +++++++++++++++++++
  3 files changed, 471 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -134,20 +134,20 @@ index e915464d8d2e..f3b64d7c3761 100644
 +ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index aff5df4e213a..35257ea6a13d 100644
+index 8c687d36f228..43f03b91a549 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -512,6 +512,7 @@ int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
+@@ -575,6 +575,7 @@ int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_params(struct sk_buff *skb, struct genl_info *info);
 +int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
  
- static const struct genl_ops ethtool_genl_ops[] = {
- 	{
-@@ -531,6 +532,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
- 		.cmd	= ETHNL_CMD_GET_PARAMS,
- 		.doit	= ethnl_get_params,
+ int ethnl_drvinfo_start(struct netlink_callback *cb);
+ int ethnl_settings_start(struct netlink_callback *cb);
+@@ -609,6 +610,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+ 		.dumpit	= ethnl_dumpit,
+ 		.done	= ethnl_params_done,
  	},
 +	{
 +		.cmd	= ETHNL_CMD_SET_PARAMS,
@@ -158,12 +158,12 @@ index aff5df4e213a..35257ea6a13d 100644
  
  struct genl_family ethtool_genl_family = {
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index bb79a5f45a98..235428172e16 100644
+index b75ecc10e9f3..1abd60279767 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -420,3 +420,404 @@ int ethnl_get_params(struct sk_buff *skb, struct genl_info *info)
- 		  reply_len);
- 	return ret;
+@@ -531,3 +531,404 @@ int ethnl_params_done(struct netlink_callback *cb)
+ 
+ 	return 0;
  }
 +
 +static const struct nla_policy coalesce_policy[ETHA_COALESCE_MAX + 1] = {
@@ -321,7 +321,7 @@ index bb79a5f45a98..235428172e16 100644
 +	if (tb[ETHA_RING_RX_MAX_PENDING] || tb[ETHA_RING_RX_MINI_MAX_PENDING] ||
 +	    tb[ETHA_RING_RX_JUMBO_MAX_PENDING] ||
 +	    tb[ETHA_RING_TX_MAX_PENDING]) {
-+		GENL_SET_ERR_MSG(info, "attempt to set a read only attribute");
++		ETHNL_SET_ERRMSG(info, "attempt to set a read only attribute");
 +		return -EINVAL;
 +	}
 +
@@ -416,7 +416,7 @@ index bb79a5f45a98..235428172e16 100644
 +	/* read only attributes */
 +	if (tb[ETHA_CHANNELS_MAX_RX] || tb[ETHA_CHANNELS_MAX_TX] ||
 +	    tb[ETHA_CHANNELS_MAX_OTHER] || tb[ETHA_CHANNELS_MAX_COMBINED]) {
-+		GENL_SET_ERR_MSG(info, "attempt to set a read only attribute");
++		ETHNL_SET_ERRMSG(info, "attempt to set a read only attribute");
 +		return -EINVAL;
 +	}
 +
@@ -469,7 +469,7 @@ index bb79a5f45a98..235428172e16 100644
 +		return ret;
 +	/* read only attributes */
 +	if (tb[ETHA_EEE_PEER_MODES] || tb[ETHA_EEE_ACTIVE]) {
-+		GENL_SET_ERR_MSG(info, "attempt to set a read only attribute");
++		ETHNL_SET_ERRMSG(info, "attempt to set a read only attribute");
 +		return -EINVAL;
 +	}
 +
@@ -567,5 +567,5 @@ index bb79a5f45a98..235428172e16 100644
 +	return ret;
 +}
 -- 
-2.16.3
+2.18.0
 

@@ -1,4 +1,4 @@
-From e305544869566be46c3bdc39d0d93021842f4c3a Mon Sep 17 00:00:00 2001
+From bffb5cb362c383d3410cbf98df36dcee042e17ff Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
 Subject: [PATCH 06/10] ethtool: implement GET_DRVINFO message
@@ -10,15 +10,15 @@ a new file ethtool_common.c so that both interfaces can use it.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 30 +++++++++-
- include/uapi/linux/ethtool_netlink.h         | 22 +++++++
- net/ethtool/Makefile                         |  4 +-
- net/ethtool/common.c                         | 46 +++++++++++++++
- net/ethtool/common.h                         | 11 ++++
- net/ethtool/drvinfo.c                        | 85 ++++++++++++++++++++++++++++
- net/ethtool/ioctl.c                          | 42 ++------------
- net/ethtool/netlink.c                        |  6 ++
- 8 files changed, 207 insertions(+), 39 deletions(-)
+ Documentation/networking/ethtool-netlink.txt |  30 ++++-
+ include/uapi/linux/ethtool_netlink.h         |  22 ++++
+ net/ethtool/Makefile                         |   4 +-
+ net/ethtool/common.c                         |  46 +++++++
+ net/ethtool/common.h                         |  11 ++
+ net/ethtool/drvinfo.c                        | 129 +++++++++++++++++++
+ net/ethtool/ioctl.c                          |  42 +-----
+ net/ethtool/netlink.c                        |   9 ++
+ 8 files changed, 254 insertions(+), 39 deletions(-)
  create mode 100644 net/ethtool/common.c
  create mode 100644 net/ethtool/common.h
  create mode 100644 net/ethtool/drvinfo.c
@@ -203,10 +203,10 @@ index 000000000000..1f031c1d943a
 +#endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/drvinfo.c b/net/ethtool/drvinfo.c
 new file mode 100644
-index 000000000000..f0278dc2d112
+index 000000000000..352eb6e4f9f7
 --- /dev/null
 +++ b/net/ethtool/drvinfo.c
-@@ -0,0 +1,85 @@
+@@ -0,0 +1,129 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
@@ -216,7 +216,22 @@ index 000000000000..f0278dc2d112
 +	[ETHA_DRVINFO_DEV]		= { .type = NLA_NESTED },
 +};
 +
-+static int ethnl_drvinfo_size(struct ethtool_drvinfo *drvinfo)
++static int prepare_drvinfo(struct ethtool_drvinfo *data, struct genl_info *info,
++			   struct net_device *dev)
++{
++	int ret;
++
++	memset(data, '\0', sizeof(*data));
++	ret = __ethtool_get_drvinfo(dev, data);
++	if (ret < 0) {
++		ETHNL_SET_ERRMSG(info, "failed to retrieve driver info");
++		return ret;
++	}
++
++	return 0;
++}
++
++static int drvinfo_size(struct ethtool_drvinfo *drvinfo)
 +{
 +	int len = 0;
 +
@@ -231,10 +246,35 @@ index 000000000000..f0278dc2d112
 +	return len;
 +}
 +
++static int fill_drvinfo(struct sk_buff *skb, struct net_device *dev,
++			struct ethtool_drvinfo *drvinfo)
++{
++	int ret;
++
++	ret = -EMSGSIZE;
++	if (ethnl_put_str_ifne(skb, ETHA_DRVINFO_DRIVER, drvinfo->driver) ||
++	    ethnl_put_str_ifne(skb, ETHA_DRVINFO_VERSION, drvinfo->version) ||
++	    ethnl_put_str_ifne(skb, ETHA_DRVINFO_FWVERSION,
++			       drvinfo->fw_version) ||
++	    ethnl_put_str_ifne(skb, ETHA_DRVINFO_BUSINFO, drvinfo->bus_info) ||
++	    ethnl_put_str_ifne(skb, ETHA_DRVINFO_EROM_VER,
++			       drvinfo->erom_version) ||
++	    nla_put_u32(skb, ETHA_DRVINFO_N_PRIV_FLAGS,
++			drvinfo->n_priv_flags) ||
++	    nla_put_u32(skb, ETHA_DRVINFO_N_STATS, drvinfo->n_stats) ||
++	    nla_put_u32(skb, ETHA_DRVINFO_TESTINFO_LEN,
++			drvinfo->testinfo_len) ||
++	    nla_put_u32(skb, ETHA_DRVINFO_EEDUMP_LEN, drvinfo->eedump_len) ||
++	    nla_put_u32(skb, ETHA_DRVINFO_REGDUMP_LEN, drvinfo->regdump_len))
++		return ret;
++
++	return 0;
++}
++
 +int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHA_DRVINFO_MAX + 1];
-+	struct ethtool_drvinfo drvinfo = {};
++	struct ethtool_drvinfo drvinfo;
 +	struct net_device *dev;
 +	struct sk_buff *rskb;
 +	int reply_len;
@@ -249,51 +289,55 @@ index 000000000000..f0278dc2d112
 +	if (IS_ERR(dev))
 +		return PTR_ERR(dev);
 +
-+	ret = __ethtool_get_drvinfo(dev, &drvinfo);
-+	if (ret < 0) {
-+		dev_put(dev);
-+		GENL_SET_ERR_MSG(info,
-+				 "failed to retrieve driver info from driver");
-+		return ret;
-+	}
-+
-+	reply_len = ethnl_drvinfo_size(&drvinfo);
++	ret = prepare_drvinfo(&drvinfo, info, dev);
++	if (ret < 0)
++		goto err_dev;
++	reply_len = drvinfo_size(&drvinfo);
 +	rskb = ethnl_reply_init(reply_len, dev, ETHNL_CMD_SET_DRVINFO,
 +				ETHA_DRVINFO_DEV, info, &ehdr);
-+	dev_put(dev);
 +	if (!rskb)
 +		return -ENOMEM;
-+
-+	if (ethnl_put_str_ifne(rskb, ETHA_DRVINFO_DRIVER, drvinfo.driver) ||
-+	    ethnl_put_str_ifne(rskb, ETHA_DRVINFO_VERSION, drvinfo.version) ||
-+	    ethnl_put_str_ifne(rskb, ETHA_DRVINFO_FWVERSION,
-+			       drvinfo.fw_version) ||
-+	    ethnl_put_str_ifne(rskb, ETHA_DRVINFO_BUSINFO, drvinfo.bus_info) ||
-+	    ethnl_put_str_ifne(rskb, ETHA_DRVINFO_EROM_VER,
-+			       drvinfo.erom_version) ||
-+	    nla_put_u32(rskb, ETHA_DRVINFO_N_PRIV_FLAGS,
-+			drvinfo.n_priv_flags) ||
-+	    nla_put_u32(rskb, ETHA_DRVINFO_N_STATS, drvinfo.n_stats) ||
-+	    nla_put_u32(rskb, ETHA_DRVINFO_TESTINFO_LEN,
-+			drvinfo.testinfo_len) ||
-+	    nla_put_u32(rskb, ETHA_DRVINFO_EEDUMP_LEN, drvinfo.eedump_len) ||
-+	    nla_put_u32(rskb, ETHA_DRVINFO_REGDUMP_LEN, drvinfo.regdump_len))
++	ret = fill_drvinfo(rskb, dev, &drvinfo);
++	if (ret < 0)
 +		goto err;
 +
 +	genlmsg_end(rskb, ehdr);
++	dev_put(dev);
 +	return genlmsg_reply(rskb, info);
 +
 +err:
-+	nlmsg_free(rskb);
-+	GENL_SET_ERR_MSG(info, "kernel error, see kernel log for details");
-+	WARN_ONCE(1, "calculated message payload length (%d) not sufficient\n",
++	WARN_ONCE(ret == -EMSGSIZE,
++		  "calculated message payload length (%d) not sufficient\n",
 +		  reply_len);
-+	return -EMSGSIZE;
++	nlmsg_free(rskb);
++err_dev:
++	dev_put(dev);
++	return ret;
 +}
 +
++static int drvinfo_dump(struct sk_buff *skb, struct netlink_callback *cb,
++			struct net_device *dev)
++{
++	struct ethtool_drvinfo drvinfo;
++	int ret;
 +
++	ret = prepare_drvinfo(&drvinfo, NULL, dev);
++	if (ret < 0)
++		return ret;
++	ret = ethnl_fill_dev(skb, dev, ETHA_DRVINFO_DEV);
++	ret = fill_drvinfo(skb, dev, &drvinfo);
++	return ret;
++}
++
++int ethnl_drvinfo_start(struct netlink_callback *cb)
++{
++	cb->args[0] = (long)drvinfo_dump;
++	cb->args[1] = ETHNL_CMD_SET_DRVINFO;
++
++	return 0;
++}
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index c15075dc7572..3da88ece932a 100644
+index e677a20180cf..5e7a207465c8 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -27,6 +27,7 @@
@@ -356,23 +400,26 @@ index c15075dc7572..3da88ece932a 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 0f5b035ef0ae..e90312215ed1 100644
+index 59f09885e9fa..31591953063e 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -452,7 +452,13 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -515,7 +515,16 @@ pr_info("%s[3]: len=%d dumpfn()=%d\n", __func__, skb->len, ret);
  
  /* genetlink setup */
  
 +int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
 +
++int ethnl_drvinfo_start(struct netlink_callback *cb);
  static const struct genl_ops ethtool_genl_ops[] = {
 +	{
 +		.cmd	= ETHNL_CMD_GET_DRVINFO,
 +		.doit	= ethnl_get_drvinfo,
++		.start	= ethnl_drvinfo_start,
++		.dumpit	= ethnl_dumpit,
 +	},
  };
  
  struct genl_family ethtool_genl_family = {
 -- 
-2.16.3
+2.18.0
 
