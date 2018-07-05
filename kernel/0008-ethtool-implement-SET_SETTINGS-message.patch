@@ -1,4 +1,4 @@
-From 16a3e939e64b1d7a238c44360c908c3d5a0321af Mon Sep 17 00:00:00 2001
+From 2888ae03142daf9dafa655c5e15868c1d8fb8368 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 08/10] ethtool: implement SET_SETTINGS message
@@ -13,8 +13,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  42 +-
  net/ethtool/netlink.c                        |   6 +
- net/ethtool/settings.c                       | 491 +++++++++++++++++++
- 3 files changed, 534 insertions(+), 5 deletions(-)
+ net/ethtool/settings.c                       | 492 +++++++++++++++++++
+ 3 files changed, 535 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 994aed9aa488..75e304c3bdf2 100644
@@ -119,14 +119,13 @@ index 2517c34f45c9..ba089b09ef4f 100644
  
  struct genl_family ethtool_genl_family = {
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 034e87b5d187..3cce67c8fbd0 100644
+index 034e87b5d187..58b972fce95c 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -19,6 +19,221 @@ struct settings_reqinfo {
- 	u32 req_mask;
- 	bool compact;
+@@ -21,6 +21,222 @@ struct settings_reqinfo {
  	bool is_privileged;
-+
+ };
+ 
 +struct link_mode_info {
 +	int speed;
 +	u8 duplex;
@@ -341,10 +340,12 @@ index 034e87b5d187..3cce67c8fbd0 100644
 +		.speed	= SPEED_UNKNOWN,
 +		.duplex	= DUPLEX_UNKNOWN,
 +	},
- };
- 
++};
++
  /* We want to allow ~0 as selector for backward compatibility (to just set
-@@ -407,3 +622,279 @@ int ethnl_settings_done(struct netlink_callback *cb)
+  * given set of modes, whatever kernel supports) so that we allow all bits
+  * on validation and do our own sanity check later.
+@@ -407,3 +623,279 @@ int ethnl_settings_done(struct netlink_callback *cb)
  
  	return 0;
  }
