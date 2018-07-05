@@ -1,4 +1,4 @@
-From 5d44463e366c198f092a8ceb0cbd5b9eb685b017 Mon Sep 17 00:00:00 2001
+From 961db15eae481d635cf0013c9b3721a62be0c8d2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 07:27:00 +0100
 Subject: [PATCH 14/19] netlink: add netlink handler for scoalesce (-C)
@@ -9,15 +9,15 @@ ETHTOOL_CMD_SET_PARAMS.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c |   3 +-
- netlink.c | 185 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink.c | 183 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
  netlink.h |   1 +
- 3 files changed, 188 insertions(+), 1 deletion(-)
+ 3 files changed, 186 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index d2a1429e9260..c5a86fe1444f 100644
+index 6bbbdb987a48..265e1507f62f 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4915,6 +4915,7 @@ int nl_gpause(struct cmd_context *ctx) { return 0; }
+@@ -4925,6 +4925,7 @@ int nl_gpause(struct cmd_context *ctx) { return 0; }
  int nl_gchannels(struct cmd_context *ctx) { return 0; }
  int nl_geee(struct cmd_context *ctx) { return 0; }
  int nl_gfec(struct cmd_context *ctx) { return 0; }
@@ -25,7 +25,7 @@ index d2a1429e9260..c5a86fe1444f 100644
  #endif
  
  static const struct option {
-@@ -4947,7 +4948,7 @@ static const struct option {
+@@ -4957,7 +4958,7 @@ static const struct option {
  	  "		[ tx on|off ]\n" },
  	{ "-c|--show-coalesce", 1, do_gcoalesce, nl_gcoalesce,
  	  "Show coalesce options" },
@@ -35,12 +35,12 @@ index d2a1429e9260..c5a86fe1444f 100644
  	  "		[adaptive-rx on|off]\n"
  	  "		[adaptive-tx on|off]\n"
 diff --git a/netlink.c b/netlink.c
-index 308a7dbecdcd..d477c9a39c7d 100644
+index f05e8e401a36..d466bd07eadd 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -1949,3 +1949,188 @@ int nl_gfec(struct cmd_context *ctx)
- 				     get_params_reply_cb,
- 				     ETH_PARAMS_IM_FEC, 0);
+@@ -2007,3 +2007,186 @@ int nl_gfec(struct cmd_context *ctx)
+ {
+ 	return params_request(ctx, ETH_PARAMS_IM_FEC);
  }
 +
 +/* SET_PARAMS */
@@ -57,7 +57,7 @@ index 308a7dbecdcd..d477c9a39c7d 100644
 +	nlctx->argp = ctx->argp;
 +	nlctx->argc = ctx->argc;
 +	ret = msg_init(nlctx, ETHNL_CMD_SET_PARAMS, NLM_F_REQUEST | NLM_F_ACK,
-+		       ctx->devname, 0, 0);
++		       ctx->devname, ETHA_PARAMS_DEV);
 +	if (ret < 0)
 +		return 2;
 +
@@ -73,8 +73,6 @@ index 308a7dbecdcd..d477c9a39c7d 100644
 +		return 2;
 +	mnl_attr_nest_end(nlctx->nlhdr, nest);
 +
-+	mnl_nlmsg_fprintf(stdout, nlctx->buff, nlctx->nlhdr->nlmsg_len,
-+			  GENL_HDRLEN + ETHNL_HDRLEN);
 +	ret = ethnl_sendmsg(nlctx);
 +	if (ret < 0)
 +		return 75;
@@ -239,5 +237,5 @@ index dcfa50fd3477..de7d5c975008 100644
  
  #endif /* ETHTOOL_NETLINK_H__ */
 -- 
-2.16.3
+2.18.0
 

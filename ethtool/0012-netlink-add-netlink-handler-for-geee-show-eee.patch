@@ -1,4 +1,4 @@
-From c9ec50efe8f79fe3629cdb536e2e44daa3922ae4 Mon Sep 17 00:00:00 2001
+From 342e146ba2b9267a421c7753dd3e7495d96a170b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:08:21 +0100
 Subject: [PATCH 12/19] netlink: add netlink handler for geee (--show-eee)
@@ -9,15 +9,15 @@ command ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_EEE mask.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c |  3 ++-
- netlink.c | 68 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink.c | 66 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
  netlink.h |  1 +
- 3 files changed, 71 insertions(+), 1 deletion(-)
+ 3 files changed, 69 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index b131d181cc2c..2f3c6c6fc569 100644
+index 0804e33abf7d..40daf792b595 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4913,6 +4913,7 @@ int nl_gcoalesce(struct cmd_context *ctx) { return 0; }
+@@ -4923,6 +4923,7 @@ int nl_gcoalesce(struct cmd_context *ctx) { return 0; }
  int nl_gring(struct cmd_context *ctx) { return 0; }
  int nl_gpause(struct cmd_context *ctx) { return 0; }
  int nl_gchannels(struct cmd_context *ctx) { return 0; }
@@ -25,7 +25,7 @@ index b131d181cc2c..2f3c6c6fc569 100644
  #endif
  
  static const struct option {
-@@ -5083,7 +5084,7 @@ static const struct option {
+@@ -5093,7 +5094,7 @@ static const struct option {
  	  "		[ hex on|off ]\n"
  	  "		[ offset N ]\n"
  	  "		[ length N ]\n" },
@@ -35,10 +35,10 @@ index b131d181cc2c..2f3c6c6fc569 100644
  	{ "--set-eee", 1, do_seee, NULL,
  	  "Set EEE settings",
 diff --git a/netlink.c b/netlink.c
-index d2687f13234f..eea602ed84b3 100644
+index 02592ccb7d4b..9a7d7516f072 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -1756,6 +1756,58 @@ static int show_channels(struct nl_context *nlctx, const struct nlattr *nest)
+@@ -1811,6 +1811,58 @@ static int show_channels(struct nl_context *nlctx, const struct nlattr *nest)
  	return 0;
  }
  
@@ -64,7 +64,7 @@ index d2687f13234f..eea602ed84b3 100644
 +	enabled = mnl_attr_get_u8(tb[ETHA_EEE_ENABLED]);
 +	tx_lpi_enabled = mnl_attr_get_u8(tb[ETHA_EEE_TX_LPI_ENABLED]);
 +
-+	printf("EEE Settings for %s:\n", nlctx->enlhdr->ifname);
++	printf("EEE Settings for %s:\n", nlctx->devname);
 +	printf("\tEEE status: ");
 +	if (bitset_is_empty(tb[ETHA_EEE_LINK_MODES], true, &ret)) {
 +		printf("not supported\n");
@@ -97,7 +97,7 @@ index d2687f13234f..eea602ed84b3 100644
  static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
-@@ -1805,6 +1857,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -1862,6 +1914,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_ERROR;
  		}
  	}
@@ -113,16 +113,14 @@ index d2687f13234f..eea602ed84b3 100644
  
  	return MNL_CB_OK;
  }
-@@ -1836,3 +1897,10 @@ int nl_gchannels(struct cmd_context *ctx)
- 				     get_params_reply_cb,
- 				     ETH_PARAMS_IM_CHANNELS, 0);
+@@ -1898,3 +1959,8 @@ int nl_gchannels(struct cmd_context *ctx)
+ {
+ 	return params_request(ctx, ETH_PARAMS_IM_CHANNELS);
  }
 +
 +int nl_geee(struct cmd_context *ctx)
 +{
-+	return ethnl_std_get_request(ctx, ETHNL_CMD_GET_PARAMS,
-+				     get_params_reply_cb,
-+				     ETH_PARAMS_IM_EEE, 0);
++	return params_request(ctx, ETH_PARAMS_IM_EEE);
 +}
 diff --git a/netlink.h b/netlink.h
 index 3e8593621671..3163dcf36c37 100644
@@ -136,5 +134,5 @@ index 3e8593621671..3163dcf36c37 100644
  
  #endif /* ETHTOOL_NETLINK_H__ */
 -- 
-2.16.3
+2.18.0
 

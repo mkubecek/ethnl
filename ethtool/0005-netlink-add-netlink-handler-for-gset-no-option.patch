@@ -1,4 +1,4 @@
-From dfd4e09655827b1c396b4fa53ea06e8b5244600c Mon Sep 17 00:00:00 2001
+From 02062dff0c5cbc5d92f2c1e29641afa39860ccab Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 05/19] netlink: add netlink handler for gset (no option)
@@ -11,12 +11,12 @@ into new file common.c.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am |   2 +-
- common.c    | 285 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- common.h    |  60 +++++++++++++
- ethtool.c   | 151 ++------------------------------
- netlink.c   | 279 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ common.c    | 285 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ common.h    |  60 +++++++++++
+ ethtool.c   | 151 ++--------------------------
+ netlink.c   | 284 +++++++++++++++++++++++++++++++++++++++++++++++++++
  netlink.h   |   1 +
- 6 files changed, 635 insertions(+), 143 deletions(-)
+ 6 files changed, 640 insertions(+), 143 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
 
@@ -391,7 +391,7 @@ index 000000000000..a980b844a0ed
 +
 +#endif /* ETHTOOL_COMMON_H__ */
 diff --git a/ethtool.c b/ethtool.c
-index 1ea77e785ee9..7dda7ef95881 100644
+index 9086751d59be..0665293bf902 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -30,6 +30,7 @@
@@ -604,7 +604,7 @@ index 1ea77e785ee9..7dda7ef95881 100644
  		flag_to_cmdline_info(flags_msglvl[i].name,
  				     flags_msglvl[i].value,
  				     &msglvl_wanted, &msglvl_mask,
-@@ -5042,6 +4907,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5052,6 +4917,7 @@ static int show_usage(struct cmd_context *ctx);
  #ifndef ETHTOOL_ENABLE_NETLINK
  /* Stubs to (not) use when building without netlink support */
  int nl_gdrv(struct cmd_context *ctx) { return 0; }
@@ -612,7 +612,7 @@ index 1ea77e785ee9..7dda7ef95881 100644
  #endif
  
  static const struct option {
-@@ -5349,6 +5215,7 @@ int main(int argc, char **argp)
+@@ -5359,6 +5225,7 @@ int main(int argc, char **argp)
  	}
  	if ((*argp)[0] == '-')
  		exit_bad_args();
@@ -621,7 +621,7 @@ index 1ea77e785ee9..7dda7ef95881 100644
  	want_device = 1;
  
 diff --git a/netlink.c b/netlink.c
-index aded8358c0b6..d9d51389b656 100644
+index 874861978cc2..9bfda26a97e7 100644
 --- a/netlink.c
 +++ b/netlink.c
 @@ -4,6 +4,7 @@
@@ -632,9 +632,9 @@ index aded8358c0b6..d9d51389b656 100644
  #include "netlink.h"
  
  #include <libmnl/libmnl.h>
-@@ -543,3 +544,281 @@ int nl_gdrv(struct cmd_context *ctx)
- 	return ethnl_std_get_request(ctx, ETHNL_CMD_GET_DRVINFO,
- 				     drvinfo_reply_cb, 0, 0);
+@@ -593,3 +594,286 @@ int nl_gdrv(struct cmd_context *ctx)
+ 		return ret;
+ 	return ethnl_send_get_request(ctx, drvinfo_reply_cb);
  }
 +
 +/* GET_SETTINGS */
@@ -744,12 +744,12 @@ index aded8358c0b6..d9d51389b656 100644
 +	int port = -1;
 +	int ret;
 +
-+	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN + ETHNL_HDRLEN, attr_cb,
-+			     &tb_info);
++	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return ret;
++	nlctx->devname = get_dev_name(tb[ETHA_SETTINGS_DEV]);
 +
-+	fprintf(stdout, "Settings for %s:\n", nlctx->enlhdr->ifname);
++	fprintf(stdout, "Settings for %s:\n", nlctx->devname);
 +
 +	if (tb[ETHA_SETTINGS_LINK_MODES]) {
 +		const struct nlattr *attr = tb[ETHA_SETTINGS_LINK_MODES];
@@ -911,8 +911,13 @@ index aded8358c0b6..d9d51389b656 100644
 +
 +int nl_gset(struct cmd_context *ctx)
 +{
-+	return ethnl_std_get_request(ctx, ETHNL_CMD_GET_SETTINGS,
-+				     settings_reply_cb, 0, 0);
++	int ret;
++
++	ret = ethnl_prep_get_request(ctx, ETHNL_CMD_GET_SETTINGS,
++				     ETHA_SETTINGS_DEV);
++	if (ret < 0)
++		return ret;
++	return ethnl_send_get_request(ctx, settings_reply_cb);
 +}
 diff --git a/netlink.h b/netlink.h
 index 277cd543cee7..9de571fcc959 100644
@@ -926,5 +931,5 @@ index 277cd543cee7..9de571fcc959 100644
  
  #endif /* ETHTOOL_NETLINK_H__ */
 -- 
-2.16.3
+2.18.0
 

@@ -1,4 +1,4 @@
-From ddc9e5c784d37a75b2b16e8f3c4f059fbcd1a2c7 Mon Sep 17 00:00:00 2001
+From 32088455bbd9c25c3f2f6f955d82eb496a7e1c1f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 24 Nov 2017 01:02:29 +0100
 Subject: [PATCH 02/19] update UAPI header copies
@@ -40,5 +40,5 @@ index 3d421d912193..4fe104b2411f 100644
   * Userspace API for hardware time stamping of network packets
   *
 -- 
-2.16.3
+2.18.0
 

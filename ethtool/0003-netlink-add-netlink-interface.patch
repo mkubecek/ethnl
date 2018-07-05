@@ -1,4 +1,4 @@
-From afd13c8cfda6d4aa796ace1289d6f84898e38912 Mon Sep 17 00:00:00 2001
+From c7c6827eec120e0dd76e7e384abb3f2c8cdb7248 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 03/19] netlink: add netlink interface
@@ -20,15 +20,15 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am                  |  10 +
  configure.ac                 |  12 +
- ethtool.c                    | 169 +++++++++-----
+ ethtool.c                    | 169 +++++++----
  internal.h                   |   8 +
- netlink.c                    | 512 +++++++++++++++++++++++++++++++++++++++++++
+ netlink.c                    | 554 +++++++++++++++++++++++++++++++++++
  netlink.h                    |  10 +
  uapi/linux/ethtool.h         |   3 +
- uapi/linux/ethtool_netlink.h | 239 ++++++++++++++++++++
- uapi/linux/genetlink.h       |  89 ++++++++
- uapi/linux/netlink.h         | 247 +++++++++++++++++++++
- 10 files changed, 1243 insertions(+), 56 deletions(-)
+ uapi/linux/ethtool_netlink.h | 241 +++++++++++++++
+ uapi/linux/genetlink.h       |  89 ++++++
+ uapi/linux/netlink.h         | 247 ++++++++++++++++
+ 10 files changed, 1287 insertions(+), 56 deletions(-)
  create mode 100644 netlink.c
  create mode 100644 netlink.h
  create mode 100644 uapi/linux/ethtool_netlink.h
@@ -64,7 +64,7 @@ index e7da37a85499..692863fa6753 100644
  check_PROGRAMS = test-cmdline test-features
  test_cmdline_SOURCES = test-cmdline.c test-common.c $(ethtool_SOURCES) 
 diff --git a/configure.ac b/configure.ac
-index 9ed3267a5af9..bf46f7dce91b 100644
+index e891d917cf11..1896e44baf16 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -40,5 +40,17 @@ if test x$enable_pretty_dump = xyes; then
@@ -86,7 +86,7 @@ index 9ed3267a5af9..bf46f7dce91b 100644
  AC_CONFIG_FILES([Makefile ethtool.spec ethtool.8])
  AC_OUTPUT
 diff --git a/ethtool.c b/ethtool.c
-index 3289e0f6e8ec..f4fce23299ca 100644
+index fb93ae898312..0fee2cfe7acc 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -30,6 +30,7 @@
@@ -97,7 +97,7 @@ index 3289e0f6e8ec..f4fce23299ca 100644
  #include <string.h>
  #include <stdlib.h>
  #include <sys/stat.h>
-@@ -5038,14 +5039,20 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
+@@ -5048,14 +5049,20 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
  
  static int show_usage(struct cmd_context *ctx);
  
@@ -119,7 +119,7 @@ index 3289e0f6e8ec..f4fce23299ca 100644
  	  "		[ speed %d ]\n"
  	  "		[ duplex half|full ]\n"
  	  "		[ port tp|aui|bnc|mii|fibre ]\n"
-@@ -5057,13 +5064,17 @@ static const struct option {
+@@ -5067,13 +5074,17 @@ static const struct option {
  	  "		[ wol p|u|m|b|a|g|s|d... ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
  	  "		[ msglvl %d | msglvl type on|off ... ]\n" },
@@ -141,7 +141,7 @@ index 3289e0f6e8ec..f4fce23299ca 100644
  	  "		[adaptive-rx on|off]\n"
  	  "		[adaptive-tx on|off]\n"
  	  "		[rx-usecs N]\n"
-@@ -5086,46 +5097,54 @@ static const struct option {
+@@ -5096,46 +5107,54 @@ static const struct option {
  	  "		[tx-usecs-high N]\n"
  	  "		[tx-frames-high N]\n"
  	  "		[sample-interval N]\n" },
@@ -211,7 +211,7 @@ index 3289e0f6e8ec..f4fce23299ca 100644
  	  "Configure Rx network flow classification options or rules",
  	  "		rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 m|v|t|s|d|f|n|r... [context %d] |\n"
-@@ -5150,55 +5169,64 @@ static const struct option {
+@@ -5160,55 +5179,64 @@ static const struct option {
  	  "			[ context %d ]\n"
  	  "			[ loc %d]] |\n"
  	  "		delete %d\n" },
@@ -293,7 +293,7 @@ index 3289e0f6e8ec..f4fce23299ca 100644
  	  "		[ flags %x ]\n"
  	  "		[ mgmt ]\n"
  	  "		[ mgmt-shared ]\n"
-@@ -5220,11 +5248,15 @@ static const struct option {
+@@ -5230,11 +5258,15 @@ static const struct option {
  	  "		[ ap-shared ]\n"
  	  "		[ dedicated ]\n"
  	  "		[ all ]\n"},
@@ -313,7 +313,7 @@ index 3289e0f6e8ec..f4fce23299ca 100644
  	{}
  };
  
-@@ -5251,11 +5283,35 @@ static int show_usage(struct cmd_context *ctx)
+@@ -5261,11 +5293,35 @@ static int show_usage(struct cmd_context *ctx)
  	return 0;
  }
  
@@ -349,7 +349,7 @@ index 3289e0f6e8ec..f4fce23299ca 100644
  	int k;
  
  	init_global_link_mode_masks();
-@@ -5281,6 +5337,7 @@ int main(int argc, char **argp)
+@@ -5291,6 +5347,7 @@ int main(int argc, char **argp)
  				argp++;
  				argc--;
  				func = args[k].func;
@@ -357,7 +357,7 @@ index 3289e0f6e8ec..f4fce23299ca 100644
  				want_device = args[k].want_device;
  				goto opt_found;
  			}
-@@ -5295,6 +5352,15 @@ int main(int argc, char **argp)
+@@ -5305,6 +5362,15 @@ int main(int argc, char **argp)
  	want_device = 1;
  
  opt_found:
@@ -373,7 +373,7 @@ index 3289e0f6e8ec..f4fce23299ca 100644
  	if (want_device) {
  		ctx.devname = *argp++;
  		argc--;
-@@ -5303,25 +5369,16 @@ opt_found:
+@@ -5313,25 +5379,16 @@ opt_found:
  			exit_bad_args();
  		if (strlen(ctx.devname) >= IFNAMSIZ)
  			exit_bad_args();
@@ -433,10 +433,10 @@ index 0b04a9794b6b..f7feade9f57e 100644
  #ifdef TEST_ETHTOOL
 diff --git a/netlink.c b/netlink.c
 new file mode 100644
-index 000000000000..d516623ae4fc
+index 000000000000..f1fc90f7ba8d
 --- /dev/null
 +++ b/netlink.c
-@@ -0,0 +1,512 @@
+@@ -0,0 +1,554 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -451,6 +451,7 @@ index 000000000000..d516623ae4fc
 +#include <linux/ethtool_netlink.h>
 +
 +#define MAX_MSG_SIZE (4 << 20)		/* 4 MB */
++#define WILDCARD_DEVNAME "*"
 +
 +struct nl_context {
 +	int ethnl_fam;
@@ -461,7 +462,9 @@ index 000000000000..d516623ae4fc
 +	unsigned int seq;
 +	struct nlmsghdr *nlhdr;
 +	struct genlmsghdr *gnlhdr;
-+	struct ethnlmsghdr *enlhdr;
++	void *msg;
++	const char *devname;
++	bool is_dump;
 +	int exit_code;
 +};
 +
@@ -611,7 +614,7 @@ index 000000000000..d516623ae4fc
 +{
 +	unsigned int nlhdr_offset = (char *)nlctx->nlhdr - nlctx->buff;
 +	unsigned int gnlhdr_offset = (char *)nlctx->gnlhdr - nlctx->buff;
-+	unsigned int enlhdr_offset = (char *)nlctx->enlhdr - nlctx->buff;
++	unsigned int msg_offset = (char *)nlctx->msg - nlctx->buff;
 +	unsigned int old_size = nlctx->buffsize;
 +	unsigned int new_size = old_size + MNL_SOCKET_BUFFER_SIZE;
 +	char *new_buff;
@@ -625,8 +628,7 @@ index 000000000000..d516623ae4fc
 +		memset(new_buff + old_size, '\0', new_size - old_size);
 +		nlctx->nlhdr = (struct nlmsghdr *)(new_buff + nlhdr_offset);
 +		nlctx->gnlhdr = (struct genlmsghdr *)(new_buff + gnlhdr_offset);
-+		nlctx->enlhdr =
-+			(struct ethnlmsghdr *)(new_buff + enlhdr_offset);
++		nlctx->msg = new_buff + msg_offset;
 +		nlctx->buff = new_buff;
 +	}
 +	nlctx->buffsize = new_size;
@@ -635,22 +637,14 @@ index 000000000000..d516623ae4fc
 +}
 +
 +static int msg_init(struct nl_context *nlctx, int cmd, unsigned int flags,
-+		    const char *ifname, unsigned int req_mask,
-+		    unsigned int req_flags) {
-+	struct ethnlmsghdr *enlhdr;
++		    const char *devname, unsigned int dev_attrtype) {
 +	int ret;
 +
 +	ret = __msg_init(nlctx, nlctx->ethnl_fam, cmd, flags,
 +			 ETHTOOL_GENL_VERSION);
 +	if (ret < 0)
 +		return ret;
-+	enlhdr = mnl_nlmsg_put_extra_header(nlctx->nlhdr, sizeof(*enlhdr));
-+
-+	memset(enlhdr, '\0', sizeof(*enlhdr));
-+	enlhdr->flags = req_flags;
-+	enlhdr->info_mask = req_mask;
-+	strncpy(enlhdr->ifname, ifname, sizeof(enlhdr->ifname) - 1);
-+	nlctx->enlhdr = enlhdr;
++	nlctx->msg = mnl_nlmsg_get_payload_offset(nlctx->nlhdr, GENL_HDRLEN);
 +
 +	return 0;
 +}
@@ -714,34 +708,12 @@ index 000000000000..d516623ae4fc
 +
 +		nlctx->nlhdr = nlhdr;
 +		nlctx->gnlhdr = mnl_nlmsg_get_payload(nlhdr);
-+		nlctx->enlhdr = mnl_nlmsg_get_payload_offset(nlhdr,
-+							     GENL_HDRLEN);
++		nlctx->msg = mnl_nlmsg_get_payload_offset(nlhdr, GENL_HDRLEN);
 +		ret = mnl_cb_run(nlctx->buff, len, nlctx->seq, nlctx->port,
 +				 reply_cb, nlctx);
 +	} while (ret > 0);
 +
 +	return ret;
-+}
-+
-+static int ethnl_std_get_request(struct cmd_context *ctx, unsigned int nlcmd,
-+				 mnl_cb_t cb, u16 req_mask, u16 req_flags)
-+{
-+	struct nl_context *nlctx = ctx->nlctx;
-+	int ret;
-+
-+	ret = msg_init(nlctx, nlcmd, NLM_F_REQUEST | NLM_F_ACK,
-+		       ctx->devname,
-+		       req_mask, req_flags);
-+	if (ret < 0)
-+		goto err;
-+	ret = ethnl_sendmsg(nlctx);
-+	if (ret < 0)
-+		goto err;
-+	ret = ethnl_process_reply(nlctx, cb);
-+	if (ret == 0)
-+		return 0;
-+err:
-+	return nlctx->exit_code ?: 1;
 +}
 +
 +/* safe message composition */
@@ -808,6 +780,76 @@ index 000000000000..d516623ae4fc
 +			    const char *data)
 +{
 +	return ethnla_put(nlctx, type, strlen(data) + 1, data);
++}
++
++static bool ethnla_put_dev(struct nl_context *nlctx, uint16_t type,
++			   const char *devname)
++{
++	struct nlattr *nest = ethnla_nest_start(nlctx, type);
++	struct nlmsghdr *nlhdr = nlctx->nlhdr;
++
++	if (!nest)
++		return true;
++	if (ethnla_put_strz(nlctx, ETHA_DEV_NAME, devname)) {
++		mnl_attr_nest_cancel(nlhdr, nest);
++		return true;
++	}
++	mnl_attr_nest_end(nlhdr, nest);
++
++	return false;
++}
++
++static const char *get_dev_name(const struct nlattr *nest)
++{
++	const struct nlattr *dev_tb[ETHA_DEV_MAX + 1] = {};
++	DECLARE_ATTR_TB_INFO(dev_tb);
++	int ret;
++
++	if (!nest)
++		return "(none)";
++	ret = mnl_attr_parse_nested(nest, attr_cb, &dev_tb_info);
++	if (ret < 0 || !dev_tb[ETHA_BIT_NAME])
++		return "(none)";
++	return mnl_attr_get_str(dev_tb[ETHA_BIT_NAME]);
++}
++
++/* request helpers */
++
++static int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
++				  uint16_t dev_attrtype)
++{
++	bool is_dev = ctx->devname && strcmp(ctx->devname, WILDCARD_DEVNAME);
++	struct nl_context *nlctx = ctx->nlctx;
++	int ret;
++
++	nlctx->is_dump = !is_dev;
++	ret = msg_init(nlctx, nlcmd,
++		       NLM_F_REQUEST | NLM_F_ACK | (is_dev ? 0 : NLM_F_DUMP),
++		       ctx->devname, dev_attrtype);
++	if (ret < 0)
++		return ret;
++
++	if (is_dev) {
++		if (ethnla_put_dev(nlctx, dev_attrtype, ctx->devname))
++			return -EMSGSIZE;
++	}
++
++	return 0;
++}
++
++static int ethnl_send_get_request(struct cmd_context *ctx, mnl_cb_t cb)
++{
++	struct nl_context *nlctx = ctx->nlctx;
++	int ret;
++
++	ret = ethnl_sendmsg(nlctx);
++	if (ret < 0)
++		goto err;
++	ret = ethnl_process_reply(nlctx, cb);
++	if (ret == 0)
++		return 0;
++err:
++	return nlctx->exit_code ?: 1;
 +}
 +
 +/* dump helpers */
@@ -981,30 +1023,16 @@ index a8186391ac9d..1874c5e82703 100644
  #define ETHTOOL_EROMVERS_LEN	32
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..10c729c8956d
+index 000000000000..39710c8003ba
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,239 @@
+@@ -0,0 +1,241 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#ifndef _LINUX_ETHTOOL_NETLINK_H_
 +#define _LINUX_ETHTOOL_NETLINK_H_
 +
 +#include <linux/ethtool.h>
-+
-+/* identifies the device to query/set
-+ * - use either ifindex or ifname, not both
-+ * - for dumps and messages not related to a particular devices, fill neither
-+ * - info_mask is a bitfield, interpretation depends on the command
-+ */
-+struct ethnlmsghdr {
-+	__u32	ifindex;		/* device ifindex */
-+	__u16	flags;			/* request/response flags */
-+	__u16	info_mask;		/* request/response info mask */
-+	char	ifname[IFNAMSIZ];	/* device name */
-+};
-+
-+#define ETHNL_HDRLEN NLMSG_ALIGN(sizeof(struct ethnlmsghdr))
 +
 +enum {
 +	ETHNL_CMD_NOOP,
@@ -1016,7 +1044,18 @@ index 000000000000..10c729c8956d
 +	ETHNL_CMD_SET_PARAMS,
 +
 +	__ETHNL_CMD_MAX,
-+	ETHNL_CMD_MAX = (__ETHNL_CMD_MAX - 1),
++	ETHNL_CMD_MAX = (__ETHNL_CMD_MAX - 1)
++};
++
++/* device specification */
++
++enum {
++	ETHA_DEV_UNSPEC,
++	ETHA_DEV_INDEX,				/* u32 */
++	ETHA_DEV_NAME,				/* string */
++
++	__ETHA_DEV_MAX,
++	ETHA_DEV_MAX = (__ETHA_DEV_MAX - 1)
 +};
 +
 +/* bit sets */
@@ -1028,7 +1067,7 @@ index 000000000000..10c729c8956d
 +	ETHA_BIT_VALUE,				/* flag */
 +
 +	__ETHA_BIT_MAX,
-+	ETHA_BIT_MAX = (__ETHA_BIT_MAX - 1),
++	ETHA_BIT_MAX = (__ETHA_BIT_MAX - 1)
 +};
 +
 +enum {
@@ -1036,7 +1075,7 @@ index 000000000000..10c729c8956d
 +	ETHA_BITS_BIT,
 +
 +	__ETHA_BITS_MAX,
-+	ETHA_BITS_MAX = (__ETHA_BITS_MAX - 1),
++	ETHA_BITS_MAX = (__ETHA_BITS_MAX - 1)
 +};
 +
 +enum {
@@ -1047,13 +1086,14 @@ index 000000000000..10c729c8956d
 +	ETHA_BITSET_MASK,			/* binary */
 +
 +	__ETHA_BITSET_MAX,
-+	ETHA_BITSET_MAX = (__ETHA_BITSET_MAX - 1),
++	ETHA_BITSET_MAX = (__ETHA_BITSET_MAX - 1)
 +};
 +
 +/* GET_DRVINFO / SET_DRVINFO */
 +
 +enum {
 +	ETHA_DRVINFO_UNSPEC,
++	ETHA_DRVINFO_DEV,			/* nest - ETHA_DEV_* */
 +	ETHA_DRVINFO_DRIVER,			/* string */
 +	ETHA_DRVINFO_VERSION,			/* string */
 +	ETHA_DRVINFO_FWVERSION,			/* string */
@@ -1066,13 +1106,16 @@ index 000000000000..10c729c8956d
 +	ETHA_DRVINFO_REGDUMP_LEN,		/* u32 */
 +
 +	__ETHA_DRVINFO_MAX,
-+	ETHA_DRVINFO_MAX = (__ETHA_DRVINFO_MAX - 1),
++	ETHA_DRVINFO_MAX = (__ETHA_DRVINFO_MAX - 1)
 +};
 +
 +/* GET_SETTINGS / SET_SETTINGS */
 +
 +enum {
 +	ETHA_SETTINGS_UNSPEC,
++	ETHA_SETTINGS_DEV,			/* nest - ETHA_DEV_* */
++	ETHA_SETTINGS_INFOMASK,			/* u32 */
++	ETHA_SETTINGS_COMPACT,			/* flag */
 +	ETHA_SETTINGS_SPEED,			/* u32 */
 +	ETHA_SETTINGS_DUPLEX,			/* u8 */
 +	ETHA_SETTINGS_PORT,			/* u8 */
@@ -1090,10 +1133,8 @@ index 000000000000..10c729c8956d
 +	ETHA_SETTINGS_LINK,			/* u32 */
 +
 +	__ETHA_SETTINGS_MAX,
-+	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_MAX - 1),
++	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_MAX - 1)
 +};
-+
-+#define ETH_SETTINGS_RF_COMPACT_BITSETS		0x1
 +
 +#define ETH_SETTINGS_IM_LINKINFO		0x01
 +#define ETH_SETTINGS_IM_LINKMODES		0x02
@@ -1107,6 +1148,9 @@ index 000000000000..10c729c8956d
 +
 +enum {
 +	ETHA_PARAMS_UNSPEC,
++	ETHA_PARAMS_DEV,			/* nest - ETHA_DEV_* */
++	ETHA_PARAMS_INFOMASK,			/* u32 */
++	ETHA_PARAMS_COMPACT,			/* flag */
 +	ETHA_PARAMS_COALESCE,			/* nest - ETHA_COALESCE_* */
 +	ETHA_PARAMS_RING,			/* nest - ETHA_RING_* */
 +	ETHA_PARAMS_PAUSE,			/* nest - ETHA_PAUSE_* */
@@ -1115,10 +1159,8 @@ index 000000000000..10c729c8956d
 +	ETHA_PARAMS_FEC,			/* nest - ETHA_FEC_* */
 +
 +	__ETHA_PARAMS_MAX,
-+	ETHA_PARAMS_MAX = (__ETHA_PARAMS_MAX - 1),
++	ETHA_PARAMS_MAX = (__ETHA_PARAMS_MAX - 1)
 +};
-+
-+#define ETH_PARAMS_RF_COMPACT_BITSETS		0x1
 +
 +#define ETH_PARAMS_IM_COALESCE			0x01
 +#define ETH_PARAMS_IM_RING			0x02
@@ -1155,7 +1197,7 @@ index 000000000000..10c729c8956d
 +	ETHA_COALESCE_STATS_BLOCK_USECS,	/* u32 */
 +
 +	__ETHA_COALESCE_MAX,
-+	ETHA_COALESCE_MAX = (__ETHA_COALESCE_MAX - 1),
++	ETHA_COALESCE_MAX = (__ETHA_COALESCE_MAX - 1)
 +};
 +
 +enum {
@@ -1170,7 +1212,7 @@ index 000000000000..10c729c8956d
 +	ETHA_RING_TX_PENDING,			/* u32 */
 +
 +	__ETHA_RING_MAX,
-+	ETHA_RING_MAX = (__ETHA_RING_MAX - 1),
++	ETHA_RING_MAX = (__ETHA_RING_MAX - 1)
 +};
 +
 +enum {
@@ -1180,7 +1222,7 @@ index 000000000000..10c729c8956d
 +	ETHA_PAUSE_TX,				/* u8 */
 +
 +	__ETHA_PAUSE_MAX,
-+	ETHA_PAUSE_MAX = (__ETHA_PAUSE_MAX - 1),
++	ETHA_PAUSE_MAX = (__ETHA_PAUSE_MAX - 1)
 +};
 +
 +enum {
@@ -1195,7 +1237,7 @@ index 000000000000..10c729c8956d
 +	ETHA_CHANNELS_COMBINED_COUNT,		/* u32 */
 +
 +	__ETHA_CHANNELS_MAX,
-+	ETHA_CHANNELS_MAX = (__ETHA_CHANNELS_MAX - 1),
++	ETHA_CHANNELS_MAX = (__ETHA_CHANNELS_MAX - 1)
 +};
 +
 +enum {
@@ -1208,7 +1250,7 @@ index 000000000000..10c729c8956d
 +	ETHA_EEE_TX_LPI_TIMER,			/* u32 */
 +
 +	__ETHA_EEE_MAX,
-+	ETHA_EEE_MAX = (__ETHA_EEE_MAX - 1),
++	ETHA_EEE_MAX = (__ETHA_EEE_MAX - 1)
 +};
 +
 +enum {
@@ -1216,12 +1258,14 @@ index 000000000000..10c729c8956d
 +	ETHA_FEC_MODES,				/* bitfield32 */
 +
 +	__ETHA_FEC_MAX,
-+	ETHA_FEC_MAX = (__ETHA_FEC_MAX - 1),
++	ETHA_FEC_MAX = (__ETHA_FEC_MAX - 1)
 +};
 +
 +/* generic netlink info */
 +#define ETHTOOL_GENL_NAME "ethtool"
 +#define ETHTOOL_GENL_VERSION 1
++
++#define ETHTOOL_MCGRP_MONITOR_NAME "all"
 +
 +#endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/uapi/linux/genetlink.h b/uapi/linux/genetlink.h
@@ -1573,5 +1617,5 @@ index 000000000000..0b2c29bd081f
 +
 +#endif /* __LINUX_NETLINK_H */
 -- 
-2.16.3
+2.18.0
 

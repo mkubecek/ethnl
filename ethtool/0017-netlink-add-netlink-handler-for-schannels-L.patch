@@ -1,4 +1,4 @@
-From 8ed8c375c5b66ef8633d9648e19b1520a17fe237 Mon Sep 17 00:00:00 2001
+From 61a1c98270f1ba6ac4ebb8f7a619c8864f6d38c6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:32:39 +0100
 Subject: [PATCH 17/19] netlink: add netlink handler for schannels (-L)
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 37 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index a1b43664ef82..167765da490f 100644
+index 6829f080be0c..9e0725e612f8 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4918,6 +4918,7 @@ int nl_gfec(struct cmd_context *ctx) { return 0; }
+@@ -4928,6 +4928,7 @@ int nl_gfec(struct cmd_context *ctx) { return 0; }
  int nl_scoalesce(struct cmd_context *ctx) { return 0; }
  int nl_sring(struct cmd_context *ctx) { return 0; }
  int nl_spause(struct cmd_context *ctx) { return 0; }
@@ -25,7 +25,7 @@ index a1b43664ef82..167765da490f 100644
  #endif
  
  static const struct option {
-@@ -5071,7 +5072,7 @@ static const struct option {
+@@ -5081,7 +5082,7 @@ static const struct option {
  	  "		N\n"},
  	{ "-l|--show-channels", 1, do_gchannels, nl_gchannels,
  	  "Query Channels" },
@@ -35,10 +35,10 @@ index a1b43664ef82..167765da490f 100644
  	  "               [ rx N ]\n"
  	  "               [ tx N ]\n"
 diff --git a/netlink.c b/netlink.c
-index b8a77eaf493c..d40ce0eea417 100644
+index e86bf980ff56..0fc4908a88dc 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -2196,3 +2196,37 @@ int nl_spause(struct cmd_context *ctx)
+@@ -2252,3 +2252,37 @@ int nl_spause(struct cmd_context *ctx)
  	return nl_set_param(ctx, "-A", spause_params, ETHA_PARAMS_PAUSE,
  			    ETHA_PAUSE_MAX);
  }
@@ -88,5 +88,5 @@ index a94cfce9a424..1c8445be66c7 100644
  
  #endif /* ETHTOOL_NETLINK_H__ */
 -- 
-2.16.3
+2.18.0
 

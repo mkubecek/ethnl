@@ -1,4 +1,4 @@
-From 780ca9626cc6028a0517982e1bc23d5f3fb26e11 Mon Sep 17 00:00:00 2001
+From 59f1b7171134aef7477390101e13a577df087f5f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:59:50 +0100
 Subject: [PATCH 09/19] netlink: add netlink handler for gring (-g)
@@ -9,15 +9,15 @@ ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_RING mask.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c |  3 ++-
- netlink.c | 44 ++++++++++++++++++++++++++++++++++++++++++++
+ netlink.c | 42 ++++++++++++++++++++++++++++++++++++++++++
  netlink.h |  1 +
- 3 files changed, 47 insertions(+), 1 deletion(-)
+ 3 files changed, 45 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 329384cf5636..89dd47516d38 100644
+index 713f51ee5d00..48e383473941 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4910,6 +4910,7 @@ int nl_gdrv(struct cmd_context *ctx) { return 0; }
+@@ -4920,6 +4920,7 @@ int nl_gdrv(struct cmd_context *ctx) { return 0; }
  int nl_gset(struct cmd_context *ctx) { return 0; }
  int nl_sset(struct cmd_context *ctx) { return 0; }
  int nl_gcoalesce(struct cmd_context *ctx) { return 0; }
@@ -25,7 +25,7 @@ index 329384cf5636..89dd47516d38 100644
  #endif
  
  static const struct option {
-@@ -4966,7 +4967,7 @@ static const struct option {
+@@ -4976,7 +4977,7 @@ static const struct option {
  	  "		[tx-usecs-high N]\n"
  	  "		[tx-frames-high N]\n"
  	  "		[sample-interval N]\n" },
@@ -35,10 +35,10 @@ index 329384cf5636..89dd47516d38 100644
  	{ "-G|--set-ring", 1, do_sring, NULL,
  	  "Set RX/TX ring parameters",
 diff --git a/netlink.c b/netlink.c
-index 856a0ced9ea2..ea1fd8dfd7c8 100644
+index 47a8d80650b6..6ae6bacca31c 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -1678,6 +1678,34 @@ static int show_coalesce(struct nl_context *nlctx, const struct nlattr *nest)
+@@ -1733,6 +1733,34 @@ static int show_coalesce(struct nl_context *nlctx, const struct nlattr *nest)
  	return 0;
  }
  
@@ -54,7 +54,7 @@ index 856a0ced9ea2..ea1fd8dfd7c8 100644
 +	if (ret < 0)
 +		return ret;
 +
-+	printf("Ring parameters for %s:\n", nlctx->enlhdr->ifname);
++	printf("Ring parameters for %s:\n", nlctx->devname);
 +	printf("Pre-set maximums:\n");
 +	show_u32(tb[ETHA_RING_RX_MAX_PENDING], "RX:\t\t");
 +	show_u32(tb[ETHA_RING_RX_MINI_MAX_PENDING], "RX Mini:\t");
@@ -73,7 +73,7 @@ index 856a0ced9ea2..ea1fd8dfd7c8 100644
  static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
-@@ -1700,6 +1728,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -1757,6 +1785,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_ERROR;
  		}
  	}
@@ -89,16 +89,14 @@ index 856a0ced9ea2..ea1fd8dfd7c8 100644
  
  	return MNL_CB_OK;
  }
-@@ -1710,3 +1747,10 @@ int nl_gcoalesce(struct cmd_context *ctx)
- 				     get_params_reply_cb,
- 				     ETH_PARAMS_IM_COALESCE, 0);
+@@ -1778,3 +1815,8 @@ int nl_gcoalesce(struct cmd_context *ctx)
+ {
+ 	return params_request(ctx, ETH_PARAMS_IM_COALESCE);
  }
 +
 +int nl_gring(struct cmd_context *ctx)
 +{
-+	return ethnl_std_get_request(ctx, ETHNL_CMD_GET_PARAMS,
-+				     get_params_reply_cb,
-+				     ETH_PARAMS_IM_RING, 0);
++	return params_request(ctx, ETH_PARAMS_IM_RING);
 +}
 diff --git a/netlink.h b/netlink.h
 index dbb1161ea48d..8b7707c9a45b 100644
@@ -112,5 +110,5 @@ index dbb1161ea48d..8b7707c9a45b 100644
  
  #endif /* ETHTOOL_NETLINK_H__ */
 -- 
-2.16.3
+2.18.0
 

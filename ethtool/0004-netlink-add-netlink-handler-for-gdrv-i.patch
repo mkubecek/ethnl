@@ -1,4 +1,4 @@
-From f4dec070d42c87e9208fdaa32a668207aecda74a Mon Sep 17 00:00:00 2001
+From e3e56c672896bc9716c01f31cc4aa7b06063cf09 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
 Subject: [PATCH 04/19] netlink: add netlink handler for gdrv (-i)
@@ -8,15 +8,15 @@ Implement "-i" subcommand using netlink interface.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c |  3 ++-
- netlink.c | 33 +++++++++++++++++++++++++++++++++
+ netlink.c | 41 +++++++++++++++++++++++++++++++++++++++++
  netlink.h |  2 ++
- 3 files changed, 37 insertions(+), 1 deletion(-)
+ 3 files changed, 45 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index f4fce23299ca..1ea77e785ee9 100644
+index 0fee2cfe7acc..9086751d59be 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -5041,6 +5041,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5051,6 +5051,7 @@ static int show_usage(struct cmd_context *ctx);
  
  #ifndef ETHTOOL_ENABLE_NETLINK
  /* Stubs to (not) use when building without netlink support */
@@ -24,7 +24,7 @@ index f4fce23299ca..1ea77e785ee9 100644
  #endif
  
  static const struct option {
-@@ -5110,7 +5111,7 @@ static const struct option {
+@@ -5120,7 +5121,7 @@ static const struct option {
  	{ "-K|--features|--offload", 1, do_sfeatures, NULL,
  	  "Set protocol offload and other features",
  	  "		FEATURE on|off ...\n" },
@@ -34,10 +34,10 @@ index f4fce23299ca..1ea77e785ee9 100644
  	{ "-d|--register-dump", 1, do_gregs, NULL,
  	  "Do a register dump",
 diff --git a/netlink.c b/netlink.c
-index d516623ae4fc..aded8358c0b6 100644
+index f1fc90f7ba8d..874861978cc2 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -510,3 +510,36 @@ int netlink_done(struct cmd_context *ctx)
+@@ -552,3 +552,44 @@ int netlink_done(struct cmd_context *ctx)
  
  	return 0;
  }
@@ -48,31 +48,39 @@ index d516623ae4fc..aded8358c0b6 100644
 +{
 +	const struct nlattr *tb[ETHA_DRVINFO_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
++	struct nl_context *nlctx = data;
 +	int ret;
 +
-+	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN + ETHNL_HDRLEN, attr_cb,
-+			     &tb_info);
++	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return ret;
++	nlctx->devname = get_dev_name(tb[ETHA_DRVINFO_DEV]);
++	if (nlctx->is_dump)
++		fprintf(stdout, "\nDriver info for %s:\n", nlctx->devname);
 +
-+	show_string(tb, ETHA_DRVINFO_DRIVER, "driver: ");
-+	show_string(tb, ETHA_DRVINFO_VERSION, "version: ");
-+	show_string(tb, ETHA_DRVINFO_FWVERSION, "firmware-version: ");
-+	show_string(tb, ETHA_DRVINFO_EROM_VER, "expansion-rom-version: ");
-+	show_string(tb, ETHA_DRVINFO_BUSINFO, "bus-info: ");
-+	show_u32_yn(tb, ETHA_DRVINFO_N_STATS, "supports-statistics: ");
-+	show_u32_yn(tb, ETHA_DRVINFO_TESTINFO_LEN, "supports-test: ");
-+	show_u32_yn(tb, ETHA_DRVINFO_EEDUMP_LEN, "supports-eeprom-access: ");
-+	show_u32_yn(tb, ETHA_DRVINFO_REGDUMP_LEN, "supports-register-dump: ");
-+	show_u32_yn(tb, ETHA_DRVINFO_N_PRIV_FLAGS, "supports-priv-flags: ");
++	show_string(tb, ETHA_DRVINFO_DRIVER, "driver");
++	show_string(tb, ETHA_DRVINFO_VERSION, "version");
++	show_string(tb, ETHA_DRVINFO_FWVERSION, "firmware-version");
++	show_string(tb, ETHA_DRVINFO_EROM_VER, "expansion-rom-version");
++	show_string(tb, ETHA_DRVINFO_BUSINFO, "bus-info");
++	show_u32_yn(tb, ETHA_DRVINFO_N_STATS, "supports-statistics");
++	show_u32_yn(tb, ETHA_DRVINFO_TESTINFO_LEN, "supports-test");
++	show_u32_yn(tb, ETHA_DRVINFO_EEDUMP_LEN, "supports-eeprom-access");
++	show_u32_yn(tb, ETHA_DRVINFO_REGDUMP_LEN, "supports-register-dump");
++	show_u32_yn(tb, ETHA_DRVINFO_N_PRIV_FLAGS, "supports-priv-flags");
 +
 +	return MNL_CB_OK;
 +}
 +
 +int nl_gdrv(struct cmd_context *ctx)
 +{
-+	return ethnl_std_get_request(ctx, ETHNL_CMD_GET_DRVINFO,
-+				     drvinfo_reply_cb, 0, 0);
++	int ret;
++
++	ret = ethnl_prep_get_request(ctx, ETHNL_CMD_GET_DRVINFO,
++				     ETHA_DRVINFO_DEV);
++	if (ret < 0)
++		return ret;
++	return ethnl_send_get_request(ctx, drvinfo_reply_cb);
 +}
 diff --git a/netlink.h b/netlink.h
 index b10b168b1f5b..277cd543cee7 100644
@@ -86,5 +94,5 @@ index b10b168b1f5b..277cd543cee7 100644
 +
  #endif /* ETHTOOL_NETLINK_H__ */
 -- 
-2.16.3
+2.18.0
 

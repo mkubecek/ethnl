@@ -1,4 +1,4 @@
-From b2de1a3a8ab780ea27cf52f7062179e4ff544628 Mon Sep 17 00:00:00 2001
+From 2b1b7a691cc70cd1386fc089ea8e70a1d5c62b65 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:51:36 +0100
 Subject: [PATCH 19/19] netlink: add netlink handler for sfec (--set-fec)
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 20 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 14ee80a3d908..7c003266ed62 100644
+index 839fc4f1b5b0..b3aac1ac27cf 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4920,6 +4920,7 @@ int nl_sring(struct cmd_context *ctx) { return 0; }
+@@ -4930,6 +4930,7 @@ int nl_sring(struct cmd_context *ctx) { return 0; }
  int nl_spause(struct cmd_context *ctx) { return 0; }
  int nl_schannels(struct cmd_context *ctx) { return 0; }
  int nl_seee(struct cmd_context *ctx) { return 0; }
@@ -30,7 +30,7 @@ index 14ee80a3d908..7c003266ed62 100644
  #endif
  
  static const struct option {
-@@ -5129,7 +5130,7 @@ static const struct option {
+@@ -5139,7 +5140,7 @@ static const struct option {
  	  "		[ all ]\n"},
  	{ "--show-fec", 1, do_gfec, nl_gfec,
  	  "Show FEC settings"},
@@ -40,10 +40,10 @@ index 14ee80a3d908..7c003266ed62 100644
  	  "		[ encoding auto|off|rs|baser ]\n"},
  	{ "-h|--help", 0, show_usage, NULL,
 diff --git a/netlink.c b/netlink.c
-index 0c1b879c949a..c03f39de51bd 100644
+index 29d08e10a65f..5afc65509931 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -2264,3 +2264,20 @@ int nl_seee(struct cmd_context *ctx)
+@@ -2320,3 +2320,20 @@ int nl_seee(struct cmd_context *ctx)
  	return nl_set_param(ctx, "--set-eee", seee_params, ETHA_PARAMS_EEE,
  			    ETHA_EEE_MAX);
  }
@@ -76,5 +76,5 @@ index 2d8e55930270..ae33460191a4 100644
  
  #endif /* ETHTOOL_NETLINK_H__ */
 -- 
-2.16.3
+2.18.0
 
