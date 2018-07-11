@@ -1,7 +1,7 @@
-From 9a863816ed1add77abebbe5386ce1e8984e6a6b0 Mon Sep 17 00:00:00 2001
+From 4cc5c06bccefc84c21540abb7358212f547f6c96 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
-Subject: [PATCH 05/10] ethtool: netlink bitset handling
+Subject: [PATCH 05/13] ethtool: netlink bitset handling
 
 Declare attribute type constants and add helper functions to handle
 arbitrary length bit sets.
@@ -124,7 +124,7 @@ index 1df263d9feb7..98d6fae315f3 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 3d14f6ec83db..59f09885e9fa 100644
+index bf234e5bc660..7a858cd230db 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -1,6 +1,7 @@

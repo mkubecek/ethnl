@@ -1,7 +1,7 @@
-From e1de5242afb377332020ebf928d4a4f59b4667e1 Mon Sep 17 00:00:00 2001
+From e69178a09b32f86d35c6d5e31261c17e8254a826 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
-Subject: [PATCH 10/10] ethtool: implement SET_PARAMS message
+Subject: [PATCH 13/13] ethtool: implement SET_PARAMS message
 
 Sets the information provided by ETHTOOL_SCOALESCE, ETHTOOL_SRINGPARAM,
 ETHTOOL_SPAUSEPARAM, ETHTOOL_SCHANNELS, ETHTOOL_SEEE and ETHTOOL_SFECPARAM.
@@ -13,8 +13,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  71 +++-
  net/ethtool/netlink.c                        |   6 +
- net/ethtool/params.c                         | 401 +++++++++++++++++++
- 3 files changed, 471 insertions(+), 7 deletions(-)
+ net/ethtool/params.c                         | 418 +++++++++++++++++++
+ 3 files changed, 488 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index e915464d8d2e..f3b64d7c3761 100644
@@ -134,10 +134,10 @@ index e915464d8d2e..f3b64d7c3761 100644
 +ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 8c687d36f228..43f03b91a549 100644
+index 969321686798..3615b31c2f6d 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -575,6 +575,7 @@ int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
+@@ -636,6 +636,7 @@ int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_params(struct sk_buff *skb, struct genl_info *info);
@@ -145,7 +145,7 @@ index 8c687d36f228..43f03b91a549 100644
  
  int ethnl_drvinfo_start(struct netlink_callback *cb);
  int ethnl_settings_start(struct netlink_callback *cb);
-@@ -609,6 +610,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -670,6 +671,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_dumpit,
  		.done	= ethnl_params_done,
  	},
@@ -156,14 +156,14 @@ index 8c687d36f228..43f03b91a549 100644
 +	},
  };
  
- struct genl_family ethtool_genl_family = {
+ static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index b75ecc10e9f3..1abd60279767 100644
+index 3dbee2b91aab..e0d9161ba62e 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -531,3 +531,404 @@ int ethnl_params_done(struct netlink_callback *cb)
- 
- 	return 0;
+@@ -570,3 +570,421 @@ void ethnl_params_notify(struct netdev_notifier_ethtool_info *info)
+ err_skb:
+ 	nlmsg_free(skb);
  }
 +
 +static const struct nla_policy coalesce_policy[ETHA_COALESCE_MAX + 1] = {
@@ -280,10 +280,10 @@ index b75ecc10e9f3..1abd60279767 100644
 +			     tb[ETHA_COALESCE_STATS_BLOCK_USECS]))
 +		mod = true;
 +
-+	if (mod)
-+		return dev->ethtool_ops->set_coalesce(dev, &data);
-+	else
++	if (!mod)
 +		return 0;
++	ret = dev->ethtool_ops->set_coalesce(dev, &data);
++	return (ret < 0) ? ret : 1;
 +}
 +
 +static const struct nla_policy ring_policy[ETHA_RING_MAX + 1] = {
@@ -336,10 +336,10 @@ index b75ecc10e9f3..1abd60279767 100644
 +	if (ethnl_update_u32(&data.tx_pending, tb[ETHA_RING_TX_PENDING]))
 +		mod = true;
 +
-+	if (mod)
-+		return dev->ethtool_ops->set_ringparam(dev, &data);
-+	else
++	if (!mod)
 +		return 0;
++	ret = dev->ethtool_ops->set_ringparam(dev, &data);
++	return (ret < 0) ? ret : 1;
 +}
 +
 +static const struct nla_policy pause_policy[ETHA_PAUSE_MAX + 1] = {
@@ -376,10 +376,10 @@ index b75ecc10e9f3..1abd60279767 100644
 +	if (ethnl_update_u32(&data.tx_pause, tb[ETHA_PAUSE_TX]))
 +		mod = true;
 +
-+	if (mod)
-+		return dev->ethtool_ops->set_pauseparam(dev, &data);
-+	else
++	if (!mod)
 +		return 0;
++	ret = dev->ethtool_ops->set_pauseparam(dev, &data);
++	return (ret < 0) ? ret : 1;
 +}
 +
 +static const struct nla_policy channels_policy[ETHA_CHANNELS_MAX + 1] = {
@@ -430,10 +430,10 @@ index b75ecc10e9f3..1abd60279767 100644
 +			     tb[ETHA_CHANNELS_COMBINED_COUNT]))
 +		mod = true;
 +
-+	if (mod)
-+		return dev->ethtool_ops->set_channels(dev, &data);
-+	else
++	if (!mod)
 +		return 0;
++	ret = dev->ethtool_ops->set_channels(dev, &data);
++	return (ret < 0) ? ret : 1;
 +}
 +
 +static const struct nla_policy eee_policy[ETHA_EEE_MAX + 1] = {
@@ -486,10 +486,10 @@ index b75ecc10e9f3..1abd60279767 100644
 +	if (ethnl_update_u32(&data.tx_lpi_timer, tb[ETHA_EEE_TX_LPI_TIMER]))
 +		mod = true;
 +
-+	if (mod)
-+		return dev->ethtool_ops->set_eee(dev, &data);
-+	else
++	if (!mod)
 +		return 0;
++	ret = dev->ethtool_ops->set_eee(dev, &data);
++	return (ret < 0) ? ret : 1;
 +}
 +
 +static const struct nla_policy fec_policy[ETHA_FEC_MAX + 1] = {
@@ -522,16 +522,17 @@ index b75ecc10e9f3..1abd60279767 100644
 +	if (ethnl_update_bitfield32(&data.fec, tb[ETHA_FEC_MODES]))
 +		mod = true;
 +
-+	if (mod)
-+		return dev->ethtool_ops->set_fecparam(dev, &data);
-+	else
++	if (!mod)
 +		return 0;
++	ret = dev->ethtool_ops->set_fecparam(dev, &data);
++	return (ret < 0) ? ret : 1;
 +}
 +
 +int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHA_PARAMS_MAX + 1];
 +	struct net_device *dev;
++	u32 req_mask = 0;
 +	int ret;
 +
 +	ret = genlmsg_parse(info->nlhdr, &ethtool_genl_family, tb,
@@ -541,28 +542,44 @@ index b75ecc10e9f3..1abd60279767 100644
 +	dev = ethnl_dev_get(info, tb[ETHA_PARAMS_DEV]);
 +	if (IS_ERR(dev))
 +		return PTR_ERR(dev);
++	rtnl_lock();
 +
 +	ret = update_coalesce(info, dev, tb[ETHA_PARAMS_COALESCE]);
 +	if (ret < 0)
-+		goto err_putdev;
++		goto out_unlock;
++	if (ret)
++		req_mask |= ETH_PARAMS_IM_COALESCE;
 +	ret = update_ring(info, dev, tb[ETHA_PARAMS_RING]);
 +	if (ret < 0)
-+		goto err_putdev;
++		goto out_unlock;
++	if (ret)
++		req_mask |= ETH_PARAMS_IM_RING;
 +	ret = update_pause(info, dev, tb[ETHA_PARAMS_PAUSE]);
 +	if (ret < 0)
-+		goto err_putdev;
++		goto out_unlock;
++	if (ret)
++		req_mask |= ETH_PARAMS_IM_PAUSE;
 +	ret = update_channels(info, dev, tb[ETHA_PARAMS_CHANNELS]);
 +	if (ret < 0)
-+		goto err_putdev;
++		goto out_unlock;
++	if (ret)
++		req_mask |= ETH_PARAMS_IM_CHANNELS;
 +	ret = update_eee(info, dev, tb[ETHA_PARAMS_EEE]);
 +	if (ret < 0)
-+		goto err_putdev;
++		goto out_unlock;
++	if (ret)
++		req_mask |= ETH_PARAMS_IM_EEE;
 +	ret = update_fec(info, dev, tb[ETHA_PARAMS_FEC]);
 +	if (ret < 0)
-+		goto err_putdev;
++		goto out_unlock;
++	if (ret)
++		req_mask |= ETH_PARAMS_IM_FEC;
 +
 +	ret = 0;
-+err_putdev:
++out_unlock:
++	if (req_mask)
++		ethnl_notify(dev, NULL, ETHNL_CMD_SET_PARAMS, req_mask);
++	rtnl_unlock();
 +	dev_put(dev);
 +	return ret;
 +}

@@ -1,7 +1,7 @@
-From bffb5cb362c383d3410cbf98df36dcee042e17ff Mon Sep 17 00:00:00 2001
+From fcee5322129cb62ea527d6ad208ce5cf5af2271c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
-Subject: [PATCH 06/10] ethtool: implement GET_DRVINFO message
+Subject: [PATCH 07/13] ethtool: implement GET_DRVINFO message
 
 Request the same information as ETHTOOL_GDRVINFO. This is read-only so that
 corresponding SET_DRVINFO exists but is only used in kernel replies. Rip
@@ -79,7 +79,7 @@ index 293af5db8100..ee25d405eeb9 100644
  ETHTOOL_GWOL			n/a
  ETHTOOL_SWOL			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 98d6fae315f3..31adb4c1c464 100644
+index 444a668e4a08..5d62e7d69b38 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -7,6 +7,8 @@
@@ -400,10 +400,10 @@ index e677a20180cf..5e7a207465c8 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 59f09885e9fa..31591953063e 100644
+index 46c08e66bc71..f62478553c17 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -515,7 +515,16 @@ pr_info("%s[3]: len=%d dumpfn()=%d\n", __func__, skb->len, ret);
+@@ -571,7 +571,16 @@ static struct notifier_block ethnl_netdev_notifier = {
  
  /* genetlink setup */
  
@@ -419,7 +419,7 @@ index 59f09885e9fa..31591953063e 100644
 +	},
  };
  
- struct genl_family ethtool_genl_family = {
+ static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 -- 
 2.18.0
 

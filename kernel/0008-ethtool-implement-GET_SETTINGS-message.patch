@@ -1,7 +1,7 @@
-From dd4ed2ea3f82506795a539cf36a5b681d2d646aa Mon Sep 17 00:00:00 2001
+From 5ee5fecd97066e3e222d43ec6eb22625865ebd75 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
-Subject: [PATCH 07/10] ethtool: implement GET_SETTINGS message
+Subject: [PATCH 08/13] ethtool: implement GET_SETTINGS message
 
 Requests the information provided by ETHTOOL_GLINKSETTINGS, ETHTOOL_GWOL
 and ETHTOOL_GMSGLVL. The info_mask header field can be used to request only
@@ -126,22 +126,24 @@ index ee25d405eeb9..994aed9aa488 100644
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a
 diff --git a/include/linux/ethtool_netlink.h b/include/linux/ethtool_netlink.h
-index 0412adb4f42f..1787359f9e5d 100644
+index 2a15e64a16f3..fba8ff961887 100644
 --- a/include/linux/ethtool_netlink.h
 +++ b/include/linux/ethtool_netlink.h
-@@ -6,4 +6,7 @@
- #include <uapi/linux/ethtool_netlink.h>
+@@ -7,6 +7,9 @@
  #include <linux/ethtool.h>
+ #include <linux/netdevice.h>
  
 +#define __ETHTOOL_LINK_MODE_MASK_NWORDS \
 +	((__ETHTOOL_LINK_MODE_MASK_NBITS + 31) / 32)
 +
- #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
+ enum ethtool_multicast_groups {
+ 	ETHNL_MCGRP_MONITOR,
+ };
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index b683971e500d..5bf9658f6b72 100644
+index 141781998eb6..7079398b80a3 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -3712,6 +3712,8 @@ enum {
+@@ -3713,6 +3713,8 @@ enum {
  	NETIF_MSG_PKTDATA	= 0x1000,
  	NETIF_MSG_HW		= 0x2000,
  	NETIF_MSG_WOL		= 0x4000,
@@ -165,7 +167,7 @@ index 4ca65b56084f..427c594436b4 100644
  #define ETHTOOL_BUSINFO_LEN	32
  #define ETHTOOL_EROMVERS_LEN	32
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 31adb4c1c464..675d0662e9ca 100644
+index 5d62e7d69b38..45be0f03bed5 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -9,6 +9,8 @@ enum {
@@ -511,10 +513,10 @@ index 5e7a207465c8..2811702df773 100644
  		return -EFAULT;
  	return 0;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 31591953063e..2517c34f45c9 100644
+index f62478553c17..0ce8a105e06a 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -2,10 +2,66 @@
+@@ -2,12 +2,68 @@
  
  #include <linux/module.h>
  #include <linux/bitmap.h>
@@ -522,6 +524,8 @@ index 31591953063e..2517c34f45c9 100644
  #include <net/sock.h>
  #include <linux/ethtool_netlink.h>
  #include "netlink.h"
+ 
+ u32 ethnl_bcast_seq;
  
 +const char *const link_mode_names[] = {
 +	[ETHTOOL_LINK_MODE_10baseT_Half_BIT]		= "10baseT/Half",
@@ -581,7 +585,7 @@ index 31591953063e..2517c34f45c9 100644
  static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
  	[ETHA_DEV_UNSPEC]	= { .type = NLA_UNSPEC },
  	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -516,8 +572,11 @@ pr_info("%s[3]: len=%d dumpfn()=%d\n", __func__, skb->len, ret);
+@@ -572,8 +628,11 @@ static struct notifier_block ethnl_netdev_notifier = {
  /* genetlink setup */
  
  int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
@@ -593,7 +597,7 @@ index 31591953063e..2517c34f45c9 100644
  static const struct genl_ops ethtool_genl_ops[] = {
  	{
  		.cmd	= ETHNL_CMD_GET_DRVINFO,
-@@ -525,6 +584,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -581,6 +640,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.start	= ethnl_drvinfo_start,
  		.dumpit	= ethnl_dumpit,
  	},
@@ -606,22 +610,22 @@ index 31591953063e..2517c34f45c9 100644
 +	},
  };
  
- struct genl_family ethtool_genl_family = {
-@@ -541,6 +607,9 @@ struct genl_family ethtool_genl_family = {
- 
- static int __init ethtool_nl_init(void)
+ static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
+@@ -605,6 +671,9 @@ static int __init ethtool_nl_init(void)
  {
+ 	int ret;
+ 
 +	BUILD_BUG_ON(ARRAY_SIZE(link_mode_names) <
 +		     __ETHTOOL_LINK_MODE_MASK_NBITS);
 +
- 	return genl_register_family(&ethtool_genl_family);
- }
- 
+ 	ret = genl_register_family(&ethtool_genl_family);
+ 	if (ret < 0)
+ 		return ret;
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 8c5276cd3e95..2c330c9e86d9 100644
+index 257f79474884..443475d3c19c 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -13,6 +13,8 @@
+@@ -15,6 +15,8 @@ extern u32 ethnl_bcast_seq;
  
  extern struct genl_family ethtool_genl_family;
  

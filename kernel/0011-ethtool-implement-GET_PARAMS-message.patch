@@ -1,7 +1,7 @@
-From df9ce30608a5cdfd399f2e20b0a95e3291cb148b Mon Sep 17 00:00:00 2001
+From e34e4bb71eed17b8a68d83cea4f873bee4f31519 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
-Subject: [PATCH 09/10] ethtool: implement GET_PARAMS message
+Subject: [PATCH 11/13] ethtool: implement GET_PARAMS message
 
 Requests the information provide by ETHTOOL_GCOALESCE, ETHTOOL_GRINGPARAM,
 ETHTOOL_GPAUSEPARAM, ETHTOOL_GCHANNELS, ETHTOOL_GEEE and ETHTOOL_GFECPARAM.
@@ -163,7 +163,7 @@ index 75e304c3bdf2..e915464d8d2e 100644
  ETHTOOL_SFECPARAM		n/a
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 675d0662e9ca..1d925737ff0a 100644
+index 45be0f03bed5..ccdf7ceb08cd 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -11,6 +11,8 @@ enum {
@@ -310,10 +310,10 @@ index 4af6607d7c9c..cd27751de400 100644
 -ethtool_nl-y	:= netlink.o drvinfo.o settings.o
 +ethtool_nl-y	:= netlink.o drvinfo.o settings.o params.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index ba089b09ef4f..8c687d36f228 100644
+index 9acb7f1aeb68..73ba1513c366 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -574,10 +574,15 @@ pr_info("%s[3]: len=%d dumpfn()=%d\n", __func__, skb->len, ret);
+@@ -632,10 +632,15 @@ static struct notifier_block ethnl_netdev_notifier = {
  int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
@@ -329,7 +329,7 @@ index ba089b09ef4f..8c687d36f228 100644
  static const struct genl_ops ethtool_genl_ops[] = {
  	{
  		.cmd	= ETHNL_CMD_GET_DRVINFO,
-@@ -597,6 +602,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -655,6 +660,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_settings,
  	},
@@ -342,7 +342,7 @@ index ba089b09ef4f..8c687d36f228 100644
 +	},
  };
  
- struct genl_family ethtool_genl_family = {
+ static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
 new file mode 100644
 index 000000000000..b75ecc10e9f3

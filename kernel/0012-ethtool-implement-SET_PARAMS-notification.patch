@@ -1,0 +1,215 @@
+From 172a764c02d32ee363d05942d8aa8445a65a187b Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Wed, 11 Jul 2018 14:43:07 -0400
+Subject: [PATCH 12/13] ethtool: implement SET_PARAMS notification
+
+SET_PARAMS notification message has the same format as response to
+GET_PARAMS request and is broadcasted on change of relevant fields. Info
+mask can be used to limit the information passed to userspace.
+
+Also trigger the notification on analogous changes performed via the legacy
+ioctl interface.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ net/ethtool/ioctl.c   | 42 ++++++++++++++++++++++++++++++++++++------
+ net/ethtool/netlink.c |  3 +++
+ net/ethtool/params.c  | 39 +++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 78 insertions(+), 6 deletions(-)
+
+diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
+index 115f97888b95..8f4180732669 100644
+--- a/net/ethtool/ioctl.c
++++ b/net/ethtool/ioctl.c
+@@ -1412,6 +1412,7 @@ static int ethtool_get_eee(struct net_device *dev, char __user *useraddr)
+ static int ethtool_set_eee(struct net_device *dev, char __user *useraddr)
+ {
+ 	struct ethtool_eee edata;
++	int ret;
+ 
+ 	if (!dev->ethtool_ops->set_eee)
+ 		return -EOPNOTSUPP;
+@@ -1419,7 +1420,11 @@ static int ethtool_set_eee(struct net_device *dev, char __user *useraddr)
+ 	if (copy_from_user(&edata, useraddr, sizeof(edata)))
+ 		return -EFAULT;
+ 
+-	return dev->ethtool_ops->set_eee(dev, &edata);
++	ret = dev->ethtool_ops->set_eee(dev, &edata);
++	if (ret >= 0)
++		netdev_ethtool_info_change(dev, NULL, ETHNL_CMD_SET_PARAMS,
++					   ETH_PARAMS_IM_EEE);
++	return ret;
+ }
+ 
+ static int ethtool_nway_reset(struct net_device *dev)
+@@ -1574,6 +1579,7 @@ static noinline_for_stack int ethtool_set_coalesce(struct net_device *dev,
+ 						   void __user *useraddr)
+ {
+ 	struct ethtool_coalesce coalesce;
++	int ret;
+ 
+ 	if (!dev->ethtool_ops->set_coalesce)
+ 		return -EOPNOTSUPP;
+@@ -1581,7 +1587,11 @@ static noinline_for_stack int ethtool_set_coalesce(struct net_device *dev,
+ 	if (copy_from_user(&coalesce, useraddr, sizeof(coalesce)))
+ 		return -EFAULT;
+ 
+-	return dev->ethtool_ops->set_coalesce(dev, &coalesce);
++	ret = dev->ethtool_ops->set_coalesce(dev, &coalesce);
++	if (ret >= 0)
++		netdev_ethtool_info_change(dev, NULL, ETHNL_CMD_SET_PARAMS,
++					   ETH_PARAMS_IM_COALESCE);
++	return ret;
+ }
+ 
+ static int ethtool_get_ringparam(struct net_device *dev, void __user *useraddr)
+@@ -1601,6 +1611,7 @@ static int ethtool_get_ringparam(struct net_device *dev, void __user *useraddr)
+ static int ethtool_set_ringparam(struct net_device *dev, void __user *useraddr)
+ {
+ 	struct ethtool_ringparam ringparam, max = { .cmd = ETHTOOL_GRINGPARAM };
++	int ret;
+ 
+ 	if (!dev->ethtool_ops->set_ringparam || !dev->ethtool_ops->get_ringparam)
+ 		return -EOPNOTSUPP;
+@@ -1617,7 +1628,11 @@ static int ethtool_set_ringparam(struct net_device *dev, void __user *useraddr)
+ 	    ringparam.tx_pending > max.tx_max_pending)
+ 		return -EINVAL;
+ 
+-	return dev->ethtool_ops->set_ringparam(dev, &ringparam);
++	ret = dev->ethtool_ops->set_ringparam(dev, &ringparam);
++	if (ret >= 0)
++		netdev_ethtool_info_change(dev, NULL, ETHNL_CMD_SET_PARAMS,
++					   ETH_PARAMS_IM_RING);
++	return ret;
+ }
+ 
+ static noinline_for_stack int ethtool_get_channels(struct net_device *dev,
+@@ -1640,6 +1655,7 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
+ {
+ 	struct ethtool_channels channels, max = { .cmd = ETHTOOL_GCHANNELS };
+ 	u32 max_rx_in_use = 0;
++	int ret;
+ 
+ 	if (!dev->ethtool_ops->set_channels || !dev->ethtool_ops->get_channels)
+ 		return -EOPNOTSUPP;
+@@ -1663,7 +1679,11 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
+ 	    (channels.combined_count + channels.rx_count) <= max_rx_in_use)
+ 	    return -EINVAL;
+ 
+-	return dev->ethtool_ops->set_channels(dev, &channels);
++	ret = dev->ethtool_ops->set_channels(dev, &channels);
++	if (ret >= 0)
++		netdev_ethtool_info_change(dev, NULL, ETHNL_CMD_SET_PARAMS,
++					   ETH_PARAMS_IM_CHANNELS);
++	return ret;
+ }
+ 
+ static int ethtool_get_pauseparam(struct net_device *dev, void __user *useraddr)
+@@ -1683,6 +1703,7 @@ static int ethtool_get_pauseparam(struct net_device *dev, void __user *useraddr)
+ static int ethtool_set_pauseparam(struct net_device *dev, void __user *useraddr)
+ {
+ 	struct ethtool_pauseparam pauseparam;
++	int ret;
+ 
+ 	if (!dev->ethtool_ops->set_pauseparam)
+ 		return -EOPNOTSUPP;
+@@ -1690,7 +1711,11 @@ static int ethtool_set_pauseparam(struct net_device *dev, void __user *useraddr)
+ 	if (copy_from_user(&pauseparam, useraddr, sizeof(pauseparam)))
+ 		return -EFAULT;
+ 
+-	return dev->ethtool_ops->set_pauseparam(dev, &pauseparam);
++	ret = dev->ethtool_ops->set_pauseparam(dev, &pauseparam);
++	if (ret >= 0)
++		netdev_ethtool_info_change(dev, NULL, ETHNL_CMD_SET_PARAMS,
++					   ETH_PARAMS_IM_PAUSE);
++	return ret;
+ }
+ 
+ static int ethtool_self_test(struct net_device *dev, char __user *useraddr)
+@@ -2469,6 +2494,7 @@ static int ethtool_get_fecparam(struct net_device *dev, void __user *useraddr)
+ static int ethtool_set_fecparam(struct net_device *dev, void __user *useraddr)
+ {
+ 	struct ethtool_fecparam fecparam;
++	int ret;
+ 
+ 	if (!dev->ethtool_ops->set_fecparam)
+ 		return -EOPNOTSUPP;
+@@ -2476,7 +2502,11 @@ static int ethtool_set_fecparam(struct net_device *dev, void __user *useraddr)
+ 	if (copy_from_user(&fecparam, useraddr, sizeof(fecparam)))
+ 		return -EFAULT;
+ 
+-	return dev->ethtool_ops->set_fecparam(dev, &fecparam);
++	ret = dev->ethtool_ops->set_fecparam(dev, &fecparam);
++	if (ret >= 0)
++		netdev_ethtool_info_change(dev, NULL, ETHNL_CMD_SET_PARAMS,
++					   ETH_PARAMS_IM_FEC);
++	return ret;
+ }
+ 
+ /* The main entry point in this file.  Called from net/core/dev_ioctl.c */
+diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
+index 73ba1513c366..969321686798 100644
+--- a/net/ethtool/netlink.c
++++ b/net/ethtool/netlink.c
+@@ -577,8 +577,11 @@ int ethnl_dumpit(struct sk_buff *skb, struct netlink_callback *cb)
+ typedef void (*ethnl_notify_handler_t)(struct netdev_notifier_ethtool_info *);
+ 
+ void ethnl_settings_notify(struct netdev_notifier_ethtool_info *);
++void ethnl_params_notify(struct netdev_notifier_ethtool_info *);
++
+ ethnl_notify_handler_t ethnl_notify_handlers[] = {
+ 	[ETHNL_CMD_SET_SETTINGS]	= ethnl_settings_notify,
++	[ETHNL_CMD_SET_PARAMS]		= ethnl_params_notify,
+ };
+ 
+ static void __ethnl_notify(struct netdev_notifier_ethtool_info *info)
+diff --git a/net/ethtool/params.c b/net/ethtool/params.c
+index b75ecc10e9f3..3dbee2b91aab 100644
+--- a/net/ethtool/params.c
++++ b/net/ethtool/params.c
+@@ -531,3 +531,42 @@ int ethnl_params_done(struct netlink_callback *cb)
+ 
+ 	return 0;
+ }
++
++void ethnl_params_notify(struct netdev_notifier_ethtool_info *info)
++{
++	struct params_reqinfo req_info = {
++		.dev		= info->info.dev,
++		.req_mask	= info->ethtool_info.req_mask,
++		.compact	= false,
++	};
++	struct params_data data;
++	struct sk_buff *skb;
++	int reply_len;
++	void *ehdr;
++	int ret;
++
++	ret = prepare_params(&data, &req_info, NULL, req_info.dev);
++	if (ret < 0)
++		return;
++	reply_len = params_size(&data, &req_info);
++	if (ret < 0)
++		return;
++	skb = genlmsg_new(reply_len, GFP_KERNEL);
++	if (!skb)
++		return;
++	ehdr = genlmsg_put(skb, 0, ++ethnl_bcast_seq, &ethtool_genl_family, 0,
++			   ETHNL_CMD_SET_PARAMS);
++	ret = ethnl_fill_dev(skb, req_info.dev, ETHA_PARAMS_DEV);
++	if (ret < 0)
++		goto err_skb;
++	ret = fill_params(skb, &data, &req_info);
++	if (ret < 0)
++		goto err_skb;
++	genlmsg_end(skb, ehdr);
++
++	genlmsg_multicast(&ethtool_genl_family, skb, 0, ETHNL_MCGRP_MONITOR,
++			  GFP_KERNEL);
++	return;
++err_skb:
++	nlmsg_free(skb);
++}
+-- 
+2.18.0
+
