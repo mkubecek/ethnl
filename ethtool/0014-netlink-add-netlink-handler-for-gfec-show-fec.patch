@@ -1,7 +1,7 @@
-From 8c2489226499dbe55ecd038bf70d65466e8944e5 Mon Sep 17 00:00:00 2001
+From 39804cf0dd8435caf782e7f312856b9b356bec33 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
-Subject: [PATCH 13/19] netlink: add netlink handler for gfec (--show-fec)
+Subject: [PATCH 14/20] netlink: add netlink handler for gfec (--show-fec)
 
 Implement "ethtool --show-fec <dev>" subcommand showing Forward Error
 Correction (FEC) settings using netlink interface command
@@ -18,9 +18,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  common.c  | 10 ++++++++++
  common.h  |  2 ++
  ethtool.c |  3 ++-
- netlink.c | 43 +++++++++++++++++++++++++++++++++++++++++++
+ netlink.c | 48 ++++++++++++++++++++++++++++++++++++++++++++++++
  netlink.h |  1 +
- 5 files changed, 58 insertions(+), 1 deletion(-)
+ 5 files changed, 63 insertions(+), 1 deletion(-)
 
 diff --git a/common.c b/common.c
 index 59897acd2512..a065dde34101 100644
@@ -57,7 +57,7 @@ index a980b844a0ed..aafd98530fe8 100644
  
  enum link_mode_class {
 diff --git a/ethtool.c b/ethtool.c
-index 40daf792b595..6bbbdb987a48 100644
+index 5f683cbc0b7d..9fa793d828b5 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4924,6 +4924,7 @@ int nl_gring(struct cmd_context *ctx) { return 0; }
@@ -78,10 +78,10 @@ index 40daf792b595..6bbbdb987a48 100644
  	{ "--set-fec", 1, do_sfec, NULL,
  	  "Set FEC settings",
 diff --git a/netlink.c b/netlink.c
-index 9a7d7516f072..f05e8e401a36 100644
+index 6dcf4b0b93fd..7e90ad061d6c 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -1863,6 +1863,35 @@ static int show_eee(struct nl_context *nlctx, const struct nlattr *nest)
+@@ -1929,6 +1929,35 @@ static int show_eee(struct nl_context *nlctx, const struct nlattr *nest)
  	return 0;
  }
  
@@ -117,13 +117,13 @@ index 9a7d7516f072..f05e8e401a36 100644
  static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
-@@ -1923,6 +1952,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -1988,6 +2017,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_ERROR;
  		}
  	}
-+	if (!req_mask || req_mask & ETH_PARAMS_IM_FEC) {
++	if (mask_ok(nlctx, ETH_PARAMS_IM_FEC)) {
 +		ret = show_fec(nlctx, tb[ETHA_PARAMS_FEC]);
-+		if ((ret < 0) && !(req_mask & ~ETH_PARAMS_IM_FEC)) {
++		if ((ret < 0) && show_only(nlctx, ETH_PARAMS_IM_FEC)) {
 +			nlctx->exit_code = 1;
 +			errno = -ret;
 +			perror("Cannot get device FEC settings");
@@ -133,26 +133,42 @@ index 9a7d7516f072..f05e8e401a36 100644
  
  	return MNL_CB_OK;
  }
-@@ -1964,3 +2002,8 @@ int nl_geee(struct cmd_context *ctx)
- {
+@@ -2030,6 +2068,11 @@ int nl_geee(struct cmd_context *ctx)
  	return params_request(ctx, ETH_PARAMS_IM_EEE);
  }
-+
+ 
 +int nl_gfec(struct cmd_context *ctx)
 +{
 +	return params_request(ctx, ETH_PARAMS_IM_FEC);
 +}
++
+ /* monitor */
+ 
+ static struct {
+@@ -2110,6 +2153,11 @@ static struct monitor_option monitor_opts[] = {
+ 		.cmd		= ETHNL_CMD_SET_PARAMS,
+ 		.info_mask	= ETH_PARAMS_IM_EEE,
+ 	},
++	{
++		.pattern	= "--show-fec|--set-fec",
++		.cmd		= ETHNL_CMD_SET_PARAMS,
++		.info_mask	= ETH_PARAMS_IM_FEC,
++	},
+ };
+ 
+ static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink.h b/netlink.h
-index 3163dcf36c37..dcfa50fd3477 100644
+index 221afae69d98..cb1fb581981e 100644
 --- a/netlink.h
 +++ b/netlink.h
-@@ -15,5 +15,6 @@ int nl_gring(struct cmd_context *ctx);
+@@ -15,6 +15,7 @@ int nl_gring(struct cmd_context *ctx);
  int nl_gpause(struct cmd_context *ctx);
  int nl_gchannels(struct cmd_context *ctx);
  int nl_geee(struct cmd_context *ctx);
 +int nl_gfec(struct cmd_context *ctx);
+ int nl_monitor(struct cmd_context *ctx);
  
- #endif /* ETHTOOL_NETLINK_H__ */
+ void monitor_usage();
 -- 
 2.18.0
 

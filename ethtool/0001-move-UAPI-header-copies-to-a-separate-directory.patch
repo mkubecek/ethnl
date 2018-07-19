@@ -1,7 +1,7 @@
 From 6720ebfe08ea06ddc81aa3f576b5cca8a2495fd6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 09:02:44 +0100
-Subject: [PATCH 01/19] move UAPI header copies to a separate directory
+Subject: [PATCH 01/20] move UAPI header copies to a separate directory
 
 The upcoming netlink series is going to add more local copies of kernel
 UAPI header files and some of them are going to include others. Keeping

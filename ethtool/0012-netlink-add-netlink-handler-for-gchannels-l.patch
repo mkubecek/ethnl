@@ -1,7 +1,7 @@
-From 6c433b8e6917c93abd2d8debed0e1cade679194e Mon Sep 17 00:00:00 2001
+From 90efb670599f375490d306b5d1f23113e168323c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:05:40 +0100
-Subject: [PATCH 11/19] netlink: add netlink handler for gchannels (-l)
+Subject: [PATCH 12/20] netlink: add netlink handler for gchannels (-l)
 
 Implement "ethtool -l <dev>" subcommand using netlink interface command
 ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_CHANNELS mask.
@@ -9,12 +9,12 @@ ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_CHANNELS mask.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c |  3 ++-
- netlink.c | 42 ++++++++++++++++++++++++++++++++++++++++++
+ netlink.c | 47 +++++++++++++++++++++++++++++++++++++++++++++++
  netlink.h |  1 +
- 3 files changed, 45 insertions(+), 1 deletion(-)
+ 3 files changed, 50 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 195b315425ed..0804e33abf7d 100644
+index da62e9f079fd..8c6f25ce342c 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4922,6 +4922,7 @@ int nl_sset(struct cmd_context *ctx) { return 0; }
@@ -35,10 +35,10 @@ index 195b315425ed..0804e33abf7d 100644
  	{ "-L|--set-channels", 1, do_schannels, NULL,
  	  "Set Channels",
 diff --git a/netlink.c b/netlink.c
-index de02546913e8..02592ccb7d4b 100644
+index fe7bd32b4209..a596ce89e431 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -1783,6 +1783,34 @@ static int show_pause(struct nl_context *nlctx, const struct nlattr *nest)
+@@ -1849,6 +1849,34 @@ static int show_pause(struct nl_context *nlctx, const struct nlattr *nest)
  	return 0;
  }
  
@@ -73,13 +73,13 @@ index de02546913e8..02592ccb7d4b 100644
  static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
-@@ -1825,6 +1853,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -1890,6 +1918,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_ERROR;
  		}
  	}
-+	if (!req_mask || req_mask & ETH_PARAMS_IM_CHANNELS) {
++	if (mask_ok(nlctx, ETH_PARAMS_IM_CHANNELS)) {
 +		ret = show_channels(nlctx, tb[ETHA_PARAMS_CHANNELS]);
-+		if ((ret < 0) && !(req_mask & ~ETH_PARAMS_IM_CHANNELS)) {
++		if ((ret < 0) && show_only(nlctx, ETH_PARAMS_IM_CHANNELS)) {
 +			nlctx->exit_code = 1;
 +			errno = -ret;
 +			perror("Cannot get device channel parameters");
@@ -89,26 +89,42 @@ index de02546913e8..02592ccb7d4b 100644
  
  	return MNL_CB_OK;
  }
-@@ -1856,3 +1893,8 @@ int nl_gpause(struct cmd_context *ctx)
- {
+@@ -1922,6 +1959,11 @@ int nl_gpause(struct cmd_context *ctx)
  	return params_request(ctx, ETH_PARAMS_IM_PAUSE);
  }
-+
+ 
 +int nl_gchannels(struct cmd_context *ctx)
 +{
 +	return params_request(ctx, ETH_PARAMS_IM_CHANNELS);
 +}
++
+ /* monitor */
+ 
+ static struct {
+@@ -1992,6 +2034,11 @@ static struct monitor_option monitor_opts[] = {
+ 		.cmd		= ETHNL_CMD_SET_PARAMS,
+ 		.info_mask	= ETH_PARAMS_IM_PAUSE,
+ 	},
++	{
++		.pattern	= "-l|--show-channels|-L|--set-channels",
++		.cmd		= ETHNL_CMD_SET_PARAMS,
++		.info_mask	= ETH_PARAMS_IM_CHANNELS,
++	},
+ };
+ 
+ static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink.h b/netlink.h
-index 58eba5780179..3e8593621671 100644
+index 87f1aad99aa7..9a047af90eb6 100644
 --- a/netlink.h
 +++ b/netlink.h
-@@ -13,5 +13,6 @@ int nl_sset(struct cmd_context *ctx);
+@@ -13,6 +13,7 @@ int nl_sset(struct cmd_context *ctx);
  int nl_gcoalesce(struct cmd_context *ctx);
  int nl_gring(struct cmd_context *ctx);
  int nl_gpause(struct cmd_context *ctx);
 +int nl_gchannels(struct cmd_context *ctx);
+ int nl_monitor(struct cmd_context *ctx);
  
- #endif /* ETHTOOL_NETLINK_H__ */
+ void monitor_usage();
 -- 
 2.18.0
 

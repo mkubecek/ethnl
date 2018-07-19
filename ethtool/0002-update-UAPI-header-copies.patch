@@ -1,15 +1,15 @@
-From 32088455bbd9c25c3f2f6f955d82eb496a7e1c1f Mon Sep 17 00:00:00 2001
+From d406f9563488bf6a9f8b7945b6de3640e5353c29 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 24 Nov 2017 01:02:29 +0100
-Subject: [PATCH 02/19] update UAPI header copies
+Subject: [PATCH 02/20] update UAPI header copies
 
-Update to current net-next (commit d367341b25bd).
+Update to current net-next (commit 3bc950c34b28).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- uapi/linux/ethtool.h    | 4 ++++
- uapi/linux/net_tstamp.h | 1 +
- 2 files changed, 5 insertions(+)
+ uapi/linux/ethtool.h    |  4 ++++
+ uapi/linux/net_tstamp.h | 19 +++++++++++++++++++
+ 2 files changed, 23 insertions(+)
 
 diff --git a/uapi/linux/ethtool.h b/uapi/linux/ethtool.h
 index 8cc61e9ab40b..a8186391ac9d 100644
@@ -31,7 +31,7 @@ index 8cc61e9ab40b..a8186391ac9d 100644
  	 * Add your fresh new tubale attribute above and remember to update
  	 * tunable_strings[] in net/core/ethtool.c
 diff --git a/uapi/linux/net_tstamp.h b/uapi/linux/net_tstamp.h
-index 3d421d912193..4fe104b2411f 100644
+index 3d421d912193..97ff3c17ec4d 100644
 --- a/uapi/linux/net_tstamp.h
 +++ b/uapi/linux/net_tstamp.h
 @@ -1,3 +1,4 @@
@@ -39,6 +39,29 @@ index 3d421d912193..4fe104b2411f 100644
  /*
   * Userspace API for hardware time stamping of network packets
   *
+@@ -140,4 +141,22 @@ struct scm_ts_pktinfo {
+ 	__u32 reserved[2];
+ };
+ 
++/*
++ * SO_TXTIME gets a struct sock_txtime with flags being an integer bit
++ * field comprised of these values.
++ */
++enum txtime_flags {
++	SOF_TXTIME_DEADLINE_MODE = (1 << 0),
++	SOF_TXTIME_REPORT_ERRORS = (1 << 1),
++
++	SOF_TXTIME_FLAGS_LAST = SOF_TXTIME_REPORT_ERRORS,
++	SOF_TXTIME_FLAGS_MASK = (SOF_TXTIME_FLAGS_LAST - 1) |
++				 SOF_TXTIME_FLAGS_LAST
++};
++
++struct sock_txtime {
++	clockid_t	clockid;	/* reference clockid */
++	__u32		flags;		/* as defined by enum txtime_flags */
++};
++
+ #endif /* _NET_TIMESTAMPING_H */
 -- 
 2.18.0
 

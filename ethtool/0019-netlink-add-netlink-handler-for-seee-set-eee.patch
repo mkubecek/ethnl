@@ -1,7 +1,7 @@
-From ff8fa768b9dfe1d024b0e8547e73b160660f3e21 Mon Sep 17 00:00:00 2001
+From a1d2668e76a975cade63b375fb6b0204151b7017 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:43:19 +0100
-Subject: [PATCH 18/19] netlink: add netlink handler for seee (--set-eee)
+Subject: [PATCH 19/20] netlink: add netlink handler for seee (--set-eee)
 
 Implement "ethtool --set-eee <dev>" subcommand using netlink interface
 command ETHTOOL_CMD_SET_PARAMS.
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 38 insertions(+), 2 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 9e0725e612f8..839fc4f1b5b0 100644
+index 22132aec3c5a..0fbd454ca3c7 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4929,6 +4929,7 @@ int nl_scoalesce(struct cmd_context *ctx) { return 0; }
@@ -39,14 +39,13 @@ index 9e0725e612f8..839fc4f1b5b0 100644
  	  "		[ tx-timer %d ]\n"},
  	{ "--set-phy-tunable", 1, do_set_phy_tunable, NULL,
 diff --git a/netlink.c b/netlink.c
-index 0fc4908a88dc..29d08e10a65f 100644
+index 213a64c3e5a4..e64fcd321dac 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -2286,3 +2286,37 @@ int nl_schannels(struct cmd_context *ctx)
- 	return nl_set_param(ctx, "-L", schannels_params, ETHA_PARAMS_CHANNELS,
+@@ -2353,6 +2353,40 @@ int nl_schannels(struct cmd_context *ctx)
  			    ETHA_CHANNELS_MAX);
  }
-+
+ 
 +static const struct param_parser seee_params[] = {
 +	{
 +		.arg		= "advertise",
@@ -80,17 +79,22 @@ index 0fc4908a88dc..29d08e10a65f 100644
 +	return nl_set_param(ctx, "--set-eee", seee_params, ETHA_PARAMS_EEE,
 +			    ETHA_EEE_MAX);
 +}
++
+ /* monitor */
+ 
+ static struct {
 diff --git a/netlink.h b/netlink.h
-index 1c8445be66c7..2d8e55930270 100644
+index fe8dd0b3fd84..bff65d5aa409 100644
 --- a/netlink.h
 +++ b/netlink.h
-@@ -20,5 +20,6 @@ int nl_scoalesce(struct cmd_context *ctx);
+@@ -20,6 +20,7 @@ int nl_scoalesce(struct cmd_context *ctx);
  int nl_sring(struct cmd_context *ctx);
  int nl_spause(struct cmd_context *ctx);
  int nl_schannels(struct cmd_context *ctx);
 +int nl_seee(struct cmd_context *ctx);
+ int nl_monitor(struct cmd_context *ctx);
  
- #endif /* ETHTOOL_NETLINK_H__ */
+ void monitor_usage();
 -- 
 2.18.0
 

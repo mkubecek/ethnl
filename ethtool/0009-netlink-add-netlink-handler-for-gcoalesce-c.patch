@@ -1,20 +1,20 @@
-From 2c536f562d6c2b587767b356bd090de361fa18c0 Mon Sep 17 00:00:00 2001
+From 0c483ccdd4a9cb4324a0904411ab0df62bc1cdd4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
-Subject: [PATCH 08/19] netlink: add netlink handler for gcoalesce (-c)
+Subject: [PATCH 09/20] netlink: add netlink handler for gcoalesce (-c)
 
 Implement "ethtool -c <dev>" subcommand using netlink interface command
 ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_COALESCE mask.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- ethtool.c |  3 +-
- netlink.c | 93 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- netlink.h |  1 +
- 3 files changed, 96 insertions(+), 1 deletion(-)
+ ethtool.c |   3 +-
+ netlink.c | 101 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink.h |   1 +
+ 3 files changed, 104 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 9f8392f17160..713f51ee5d00 100644
+index 483144d24c81..a0dbe5955333 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4919,6 +4919,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -35,14 +35,13 @@ index 9f8392f17160..713f51ee5d00 100644
  	{ "-C|--coalesce", 1, do_scoalesce, NULL,
  	  "Set coalesce options",
 diff --git a/netlink.c b/netlink.c
-index 8e1ec468ac6f..47a8d80650b6 100644
+index e2b89c8b7d8f..527acfbdb029 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -1685,3 +1685,96 @@ int nl_sset(struct cmd_context *ctx)
- 	perror("netlink error");
+@@ -1752,6 +1752,98 @@ int nl_sset(struct cmd_context *ctx)
  	return nlctx->exit_code ?: 75;
  }
-+
+ 
 +/* GET_PARAMS */
 +
 +static int show_coalesce(struct nl_context *nlctx, const struct nlattr *nest)
@@ -95,19 +94,18 @@ index 8e1ec468ac6f..47a8d80650b6 100644
 +	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	struct nl_context *nlctx = data;
-+	u16 req_mask = ETH_PARAMS_IM_DEFAULT;
 +	int ret;
 +
 +	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return ret;
 +	nlctx->devname = get_dev_name(tb[ETHA_PARAMS_DEV]);
-+	if (tb[ETHA_PARAMS_INFOMASK])
-+		req_mask = mnl_attr_get_u16(tb[ETHA_PARAMS_INFOMASK]);
++	if (!dev_ok(nlctx))
++		return MNL_CB_OK;
 +
-+	if (!req_mask || req_mask & ETH_PARAMS_IM_COALESCE) {
++	if (mask_ok(nlctx, ETH_PARAMS_IM_COALESCE)) {
 +		ret = show_coalesce(nlctx, tb[ETHA_PARAMS_COALESCE]);
-+		if ((ret < 0) && !(req_mask & ~ETH_PARAMS_IM_COALESCE)) {
++		if ((ret < 0) && show_only(nlctx, ETH_PARAMS_IM_COALESCE)) {
 +			nlctx->exit_code = 82;
 +			errno = -ret;
 +			perror("Cannot get device coalesce settings");
@@ -135,17 +133,45 @@ index 8e1ec468ac6f..47a8d80650b6 100644
 +{
 +	return params_request(ctx, ETH_PARAMS_IM_COALESCE);
 +}
++
+ /* monitor */
+ 
+ static struct {
+@@ -1766,6 +1858,10 @@ static struct {
+ 		.cmd	= ETHNL_CMD_SET_SETTINGS,
+ 		.cb	= settings_reply_cb,
+ 	},
++	{
++		.cmd	= ETHNL_CMD_SET_PARAMS,
++		.cb	= params_reply_cb,
++	},
+ };
+ 
+ static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -1803,6 +1899,11 @@ static struct monitor_option monitor_opts[] = {
+ 		.pattern	= "|-s|--change",
+ 		.cmd		= ETHNL_CMD_SET_SETTINGS,
+ 	},
++	{
++		.pattern	= "-c|--show-coalesce|-C|--coalesce",
++		.cmd		= ETHNL_CMD_SET_PARAMS,
++		.info_mask	= ETH_PARAMS_IM_COALESCE,
++	},
+ };
+ 
+ static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink.h b/netlink.h
-index 7c071474c9cd..dbb1161ea48d 100644
+index 2e721e5279ad..20d0d05b24fe 100644
 --- a/netlink.h
 +++ b/netlink.h
-@@ -10,5 +10,6 @@ int netlink_done(struct cmd_context *ctx);
+@@ -10,6 +10,7 @@ int netlink_done(struct cmd_context *ctx);
  int nl_gdrv(struct cmd_context *ctx);
  int nl_gset(struct cmd_context *ctx);
  int nl_sset(struct cmd_context *ctx);
 +int nl_gcoalesce(struct cmd_context *ctx);
+ int nl_monitor(struct cmd_context *ctx);
  
- #endif /* ETHTOOL_NETLINK_H__ */
+ void monitor_usage();
 -- 
 2.18.0
 

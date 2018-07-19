@@ -1,19 +1,19 @@
-From e3e56c672896bc9716c01f31cc4aa7b06063cf09 Mon Sep 17 00:00:00 2001
+From 3ca71f168133cb20da2c05df353f8180c3c4369c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
-Subject: [PATCH 04/19] netlink: add netlink handler for gdrv (-i)
+Subject: [PATCH 05/20] netlink: add netlink handler for gdrv (-i)
 
 Implement "-i" subcommand using netlink interface.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c |  3 ++-
- netlink.c | 41 +++++++++++++++++++++++++++++++++++++++++
- netlink.h |  2 ++
- 3 files changed, 45 insertions(+), 1 deletion(-)
+ netlink.c | 51 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink.h |  1 +
+ 3 files changed, 54 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 0fee2cfe7acc..9086751d59be 100644
+index 417ec95822ab..4f5558acdb46 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -5051,6 +5051,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -34,14 +34,13 @@ index 0fee2cfe7acc..9086751d59be 100644
  	{ "-d|--register-dump", 1, do_gregs, NULL,
  	  "Do a register dump",
 diff --git a/netlink.c b/netlink.c
-index f1fc90f7ba8d..874861978cc2 100644
+index 20aaff198e57..afc8f2be1edb 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -552,3 +552,44 @@ int netlink_done(struct cmd_context *ctx)
- 
- 	return 0;
+@@ -604,12 +604,59 @@ bool show_only(const struct nl_context *nlctx, uint32_t bits)
+ 	return nlctx->filter_mask & ~bits;
  }
-+
+ 
 +/* GET_DRVINFO */
 +
 +static int drvinfo_reply_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -55,7 +54,9 @@ index f1fc90f7ba8d..874861978cc2 100644
 +	if (ret < 0)
 +		return ret;
 +	nlctx->devname = get_dev_name(tb[ETHA_DRVINFO_DEV]);
-+	if (nlctx->is_dump)
++	if (!dev_ok(nlctx))
++		return MNL_CB_OK;
++	if (nlctx->is_dump || nlctx->is_monitor)
 +		fprintf(stdout, "\nDriver info for %s:\n", nlctx->devname);
 +
 +	show_string(tb, ETHA_DRVINFO_DRIVER, "driver");
@@ -82,17 +83,43 @@ index f1fc90f7ba8d..874861978cc2 100644
 +		return ret;
 +	return ethnl_send_get_request(ctx, drvinfo_reply_cb);
 +}
++
+ /* monitor */
+ 
+ static struct {
+ 	uint8_t		cmd;
+ 	mnl_cb_t	cb;
+ } monitor_callbacks[] = {
++	{
++		.cmd	= ETHNL_CMD_SET_DRVINFO,
++		.cb	= drvinfo_reply_cb,
++	},
+ };
+ 
+ static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -639,6 +686,10 @@ static struct monitor_option monitor_opts[] = {
+ 		.pattern	= "--all",
+ 		.cmd		= 0,
+ 	},
++	{
++		.pattern	= "-i|--driver",
++		.cmd		= ETHNL_CMD_SET_DRVINFO,
++	},
+ };
+ 
+ static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink.h b/netlink.h
-index b10b168b1f5b..277cd543cee7 100644
+index 39b5e3600567..5abbfb33f1da 100644
 --- a/netlink.h
 +++ b/netlink.h
-@@ -7,4 +7,6 @@ struct nl_context;
+@@ -7,6 +7,7 @@ struct nl_context;
  int netlink_init(struct cmd_context *ctx);
  int netlink_done(struct cmd_context *ctx);
  
 +int nl_gdrv(struct cmd_context *ctx);
-+
- #endif /* ETHTOOL_NETLINK_H__ */
+ int nl_monitor(struct cmd_context *ctx);
+ 
+ void monitor_usage();
 -- 
 2.18.0
 

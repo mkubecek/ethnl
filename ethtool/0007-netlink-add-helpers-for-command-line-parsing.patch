@@ -1,7 +1,7 @@
-From 92635b6e61507896085b81adeda3d92a2c327b82 Mon Sep 17 00:00:00 2001
+From 6daf703e4df4a516e702ef1b9298a07ae5d9849a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:42:26 +0100
-Subject: [PATCH 06/19] netlink: add helpers for command line parsing
+Subject: [PATCH 07/20] netlink: add helpers for command line parsing
 
 Support for easier parsing of subcommand parameters and their values from
 command line. Existing parser helpers in ethtool.c are closely tied to
@@ -13,7 +13,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  1 file changed, 552 insertions(+)
 
 diff --git a/netlink.c b/netlink.c
-index 9bfda26a97e7..cfc7d0a561d4 100644
+index 614e4bf46f27..56ef505f5a40 100644
 --- a/netlink.c
 +++ b/netlink.c
 @@ -2,6 +2,7 @@
@@ -24,7 +24,7 @@ index 9bfda26a97e7..cfc7d0a561d4 100644
  
  #include "internal.h"
  #include "common.h"
-@@ -27,6 +28,10 @@ struct nl_context {
+@@ -28,6 +29,10 @@ struct nl_context {
  	void *msg;
  	const char *devname;
  	bool is_dump;
@@ -33,9 +33,9 @@ index 9bfda26a97e7..cfc7d0a561d4 100644
 +	char **argp;
 +	int argc;
  	int exit_code;
- };
- 
-@@ -449,6 +454,553 @@ static void show_u32_yn(const struct nlattr **tb, unsigned int idx,
+ 	bool is_monitor;
+ 	uint8_t filter_cmd;
+@@ -453,6 +458,553 @@ static void show_u32_yn(const struct nlattr **tb, unsigned int idx,
  		printf("%s: %s\n", label,
  		       mnl_attr_get_u32(tb[idx]) ? "yes" : "no");
  }
@@ -588,7 +588,7 @@ index 9bfda26a97e7..cfc7d0a561d4 100644
 +
  /* get ethtool family id */
  
- static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
+ static void ethnl_find_monitor_group(struct nl_context *nlctx,
 -- 
 2.18.0
 

@@ -1,7 +1,7 @@
-From c7c6827eec120e0dd76e7e384abb3f2c8cdb7248 Mon Sep 17 00:00:00 2001
+From 602b5ed4aed3000fbdf2a2b0056c7bd8acfa2fff Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
-Subject: [PATCH 03/19] netlink: add netlink interface
+Subject: [PATCH 03/20] netlink: add netlink interface
 
 Add basic netlink interface based on genetlink and libmnl. This commit only
 adds the generic infrastructure but does not override any ethtool command
@@ -22,13 +22,13 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  configure.ac                 |  12 +
  ethtool.c                    | 169 +++++++----
  internal.h                   |   8 +
- netlink.c                    | 554 +++++++++++++++++++++++++++++++++++
+ netlink.c                    | 553 +++++++++++++++++++++++++++++++++++
  netlink.h                    |  10 +
  uapi/linux/ethtool.h         |   3 +
  uapi/linux/ethtool_netlink.h | 241 +++++++++++++++
  uapi/linux/genetlink.h       |  89 ++++++
  uapi/linux/netlink.h         | 247 ++++++++++++++++
- 10 files changed, 1287 insertions(+), 56 deletions(-)
+ 10 files changed, 1286 insertions(+), 56 deletions(-)
  create mode 100644 netlink.c
  create mode 100644 netlink.h
  create mode 100644 uapi/linux/ethtool_netlink.h
@@ -433,10 +433,10 @@ index 0b04a9794b6b..f7feade9f57e 100644
  #ifdef TEST_ETHTOOL
 diff --git a/netlink.c b/netlink.c
 new file mode 100644
-index 000000000000..f1fc90f7ba8d
+index 000000000000..e2a2e2b86494
 --- /dev/null
 +++ b/netlink.c
-@@ -0,0 +1,554 @@
+@@ -0,0 +1,553 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -636,8 +636,8 @@ index 000000000000..f1fc90f7ba8d
 +	return 0;
 +}
 +
-+static int msg_init(struct nl_context *nlctx, int cmd, unsigned int flags,
-+		    const char *devname, unsigned int dev_attrtype) {
++static int msg_init(struct nl_context *nlctx, int cmd, unsigned int flags)
++{
 +	int ret;
 +
 +	ret = __msg_init(nlctx, nlctx->ethnl_fam, cmd, flags,
@@ -824,8 +824,7 @@ index 000000000000..f1fc90f7ba8d
 +
 +	nlctx->is_dump = !is_dev;
 +	ret = msg_init(nlctx, nlcmd,
-+		       NLM_F_REQUEST | NLM_F_ACK | (is_dev ? 0 : NLM_F_DUMP),
-+		       ctx->devname, dev_attrtype);
++		       NLM_F_REQUEST | NLM_F_ACK | (is_dev ? 0 : NLM_F_DUMP));
 +	if (ret < 0)
 +		return ret;
 +
@@ -1023,7 +1022,7 @@ index a8186391ac9d..1874c5e82703 100644
  #define ETHTOOL_EROMVERS_LEN	32
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..39710c8003ba
+index 000000000000..f0e208253db3
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
 @@ -0,0 +1,241 @@
@@ -1265,7 +1264,7 @@ index 000000000000..39710c8003ba
 +#define ETHTOOL_GENL_NAME "ethtool"
 +#define ETHTOOL_GENL_VERSION 1
 +
-+#define ETHTOOL_MCGRP_MONITOR_NAME "all"
++#define ETHTOOL_MCGRP_MONITOR_NAME "monitor"
 +
 +#endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/uapi/linux/genetlink.h b/uapi/linux/genetlink.h

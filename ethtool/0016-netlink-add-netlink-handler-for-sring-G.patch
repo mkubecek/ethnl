@@ -1,7 +1,7 @@
-From 353e8ff281c4f4ce5abf6d186c8133d7cf34dd39 Mon Sep 17 00:00:00 2001
+From 097fdccd2a22c109943c3fef63480a9a9b507295 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:04:49 +0100
-Subject: [PATCH 15/19] netlink: add netlink handler for sring (-G)
+Subject: [PATCH 16/20] netlink: add netlink handler for sring (-G)
 
 Implement "ethtool -G <dev>" subcommand using netlink interface command
 ETHTOOL_CMD_SET_PARAMS.
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 37 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 265e1507f62f..998417d7e8e9 100644
+index ca8616e625eb..d7eeb403bff7 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4926,6 +4926,7 @@ int nl_gchannels(struct cmd_context *ctx) { return 0; }
@@ -35,14 +35,13 @@ index 265e1507f62f..998417d7e8e9 100644
  	  "		[ rx N ]\n"
  	  "		[ rx-mini N ]\n"
 diff --git a/netlink.c b/netlink.c
-index d466bd07eadd..055d913e40f2 100644
+index 8343920bf23e..e361a3f57701 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -2190,3 +2190,37 @@ int nl_scoalesce(struct cmd_context *ctx)
- 	return nl_set_param(ctx, "-C", scoalesce_params, ETHA_PARAMS_COALESCE,
+@@ -2257,6 +2257,40 @@ int nl_scoalesce(struct cmd_context *ctx)
  			    ETHA_COALESCE_MAX);
  }
-+
+ 
 +static const struct param_parser sring_params[] = {
 +	{
 +		.arg		= "rx",
@@ -76,17 +75,22 @@ index d466bd07eadd..055d913e40f2 100644
 +	return nl_set_param(ctx, "-G", sring_params, ETHA_PARAMS_RING,
 +			    ETHA_RING_MAX);
 +}
++
+ /* monitor */
+ 
+ static struct {
 diff --git a/netlink.h b/netlink.h
-index de7d5c975008..1e79086e49fe 100644
+index 9cdb7c71d3b9..6eccf02a22ef 100644
 --- a/netlink.h
 +++ b/netlink.h
-@@ -17,5 +17,6 @@ int nl_gchannels(struct cmd_context *ctx);
+@@ -17,6 +17,7 @@ int nl_gchannels(struct cmd_context *ctx);
  int nl_geee(struct cmd_context *ctx);
  int nl_gfec(struct cmd_context *ctx);
  int nl_scoalesce(struct cmd_context *ctx);
 +int nl_sring(struct cmd_context *ctx);
+ int nl_monitor(struct cmd_context *ctx);
  
- #endif /* ETHTOOL_NETLINK_H__ */
+ void monitor_usage();
 -- 
 2.18.0
 

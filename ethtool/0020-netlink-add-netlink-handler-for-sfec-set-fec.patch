@@ -1,7 +1,7 @@
-From 2b1b7a691cc70cd1386fc089ea8e70a1d5c62b65 Mon Sep 17 00:00:00 2001
+From 8bc930a8c80bbf00416786219aa1bee67513c54e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:51:36 +0100
-Subject: [PATCH 19/19] netlink: add netlink handler for sfec (--set-fec)
+Subject: [PATCH 20/20] netlink: add netlink handler for sfec (--set-fec)
 
 Implement "ethtool --set-fec <dev>" subcommand using netlink interface
 command ETHTOOL_CMD_SET_PARAMS.
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 20 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 839fc4f1b5b0..b3aac1ac27cf 100644
+index 0fbd454ca3c7..1287f72444ad 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4930,6 +4930,7 @@ int nl_sring(struct cmd_context *ctx) { return 0; }
@@ -40,14 +40,13 @@ index 839fc4f1b5b0..b3aac1ac27cf 100644
  	  "		[ encoding auto|off|rs|baser ]\n"},
  	{ "-h|--help", 0, show_usage, NULL,
 diff --git a/netlink.c b/netlink.c
-index 29d08e10a65f..5afc65509931 100644
+index e64fcd321dac..bf19130e3697 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -2320,3 +2320,20 @@ int nl_seee(struct cmd_context *ctx)
- 	return nl_set_param(ctx, "--set-eee", seee_params, ETHA_PARAMS_EEE,
+@@ -2387,6 +2387,23 @@ int nl_seee(struct cmd_context *ctx)
  			    ETHA_EEE_MAX);
  }
-+
+ 
 +static const struct param_parser sfec_params[] = {
 +	{
 +		.arg		= "modes",
@@ -64,17 +63,22 @@ index 29d08e10a65f..5afc65509931 100644
 +	return nl_set_param(ctx, "--set-fec", sfec_params, ETHA_PARAMS_FEC,
 +			    ETHA_FEC_MAX);
 +}
++
+ /* monitor */
+ 
+ static struct {
 diff --git a/netlink.h b/netlink.h
-index 2d8e55930270..ae33460191a4 100644
+index bff65d5aa409..d34a0ae6a1b2 100644
 --- a/netlink.h
 +++ b/netlink.h
-@@ -21,5 +21,6 @@ int nl_sring(struct cmd_context *ctx);
+@@ -21,6 +21,7 @@ int nl_sring(struct cmd_context *ctx);
  int nl_spause(struct cmd_context *ctx);
  int nl_schannels(struct cmd_context *ctx);
  int nl_seee(struct cmd_context *ctx);
 +int nl_sfec(struct cmd_context *ctx);
+ int nl_monitor(struct cmd_context *ctx);
  
- #endif /* ETHTOOL_NETLINK_H__ */
+ void monitor_usage();
 -- 
 2.18.0
 
