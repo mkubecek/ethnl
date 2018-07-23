@@ -1,7 +1,7 @@
-From 602b5ed4aed3000fbdf2a2b0056c7bd8acfa2fff Mon Sep 17 00:00:00 2001
+From b21f7c062c5b4e6aece7dc9950a7d509bbd38f1e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
-Subject: [PATCH 03/20] netlink: add netlink interface
+Subject: [PATCH 03/21] netlink: add netlink interface
 
 Add basic netlink interface based on genetlink and libmnl. This commit only
 adds the generic infrastructure but does not override any ethtool command
@@ -20,15 +20,15 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am                  |  10 +
  configure.ac                 |  12 +
- ethtool.c                    | 169 +++++++----
+ ethtool.c                    | 169 ++++++----
  internal.h                   |   8 +
- netlink.c                    | 553 +++++++++++++++++++++++++++++++++++
+ netlink.c                    | 587 +++++++++++++++++++++++++++++++++++
  netlink.h                    |  10 +
- uapi/linux/ethtool.h         |   3 +
- uapi/linux/ethtool_netlink.h | 241 +++++++++++++++
+ uapi/linux/ethtool.h         |   7 +
+ uapi/linux/ethtool_netlink.h | 283 +++++++++++++++++
  uapi/linux/genetlink.h       |  89 ++++++
- uapi/linux/netlink.h         | 247 ++++++++++++++++
- 10 files changed, 1286 insertions(+), 56 deletions(-)
+ uapi/linux/netlink.h         | 247 +++++++++++++++
+ 10 files changed, 1366 insertions(+), 56 deletions(-)
  create mode 100644 netlink.c
  create mode 100644 netlink.h
  create mode 100644 uapi/linux/ethtool_netlink.h
@@ -433,10 +433,10 @@ index 0b04a9794b6b..f7feade9f57e 100644
  #ifdef TEST_ETHTOOL
 diff --git a/netlink.c b/netlink.c
 new file mode 100644
-index 000000000000..e2a2e2b86494
+index 000000000000..5aa94ab14659
 --- /dev/null
 +++ b/netlink.c
-@@ -0,0 +1,553 @@
+@@ -0,0 +1,587 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -508,7 +508,7 @@ index 000000000000..e2a2e2b86494
 +static bool bitset_get_bit(const struct nlattr *bitset, bool mask,
 +			   unsigned int idx, int *retptr)
 +{
-+	const struct nlattr *bitset_tb[ETHA_BIT_MAX + 1] = {};
++	const struct nlattr *bitset_tb[ETHA_BITSET_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(bitset_tb);
 +	const struct nlattr *bits;
 +	const struct nlattr *bit;
@@ -516,10 +516,23 @@ index 000000000000..e2a2e2b86494
 +
 +	*retptr = 0;
 +	ret = mnl_attr_parse_nested(bitset, attr_cb, &bitset_tb_info);
-+	bits = bitset_tb[ETHA_BITSET_BITS];
-+	if (ret < 0 || !bits)
++	if (ret < 0)
 +		goto err;
 +
++	bits = mask ? bitset_tb[ETHA_BITSET_MASK] :
++		      bitset_tb[ETHA_BITSET_VALUE];
++	if (bits) {
++		const uint32_t *bitmap =
++			(const uint32_t *)mnl_attr_get_payload(bits);
++
++		if (idx >= 8 * mnl_attr_get_payload_len(bits))
++			return false;
++		return bitmap[idx / 32] & (1U << (idx % 32));
++	}
++
++	bits = bitset_tb[ETHA_BITSET_BITS];
++	if (!bits)
++		goto err;
 +	mnl_attr_for_each_nested(bit, bits) {
 +		const struct nlattr *tb[ETHA_BIT_MAX + 1] = {};
 +		DECLARE_ATTR_TB_INFO(tb);
@@ -548,7 +561,7 @@ index 000000000000..e2a2e2b86494
 +
 +static bool bitset_is_empty(const struct nlattr *bitset, bool mask, int *retptr)
 +{
-+	const struct nlattr *bitset_tb[ETHA_BIT_MAX + 1] = {};
++	const struct nlattr *bitset_tb[ETHA_BITSET_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(bitset_tb);
 +	const struct nlattr *bits;
 +	const struct nlattr *bit;
@@ -556,10 +569,29 @@ index 000000000000..e2a2e2b86494
 +
 +	*retptr = 0;
 +	ret = mnl_attr_parse_nested(bitset, attr_cb, &bitset_tb_info);
-+	bits = bitset_tb[ETHA_BITSET_BITS];
-+	if (ret < 0 || !bits)
++	if (ret < 0)
 +		goto err;
 +
++	bits = mask ? bitset_tb[ETHA_BITSET_MASK] :
++		      bitset_tb[ETHA_BITSET_VALUE];
++	if (bits) {
++		const uint32_t *bitmap =
++			(const uint32_t *)mnl_attr_get_payload(bits);
++		unsigned int n = mnl_attr_get_payload_len(bits);
++		unsigned int i;
++
++		ret = -EFAULT;
++		if (n % 4)
++			goto err;
++		for (i = 0; i < n / 4; i++)
++			if (bitmap[i])
++				return false;
++		return true;
++	}
++
++	bits = bitset_tb[ETHA_BITSET_BITS];
++	if (!bits)
++		goto err;
 +	mnl_attr_for_each_nested(bit, bits) {
 +		const struct nlattr *tb[ETHA_BIT_MAX + 1] = {};
 +		DECLARE_ATTR_TB_INFO(tb);
@@ -610,15 +642,16 @@ index 000000000000..e2a2e2b86494
 +	return 0;
 +}
 +
-+static int msg_realloc(struct nl_context *nlctx)
++static int msg_realloc(struct nl_context *nlctx, unsigned int new_size)
 +{
 +	unsigned int nlhdr_offset = (char *)nlctx->nlhdr - nlctx->buff;
 +	unsigned int gnlhdr_offset = (char *)nlctx->gnlhdr - nlctx->buff;
 +	unsigned int msg_offset = (char *)nlctx->msg - nlctx->buff;
 +	unsigned int old_size = nlctx->buffsize;
-+	unsigned int new_size = old_size + MNL_SOCKET_BUFFER_SIZE;
 +	char *new_buff;
 +
++	if (!new_size)
++		new_size = old_size + MNL_SOCKET_BUFFER_SIZE;
 +	if (new_size > MAX_MSG_SIZE)
 +		return -EMSGSIZE;
 +	new_buff = realloc(nlctx->buff, new_size);
@@ -695,6 +728,7 @@ index 000000000000..e2a2e2b86494
 +	int ret;
 +
 +	do {
++		msg_realloc(nlctx, 65536);
 +		len = mnl_socket_recvfrom(nlctx->sk, nlctx->buff,
 +					  nlctx->buffsize);
 +		if (len <= 0)
@@ -724,7 +758,7 @@ index 000000000000..e2a2e2b86494
 +	struct nlmsghdr *nlhdr = nlctx->nlhdr;
 +
 +	while (!mnl_attr_put_check(nlhdr, nlctx->buffsize, type, len, data)) {
-+		int ret = msg_realloc(nlctx);
++		int ret = msg_realloc(nlctx, 0);
 +
 +		if (ret < 0)
 +			return true;
@@ -742,7 +776,7 @@ index 000000000000..e2a2e2b86494
 +		attr = mnl_attr_nest_start_check(nlhdr, nlctx->buffsize, type);
 +		if (attr)
 +			return attr;
-+	} while (msg_realloc(nlctx) == 0);
++	} while (msg_realloc(nlctx, 0) == 0);
 +
 +	return NULL;
 +}
@@ -806,11 +840,11 @@ index 000000000000..e2a2e2b86494
 +	int ret;
 +
 +	if (!nest)
-+		return "(none)";
++		return NULL;
 +	ret = mnl_attr_parse_nested(nest, attr_cb, &dev_tb_info);
-+	if (ret < 0 || !dev_tb[ETHA_BIT_NAME])
++	if (ret < 0 || !dev_tb[ETHA_DEV_NAME])
 +		return "(none)";
-+	return mnl_attr_get_str(dev_tb[ETHA_BIT_NAME]);
++	return mnl_attr_get_str(dev_tb[ETHA_DEV_NAME]);
 +}
 +
 +/* request helpers */
@@ -1007,7 +1041,7 @@ index 000000000000..b10b168b1f5b
 +
 +#endif /* ETHTOOL_NETLINK_H__ */
 diff --git a/uapi/linux/ethtool.h b/uapi/linux/ethtool.h
-index a8186391ac9d..1874c5e82703 100644
+index 9dd347caf4ed..c51a966bb46e 100644
 --- a/uapi/linux/ethtool.h
 +++ b/uapi/linux/ethtool.h
 @@ -141,6 +141,9 @@ static __inline__ __u32 ethtool_cmd_speed(const struct ethtool_cmd *ep)
@@ -1020,12 +1054,23 @@ index a8186391ac9d..1874c5e82703 100644
  #define ETHTOOL_FWVERS_LEN	32
  #define ETHTOOL_BUSINFO_LEN	32
  #define ETHTOOL_EROMVERS_LEN	32
+@@ -576,6 +579,10 @@ enum ethtool_stringset {
+ 	ETH_SS_TUNABLES,
+ 	ETH_SS_PHY_STATS,
+ 	ETH_SS_PHY_TUNABLES,
++	ETH_SS_LINK_MODES,
++
++	__ETH_SS_MAX,
++	ETH_SS_MAX = (__ETH_SS_MAX - 1)
+ };
+ 
+ /**
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..f0e208253db3
+index 000000000000..2e016ae4b4d7
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,241 @@
+@@ -0,0 +1,283 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#ifndef _LINUX_ETHTOOL_NETLINK_H_
@@ -1035,6 +1080,8 @@ index 000000000000..f0e208253db3
 +
 +enum {
 +	ETHNL_CMD_NOOP,
++	ETHNL_CMD_GET_STRSET,
++	ETHNL_CMD_SET_STRSET,		/* only for reply */
 +	ETHNL_CMD_GET_DRVINFO,
 +	ETHNL_CMD_SET_DRVINFO,		/* only for reply */
 +	ETHNL_CMD_GET_SETTINGS,
@@ -1086,6 +1133,46 @@ index 000000000000..f0e208253db3
 +
 +	__ETHA_BITSET_MAX,
 +	ETHA_BITSET_MAX = (__ETHA_BITSET_MAX - 1)
++};
++
++/* string sets */
++
++enum {
++	ETHA_STRING_UNSPEC,
++	ETHA_STRING_INDEX,			/* u32 */
++	ETHA_STRING_VALUE,			/* string */
++
++	__ETHA_STRING_MAX,
++	ETHA_STRING_MAX = (__ETHA_STRING_MAX - 1)
++};
++
++enum {
++	ETHA_STRINGS_UNSPEC,
++	ETHA_STRINGS_STRING,			/* nest - ETHA_STRINGS_* */
++
++	__ETHA_STRINGS_MAX,
++	ETHA_STRINGS_MAX = (__ETHA_STRINGS_MAX - 1)
++};
++
++enum {
++	ETHA_STRINGSET_UNSPEC,
++	ETHA_STRINGSET_ID,			/* u32 */
++	ETHA_STRINGSET_COUNT,			/* u32 */
++	ETHA_STRINGSET_STRINGS,			/* nest - ETHA_STRINGS_* */
++
++	__ETHA_STRINGSET_MAX,
++	ETHA_STRINGSET_MAX = (__ETHA_STRINGSET_MAX - 1)
++};
++
++/* GET_STRINGSET / SET_STRINGSET */
++
++enum {
++	ETHA_STRSET_UNSPEC,
++	ETHA_STRSET_DEV,			/* nest - ETHA_DEV_* */
++	ETHA_STRSET_STRINGSET,			/* nest - ETHA_STRSET_* */
++
++	__ETHA_STRSET_MAX,
++	ETHA_STRSET_MAX = (__ETHA_STRSET_MAX - 1)
 +};
 +
 +/* GET_DRVINFO / SET_DRVINFO */

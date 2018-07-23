@@ -1,7 +1,7 @@
-From f98747c7c3dd5c7989ae17b465463e0426e24c08 Mon Sep 17 00:00:00 2001
+From 9d1264aeaf90a205e5a151fa6d4f1dc41826de3b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
-Subject: [PATCH 04/20] netlink: add notification monitor
+Subject: [PATCH 04/21] netlink: add notification monitor
 
 With 'ethtool --monitor [ --all | opt ] [dev]', let ethtool listen to
 netlink notification and display them in a format similar to output of
@@ -12,9 +12,9 @@ device name or "*" is passed, show notifications for all devices.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c |  17 +++++
- netlink.c | 188 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ netlink.c | 192 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
  netlink.h |   4 ++
- 3 files changed, 208 insertions(+), 1 deletion(-)
+ 3 files changed, 212 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
 index 0fee2cfe7acc..417ec95822ab 100644
@@ -52,7 +52,7 @@ index 0fee2cfe7acc..417ec95822ab 100644
  	 * name to get settings for (which we don't expect to begin
  	 * with '-').
 diff --git a/netlink.c b/netlink.c
-index e2a2e2b86494..20aaff198e57 100644
+index 5aa94ab14659..c16c6731e2aa 100644
 --- a/netlink.c
 +++ b/netlink.c
 @@ -16,6 +16,7 @@
@@ -74,7 +74,7 @@ index e2a2e2b86494..20aaff198e57 100644
  };
  
  struct attr_tb_info {
-@@ -449,6 +454,31 @@ static void show_u32_yn(const struct nlattr **tb, unsigned int idx,
+@@ -483,6 +488,31 @@ static void show_u32_yn(const struct nlattr **tb, unsigned int idx,
  }
  /* get ethtool family id */
  
@@ -106,7 +106,7 @@ index e2a2e2b86494..20aaff198e57 100644
  static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	struct nl_context *nlctx = data;
-@@ -456,9 +486,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -490,9 +520,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  
  	nlctx->ethnl_fam = 0;
  	mnl_attr_for_each(attr, nlhdr, GENL_HDRLEN) {
@@ -121,7 +121,7 @@ index e2a2e2b86494..20aaff198e57 100644
  		}
  	}
  
-@@ -551,3 +585,155 @@ int netlink_done(struct cmd_context *ctx)
+@@ -585,3 +619,159 @@ int netlink_done(struct cmd_context *ctx)
  
  	return 0;
  }
@@ -134,7 +134,8 @@ index e2a2e2b86494..20aaff198e57 100644
 +bool dev_ok(const struct nl_context *nlctx)
 +{
 +	return !nlctx->filter_devname ||
-+	       !strcmp(nlctx->devname, nlctx->filter_devname);
++	       (nlctx->devname &&
++		!strcmp(nlctx->devname, nlctx->filter_devname));
 +}
 +
 +bool show_only(const struct nl_context *nlctx, uint32_t bits)
@@ -229,7 +230,7 @@ index e2a2e2b86494..20aaff198e57 100644
 +
 +opt_found:
 +	if (*argp && strcmp(*argp, WILDCARD_DEVNAME))
-+		nlctx->filter_devname = *argp;
++		ctx->devname = *argp;
 +	return 0;
 +}
 +
@@ -243,13 +244,15 @@ index e2a2e2b86494..20aaff198e57 100644
 +		fprintf(stderr, "multicast group 'monitor' not found\n");
 +		return -EOPNOTSUPP;
 +	}
++	if (parse_monitor(ctx) < 0)
++		return 1;
++
 +	ret = mnl_socket_setsockopt(nlctx->sk, NETLINK_ADD_MEMBERSHIP,
 +				    &grpid, sizeof(grpid));
 +	if (ret < 0)
 +		return ret;
 +
-+	if (parse_monitor(ctx) < 0)
-+		return 1;
++	nlctx->filter_devname = ctx->devname;
 +	nlctx->is_monitor = true;
 +	nlctx->port = 0;
 +	nlctx->seq = 0;
@@ -262,7 +265,8 @@ index e2a2e2b86494..20aaff198e57 100644
 +	const char *p;
 +	unsigned i;
 +
-+	fputs("        ethtool --monitor               Show kernel notifications\n", stdout);
++	fputs("        ethtool --monitor               Show kernel notifications\n",
++	      stdout);
 +	for (i = 0; i < MNL_ARRAY_SIZE(monitor_opts); i++) {
 +		if (i > 0)
 +			fputs("\n                  | ", stdout);

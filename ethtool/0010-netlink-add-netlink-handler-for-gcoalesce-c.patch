@@ -1,7 +1,7 @@
-From 0c483ccdd4a9cb4324a0904411ab0df62bc1cdd4 Mon Sep 17 00:00:00 2001
+From 3220651ae2de7557346fb1bca5c50492a69dd256 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
-Subject: [PATCH 09/20] netlink: add netlink handler for gcoalesce (-c)
+Subject: [PATCH 10/21] netlink: add netlink handler for gcoalesce (-c)
 
 Implement "ethtool -c <dev>" subcommand using netlink interface command
 ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_COALESCE mask.
@@ -35,10 +35,10 @@ index 483144d24c81..a0dbe5955333 100644
  	{ "-C|--coalesce", 1, do_scoalesce, NULL,
  	  "Set coalesce options",
 diff --git a/netlink.c b/netlink.c
-index e2b89c8b7d8f..527acfbdb029 100644
+index 26dac7e8fd52..361156230662 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -1752,6 +1752,98 @@ int nl_sset(struct cmd_context *ctx)
+@@ -2034,6 +2034,98 @@ int nl_sset(struct cmd_context *ctx)
  	return nlctx->exit_code ?: 75;
  }
  
@@ -137,7 +137,7 @@ index e2b89c8b7d8f..527acfbdb029 100644
  /* monitor */
  
  static struct {
-@@ -1766,6 +1858,10 @@ static struct {
+@@ -2048,6 +2140,10 @@ static struct {
  		.cmd	= ETHNL_CMD_SET_SETTINGS,
  		.cb	= settings_reply_cb,
  	},
@@ -148,7 +148,7 @@ index e2b89c8b7d8f..527acfbdb029 100644
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -1803,6 +1899,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -2085,6 +2181,11 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "|-s|--change",
  		.cmd		= ETHNL_CMD_SET_SETTINGS,
  	},

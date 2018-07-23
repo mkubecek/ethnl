@@ -1,7 +1,7 @@
-From 3ca71f168133cb20da2c05df353f8180c3c4369c Mon Sep 17 00:00:00 2001
+From f2f81ec88e92ff41dc5dd36db4a8a3b761516027 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
-Subject: [PATCH 05/20] netlink: add netlink handler for gdrv (-i)
+Subject: [PATCH 06/21] netlink: add netlink handler for gdrv (-i)
 
 Implement "-i" subcommand using netlink interface.
 
@@ -34,11 +34,11 @@ index 417ec95822ab..4f5558acdb46 100644
  	{ "-d|--register-dump", 1, do_gregs, NULL,
  	  "Do a register dump",
 diff --git a/netlink.c b/netlink.c
-index 20aaff198e57..afc8f2be1edb 100644
+index ae07f80df0cb..b25e9a2d9014 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -604,12 +604,59 @@ bool show_only(const struct nl_context *nlctx, uint32_t bits)
- 	return nlctx->filter_mask & ~bits;
+@@ -837,12 +837,59 @@ static int strset_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ 	return MNL_CB_OK;
  }
  
 +/* GET_DRVINFO */
@@ -97,7 +97,7 @@ index 20aaff198e57..afc8f2be1edb 100644
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -639,6 +686,10 @@ static struct monitor_option monitor_opts[] = {
+@@ -872,6 +919,10 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "--all",
  		.cmd		= 0,
  	},

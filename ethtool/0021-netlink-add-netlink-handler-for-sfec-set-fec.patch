@@ -1,7 +1,7 @@
-From 8bc930a8c80bbf00416786219aa1bee67513c54e Mon Sep 17 00:00:00 2001
+From fb8bc8c86f7aab9039be6e4e9aa0f3abd5021220 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:51:36 +0100
-Subject: [PATCH 20/20] netlink: add netlink handler for sfec (--set-fec)
+Subject: [PATCH 21/21] netlink: add netlink handler for sfec (--set-fec)
 
 Implement "ethtool --set-fec <dev>" subcommand using netlink interface
 command ETHTOOL_CMD_SET_PARAMS.
@@ -40,10 +40,10 @@ index 0fbd454ca3c7..1287f72444ad 100644
  	  "		[ encoding auto|off|rs|baser ]\n"},
  	{ "-h|--help", 0, show_usage, NULL,
 diff --git a/netlink.c b/netlink.c
-index e64fcd321dac..bf19130e3697 100644
+index 586f976721c8..a61b52e738e8 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -2387,6 +2387,23 @@ int nl_seee(struct cmd_context *ctx)
+@@ -2669,6 +2669,23 @@ int nl_seee(struct cmd_context *ctx)
  			    ETHA_EEE_MAX);
  }
  

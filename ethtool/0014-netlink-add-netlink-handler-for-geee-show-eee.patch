@@ -1,7 +1,7 @@
-From be5e8b0cf9b51b2281d95b937a00ca64cbe2bb02 Mon Sep 17 00:00:00 2001
+From 4bff82feebfe98be6174f3f13b28727607475019 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:08:21 +0100
-Subject: [PATCH 13/20] netlink: add netlink handler for geee (--show-eee)
+Subject: [PATCH 14/21] netlink: add netlink handler for geee (--show-eee)
 
 Implement "ethtool --show-eee <dev>" subcommand using netlink interface
 command ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_EEE mask.
@@ -35,10 +35,10 @@ index 8c6f25ce342c..5f683cbc0b7d 100644
  	{ "--set-eee", 1, do_seee, NULL,
  	  "Set EEE settings",
 diff --git a/netlink.c b/netlink.c
-index a596ce89e431..6dcf4b0b93fd 100644
+index 564a4219ed80..0c8bfe3d6911 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -1877,6 +1877,58 @@ static int show_channels(struct nl_context *nlctx, const struct nlattr *nest)
+@@ -2159,6 +2159,58 @@ static int show_channels(struct nl_context *nlctx, const struct nlattr *nest)
  	return 0;
  }
  
@@ -97,7 +97,7 @@ index a596ce89e431..6dcf4b0b93fd 100644
  static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
-@@ -1927,6 +1979,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -2209,6 +2261,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_ERROR;
  		}
  	}
@@ -113,7 +113,7 @@ index a596ce89e431..6dcf4b0b93fd 100644
  
  	return MNL_CB_OK;
  }
-@@ -1964,6 +2025,11 @@ int nl_gchannels(struct cmd_context *ctx)
+@@ -2246,6 +2307,11 @@ int nl_gchannels(struct cmd_context *ctx)
  	return params_request(ctx, ETH_PARAMS_IM_CHANNELS);
  }
  
@@ -125,7 +125,7 @@ index a596ce89e431..6dcf4b0b93fd 100644
  /* monitor */
  
  static struct {
-@@ -2039,6 +2105,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -2321,6 +2387,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
  		.info_mask	= ETH_PARAMS_IM_CHANNELS,
  	},

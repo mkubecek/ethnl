@@ -1,7 +1,7 @@
-From a1d2668e76a975cade63b375fb6b0204151b7017 Mon Sep 17 00:00:00 2001
+From 56f67f86315a60a23c95b456219463665efc3df0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:43:19 +0100
-Subject: [PATCH 19/20] netlink: add netlink handler for seee (--set-eee)
+Subject: [PATCH 20/21] netlink: add netlink handler for seee (--set-eee)
 
 Implement "ethtool --set-eee <dev>" subcommand using netlink interface
 command ETHTOOL_CMD_SET_PARAMS.
@@ -39,10 +39,10 @@ index 22132aec3c5a..0fbd454ca3c7 100644
  	  "		[ tx-timer %d ]\n"},
  	{ "--set-phy-tunable", 1, do_set_phy_tunable, NULL,
 diff --git a/netlink.c b/netlink.c
-index 213a64c3e5a4..e64fcd321dac 100644
+index 5d99f2033ec7..586f976721c8 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -2353,6 +2353,40 @@ int nl_schannels(struct cmd_context *ctx)
+@@ -2635,6 +2635,40 @@ int nl_schannels(struct cmd_context *ctx)
  			    ETHA_CHANNELS_MAX);
  }
  

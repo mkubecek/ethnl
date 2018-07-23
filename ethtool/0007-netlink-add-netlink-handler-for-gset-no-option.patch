@@ -1,7 +1,7 @@
-From 33a4a8f30d64c2a733abd5634929d6f617eb4daa Mon Sep 17 00:00:00 2001
+From b844512175f9d3b66fbcd6d3da88e50b97a922c3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
-Subject: [PATCH 06/20] netlink: add netlink handler for gset (no option)
+Subject: [PATCH 07/21] netlink: add netlink handler for gset (no option)
 
 Implement "ethtool <dev>" subcommand using netlink interface.
 
@@ -11,12 +11,12 @@ into new file common.c.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am |   2 +-
- common.c    | 285 ++++++++++++++++++++++++++++++++++++++++++++++++
- common.h    |  60 +++++++++++
- ethtool.c   | 151 ++------------------------
- netlink.c   | 304 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ common.c    | 285 ++++++++++++++++++++++++++++++++++++++++++
+ common.h    |  60 +++++++++
+ ethtool.c   | 151 ++--------------------
+ netlink.c   | 353 ++++++++++++++++++++++++++++++++++++++++++++++++++++
  netlink.h   |   1 +
- 6 files changed, 660 insertions(+), 143 deletions(-)
+ 6 files changed, 709 insertions(+), 143 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
 
@@ -621,7 +621,7 @@ index 4f5558acdb46..14f7df637938 100644
  	want_device = 1;
  
 diff --git a/netlink.c b/netlink.c
-index afc8f2be1edb..614e4bf46f27 100644
+index b25e9a2d9014..56a6917d26bd 100644
 --- a/netlink.c
 +++ b/netlink.c
 @@ -4,6 +4,7 @@
@@ -632,7 +632,7 @@ index afc8f2be1edb..614e4bf46f27 100644
  #include "netlink.h"
  
  #include <libmnl/libmnl.h>
-@@ -647,6 +648,301 @@ int nl_gdrv(struct cmd_context *ctx)
+@@ -880,6 +881,350 @@ int nl_gdrv(struct cmd_context *ctx)
  	return ethnl_send_get_request(ctx, drvinfo_reply_cb);
  }
  
@@ -643,7 +643,7 @@ index afc8f2be1edb..614e4bf46f27 100644
 +			   const char *between, const char *after,
 +			   const char *if_none)
 +{
-+	const struct nlattr *bitset_tb[ETHA_BIT_MAX + 1] = {};
++	const struct nlattr *bitset_tb[ETHA_BITSET_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(bitset_tb);
 +	const unsigned int before_len = strlen(before);
 +	const struct nlattr *bits;
@@ -654,8 +654,56 @@ index afc8f2be1edb..614e4bf46f27 100644
 +
 +	ret = mnl_attr_parse_nested(bitset, attr_cb, &bitset_tb_info);
 +	bits = bitset_tb[ETHA_BITSET_BITS];
-+	if (ret < 0 || !bits)
++	if (ret < 0)
 +		goto err_nonl;
++	if (!bits) {
++		const struct stringset *lm_strings =
++			&global_strings[ETH_SS_LINK_MODES];
++		unsigned int count;
++		unsigned int idx;
++		const char *name;
++
++		bits = mask ? bitset_tb[ETHA_BITSET_MASK] :
++			      bitset_tb[ETHA_BITSET_VALUE];
++		ret = -EFAULT;
++		if (!bits || !bitset_tb[ETHA_BITSET_SIZE])
++			goto err_nonl;
++		count = mnl_attr_get_u32(bitset_tb[ETHA_BITSET_SIZE]);
++		if (mnl_attr_get_payload_len(bits) / 4 < (count + 31) / 32)
++			goto err_nonl;
++
++		printf("\t%s", before);
++		for (idx = 0; idx < count; idx++) {
++			const uint32_t *raw_data = mnl_attr_get_payload(bits);
++			char buff[10];
++
++			if (!(raw_data[idx / 32] & (1U << (idx % 32))))
++				continue;
++			if (!lm_class_match(idx, class))
++				continue;
++			if (idx < lm_strings->count)
++				name = lm_strings->strings[idx];
++			else {
++				snprintf(buff, sizeof(buff), "b%d", idx);
++				name = buff;
++			}
++			if (first)
++				first = false;
++			/* ugly hack to preserve old output format */
++			if ((class == LM_CLASS_REAL) && (prev == idx - 1) &&
++			    (prev < link_modes_count) &&
++			    (link_modes[prev].class == LM_CLASS_REAL) &&
++			    (link_modes[prev].duplex == DUPLEX_HALF))
++				putchar(' ');
++			else if (between)
++				printf("\t%s", between);
++			else
++				printf("\n\t%*s", before_len, "");
++			printf("%s", name);
++			prev = idx;
++		}
++		goto after;
++	}
 +
 +	printf("\t%s", before);
 +	mnl_attr_for_each_nested(bit, bits) {
@@ -696,6 +744,7 @@ index afc8f2be1edb..614e4bf46f27 100644
 +		printf("%s", name);
 +		prev = idx;
 +	}
++after:
 +	if (first && if_none)
 +		printf("%s", if_none);
 +	printf(after);
@@ -934,7 +983,7 @@ index afc8f2be1edb..614e4bf46f27 100644
  /* monitor */
  
  static struct {
-@@ -657,6 +953,10 @@ static struct {
+@@ -890,6 +1235,10 @@ static struct {
  		.cmd	= ETHNL_CMD_SET_DRVINFO,
  		.cb	= drvinfo_reply_cb,
  	},
@@ -945,7 +994,7 @@ index afc8f2be1edb..614e4bf46f27 100644
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -690,6 +990,10 @@ static struct monitor_option monitor_opts[] = {
+@@ -923,6 +1272,10 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "-i|--driver",
  		.cmd		= ETHNL_CMD_SET_DRVINFO,
  	},

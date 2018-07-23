@@ -1,7 +1,7 @@
-From 90efb670599f375490d306b5d1f23113e168323c Mon Sep 17 00:00:00 2001
+From 2be61eb9637356406bd13d0001d8c51f1c67a42f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:05:40 +0100
-Subject: [PATCH 12/20] netlink: add netlink handler for gchannels (-l)
+Subject: [PATCH 13/21] netlink: add netlink handler for gchannels (-l)
 
 Implement "ethtool -l <dev>" subcommand using netlink interface command
 ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_CHANNELS mask.
@@ -35,10 +35,10 @@ index da62e9f079fd..8c6f25ce342c 100644
  	{ "-L|--set-channels", 1, do_schannels, NULL,
  	  "Set Channels",
 diff --git a/netlink.c b/netlink.c
-index fe7bd32b4209..a596ce89e431 100644
+index e376d52b384a..564a4219ed80 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -1849,6 +1849,34 @@ static int show_pause(struct nl_context *nlctx, const struct nlattr *nest)
+@@ -2131,6 +2131,34 @@ static int show_pause(struct nl_context *nlctx, const struct nlattr *nest)
  	return 0;
  }
  
@@ -73,7 +73,7 @@ index fe7bd32b4209..a596ce89e431 100644
  static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
-@@ -1890,6 +1918,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -2172,6 +2200,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_ERROR;
  		}
  	}
@@ -89,7 +89,7 @@ index fe7bd32b4209..a596ce89e431 100644
  
  	return MNL_CB_OK;
  }
-@@ -1922,6 +1959,11 @@ int nl_gpause(struct cmd_context *ctx)
+@@ -2204,6 +2241,11 @@ int nl_gpause(struct cmd_context *ctx)
  	return params_request(ctx, ETH_PARAMS_IM_PAUSE);
  }
  
@@ -101,7 +101,7 @@ index fe7bd32b4209..a596ce89e431 100644
  /* monitor */
  
  static struct {
-@@ -1992,6 +2034,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -2274,6 +2316,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
  		.info_mask	= ETH_PARAMS_IM_PAUSE,
  	},

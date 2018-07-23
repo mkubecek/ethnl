@@ -1,7 +1,7 @@
-From 58a4c8975922900ebb2bb2196d17f78ec358b7bd Mon Sep 17 00:00:00 2001
+From 797ff28e906530512481ad7794f3157469aa4691 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 07:27:00 +0100
-Subject: [PATCH 15/20] netlink: add netlink handler for scoalesce (-C)
+Subject: [PATCH 16/21] netlink: add netlink handler for scoalesce (-C)
 
 Implement "ethtool -C <dev>" subcommand using netlink interface command
 ETHTOOL_CMD_SET_PARAMS.
@@ -35,10 +35,10 @@ index 9fa793d828b5..ca8616e625eb 100644
  	  "		[adaptive-rx on|off]\n"
  	  "		[adaptive-tx on|off]\n"
 diff --git a/netlink.c b/netlink.c
-index 7e90ad061d6c..8343920bf23e 100644
+index 0227d9809c0d..655b1ebe2056 100644
 --- a/netlink.c
 +++ b/netlink.c
-@@ -1958,7 +1958,7 @@ static int show_fec(struct nl_context *nlctx, const struct nlattr *nest)
+@@ -2240,7 +2240,7 @@ static int show_fec(struct nl_context *nlctx, const struct nlattr *nest)
  	return 0;
  }
  
@@ -47,7 +47,7 @@ index 7e90ad061d6c..8343920bf23e 100644
  {
  	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
  	DECLARE_ATTR_TB_INFO(tb);
-@@ -2040,7 +2040,7 @@ static int params_request(struct cmd_context *ctx, uint16_t info_mask)
+@@ -2322,7 +2322,7 @@ static int params_request(struct cmd_context *ctx, uint16_t info_mask)
  		return ret;
  	if (ethnla_put_u32(ctx->nlctx, ETHA_PARAMS_INFOMASK, info_mask))
  		return -EMSGSIZE;
@@ -56,7 +56,7 @@ index 7e90ad061d6c..8343920bf23e 100644
  }
  
  int nl_gcoalesce(struct cmd_context *ctx)
-@@ -2073,6 +2073,190 @@ int nl_gfec(struct cmd_context *ctx)
+@@ -2355,6 +2355,190 @@ int nl_gfec(struct cmd_context *ctx)
  	return params_request(ctx, ETH_PARAMS_IM_FEC);
  }
  
