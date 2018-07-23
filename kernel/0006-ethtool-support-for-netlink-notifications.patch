@@ -1,7 +1,7 @@
-From 639bde36d8cc42db54214a18295965c0d8b98f4d Mon Sep 17 00:00:00 2001
+From ee0c36557ca0564ce4f392ca558d32d9da72c31c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
-Subject: [PATCH 06/13] ethtool: support for netlink notifications
+Subject: [PATCH 06/14] ethtool: support for netlink notifications
 
 Add infrastructure for ethtool netlink notifications. There is only one
 multicast group, "monitor" which userspace can use to get notifications.
@@ -18,10 +18,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/linux/ethtool_netlink.h      |  5 ++
  include/linux/netdevice.h            | 23 ++++++++
  include/uapi/linux/ethtool_netlink.h |  2 +
- net/core/dev.c                       | 24 ++++++++-
- net/ethtool/netlink.c                | 81 +++++++++++++++++++++++++++-
+ net/core/dev.c                       | 24 +++++++-
+ net/ethtool/netlink.c                | 82 +++++++++++++++++++++++++++-
  net/ethtool/netlink.h                |  5 ++
- 6 files changed, 138 insertions(+), 2 deletions(-)
+ 6 files changed, 139 insertions(+), 2 deletions(-)
 
 diff --git a/include/linux/ethtool_netlink.h b/include/linux/ethtool_netlink.h
 index 0412adb4f42f..2a15e64a16f3 100644
@@ -39,10 +39,10 @@ index 0412adb4f42f..2a15e64a16f3 100644
  
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index b683971e500d..141781998eb6 100644
+index c1295c7a452e..c4b0c575d57e 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -2425,6 +2425,7 @@ enum netdev_cmd {
+@@ -2444,6 +2444,7 @@ enum netdev_cmd {
  	NETDEV_CVLAN_FILTER_DROP_INFO,
  	NETDEV_SVLAN_FILTER_PUSH_INFO,
  	NETDEV_SVLAN_FILTER_DROP_INFO,
@@ -50,7 +50,7 @@ index b683971e500d..141781998eb6 100644
  };
  const char *netdev_cmd_to_name(enum netdev_cmd cmd);
  
-@@ -4196,6 +4197,28 @@ struct netdev_notifier_bonding_info {
+@@ -4221,6 +4222,28 @@ struct netdev_notifier_bonding_info {
  void netdev_bonding_info_change(struct net_device *dev,
  				struct netdev_bonding_info *bonding_info);
  
@@ -91,7 +91,7 @@ index 98d6fae315f3..444a668e4a08 100644
 +
  #endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/core/dev.c b/net/core/dev.c
-index d13cddcac41f..0a84c2c9c4f8 100644
+index 87c42c8249ae..8a0773a52dd7 100644
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
 @@ -1585,7 +1585,7 @@ const char *netdev_cmd_to_name(enum netdev_cmd cmd)
@@ -103,7 +103,7 @@ index d13cddcac41f..0a84c2c9c4f8 100644
  	}
  #undef N
  	return "UNKNOWN_NETDEV_EVENT";
-@@ -6932,6 +6932,28 @@ void netdev_bonding_info_change(struct net_device *dev,
+@@ -7058,6 +7058,28 @@ void netdev_bonding_info_change(struct net_device *dev,
  }
  EXPORT_SYMBOL(netdev_bonding_info_change);
  
@@ -133,7 +133,7 @@ index d13cddcac41f..0a84c2c9c4f8 100644
  {
  	struct netdev_adjacent *iter;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 7a858cd230db..46c08e66bc71 100644
+index 7a858cd230db..4c3709d7056c 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -6,6 +6,8 @@
@@ -157,7 +157,7 @@ index 7a858cd230db..46c08e66bc71 100644
  	ret = nla_parse_nested(tb, ETHA_DEV_MAX, nest, dev_policy,
  			       info->extack);
  	if (ret < 0)
-@@ -509,11 +516,68 @@ int ethnl_dumpit(struct sk_buff *skb, struct netlink_callback *cb)
+@@ -509,11 +516,69 @@ int ethnl_dumpit(struct sk_buff *skb, struct netlink_callback *cb)
  	return ret;
  }
  
@@ -172,6 +172,7 @@ index 7a858cd230db..46c08e66bc71 100644
 +{
 +	unsigned int cmd = info->ethtool_info.cmd;
 +
++	ASSERT_RTNL();
 +	if (likely(cmd < ARRAY_SIZE(ethnl_notify_handlers) &&
 +		   ethnl_notify_handlers[cmd]))
 +		ethnl_notify_handlers[cmd](info);
@@ -226,7 +227,7 @@ index 7a858cd230db..46c08e66bc71 100644
  struct genl_family ethtool_genl_family = {
  	.hdrsize	= 0,
  	.name		= ETHTOOL_GENL_NAME,
-@@ -522,17 +586,32 @@ struct genl_family ethtool_genl_family = {
+@@ -522,17 +587,32 @@ struct genl_family ethtool_genl_family = {
  	.parallel_ops	= true,
  	.ops		= ethtool_genl_ops,
  	.n_ops		= ARRAY_SIZE(ethtool_genl_ops),

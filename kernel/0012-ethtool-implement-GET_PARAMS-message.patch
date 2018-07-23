@@ -1,7 +1,7 @@
-From e34e4bb71eed17b8a68d83cea4f873bee4f31519 Mon Sep 17 00:00:00 2001
+From b85b12b8fe521c9d040bb895e784c62f19ba48f7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
-Subject: [PATCH 11/13] ethtool: implement GET_PARAMS message
+Subject: [PATCH 12/14] ethtool: implement GET_PARAMS message
 
 Requests the information provide by ETHTOOL_GCOALESCE, ETHTOOL_GRINGPARAM,
 ETHTOOL_GPAUSEPARAM, ETHTOOL_GCHANNELS, ETHTOOL_GEEE and ETHTOOL_GFECPARAM.
@@ -9,19 +9,19 @@ Flags in info_mask allow selecting only some (or on) of these categories.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  98 +++-
- include/uapi/linux/ethtool_netlink.h         | 119 +++++
+ Documentation/networking/ethtool-netlink.txt | 107 +++-
+ include/uapi/linux/ethtool_netlink.h         | 119 ++++
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/netlink.c                        |  12 +
- net/ethtool/params.c                         | 533 +++++++++++++++++++
- 5 files changed, 757 insertions(+), 7 deletions(-)
+ net/ethtool/netlink.c                        |  10 +
+ net/ethtool/params.c                         | 538 +++++++++++++++++++
+ 5 files changed, 769 insertions(+), 7 deletions(-)
  create mode 100644 net/ethtool/params.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 75e304c3bdf2..e915464d8d2e 100644
+index 8cfdb6c96d30..042205954c09 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -111,6 +111,8 @@ List of message types
+@@ -124,6 +124,8 @@ List of message types
      ETHNL_CMD_SET_DRVINFO		response only
      ETHNL_CMD_GET_SETTINGS
      ETHNL_CMD_SET_SETTINGS
@@ -30,7 +30,7 @@ index 75e304c3bdf2..e915464d8d2e 100644
  
  All constants use ETHNL_CMD_ prefix followed by "GET", "SET" or "ACT" to
  indicate the type.
-@@ -231,6 +233,90 @@ is supposed to allow requesting changes without knowing what exactly kernel
+@@ -263,6 +265,99 @@ is supposed to allow requesting changes without knowing what exactly kernel
  supports.
  
  
@@ -44,10 +44,14 @@ index 75e304c3bdf2..e915464d8d2e 100644
 +of these, there is a bit in header info_mask so that only one type of
 +information can be requested.
 +
-+Header flags:
-+    ETH_PARAMS_RF_COMPACT_BITSETS	bitset form in response (1 is compact)
++Request contents:
 +
-+Header info_mask bits:
++    ETHA_PARAMS_DEV		(nested)	device identification
++    ETHA_PARAMS_INFOMASK	(u32)		info mask
++    ETHA_PARAMS_COMPACT		(flag)		request compact bitsets
++
++Info mask bits:
++
 +    ETH_PARAMS_IM_COALESCE		coalescing settings
 +    ETH_PARAMS_IM_RING			ring parameters
 +    ETH_PARAMS_IM_PAUSE			pause parameters
@@ -55,10 +59,11 @@ index 75e304c3bdf2..e915464d8d2e 100644
 +    ETH_PARAMS_IM_EEE			EEE settings
 +    ETH_PARAMS_IM_FEC			FEC parameters
 +
-+On top level, there is one attribute for each of the information categories,
-+the information is nested in it.
++Response contents: On top level, there is one attribute for each of the
++information categories, the information is nested in it.
 +
-+    ETHA_PARAMS_COALESCE	(nest)		coalescing
++    ETHA_PARAMS_DEV		(nested)	device identification
++    ETHA_PARAMS_COALESCE	(nested)	coalescing
 +        ETHA_COALESCE_RX_USECS			(u32)
 +        ETHA_COALESCE_RX_MAXFRM			(u32)
 +        ETHA_COALESCE_RX_USECS_IRQ		(u32)
@@ -81,7 +86,7 @@ index 75e304c3bdf2..e915464d8d2e 100644
 +        ETHA_COALESCE_TX_USE_ADAPTIVE		(bool)
 +        ETHA_COALESCE_RATE_SAMPLE_INTERVAL	(u32)
 +        ETHA_COALESCE_STATS_BLOCK_USECS		(u32)
-+    ETHA_PARAMS_RING		(nest)		ring parameters
++    ETHA_PARAMS_RING		(nested)	ring parameters
 +        ETHA_RING_RX_MAX_PENDING		(u32)
 +        ETHA_RING_RX_MINI_MAX_PENDING		(u32)
 +        ETHA_RING_RX_JUMBO_MAX_PENDING		(u32)
@@ -90,11 +95,11 @@ index 75e304c3bdf2..e915464d8d2e 100644
 +        ETHA_RING_RX_MINI_PENDING		(u32)
 +        ETHA_RING_RX_JUMBO_PENDING		(u32)
 +        ETHA_RING_TX_PENDING			(u32)
-+    ETHA_PARAMS_PAUSE		(nest)		pause parameters
++    ETHA_PARAMS_PAUSE		(nested)	pause parameters
 +        ETHA_PAUSE_AUTONEG			(bool)
 +        ETHA_PAUSE_RX				(bool)
 +        ETHA_PAUSE_TX				(bool)
-+    ETHA_PARAMS_CHANNELS	(nest)		channel settings
++    ETHA_PARAMS_CHANNELS	(nested)	channel settings
 +        ETHA_CHANNELS_MAX_RX			(u32)
 +        ETHA_CHANNELS_MAX_TX			(u32)
 +        ETHA_CHANNELS_MAX_OTHER			(u32)
@@ -103,7 +108,7 @@ index 75e304c3bdf2..e915464d8d2e 100644
 +        ETHA_CHANNELS_TX_COUNT			(u32)
 +        ETHA_CHANNELS_OTHER_COUNT		(u32)
 +        ETHA_CHANNELS_COMBINED_COUNT		(u32)
-+    ETHA_PARAMS_EEE		(nest)		EEE settings
++    ETHA_PARAMS_EEE		(nested)	EEE settings
 +        ETHA_EEE_LINK_MODES			(bitset)
 +		- modes for which EEE is advertised (value) or supported (mask)
 +        ETHA_EEE_PEER_MODES			(bitset)
@@ -112,16 +117,20 @@ index 75e304c3bdf2..e915464d8d2e 100644
 +        ETHA_EEE_ENABLED			(bool)
 +        ETHA_EEE_TX_LPI_ENABLED			(bool)
 +        ETHA_EEE_TX_LPI_TIMER			(u32)
-+    ETHA_PARAMS_FEC		(nest)		FEC parameters
++    ETHA_PARAMS_FEC		(nested)	FEC parameters
 +        ETHA_FEC_MODES				(bitfield32)
 +		- active (value) and configured (selector) FEC encodings
++
++GET_PARAMS requests allow dumps and messages in the same format as response
++to them are broadcasted as notifications on change of these settings using
++netlink or ioctl ethtool interface.
 +
 +
 +
  Request translation
  -------------------
  
-@@ -252,11 +338,11 @@ ETHTOOL_NWAY_RST		n/a
+@@ -284,11 +379,11 @@ ETHTOOL_NWAY_RST		n/a
  ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
@@ -136,7 +145,7 @@ index 75e304c3bdf2..e915464d8d2e 100644
  ETHTOOL_SPAUSEPARAM		n/a
  ETHTOOL_GRXCSUM			n/a
  ETHTOOL_SRXCSUM			n/a
-@@ -298,7 +384,7 @@ ETHTOOL_GRXFHINDIR		n/a
+@@ -330,7 +425,7 @@ ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		n/a
  ETHTOOL_SFEATURES		n/a
@@ -145,7 +154,7 @@ index 75e304c3bdf2..e915464d8d2e 100644
  ETHTOOL_SCHANNELS		n/a
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
-@@ -306,7 +392,7 @@ ETHTOOL_GET_DUMP_DATA		n/a
+@@ -338,7 +433,7 @@ ETHTOOL_GET_DUMP_DATA		n/a
  ETHTOOL_GET_TS_INFO		n/a
  ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a
@@ -154,7 +163,7 @@ index 75e304c3bdf2..e915464d8d2e 100644
  ETHTOOL_SEEE			n/a
  ETHTOOL_GRSSH			n/a
  ETHTOOL_SRSSH			n/a
-@@ -318,6 +404,6 @@ ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
+@@ -350,6 +445,6 @@ ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a
@@ -163,10 +172,10 @@ index 75e304c3bdf2..e915464d8d2e 100644
  ETHTOOL_SFECPARAM		n/a
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 45be0f03bed5..ccdf7ceb08cd 100644
+index 1653a957f70f..d01eea2f822c 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -11,6 +11,8 @@ enum {
+@@ -13,6 +13,8 @@ enum {
  	ETHNL_CMD_SET_DRVINFO,		/* only for reply */
  	ETHNL_CMD_GET_SETTINGS,
  	ETHNL_CMD_SET_SETTINGS,
@@ -175,7 +184,7 @@ index 45be0f03bed5..ccdf7ceb08cd 100644
  
  	__ETHNL_CMD_MAX,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_MAX - 1)
-@@ -113,6 +115,123 @@ enum {
+@@ -155,6 +157,123 @@ enum {
  
  #define ETH_SETTINGS_IM_DEFAULT			0x1f
  
@@ -300,36 +309,37 @@ index 45be0f03bed5..ccdf7ceb08cd 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/Makefile b/net/ethtool/Makefile
-index 4af6607d7c9c..cd27751de400 100644
+index 8dd98310ed6f..10aeedcee336 100644
 --- a/net/ethtool/Makefile
 +++ b/net/ethtool/Makefile
 @@ -4,4 +4,4 @@ obj-y				+= ioctl.o common.o
  
  obj-$(CONFIG_ETHTOOL_NETLINK)	+= ethtool_nl.o
  
--ethtool_nl-y	:= netlink.o drvinfo.o settings.o
-+ethtool_nl-y	:= netlink.o drvinfo.o settings.o params.o
+-ethtool_nl-y	:= netlink.o strset.o drvinfo.o settings.o
++ethtool_nl-y	:= netlink.o strset.o drvinfo.o settings.o params.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 9acb7f1aeb68..73ba1513c366 100644
+index 854ac94beb37..6093f7c09b33 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -632,10 +632,15 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -634,13 +634,16 @@ int ethnl_get_strset(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
 +int ethnl_get_params(struct sk_buff *skb, struct genl_info *info);
  
+ int ethnl_strset_start(struct netlink_callback *cb);
  int ethnl_drvinfo_start(struct netlink_callback *cb);
  int ethnl_settings_start(struct netlink_callback *cb);
 +int ethnl_params_start(struct netlink_callback *cb);
-+
+ 
+ int ethnl_strset_done(struct netlink_callback *cb);
  int ethnl_settings_done(struct netlink_callback *cb);
 +int ethnl_params_done(struct netlink_callback *cb);
-+
+ 
  static const struct genl_ops ethtool_genl_ops[] = {
  	{
- 		.cmd	= ETHNL_CMD_GET_DRVINFO,
-@@ -655,6 +660,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -668,6 +671,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_settings,
  	},
@@ -345,10 +355,10 @@ index 9acb7f1aeb68..73ba1513c366 100644
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
 new file mode 100644
-index 000000000000..b75ecc10e9f3
+index 000000000000..e5f5484b6fb8
 --- /dev/null
 +++ b/net/ethtool/params.c
-@@ -0,0 +1,533 @@
+@@ -0,0 +1,538 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
@@ -368,19 +378,20 @@ index 000000000000..b75ecc10e9f3
 +};
 +
 +struct params_data {
-+	struct ethtool_coalesce coalesce;
-+	struct ethtool_channels channels;
-+	struct ethtool_pauseparam pause;
-+	struct ethtool_ringparam ring;
-+	struct ethtool_fecparam fec;
-+	struct ethtool_eee eee;
-+	u32 req_mask;
++	struct ethtool_coalesce		coalesce;
++	struct ethtool_channels		channels;
++	struct ethtool_pauseparam	pause;
++	struct ethtool_ringparam	ring;
++	struct ethtool_eee		eee;
++	struct ethtool_fecparam		fec;
++	u32				req_mask;
 +};
 +
 +struct params_reqinfo {
-+	struct net_device *dev;
-+	u32 req_mask;
-+	bool compact;
++	struct net_device		*dev;
++	u32				req_mask;
++	bool				compact;
++	bool				have_rtnl;
 +};
 +
 +static int ethnl_get_coalesce(struct net_device *dev,
@@ -701,6 +712,8 @@ index 000000000000..b75ecc10e9f3
 +	int ret;
 +
 +	memset(data, '\0', sizeof(*data));
++	if (!req_info->have_rtnl)
++		rtnl_lock();
 +	if (req_mask & ETH_PARAMS_IM_COALESCE) {
 +		ret = ethnl_get_coalesce(dev, &data->coalesce);
 +		if (ret < 0) {
@@ -743,6 +756,8 @@ index 000000000000..b75ecc10e9f3
 +			req_mask &= ~ETH_PARAMS_IM_FEC;
 +		}
 +	}
++	if (!req_info->have_rtnl)
++		rtnl_unlock();
 +
 +	data->req_mask = req_mask;
 +	return 0;
@@ -831,7 +846,7 @@ index 000000000000..b75ecc10e9f3
 +}
 +
 +static int params_dump(struct sk_buff *skb, struct netlink_callback *cb,
-+			struct net_device *dev)
++		       struct net_device *dev)
 +{
 +	struct params_data data;
 +	struct params_reqinfo *req_info;

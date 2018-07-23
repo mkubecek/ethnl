@@ -1,7 +1,7 @@
-From 4b9f983e02be6a19532050a7b22e62f5bb28ae46 Mon Sep 17 00:00:00 2001
+From 64eaf018f14dbff60b16ac8297a87c6d3d99ffb8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
-Subject: [PATCH 03/13] ethtool: introduce ethtool netlink interface
+Subject: [PATCH 03/14] ethtool: introduce ethtool netlink interface
 
 No function implemented yet, only genetlink and module infrastructure.
 Register/unregister genetlink family "ethtool" and allow the module to be
@@ -10,14 +10,14 @@ probably prefer "y").
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 155 +++++++++++++++++++
- include/linux/ethtool_netlink.h              |   9 ++
+ Documentation/networking/ethtool-netlink.txt | 168 +++++++++++++++++++
+ include/linux/ethtool_netlink.h              |   9 +
  include/uapi/linux/ethtool_netlink.h         |  19 +++
  net/Kconfig                                  |   7 +
  net/ethtool/Makefile                         |   6 +-
  net/ethtool/netlink.c                        |  41 +++++
  net/ethtool/netlink.h                        |  12 ++
- 7 files changed, 248 insertions(+), 1 deletion(-)
+ 7 files changed, 261 insertions(+), 1 deletion(-)
  create mode 100644 Documentation/networking/ethtool-netlink.txt
  create mode 100644 include/linux/ethtool_netlink.h
  create mode 100644 include/uapi/linux/ethtool_netlink.h
@@ -26,10 +26,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 new file mode 100644
-index 000000000000..d3982a20a32a
+index 000000000000..f8c29fe1b048
 --- /dev/null
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -0,0 +1,155 @@
+@@ -0,0 +1,168 @@
 +                        Netlink interface for ethtool
 +                        =============================
 +
@@ -39,18 +39,9 @@ index 000000000000..d3982a20a32a
 +
 +Netlink interface for ethtool uses generic netlink family "ethtool" (userspace
 +application should use macros ETHTOOL_GENL_NAME and ETHTOOL_GENL_VERSION
-+defined in <linux/ethtool_netlink.h> uapi header). This family uses a message
-+header of 24 bytes:
-+
-+struct ethnlmsghdr {
-+	__u32   ifindex;
-+	__u16   flags;
-+	union {
-+		__u16   info_mask;
-+		__u16	index;
-+	}
-+	char    ifname[IFNAMSIZ];
-+};
++defined in <linux/ethtool_netlink.h> uapi header). This family does not use
++a specific header, all information in requests and replies is passed using
++netlink attributes.
 +
 +In requests, device can be identified by ifindex or by name; if both are used,
 +they must match. In replies, kernel fills both. The meaning of flags,
@@ -79,6 +70,26 @@ index 000000000000..d3982a20a32a
 +in "set" requests). For these attributes, the "true" value should be passed as
 +number 1 but any non-zero value should be understood as "true" by recipient.
 +
++Some request types allow passing an attribute named ETHA_*_INFOMASK with
++a bitmask telling kernel that we are only interested in some parts of the
++information. If info mask is omitted, all available information is returned.
++Meaning of info mask bits depends on request type and is listed below.
++
++
++Device identification
++---------------------
++
++When appropriate, network device is identified by a nested attribute named
++ETHA_*_DEV. This attribute can contain
++
++    ETHA_DEV_INDEX	(u32)		device ifindex
++    ETHA_DEV_NAME	(string)	device name
++
++In device related requests, one of these is sufficient; if both are used, they
++must match (i.e. identify the same device). In device related replies both are
++provided by kernel. In dump requests, device is not specified and kernel
++replies with one message per network device (only those for which the request
++is supported).
 +
 +List of message types
 +---------------------
@@ -88,9 +99,11 @@ index 000000000000..d3982a20a32a
 +
 +Messages of type "get" are used by userspace to request information and
 +usually do not contain any attributes (that may be added later for dump
-+filtering). Kernel response is in the form of corresopinding "set" message;
++filtering). Kernel response is in the form of corresponding "set" message;
 +the same message can be also used to set (some of) the parameters, except for
-+messages marked as "response only" in the table above.
++messages marked as "response only" in the table above. "Get" messages with
++NLM_F_DUMP flags and no device identification dump the information for all
++devices supporting the request.
 +
 +Later sections describe the format and semantics of these request messages.
 +

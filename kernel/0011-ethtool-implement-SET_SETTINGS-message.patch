@@ -1,7 +1,7 @@
-From 85b2b7c9ae04ba9d4c136e16e8c00162a3f7a5a3 Mon Sep 17 00:00:00 2001
+From 2ad657cc6555ca13c42d40496b73f5f8c5dc9f70 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
-Subject: [PATCH 10/13] ethtool: implement SET_SETTINGS message
+Subject: [PATCH 11/14] ethtool: implement SET_SETTINGS message
 
 Sets the information provided by ETHTOOL_SLINKSETTINGS, ETHTOOL_SWOL and
 ETHTOOL_SMSGLVL. Unlike with ioctl(), userspace can send only some
@@ -11,16 +11,16 @@ some setting).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  42 +-
+ Documentation/networking/ethtool-netlink.txt |  43 +-
  net/ethtool/netlink.c                        |   6 +
  net/ethtool/settings.c                       | 494 +++++++++++++++++++
- 3 files changed, 537 insertions(+), 5 deletions(-)
+ 3 files changed, 538 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 994aed9aa488..75e304c3bdf2 100644
+index f845a7b94156..8cfdb6c96d30 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -110,7 +110,7 @@ List of message types
+@@ -123,7 +123,7 @@ List of message types
      ETHNL_CMD_GET_DRVINFO
      ETHNL_CMD_SET_DRVINFO		response only
      ETHNL_CMD_GET_SETTINGS
@@ -29,8 +29,8 @@ index 994aed9aa488..75e304c3bdf2 100644
  
  All constants use ETHNL_CMD_ prefix followed by "GET", "SET" or "ACT" to
  indicate the type.
-@@ -199,6 +199,38 @@ is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
- requests.
+@@ -230,6 +230,39 @@ to them are broadcasted as notifications on change of these settings using
+ netlink or ioctl ethtool interface.
  
  
 +SET_SETTINGS
@@ -40,6 +40,7 @@ index 994aed9aa488..75e304c3bdf2 100644
 +Request flags, info_mask and index are ignored. These attributes are allowed
 +to be passed with SET_SETTINGS request:
 +
++    ETHA_SETTINGS_DEV		(nested)	device identification
 +    ETHA_SETTINGS_SPEED         (u32)           link speed (Mb/s)
 +    ETHA_SETTINGS_DUPLEX        (u8)            duplex mode
 +    ETHA_SETTINGS_PORT          (u8)            physical port
@@ -68,7 +69,7 @@ index 994aed9aa488..75e304c3bdf2 100644
  Request translation
  -------------------
  
-@@ -209,13 +241,13 @@ have their netlink replacement yet.
+@@ -240,13 +273,13 @@ have their netlink replacement yet.
  ioctl command			netlink command
  ---------------------------------------------------------------------
  ETHTOOL_GSET			ETHNL_CMD_GET_SETTINGS
@@ -85,7 +86,7 @@ index 994aed9aa488..75e304c3bdf2 100644
  ETHTOOL_NWAY_RST		n/a
  ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
-@@ -283,7 +315,7 @@ ETHTOOL_STUNABLE		n/a
+@@ -314,7 +347,7 @@ ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
  ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
@@ -95,18 +96,18 @@ index 994aed9aa488..75e304c3bdf2 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 90846fbd6d53..9acb7f1aeb68 100644
+index d1f6f4347a96..854ac94beb37 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -631,6 +631,7 @@ static struct notifier_block ethnl_netdev_notifier = {
- 
+@@ -633,6 +633,7 @@ static struct notifier_block ethnl_netdev_notifier = {
+ int ethnl_get_strset(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info);
 +int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  
+ int ethnl_strset_start(struct netlink_callback *cb);
  int ethnl_drvinfo_start(struct netlink_callback *cb);
- int ethnl_settings_start(struct netlink_callback *cb);
-@@ -649,6 +650,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -662,6 +663,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_dumpit,
  		.done	= ethnl_settings_done,
  	},
@@ -119,16 +120,16 @@ index 90846fbd6d53..9acb7f1aeb68 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 8d4598ca90c6..ee0d1c673fc2 100644
+index e8dd00ba60f8..0c3fab771b13 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -21,6 +21,222 @@ struct settings_reqinfo {
- 	bool is_privileged;
+@@ -22,6 +22,222 @@ struct settings_reqinfo {
+ 	bool				have_rtnl;
  };
  
 +struct link_mode_info {
-+	int speed;
-+	u8 duplex;
++	int				speed;
++	u8				duplex;
 +};
 +
 +static const struct link_mode_info link_mode_params[] = {
@@ -345,7 +346,7 @@ index 8d4598ca90c6..ee0d1c673fc2 100644
  /* We want to allow ~0 as selector for backward compatibility (to just set
   * given set of modes, whatever kernel supports) so that we allow all bits
   * on validation and do our own sanity check later.
-@@ -447,3 +663,281 @@ void ethnl_settings_notify(struct netdev_notifier_ethtool_info *info)
+@@ -451,3 +667,281 @@ void ethnl_settings_notify(struct netdev_notifier_ethtool_info *info)
  err_skb:
  	nlmsg_free(skb);
  }

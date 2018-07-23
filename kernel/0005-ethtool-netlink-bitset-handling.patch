@@ -1,7 +1,7 @@
-From 4cc5c06bccefc84c21540abb7358212f547f6c96 Mon Sep 17 00:00:00 2001
+From 4840a30716ed99008f047db8397b34ab38a76423 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
-Subject: [PATCH 05/13] ethtool: netlink bitset handling
+Subject: [PATCH 05/14] ethtool: netlink bitset handling
 
 Declare attribute type constants and add helper functions to handle
 arbitrary length bit sets.
@@ -15,12 +15,12 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 450 insertions(+)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index d3982a20a32a..293af5db8100 100644
+index f8c29fe1b048..320470454809 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -48,6 +48,62 @@ in "set" requests). For these attributes, the "true" value should be passed as
- number 1 but any non-zero value should be understood as "true" by recipient.
- 
+@@ -59,6 +59,62 @@ provided by kernel. In dump requests, device is not specified and kernel
+ replies with one message per network device (only those for which the request
+ is supported).
  
 +Bit sets
 +--------
