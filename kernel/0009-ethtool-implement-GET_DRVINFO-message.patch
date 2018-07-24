@@ -1,7 +1,7 @@
-From 7ba8760c8e5e1056bc099c262a42a585ad24ba6c Mon Sep 17 00:00:00 2001
+From 4f80a4d571cdd01c5d937f5428e268b24301e987 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
-Subject: [PATCH 08/14] ethtool: implement GET_DRVINFO message
+Subject: [PATCH 09/15] ethtool: implement GET_DRVINFO message
 
 Requests the same information as ETHTOOL_GDRVINFO command in ioct
 interface. This is read-only so that corresponding SET_DRVINFO exists but
@@ -21,20 +21,20 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/drvinfo.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 9336f3f8da7c..e019f7dc190b 100644
+index 8b43f41a8140..1e3d5ffc97ab 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -120,6 +120,8 @@ List of message types
- 
+@@ -121,6 +121,8 @@ List of message types
+     ETHNL_CMD_EVENT			notification only
      ETHNL_CMD_GET_STRSET
      ETHNL_CMD_SET_STRSET		response only
 +    ETHNL_CMD_GET_DRVINFO
 +    ETHNL_CMD_SET_DRVINFO		response only
  
- All constants use ETHNL_CMD_ prefix followed by "GET", "SET" or "ACT" to
- indicate the type.
-@@ -135,6 +137,40 @@ devices supporting the request.
- Later sections describe the format and semantics of these request messages.
+ All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
+ to indicate the type.
+@@ -156,6 +158,40 @@ and also multiple events of the same type (e.g. two or more newly registered
+ devices).
  
  
 +GET_DRVINFO
@@ -74,7 +74,7 @@ index 9336f3f8da7c..e019f7dc190b 100644
  Request translation
  -------------------
  
-@@ -146,7 +182,7 @@ ioctl command			netlink command
+@@ -167,7 +203,7 @@ ioctl command			netlink command
  ---------------------------------------------------------------------
  ETHTOOL_GSET			n/a
  ETHTOOL_SSET			n/a
@@ -84,11 +84,11 @@ index 9336f3f8da7c..e019f7dc190b 100644
  ETHTOOL_GWOL			n/a
  ETHTOOL_SWOL			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 3820c70cdfb7..4d9a859184f3 100644
+index 5177c1940c2b..df4de61fac48 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -9,6 +9,8 @@ enum {
- 	ETHNL_CMD_NOOP,
+@@ -10,6 +10,8 @@ enum {
+ 	ETHNL_CMD_EVENT,		/* only for notifications */
  	ETHNL_CMD_GET_STRSET,
  	ETHNL_CMD_SET_STRSET,		/* only for reply */
 +	ETHNL_CMD_GET_DRVINFO,
@@ -96,7 +96,7 @@ index 3820c70cdfb7..4d9a859184f3 100644
  
  	__ETHNL_CMD_MAX,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_MAX - 1)
-@@ -96,6 +98,26 @@ enum {
+@@ -124,6 +126,26 @@ enum {
  	ETHA_STRSET_MAX = (__ETHA_STRSET_MAX - 1)
  };
  
@@ -414,10 +414,10 @@ index a91b597073f8..7b5831d35bca 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 81218e67f627..3dff4693c6d0 100644
+index e7608af72aa2..4c4fb4df20f3 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -573,8 +573,10 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -617,8 +617,10 @@ static struct notifier_block ethnl_netdev_notifier = {
  /* genetlink setup */
  
  int ethnl_get_strset(struct sk_buff *skb, struct genl_info *info);
@@ -428,7 +428,7 @@ index 81218e67f627..3dff4693c6d0 100644
  
  int ethnl_strset_done(struct netlink_callback *cb);
  
-@@ -586,6 +588,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -630,6 +632,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_dumpit,
  		.done	= ethnl_strset_done,
  	},

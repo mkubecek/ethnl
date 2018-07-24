@@ -1,7 +1,7 @@
-From 2ad657cc6555ca13c42d40496b73f5f8c5dc9f70 Mon Sep 17 00:00:00 2001
+From dbae48fe282269b1df36f1799efaf92dbf08639d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
-Subject: [PATCH 11/14] ethtool: implement SET_SETTINGS message
+Subject: [PATCH 12/15] ethtool: implement SET_SETTINGS message
 
 Sets the information provided by ETHTOOL_SLINKSETTINGS, ETHTOOL_SWOL and
 ETHTOOL_SMSGLVL. Unlike with ioctl(), userspace can send only some
@@ -17,19 +17,19 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 538 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index f845a7b94156..8cfdb6c96d30 100644
+index 60d426cf6dad..623fb5dca24d 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -123,7 +123,7 @@ List of message types
+@@ -124,7 +124,7 @@ List of message types
      ETHNL_CMD_GET_DRVINFO
      ETHNL_CMD_SET_DRVINFO		response only
      ETHNL_CMD_GET_SETTINGS
 -    ETHNL_CMD_SET_SETTINGS		response only (for now)
 +    ETHNL_CMD_SET_SETTINGS
  
- All constants use ETHNL_CMD_ prefix followed by "GET", "SET" or "ACT" to
- indicate the type.
-@@ -230,6 +230,39 @@ to them are broadcasted as notifications on change of these settings using
+ All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
+ to indicate the type.
+@@ -251,6 +251,39 @@ to them are broadcasted as notifications on change of these settings using
  netlink or ioctl ethtool interface.
  
  
@@ -69,7 +69,7 @@ index f845a7b94156..8cfdb6c96d30 100644
  Request translation
  -------------------
  
-@@ -240,13 +273,13 @@ have their netlink replacement yet.
+@@ -261,13 +294,13 @@ have their netlink replacement yet.
  ioctl command			netlink command
  ---------------------------------------------------------------------
  ETHTOOL_GSET			ETHNL_CMD_GET_SETTINGS
@@ -86,7 +86,7 @@ index f845a7b94156..8cfdb6c96d30 100644
  ETHTOOL_NWAY_RST		n/a
  ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
-@@ -314,7 +347,7 @@ ETHTOOL_STUNABLE		n/a
+@@ -335,7 +368,7 @@ ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
  ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
@@ -96,10 +96,10 @@ index f845a7b94156..8cfdb6c96d30 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index d1f6f4347a96..854ac94beb37 100644
+index f3440002b62a..3226e4b1c3c2 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -633,6 +633,7 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -677,6 +677,7 @@ static struct notifier_block ethnl_netdev_notifier = {
  int ethnl_get_strset(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info);
@@ -107,7 +107,7 @@ index d1f6f4347a96..854ac94beb37 100644
  
  int ethnl_strset_start(struct netlink_callback *cb);
  int ethnl_drvinfo_start(struct netlink_callback *cb);
-@@ -662,6 +663,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -706,6 +707,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_dumpit,
  		.done	= ethnl_settings_done,
  	},

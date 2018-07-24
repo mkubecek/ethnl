@@ -1,7 +1,7 @@
-From 64eaf018f14dbff60b16ac8297a87c6d3d99ffb8 Mon Sep 17 00:00:00 2001
+From 441a83fe46abd0d1c1b3e20db9b5c52c603c4cc3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
-Subject: [PATCH 03/14] ethtool: introduce ethtool netlink interface
+Subject: [PATCH 03/15] ethtool: introduce ethtool netlink interface
 
 No function implemented yet, only genetlink and module infrastructure.
 Register/unregister genetlink family "ethtool" and allow the module to be
@@ -26,7 +26,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 new file mode 100644
-index 000000000000..f8c29fe1b048
+index 000000000000..120376e0f91b
 --- /dev/null
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -0,0 +1,168 @@
@@ -94,8 +94,8 @@ index 000000000000..f8c29fe1b048
 +List of message types
 +---------------------
 +
-+All constants use ETHNL_CMD_ prefix followed by "GET", "SET" or "ACT" to
-+indicate the type.
++All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
++to indicate the type.
 +
 +Messages of type "get" are used by userspace to request information and
 +usually do not contain any attributes (that may be added later for dump

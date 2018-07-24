@@ -1,7 +1,7 @@
-From 1e2dbc0b5b67662da329b7836563193e4bb1768a Mon Sep 17 00:00:00 2001
+From 692d50501b62632c21014dd5c5882cc066c3ecfc Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:43:07 -0400
-Subject: [PATCH 13/14] ethtool: implement SET_PARAMS notification
+Subject: [PATCH 14/15] ethtool: implement SET_PARAMS notification
 
 SET_PARAMS notification message has the same format as response to
 GET_PARAMS request and is broadcasted on change of relevant fields. Info
@@ -148,7 +148,7 @@ index 0e09b290b4e8..3463d4af871e 100644
  
  /* The main entry point in this file.  Called from net/core/dev_ioctl.c */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 6093f7c09b33..810995c186cc 100644
+index e2f6774f2bf6..e20d99b63f7b 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -577,8 +577,11 @@ int ethnl_dumpit(struct sk_buff *skb, struct netlink_callback *cb)

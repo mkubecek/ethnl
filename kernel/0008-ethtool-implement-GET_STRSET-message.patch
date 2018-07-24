@@ -1,7 +1,7 @@
-From c8805ea618c96a061b28fa6e21aee32450c5e534 Mon Sep 17 00:00:00 2001
+From f7925a734d4a3dda3a21434cc2a8ac0975ac1234 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
-Subject: [PATCH 07/14] ethtool: implement GET_STRSET message
+Subject: [PATCH 08/15] ethtool: implement GET_STRSET message
 
 Requests a contents of a string set, i.e. indexed array of strings; this
 information is provided by ETHTOOL_GSSET_INFO and ETHTOOL_GSTRINGS commands
@@ -19,7 +19,7 @@ request can also retrieve list of link modes.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |   7 +-
+ Documentation/networking/ethtool-netlink.txt |   6 +-
  include/uapi/linux/ethtool.h                 |   4 +
  include/uapi/linux/ethtool_netlink.h         |  42 ++
  net/ethtool/Makefile                         |   2 +-
@@ -27,27 +27,26 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/common.h                         |  13 +
  net/ethtool/ioctl.c                          |  80 ---
  net/ethtool/netlink.c                        |  13 +
- net/ethtool/strset.c                         | 554 +++++++++++++++++++
- 9 files changed, 719 insertions(+), 83 deletions(-)
+ net/ethtool/strset.c                         | 552 +++++++++++++++++++
+ 9 files changed, 716 insertions(+), 83 deletions(-)
  create mode 100644 net/ethtool/common.c
  create mode 100644 net/ethtool/common.h
  create mode 100644 net/ethtool/strset.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 320470454809..9336f3f8da7c 100644
+index 0e83397f2975..8b43f41a8140 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -118,6 +118,9 @@ which the request applies.
- List of message types
+@@ -119,6 +119,8 @@ List of message types
  ---------------------
  
+     ETHNL_CMD_EVENT			notification only
 +    ETHNL_CMD_GET_STRSET
 +    ETHNL_CMD_SET_STRSET		response only
-+
- All constants use ETHNL_CMD_ prefix followed by "GET", "SET" or "ACT" to
- indicate the type.
  
-@@ -166,7 +169,7 @@ ETHTOOL_STXCSUM			n/a
+ All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
+ to indicate the type.
+@@ -188,7 +190,7 @@ ETHTOOL_STXCSUM			n/a
  ETHTOOL_GSG			n/a
  ETHTOOL_SSG			n/a
  ETHTOOL_TEST			n/a
@@ -56,7 +55,7 @@ index 320470454809..9336f3f8da7c 100644
  ETHTOOL_PHYS_ID			n/a
  ETHTOOL_GSTATS			n/a
  ETHTOOL_GTSO			n/a
-@@ -194,7 +197,7 @@ ETHTOOL_FLASHDEV		n/a
+@@ -216,7 +218,7 @@ ETHTOOL_FLASHDEV		n/a
  ETHTOOL_RESET			n/a
  ETHTOOL_SRXNTUPLE		n/a
  ETHTOOL_GRXNTUPLE		n/a
@@ -81,20 +80,20 @@ index 7363f18e65a5..2ae393963704 100644
  
  /**
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 444a668e4a08..3820c70cdfb7 100644
+index f162cd6f80d4..5177c1940c2b 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -7,6 +7,8 @@
- 
+@@ -8,6 +8,8 @@
  enum {
  	ETHNL_CMD_NOOP,
+ 	ETHNL_CMD_EVENT,		/* only for notifications */
 +	ETHNL_CMD_GET_STRSET,
 +	ETHNL_CMD_SET_STRSET,		/* only for reply */
  
  	__ETHNL_CMD_MAX,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_MAX - 1)
-@@ -54,6 +56,46 @@ enum {
- 	ETHA_BITSET_MAX = (__ETHA_BITSET_MAX - 1)
+@@ -82,6 +84,46 @@ enum {
+ 	ETHA_EVENT_MAX = (__ETHA_EVENT_MAX - 1)
  };
  
 +/* string sets */
@@ -354,10 +353,10 @@ index c9993c6c2fd4..a91b597073f8 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 4c3709d7056c..81218e67f627 100644
+index 9fc76b759128..e7608af72aa2 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -572,7 +572,20 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -616,7 +616,20 @@ static struct notifier_block ethnl_netdev_notifier = {
  
  /* genetlink setup */
  
@@ -380,10 +379,10 @@ index 4c3709d7056c..81218e67f627 100644
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
 new file mode 100644
-index 000000000000..e3e7fb3cae6c
+index 000000000000..32543c68fae8
 --- /dev/null
 +++ b/net/ethtool/strset.c
-@@ -0,0 +1,554 @@
+@@ -0,0 +1,552 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include <linux/ethtool.h>
@@ -698,7 +697,6 @@ index 000000000000..e3e7fb3cae6c
 +{
 +	unsigned int i;
 +	int ret;
-+	const char *dn = dev ? netdev_name(dev) : "(null)";
 +
 +	memset(data, '\0', sizeof(*data));
 +	memcpy(&data->info, &info_template, sizeof(data->info));
@@ -724,7 +722,6 @@ index 000000000000..e3e7fb3cae6c
 +			goto err_free;
 +
 +		ret = prepare_one_stringset(&data->info[i], dev, i);
-+			data->info[i].count, data->info[i].data.ptr, !!data->info[i].free_data);
 +		if (ret < 0)
 +			goto err_free;
 +	}

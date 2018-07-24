@@ -1,7 +1,7 @@
-From 5868c29b9d299c25d846bf65575404eb58faf378 Mon Sep 17 00:00:00 2001
+From 785cf5e19cf0744b31be095b8492a7cb0688279d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:36:49 -0400
-Subject: [PATCH 10/14] ethtool: implement SET_SETTINGS notification
+Subject: [PATCH 11/15] ethtool: implement SET_SETTINGS notification
 
 SET_SETTINGS notification message has the same format as response to
 GET_SETTINGS request and is broadcasted on change of relevant fields. Info
@@ -101,7 +101,7 @@ index 8613434b6fc0..0e09b290b4e8 100644
  	case ETHTOOL_GEEE:
  		rc = ethtool_get_eee(dev, useraddr);
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 9d1527af5fb3..d1f6f4347a96 100644
+index c0bb3648d53f..f3440002b62a 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -576,7 +576,9 @@ int ethnl_dumpit(struct sk_buff *skb, struct netlink_callback *cb)

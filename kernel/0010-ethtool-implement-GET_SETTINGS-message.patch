@@ -1,7 +1,7 @@
-From a24f908236ce6f30c2fb0d3c347793fae7c80308 Mon Sep 17 00:00:00 2001
+From e3d240989968599eba7cc039b255191a7a3ba637 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
-Subject: [PATCH 09/14] ethtool: implement GET_SETTINGS message
+Subject: [PATCH 10/15] ethtool: implement GET_SETTINGS message
 
 Requests the information provided by ETHTOOL_GLINKSETTINGS, ETHTOOL_GWOL
 and ETHTOOL_GMSGLVL. The info_mask header field can be used to request only
@@ -26,19 +26,19 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index e019f7dc190b..f845a7b94156 100644
+index 1e3d5ffc97ab..60d426cf6dad 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -122,6 +122,8 @@ List of message types
+@@ -123,6 +123,8 @@ List of message types
      ETHNL_CMD_SET_STRSET		response only
      ETHNL_CMD_GET_DRVINFO
      ETHNL_CMD_SET_DRVINFO		response only
 +    ETHNL_CMD_GET_SETTINGS
 +    ETHNL_CMD_SET_SETTINGS		response only (for now)
  
- All constants use ETHNL_CMD_ prefix followed by "GET", "SET" or "ACT" to
- indicate the type.
-@@ -171,6 +173,63 @@ GET_DRVINFO requests).
+ All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
+ to indicate the type.
+@@ -192,6 +194,63 @@ GET_DRVINFO requests).
  GET_DRVINFO requests allow dumps.
  
  
@@ -102,7 +102,7 @@ index e019f7dc190b..f845a7b94156 100644
  Request translation
  -------------------
  
-@@ -180,16 +239,16 @@ have their netlink replacement yet.
+@@ -201,16 +260,16 @@ have their netlink replacement yet.
  
  ioctl command			netlink command
  ---------------------------------------------------------------------
@@ -123,7 +123,7 @@ index e019f7dc190b..f845a7b94156 100644
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		n/a
-@@ -254,7 +313,7 @@ ETHTOOL_GTUNABLE		n/a
+@@ -275,7 +334,7 @@ ETHTOOL_GTUNABLE		n/a
  ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
@@ -174,10 +174,10 @@ index 2ae393963704..98f645a38168 100644
  #define ETHTOOL_BUSINFO_LEN	32
  #define ETHTOOL_EROMVERS_LEN	32
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 4d9a859184f3..1653a957f70f 100644
+index df4de61fac48..66df44aa7226 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -11,6 +11,8 @@ enum {
+@@ -12,6 +12,8 @@ enum {
  	ETHNL_CMD_SET_STRSET,		/* only for reply */
  	ETHNL_CMD_GET_DRVINFO,
  	ETHNL_CMD_SET_DRVINFO,		/* only for reply */
@@ -186,7 +186,7 @@ index 4d9a859184f3..1653a957f70f 100644
  
  	__ETHNL_CMD_MAX,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_MAX - 1)
-@@ -118,6 +120,41 @@ enum {
+@@ -146,6 +148,41 @@ enum {
  	ETHA_DRVINFO_MAX = (__ETHA_DRVINFO_MAX - 1)
  };
  
@@ -520,7 +520,7 @@ index 7b5831d35bca..8613434b6fc0 100644
  		return -EFAULT;
  	return 0;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 3dff4693c6d0..9d1527af5fb3 100644
+index 4c4fb4df20f3..c0bb3648d53f 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -2,12 +2,68 @@
@@ -592,7 +592,7 @@ index 3dff4693c6d0..9d1527af5fb3 100644
  static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
  	[ETHA_DEV_UNSPEC]	= { .type = NLA_UNSPEC },
  	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -574,11 +630,14 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -618,11 +674,14 @@ static struct notifier_block ethnl_netdev_notifier = {
  
  int ethnl_get_strset(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
@@ -607,7 +607,7 @@ index 3dff4693c6d0..9d1527af5fb3 100644
  
  static const struct genl_ops ethtool_genl_ops[] = {
  	{
-@@ -594,6 +653,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -638,6 +697,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.start	= ethnl_drvinfo_start,
  		.dumpit	= ethnl_dumpit,
  	},
@@ -621,7 +621,7 @@ index 3dff4693c6d0..9d1527af5fb3 100644
  };
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
-@@ -618,6 +684,9 @@ static int __init ethtool_nl_init(void)
+@@ -662,6 +728,9 @@ static int __init ethtool_nl_init(void)
  {
  	int ret;
  
