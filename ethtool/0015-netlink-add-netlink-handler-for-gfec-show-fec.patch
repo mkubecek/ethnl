@@ -1,4 +1,4 @@
-From e3baf9dd6e76c7f6f8012a5cffd5d90c5f9ed806 Mon Sep 17 00:00:00 2001
+From 48cf0f39680b33648206e26700624be93de322c9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
 Subject: [PATCH 15/21] netlink: add netlink handler for gfec (--show-fec)

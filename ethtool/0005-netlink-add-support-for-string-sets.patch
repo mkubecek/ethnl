@@ -1,4 +1,4 @@
-From d505f030ff2265a5d889bed5511a3fea501bf6a4 Mon Sep 17 00:00:00 2001
+From a990034d16d43c355664168c338fcdae7b7a3d9c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 14:09:19 +0200
 Subject: [PATCH 05/21] netlink: add support for string sets

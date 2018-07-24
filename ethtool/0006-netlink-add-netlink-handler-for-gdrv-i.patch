@@ -1,4 +1,4 @@
-From 43b3414b486b3a68d471f1e6ddcea109381b70da Mon Sep 17 00:00:00 2001
+From bc5ad7f3a0c75880239c8ed63dc82621cbce9364 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
 Subject: [PATCH 06/21] netlink: add netlink handler for gdrv (-i)

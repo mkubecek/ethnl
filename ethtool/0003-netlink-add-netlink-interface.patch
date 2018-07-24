@@ -1,4 +1,4 @@
-From 62b9735145ef0f7899eacce465ea317bab051384 Mon Sep 17 00:00:00 2001
+From fb0814148d5a3e71f5ee91d484d2a839c7a040ff Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 03/21] netlink: add netlink interface
@@ -26,10 +26,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  netlink/netlink.c            | 481 +++++++++++++++++++++++++++++++++++
  netlink/netlink.h            | 143 +++++++++++
  uapi/linux/ethtool.h         |   7 +
- uapi/linux/ethtool_netlink.h | 283 +++++++++++++++++++++
+ uapi/linux/ethtool_netlink.h | 311 ++++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 +++++++
  uapi/linux/netlink.h         | 247 ++++++++++++++++++
- 11 files changed, 1413 insertions(+), 56 deletions(-)
+ 11 files changed, 1441 insertions(+), 56 deletions(-)
  create mode 100644 netlink/extapi.h
  create mode 100644 netlink/netlink.c
  create mode 100644 netlink/netlink.h
@@ -1122,10 +1122,10 @@ index 9dd347caf4ed..c51a966bb46e 100644
  /**
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..2e016ae4b4d7
+index 000000000000..36ecf6904c31
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,283 @@
+@@ -0,0 +1,311 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#ifndef _LINUX_ETHTOOL_NETLINK_H_
@@ -1135,6 +1135,7 @@ index 000000000000..2e016ae4b4d7
 +
 +enum {
 +	ETHNL_CMD_NOOP,
++	ETHNL_CMD_EVENT,		/* only for notifications */
 +	ETHNL_CMD_GET_STRSET,
 +	ETHNL_CMD_SET_STRSET,		/* only for reply */
 +	ETHNL_CMD_GET_DRVINFO,
@@ -1188,6 +1189,33 @@ index 000000000000..2e016ae4b4d7
 +
 +	__ETHA_BITSET_MAX,
 +	ETHA_BITSET_MAX = (__ETHA_BITSET_MAX - 1)
++};
++
++/* events */
++
++enum {
++	ETHA_NEWDEV_UNSPEC,
++	ETHA_NEWDEV_DEV,			/* nest - ETHA_DEV_* */
++
++	__ETHA_NEWDEV_MAX,
++	ETHA_NEWDEV_MAX = (__ETHA_NEWDEV_MAX - 1)
++};
++
++enum {
++	ETHA_DELDEV_UNSPEC,
++	ETHA_DELDEV_DEV,			/* nest - ETHA_DEV_* */
++
++	__ETHA_DELDEV_MAX,
++	ETHA_DELDEV_MAX = (__ETHA_DELDEV_MAX - 1)
++};
++
++enum {
++	ETHA_EVENT_UNSPEC,
++	ETHA_EVENT_NEWDEV,			/* nest - ETHA_NEWDEV_* */
++	ETHA_EVENT_DELDEV,			/* nest - ETHA_DELDEV_* */
++
++	__ETHA_EVENT_MAX,
++	ETHA_EVENT_MAX = (__ETHA_EVENT_MAX - 1)
 +};
 +
 +/* string sets */

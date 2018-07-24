@@ -1,4 +1,4 @@
-From 9d9d07cc92e8c1bf63014444a97417a18d201de1 Mon Sep 17 00:00:00 2001
+From 5d78ef269e66545bd0758c54accc353a99dccbbe Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:04:09 +0100
 Subject: [PATCH 12/21] netlink: add netlink handler for gpause (-a)

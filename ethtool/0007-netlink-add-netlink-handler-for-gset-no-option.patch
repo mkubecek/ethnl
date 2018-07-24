@@ -1,4 +1,4 @@
-From 2a04a7c5381f8ab0782ac6ef984dd86966439b2a Mon Sep 17 00:00:00 2001
+From 778310a4ae939c8b5cb9a97a1f0cc8c7ea8f29b3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 07/21] netlink: add netlink handler for gset (no option)
