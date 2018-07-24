@@ -1,4 +1,4 @@
-From fb8bc8c86f7aab9039be6e4e9aa0f3abd5021220 Mon Sep 17 00:00:00 2001
+From 8a7fe7073964bc74a23af734669c9b6309a2ffd1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:51:36 +0100
 Subject: [PATCH 21/21] netlink: add netlink handler for sfec (--set-fec)
@@ -13,16 +13,16 @@ taken from the example in commit message of kernel commit 1a5f3da20bd9
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- ethtool.c |  3 ++-
- netlink.c | 17 +++++++++++++++++
- netlink.h |  1 +
+ ethtool.c        |  3 ++-
+ netlink/extapi.h |  1 +
+ netlink/params.c | 17 +++++++++++++++++
  3 files changed, 20 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 0fbd454ca3c7..1287f72444ad 100644
+index 126ac605102d..43ece6d2c68a 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4930,6 +4930,7 @@ int nl_sring(struct cmd_context *ctx) { return 0; }
+@@ -4933,6 +4933,7 @@ int nl_sring(struct cmd_context *ctx) { return 0; }
  int nl_spause(struct cmd_context *ctx) { return 0; }
  int nl_schannels(struct cmd_context *ctx) { return 0; }
  int nl_seee(struct cmd_context *ctx) { return 0; }
@@ -30,7 +30,7 @@ index 0fbd454ca3c7..1287f72444ad 100644
  #endif
  
  static const struct option {
-@@ -5139,7 +5140,7 @@ static const struct option {
+@@ -5142,7 +5143,7 @@ static const struct option {
  	  "		[ all ]\n"},
  	{ "--show-fec", 1, do_gfec, nl_gfec,
  	  "Show FEC settings"},
@@ -39,14 +39,27 @@ index 0fbd454ca3c7..1287f72444ad 100644
  	  "Set FEC settings",
  	  "		[ encoding auto|off|rs|baser ]\n"},
  	{ "-h|--help", 0, show_usage, NULL,
-diff --git a/netlink.c b/netlink.c
-index 586f976721c8..a61b52e738e8 100644
---- a/netlink.c
-+++ b/netlink.c
-@@ -2669,6 +2669,23 @@ int nl_seee(struct cmd_context *ctx)
+diff --git a/netlink/extapi.h b/netlink/extapi.h
+index de89e3385e95..d6995886ed70 100644
+--- a/netlink/extapi.h
++++ b/netlink/extapi.h
+@@ -27,6 +27,7 @@ int nl_sring(struct cmd_context *ctx);
+ int nl_spause(struct cmd_context *ctx);
+ int nl_schannels(struct cmd_context *ctx);
+ int nl_seee(struct cmd_context *ctx);
++int nl_sfec(struct cmd_context *ctx);
+ int nl_monitor(struct cmd_context *ctx);
+ 
+ void monitor_usage();
+diff --git a/netlink/params.c b/netlink/params.c
+index fb2c8670ca96..7b96349f68a1 100644
+--- a/netlink/params.c
++++ b/netlink/params.c
+@@ -642,3 +642,20 @@ int nl_seee(struct cmd_context *ctx)
+ 	return nl_set_param(ctx, "--set-eee", seee_params, ETHA_PARAMS_EEE,
  			    ETHA_EEE_MAX);
  }
- 
++
 +static const struct param_parser sfec_params[] = {
 +	{
 +		.arg		= "modes",
@@ -63,22 +76,6 @@ index 586f976721c8..a61b52e738e8 100644
 +	return nl_set_param(ctx, "--set-fec", sfec_params, ETHA_PARAMS_FEC,
 +			    ETHA_FEC_MAX);
 +}
-+
- /* monitor */
- 
- static struct {
-diff --git a/netlink.h b/netlink.h
-index bff65d5aa409..d34a0ae6a1b2 100644
---- a/netlink.h
-+++ b/netlink.h
-@@ -21,6 +21,7 @@ int nl_sring(struct cmd_context *ctx);
- int nl_spause(struct cmd_context *ctx);
- int nl_schannels(struct cmd_context *ctx);
- int nl_seee(struct cmd_context *ctx);
-+int nl_sfec(struct cmd_context *ctx);
- int nl_monitor(struct cmd_context *ctx);
- 
- void monitor_usage();
 -- 
 2.18.0
 

@@ -1,4 +1,4 @@
-From 85a136e4e34e1e077a38e6947cc9a84bb4db3a10 Mon Sep 17 00:00:00 2001
+From e3baf9dd6e76c7f6f8012a5cffd5d90c5f9ed806 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
 Subject: [PATCH 15/21] netlink: add netlink handler for gfec (--show-fec)
@@ -15,12 +15,13 @@ correction modes").
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- common.c  | 10 ++++++++++
- common.h  |  2 ++
- ethtool.c |  3 ++-
- netlink.c | 48 ++++++++++++++++++++++++++++++++++++++++++++++++
- netlink.h |  1 +
- 5 files changed, 63 insertions(+), 1 deletion(-)
+ common.c          | 10 ++++++++++
+ common.h          |  2 ++
+ ethtool.c         |  3 ++-
+ netlink/extapi.h  |  1 +
+ netlink/monitor.c |  5 +++++
+ netlink/params.c  | 43 +++++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 63 insertions(+), 1 deletion(-)
 
 diff --git a/common.c b/common.c
 index 59897acd2512..a065dde34101 100644
@@ -57,10 +58,10 @@ index a980b844a0ed..aafd98530fe8 100644
  
  enum link_mode_class {
 diff --git a/ethtool.c b/ethtool.c
-index 5f683cbc0b7d..9fa793d828b5 100644
+index ec3ac1e5ad1e..30992de8de23 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4924,6 +4924,7 @@ int nl_gring(struct cmd_context *ctx) { return 0; }
+@@ -4927,6 +4927,7 @@ int nl_gring(struct cmd_context *ctx) { return 0; }
  int nl_gpause(struct cmd_context *ctx) { return 0; }
  int nl_gchannels(struct cmd_context *ctx) { return 0; }
  int nl_geee(struct cmd_context *ctx) { return 0; }
@@ -68,7 +69,7 @@ index 5f683cbc0b7d..9fa793d828b5 100644
  #endif
  
  static const struct option {
-@@ -5131,7 +5132,7 @@ static const struct option {
+@@ -5134,7 +5135,7 @@ static const struct option {
  	  "		[ ap-shared ]\n"
  	  "		[ dedicated ]\n"
  	  "		[ all ]\n"},
@@ -77,11 +78,39 @@ index 5f683cbc0b7d..9fa793d828b5 100644
  	  "Show FEC settings"},
  	{ "--set-fec", 1, do_sfec, NULL,
  	  "Set FEC settings",
-diff --git a/netlink.c b/netlink.c
-index 0c8bfe3d6911..0227d9809c0d 100644
---- a/netlink.c
-+++ b/netlink.c
-@@ -2211,6 +2211,35 @@ static int show_eee(struct nl_context *nlctx, const struct nlattr *nest)
+diff --git a/netlink/extapi.h b/netlink/extapi.h
+index 961afb02a26a..0df0af85d9c5 100644
+--- a/netlink/extapi.h
++++ b/netlink/extapi.h
+@@ -21,6 +21,7 @@ int nl_gring(struct cmd_context *ctx);
+ int nl_gpause(struct cmd_context *ctx);
+ int nl_gchannels(struct cmd_context *ctx);
+ int nl_geee(struct cmd_context *ctx);
++int nl_gfec(struct cmd_context *ctx);
+ int nl_monitor(struct cmd_context *ctx);
+ 
+ void monitor_usage();
+diff --git a/netlink/monitor.c b/netlink/monitor.c
+index 5c9e95981bd8..1fdc33d5ad92 100644
+--- a/netlink/monitor.c
++++ b/netlink/monitor.c
+@@ -86,6 +86,11 @@ static struct monitor_option monitor_opts[] = {
+ 		.cmd		= ETHNL_CMD_SET_PARAMS,
+ 		.info_mask	= ETH_PARAMS_IM_EEE,
+ 	},
++	{
++		.pattern	= "--show-fec|--set-fec",
++		.cmd		= ETHNL_CMD_SET_PARAMS,
++		.info_mask	= ETH_PARAMS_IM_FEC,
++	},
+ };
+ 
+ static bool pattern_match(const char *s, const char *pattern)
+diff --git a/netlink/params.c b/netlink/params.c
+index 973881047d75..bdce8d84e025 100644
+--- a/netlink/params.c
++++ b/netlink/params.c
+@@ -185,6 +185,35 @@ static int show_eee(struct nl_context *nlctx, const struct nlattr *nest)
  	return 0;
  }
  
@@ -114,10 +143,10 @@ index 0c8bfe3d6911..0227d9809c0d 100644
 +	return 0;
 +}
 +
- static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
-@@ -2270,6 +2299,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -244,6 +273,15 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_ERROR;
  		}
  	}
@@ -133,42 +162,15 @@ index 0c8bfe3d6911..0227d9809c0d 100644
  
  	return MNL_CB_OK;
  }
-@@ -2312,6 +2350,11 @@ int nl_geee(struct cmd_context *ctx)
+@@ -285,3 +323,8 @@ int nl_geee(struct cmd_context *ctx)
+ {
  	return params_request(ctx, ETH_PARAMS_IM_EEE);
  }
- 
++
 +int nl_gfec(struct cmd_context *ctx)
 +{
 +	return params_request(ctx, ETH_PARAMS_IM_FEC);
 +}
-+
- /* monitor */
- 
- static struct {
-@@ -2392,6 +2435,11 @@ static struct monitor_option monitor_opts[] = {
- 		.cmd		= ETHNL_CMD_SET_PARAMS,
- 		.info_mask	= ETH_PARAMS_IM_EEE,
- 	},
-+	{
-+		.pattern	= "--show-fec|--set-fec",
-+		.cmd		= ETHNL_CMD_SET_PARAMS,
-+		.info_mask	= ETH_PARAMS_IM_FEC,
-+	},
- };
- 
- static bool pattern_match(const char *s, const char *pattern)
-diff --git a/netlink.h b/netlink.h
-index 221afae69d98..cb1fb581981e 100644
---- a/netlink.h
-+++ b/netlink.h
-@@ -15,6 +15,7 @@ int nl_gring(struct cmd_context *ctx);
- int nl_gpause(struct cmd_context *ctx);
- int nl_gchannels(struct cmd_context *ctx);
- int nl_geee(struct cmd_context *ctx);
-+int nl_gfec(struct cmd_context *ctx);
- int nl_monitor(struct cmd_context *ctx);
- 
- void monitor_usage();
 -- 
 2.18.0
 

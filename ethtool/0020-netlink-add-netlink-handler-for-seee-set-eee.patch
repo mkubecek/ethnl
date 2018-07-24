@@ -1,4 +1,4 @@
-From 56f67f86315a60a23c95b456219463665efc3df0 Mon Sep 17 00:00:00 2001
+From 8f5269443316a169b9a53f506da812837c8c07e2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:43:19 +0100
 Subject: [PATCH 20/21] netlink: add netlink handler for seee (--set-eee)
@@ -8,16 +8,16 @@ command ETHTOOL_CMD_SET_PARAMS.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- ethtool.c |  5 +++--
- netlink.c | 34 ++++++++++++++++++++++++++++++++++
- netlink.h |  1 +
+ ethtool.c        |  5 +++--
+ netlink/extapi.h |  1 +
+ netlink/params.c | 34 ++++++++++++++++++++++++++++++++++
  3 files changed, 38 insertions(+), 2 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 22132aec3c5a..0fbd454ca3c7 100644
+index c9d00cfcb3a0..126ac605102d 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4929,6 +4929,7 @@ int nl_scoalesce(struct cmd_context *ctx) { return 0; }
+@@ -4932,6 +4932,7 @@ int nl_scoalesce(struct cmd_context *ctx) { return 0; }
  int nl_sring(struct cmd_context *ctx) { return 0; }
  int nl_spause(struct cmd_context *ctx) { return 0; }
  int nl_schannels(struct cmd_context *ctx) { return 0; }
@@ -25,7 +25,7 @@ index 22132aec3c5a..0fbd454ca3c7 100644
  #endif
  
  static const struct option {
-@@ -5101,10 +5102,10 @@ static const struct option {
+@@ -5104,10 +5105,10 @@ static const struct option {
  	  "		[ length N ]\n" },
  	{ "--show-eee", 1, do_geee, nl_geee,
  	  "Show EEE settings"},
@@ -38,14 +38,27 @@ index 22132aec3c5a..0fbd454ca3c7 100644
  	  "		[ tx-lpi on|off ]\n"
  	  "		[ tx-timer %d ]\n"},
  	{ "--set-phy-tunable", 1, do_set_phy_tunable, NULL,
-diff --git a/netlink.c b/netlink.c
-index 5d99f2033ec7..586f976721c8 100644
---- a/netlink.c
-+++ b/netlink.c
-@@ -2635,6 +2635,40 @@ int nl_schannels(struct cmd_context *ctx)
+diff --git a/netlink/extapi.h b/netlink/extapi.h
+index 05c775be1b15..de89e3385e95 100644
+--- a/netlink/extapi.h
++++ b/netlink/extapi.h
+@@ -26,6 +26,7 @@ int nl_scoalesce(struct cmd_context *ctx);
+ int nl_sring(struct cmd_context *ctx);
+ int nl_spause(struct cmd_context *ctx);
+ int nl_schannels(struct cmd_context *ctx);
++int nl_seee(struct cmd_context *ctx);
+ int nl_monitor(struct cmd_context *ctx);
+ 
+ void monitor_usage();
+diff --git a/netlink/params.c b/netlink/params.c
+index 63fe3d22a2d6..fb2c8670ca96 100644
+--- a/netlink/params.c
++++ b/netlink/params.c
+@@ -608,3 +608,37 @@ int nl_schannels(struct cmd_context *ctx)
+ 	return nl_set_param(ctx, "-L", schannels_params, ETHA_PARAMS_CHANNELS,
  			    ETHA_CHANNELS_MAX);
  }
- 
++
 +static const struct param_parser seee_params[] = {
 +	{
 +		.arg		= "advertise",
@@ -79,22 +92,6 @@ index 5d99f2033ec7..586f976721c8 100644
 +	return nl_set_param(ctx, "--set-eee", seee_params, ETHA_PARAMS_EEE,
 +			    ETHA_EEE_MAX);
 +}
-+
- /* monitor */
- 
- static struct {
-diff --git a/netlink.h b/netlink.h
-index fe8dd0b3fd84..bff65d5aa409 100644
---- a/netlink.h
-+++ b/netlink.h
-@@ -20,6 +20,7 @@ int nl_scoalesce(struct cmd_context *ctx);
- int nl_sring(struct cmd_context *ctx);
- int nl_spause(struct cmd_context *ctx);
- int nl_schannels(struct cmd_context *ctx);
-+int nl_seee(struct cmd_context *ctx);
- int nl_monitor(struct cmd_context *ctx);
- 
- void monitor_usage();
 -- 
 2.18.0
 

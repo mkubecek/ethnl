@@ -1,4 +1,4 @@
-From 3220651ae2de7557346fb1bca5c50492a69dd256 Mon Sep 17 00:00:00 2001
+From e433fbea363b3482fcd5315e9d3be7263152487b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
 Subject: [PATCH 10/21] netlink: add netlink handler for gcoalesce (-c)
@@ -8,16 +8,32 @@ ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_COALESCE mask.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- ethtool.c |   3 +-
- netlink.c | 101 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- netlink.h |   1 +
- 3 files changed, 104 insertions(+), 1 deletion(-)
+ Makefile.am       |   2 +-
+ ethtool.c         |   3 +-
+ netlink/extapi.h  |   1 +
+ netlink/monitor.c |  10 +++++
+ netlink/params.c  | 101 ++++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 115 insertions(+), 2 deletions(-)
+ create mode 100644 netlink/params.c
 
+diff --git a/Makefile.am b/Makefile.am
+index fbc76a1c8306..3c3546db3135 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -24,7 +24,7 @@ ethtool_SOURCES += \
+ 		  netlink/netlink.c netlink/netlink.h netlink/extapi.h \
+ 		  netlink/monitor.c netlink/strset.c netlink/strset.h \
+ 		  netlink/parser.c netlink/parser.h \
+-		  netlink/drvinfo.c netlink/settings.c \
++		  netlink/drvinfo.c netlink/settings.c netlink/params.c \
+ 		  uapi/linux/ethtool_netlink.h \
+ 		  uapi/linux/netlink.h uapi/linux/genetlink.h
+ ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 483144d24c81..a0dbe5955333 100644
+index 5db28bfda62e..78dc65da0194 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4919,6 +4919,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4922,6 +4922,7 @@ static int show_usage(struct cmd_context *ctx);
  int nl_gdrv(struct cmd_context *ctx) { return 0; }
  int nl_gset(struct cmd_context *ctx) { return 0; }
  int nl_sset(struct cmd_context *ctx) { return 0; }
@@ -25,7 +41,7 @@ index 483144d24c81..a0dbe5955333 100644
  #endif
  
  static const struct option {
-@@ -4949,7 +4950,7 @@ static const struct option {
+@@ -4952,7 +4953,7 @@ static const struct option {
  	  "		[ autoneg on|off ]\n"
  	  "		[ rx on|off ]\n"
  	  "		[ tx on|off ]\n" },
@@ -34,14 +50,69 @@ index 483144d24c81..a0dbe5955333 100644
  	  "Show coalesce options" },
  	{ "-C|--coalesce", 1, do_scoalesce, NULL,
  	  "Set coalesce options",
-diff --git a/netlink.c b/netlink.c
-index 26dac7e8fd52..361156230662 100644
---- a/netlink.c
-+++ b/netlink.c
-@@ -2034,6 +2034,98 @@ int nl_sset(struct cmd_context *ctx)
- 	return nlctx->exit_code ?: 75;
- }
+diff --git a/netlink/extapi.h b/netlink/extapi.h
+index 66573f0b4304..a34843d71616 100644
+--- a/netlink/extapi.h
++++ b/netlink/extapi.h
+@@ -16,6 +16,7 @@ int netlink_done(struct cmd_context *ctx);
+ int nl_gdrv(struct cmd_context *ctx);
+ int nl_gset(struct cmd_context *ctx);
+ int nl_sset(struct cmd_context *ctx);
++int nl_gcoalesce(struct cmd_context *ctx);
+ int nl_monitor(struct cmd_context *ctx);
  
+ void monitor_usage();
+diff --git a/netlink/monitor.c b/netlink/monitor.c
+index f6a18d98a21f..14ce14e29b34 100644
+--- a/netlink/monitor.c
++++ b/netlink/monitor.c
+@@ -6,6 +6,7 @@
+ 
+ int drvinfo_reply_cb(const struct nlmsghdr *nlhdr, void *data);
+ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);
++int params_reply_cb(const struct nlmsghdr *nlhdr, void *data);
+ 
+ static struct {
+ 	uint8_t		cmd;
+@@ -19,6 +20,10 @@ static struct {
+ 		.cmd	= ETHNL_CMD_SET_SETTINGS,
+ 		.cb	= settings_reply_cb,
+ 	},
++	{
++		.cmd	= ETHNL_CMD_SET_PARAMS,
++		.cb	= params_reply_cb,
++	},
+ };
+ 
+ static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -56,6 +61,11 @@ static struct monitor_option monitor_opts[] = {
+ 		.pattern	= "|-s|--change",
+ 		.cmd		= ETHNL_CMD_SET_SETTINGS,
+ 	},
++	{
++		.pattern	= "-c|--show-coalesce|-C|--coalesce",
++		.cmd		= ETHNL_CMD_SET_PARAMS,
++		.info_mask	= ETH_PARAMS_IM_COALESCE,
++	},
+ };
+ 
+ static bool pattern_match(const char *s, const char *pattern)
+diff --git a/netlink/params.c b/netlink/params.c
+new file mode 100644
+index 000000000000..c9b2f39a3ac7
+--- /dev/null
++++ b/netlink/params.c
+@@ -0,0 +1,101 @@
++#include <errno.h>
++#include <string.h>
++#include <stdio.h>
++
++#include "../internal.h"
++#include "../common.h"
++#include "netlink.h"
++#include "strset.h"
++#include "parser.h"
++
 +/* GET_PARAMS */
 +
 +static int show_coalesce(struct nl_context *nlctx, const struct nlattr *nest)
@@ -89,7 +160,7 @@ index 26dac7e8fd52..361156230662 100644
 +	return 0;
 +}
 +
-+static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
++int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
 +{
 +	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
@@ -126,52 +197,13 @@ index 26dac7e8fd52..361156230662 100644
 +		return ret;
 +	if (ethnla_put_u32(ctx->nlctx, ETHA_PARAMS_INFOMASK, info_mask))
 +		return -EMSGSIZE;
-+	return ethnl_send_get_request(ctx, get_params_reply_cb);
++	return ethnl_send_get_request(ctx, params_reply_cb);
 +}
 +
 +int nl_gcoalesce(struct cmd_context *ctx)
 +{
 +	return params_request(ctx, ETH_PARAMS_IM_COALESCE);
 +}
-+
- /* monitor */
- 
- static struct {
-@@ -2048,6 +2140,10 @@ static struct {
- 		.cmd	= ETHNL_CMD_SET_SETTINGS,
- 		.cb	= settings_reply_cb,
- 	},
-+	{
-+		.cmd	= ETHNL_CMD_SET_PARAMS,
-+		.cb	= params_reply_cb,
-+	},
- };
- 
- static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -2085,6 +2181,11 @@ static struct monitor_option monitor_opts[] = {
- 		.pattern	= "|-s|--change",
- 		.cmd		= ETHNL_CMD_SET_SETTINGS,
- 	},
-+	{
-+		.pattern	= "-c|--show-coalesce|-C|--coalesce",
-+		.cmd		= ETHNL_CMD_SET_PARAMS,
-+		.info_mask	= ETH_PARAMS_IM_COALESCE,
-+	},
- };
- 
- static bool pattern_match(const char *s, const char *pattern)
-diff --git a/netlink.h b/netlink.h
-index 2e721e5279ad..20d0d05b24fe 100644
---- a/netlink.h
-+++ b/netlink.h
-@@ -10,6 +10,7 @@ int netlink_done(struct cmd_context *ctx);
- int nl_gdrv(struct cmd_context *ctx);
- int nl_gset(struct cmd_context *ctx);
- int nl_sset(struct cmd_context *ctx);
-+int nl_gcoalesce(struct cmd_context *ctx);
- int nl_monitor(struct cmd_context *ctx);
- 
- void monitor_usage();
 -- 
 2.18.0
 

@@ -1,4 +1,4 @@
-From 9d1264aeaf90a205e5a151fa6d4f1dc41826de3b Mon Sep 17 00:00:00 2001
+From c48bf28ee32f924dc7c104df917ea818b8709c10 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
 Subject: [PATCH 04/21] netlink: add notification monitor
@@ -11,16 +11,32 @@ device name or "*" is passed, show notifications for all devices.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- ethtool.c |  17 +++++
- netlink.c | 192 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
- netlink.h |   4 ++
- 3 files changed, 212 insertions(+), 1 deletion(-)
+ Makefile.am       |   1 +
+ ethtool.c         |  17 ++++++
+ netlink/extapi.h  |   4 ++
+ netlink/monitor.c | 139 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/netlink.c |  31 ++++++++++-
+ netlink/netlink.h |  26 +++++++++
+ 6 files changed, 217 insertions(+), 1 deletion(-)
+ create mode 100644 netlink/monitor.c
 
+diff --git a/Makefile.am b/Makefile.am
+index bdb4f4df2b0f..46aca32fae62 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -22,6 +22,7 @@ endif
+ if ETHTOOL_ENABLE_NETLINK
+ ethtool_SOURCES += \
+ 		  netlink/netlink.c netlink/netlink.h netlink/extapi.h \
++		  netlink/monitor.c \
+ 		  uapi/linux/ethtool_netlink.h \
+ 		  uapi/linux/netlink.h uapi/linux/genetlink.h
+ ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 0fee2cfe7acc..417ec95822ab 100644
+index 20f9cd5a2b16..1b2b1c4be4db 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -5289,6 +5289,9 @@ static int show_usage(struct cmd_context *ctx)
+@@ -5292,6 +5292,9 @@ static int show_usage(struct cmd_context *ctx)
  		if (args[i].opthelp)
  			fputs(args[i].opthelp, stdout);
  	}
@@ -30,7 +46,7 @@ index 0fee2cfe7acc..417ec95822ab 100644
  
  	return 0;
  }
-@@ -5330,6 +5333,20 @@ int main(int argc, char **argp)
+@@ -5333,6 +5336,20 @@ int main(int argc, char **argp)
  	argp++;
  	argc--;
  
@@ -51,101 +67,29 @@ index 0fee2cfe7acc..417ec95822ab 100644
  	/* First argument must be either a valid option or a device
  	 * name to get settings for (which we don't expect to begin
  	 * with '-').
-diff --git a/netlink.c b/netlink.c
-index 5aa94ab14659..c16c6731e2aa 100644
---- a/netlink.c
-+++ b/netlink.c
-@@ -16,6 +16,7 @@
+diff --git a/netlink/extapi.h b/netlink/extapi.h
+index 05ab083d9b9c..827e3732888a 100644
+--- a/netlink/extapi.h
++++ b/netlink/extapi.h
+@@ -13,4 +13,8 @@ struct nl_context;
+ int netlink_init(struct cmd_context *ctx);
+ int netlink_done(struct cmd_context *ctx);
  
- struct nl_context {
- 	int ethnl_fam;
-+	uint32_t mon_mcgrp_id;
- 	struct mnl_socket *sk;
- 	char *buff;
- 	unsigned int buffsize;
-@@ -27,6 +28,10 @@ struct nl_context {
- 	const char *devname;
- 	bool is_dump;
- 	int exit_code;
-+	bool is_monitor;
-+	uint8_t filter_cmd;
-+	uint32_t filter_mask;
-+	const char *filter_devname;
- };
- 
- struct attr_tb_info {
-@@ -483,6 +488,31 @@ static void show_u32_yn(const struct nlattr **tb, unsigned int idx,
- }
- /* get ethtool family id */
- 
-+static void ethnl_find_monitor_group(struct nl_context *nlctx,
-+				     struct nlattr *nest)
-+{
-+	const struct nlattr *grp_tb[CTRL_ATTR_MCAST_GRP_MAX + 1] = {};
-+	DECLARE_ATTR_TB_INFO(grp_tb);
-+	struct nlattr *grp_attr;
-+	int ret;
++int nl_monitor(struct cmd_context *ctx);
 +
-+	nlctx->mon_mcgrp_id = 0;
-+	mnl_attr_for_each_nested(grp_attr, nest) {
-+		ret = mnl_attr_parse_nested(grp_attr, attr_cb, &grp_tb_info);
-+		if (ret < 0)
-+			return;
-+		if (!grp_tb[CTRL_ATTR_MCAST_GRP_NAME] ||
-+		    !grp_tb[CTRL_ATTR_MCAST_GRP_ID])
-+			continue;
-+		if (strcmp(mnl_attr_get_str(grp_tb[CTRL_ATTR_MCAST_GRP_NAME]),
-+			   ETHTOOL_MCGRP_MONITOR_NAME))
-+			continue;
-+		nlctx->mon_mcgrp_id =
-+			mnl_attr_get_u32(grp_tb[CTRL_ATTR_MCAST_GRP_ID]);
-+		return;
-+	}
-+}
++void monitor_usage();
 +
- static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
- {
- 	struct nl_context *nlctx = data;
-@@ -490,9 +520,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
- 
- 	nlctx->ethnl_fam = 0;
- 	mnl_attr_for_each(attr, nlhdr, GENL_HDRLEN) {
--		if (mnl_attr_get_type(attr) == CTRL_ATTR_FAMILY_ID) {
-+		switch(mnl_attr_get_type(attr)) {
-+		case CTRL_ATTR_FAMILY_ID:
- 			nlctx->ethnl_fam = mnl_attr_get_u16(attr);
- 			break;
-+		case CTRL_ATTR_MCAST_GROUPS:
-+			ethnl_find_monitor_group(nlctx, attr);
-+			break;
- 		}
- 	}
- 
-@@ -585,3 +619,159 @@ int netlink_done(struct cmd_context *ctx)
- 
- 	return 0;
- }
+ #endif /* ETHTOOL_EXTAPI_H__ */
+diff --git a/netlink/monitor.c b/netlink/monitor.c
+new file mode 100644
+index 000000000000..f8aa141fca40
+--- /dev/null
++++ b/netlink/monitor.c
+@@ -0,0 +1,139 @@
++#include <errno.h>
 +
-+bool mask_ok(const struct nl_context *nlctx, uint32_t bits)
-+{
-+	return !nlctx->filter_mask || (nlctx->filter_mask & bits);
-+}
-+
-+bool dev_ok(const struct nl_context *nlctx)
-+{
-+	return !nlctx->filter_devname ||
-+	       (nlctx->devname &&
-+		!strcmp(nlctx->devname, nlctx->filter_devname));
-+}
-+
-+bool show_only(const struct nl_context *nlctx, uint32_t bits)
-+{
-+	if (nlctx->is_monitor || !nlctx->filter_mask)
-+		return false;
-+	return nlctx->filter_mask & ~bits;
-+}
-+
-+/* monitor */
++#include "../internal.h"
++#include "netlink.h"
 +
 +static struct {
 +	uint8_t		cmd;
@@ -281,19 +225,106 @@ index 5aa94ab14659..c16c6731e2aa 100644
 +	fputs(" )\n", stdout);
 +	fputs("                [ DEVNAME | * ]\n", stdout);
 +}
-diff --git a/netlink.h b/netlink.h
-index b10b168b1f5b..39b5e3600567 100644
---- a/netlink.h
-+++ b/netlink.h
-@@ -7,4 +7,8 @@ struct nl_context;
- int netlink_init(struct cmd_context *ctx);
- int netlink_done(struct cmd_context *ctx);
+diff --git a/netlink/netlink.c b/netlink/netlink.c
+index 3d3641ff1181..da4ce7e5b9be 100644
+--- a/netlink/netlink.c
++++ b/netlink/netlink.c
+@@ -377,6 +377,31 @@ err:
  
-+int nl_monitor(struct cmd_context *ctx);
+ /* get ethtool family id */
+ 
++static void ethnl_find_monitor_group(struct nl_context *nlctx,
++				     struct nlattr *nest)
++{
++	const struct nlattr *grp_tb[CTRL_ATTR_MCAST_GRP_MAX + 1] = {};
++	DECLARE_ATTR_TB_INFO(grp_tb);
++	struct nlattr *grp_attr;
++	int ret;
 +
-+void monitor_usage();
++	nlctx->mon_mcgrp_id = 0;
++	mnl_attr_for_each_nested(grp_attr, nest) {
++		ret = mnl_attr_parse_nested(grp_attr, attr_cb, &grp_tb_info);
++		if (ret < 0)
++			return;
++		if (!grp_tb[CTRL_ATTR_MCAST_GRP_NAME] ||
++		    !grp_tb[CTRL_ATTR_MCAST_GRP_ID])
++			continue;
++		if (strcmp(mnl_attr_get_str(grp_tb[CTRL_ATTR_MCAST_GRP_NAME]),
++			   ETHTOOL_MCGRP_MONITOR_NAME))
++			continue;
++		nlctx->mon_mcgrp_id =
++			mnl_attr_get_u32(grp_tb[CTRL_ATTR_MCAST_GRP_ID]);
++		return;
++	}
++}
 +
- #endif /* ETHTOOL_NETLINK_H__ */
+ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
+ {
+ 	struct nl_context *nlctx = data;
+@@ -384,9 +409,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
+ 
+ 	nlctx->ethnl_fam = 0;
+ 	mnl_attr_for_each(attr, nlhdr, GENL_HDRLEN) {
+-		if (mnl_attr_get_type(attr) == CTRL_ATTR_FAMILY_ID) {
++		switch(mnl_attr_get_type(attr)) {
++		case CTRL_ATTR_FAMILY_ID:
+ 			nlctx->ethnl_fam = mnl_attr_get_u16(attr);
+ 			break;
++		case CTRL_ATTR_MCAST_GROUPS:
++			ethnl_find_monitor_group(nlctx, attr);
++			break;
+ 		}
+ 	}
+ 
+diff --git a/netlink/netlink.h b/netlink/netlink.h
+index 55f14755c641..d46f1c0871f2 100644
+--- a/netlink/netlink.h
++++ b/netlink/netlink.h
+@@ -17,6 +17,7 @@
+ 
+ struct nl_context {
+ 	int ethnl_fam;
++	uint32_t mon_mcgrp_id;
+ 	struct mnl_socket *sk;
+ 	char *buff;
+ 	unsigned int buffsize;
+@@ -28,6 +29,10 @@ struct nl_context {
+ 	const char *devname;
+ 	bool is_dump;
+ 	int exit_code;
++	bool is_monitor;
++	uint8_t filter_cmd;
++	uint32_t filter_mask;
++	const char *filter_devname;
+ };
+ 
+ struct attr_tb_info {
+@@ -140,4 +145,25 @@ static inline void show_u32_yn(const struct nlattr **tb, unsigned int idx,
+ 		       mnl_attr_get_u32(tb[idx]) ? "yes" : "no");
+ }
+ 
++/* reply content filtering */
++
++static inline bool mask_ok(const struct nl_context *nlctx, uint32_t bits)
++{
++	return !nlctx->filter_mask || (nlctx->filter_mask & bits);
++}
++
++static inline bool dev_ok(const struct nl_context *nlctx)
++{
++	return !nlctx->filter_devname ||
++	       (nlctx->devname &&
++		!strcmp(nlctx->devname, nlctx->filter_devname));
++}
++
++static inline bool show_only(const struct nl_context *nlctx, uint32_t bits)
++{
++	if (nlctx->is_monitor || !nlctx->filter_mask)
++		return false;
++	return nlctx->filter_mask & ~bits;
++}
++
+ #endif /* ETHTOOL_NETLINK_INT_H__ */
 -- 
 2.18.0
 

@@ -1,4 +1,4 @@
-From 797ff28e906530512481ad7794f3157469aa4691 Mon Sep 17 00:00:00 2001
+From 4a54dc33f3898f76ce562e894d5876ff0f5b3b91 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 07:27:00 +0100
 Subject: [PATCH 16/21] netlink: add netlink handler for scoalesce (-C)
@@ -8,16 +8,16 @@ ETHTOOL_CMD_SET_PARAMS.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- ethtool.c |   3 +-
- netlink.c | 188 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
- netlink.h |   1 +
- 3 files changed, 189 insertions(+), 3 deletions(-)
+ ethtool.c        |   3 +-
+ netlink/extapi.h |   1 +
+ netlink/params.c | 184 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 187 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 9fa793d828b5..ca8616e625eb 100644
+index 30992de8de23..53b0c24e1bb5 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4925,6 +4925,7 @@ int nl_gpause(struct cmd_context *ctx) { return 0; }
+@@ -4928,6 +4928,7 @@ int nl_gpause(struct cmd_context *ctx) { return 0; }
  int nl_gchannels(struct cmd_context *ctx) { return 0; }
  int nl_geee(struct cmd_context *ctx) { return 0; }
  int nl_gfec(struct cmd_context *ctx) { return 0; }
@@ -25,7 +25,7 @@ index 9fa793d828b5..ca8616e625eb 100644
  #endif
  
  static const struct option {
-@@ -4957,7 +4958,7 @@ static const struct option {
+@@ -4960,7 +4961,7 @@ static const struct option {
  	  "		[ tx on|off ]\n" },
  	{ "-c|--show-coalesce", 1, do_gcoalesce, nl_gcoalesce,
  	  "Show coalesce options" },
@@ -34,32 +34,27 @@ index 9fa793d828b5..ca8616e625eb 100644
  	  "Set coalesce options",
  	  "		[adaptive-rx on|off]\n"
  	  "		[adaptive-tx on|off]\n"
-diff --git a/netlink.c b/netlink.c
-index 0227d9809c0d..655b1ebe2056 100644
---- a/netlink.c
-+++ b/netlink.c
-@@ -2240,7 +2240,7 @@ static int show_fec(struct nl_context *nlctx, const struct nlattr *nest)
- 	return 0;
- }
+diff --git a/netlink/extapi.h b/netlink/extapi.h
+index 0df0af85d9c5..ae9a3aee5761 100644
+--- a/netlink/extapi.h
++++ b/netlink/extapi.h
+@@ -22,6 +22,7 @@ int nl_gpause(struct cmd_context *ctx);
+ int nl_gchannels(struct cmd_context *ctx);
+ int nl_geee(struct cmd_context *ctx);
+ int nl_gfec(struct cmd_context *ctx);
++int nl_scoalesce(struct cmd_context *ctx);
+ int nl_monitor(struct cmd_context *ctx);
  
--static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
-+static int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ void monitor_usage();
+diff --git a/netlink/params.c b/netlink/params.c
+index bdce8d84e025..ec9199ba6b96 100644
+--- a/netlink/params.c
++++ b/netlink/params.c
+@@ -328,3 +328,187 @@ int nl_gfec(struct cmd_context *ctx)
  {
- 	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
- 	DECLARE_ATTR_TB_INFO(tb);
-@@ -2322,7 +2322,7 @@ static int params_request(struct cmd_context *ctx, uint16_t info_mask)
- 		return ret;
- 	if (ethnla_put_u32(ctx->nlctx, ETHA_PARAMS_INFOMASK, info_mask))
- 		return -EMSGSIZE;
--	return ethnl_send_get_request(ctx, get_params_reply_cb);
-+	return ethnl_send_get_request(ctx, params_reply_cb);
- }
- 
- int nl_gcoalesce(struct cmd_context *ctx)
-@@ -2355,6 +2355,190 @@ int nl_gfec(struct cmd_context *ctx)
  	return params_request(ctx, ETH_PARAMS_IM_FEC);
  }
- 
++
 +/* SET_PARAMS */
 +
 +static int nl_set_param(struct cmd_context *ctx, const char *opt,
@@ -243,22 +238,6 @@ index 0227d9809c0d..655b1ebe2056 100644
 +	return nl_set_param(ctx, "-C", scoalesce_params, ETHA_PARAMS_COALESCE,
 +			    ETHA_COALESCE_MAX);
 +}
-+
- /* monitor */
- 
- static struct {
-diff --git a/netlink.h b/netlink.h
-index cb1fb581981e..9cdb7c71d3b9 100644
---- a/netlink.h
-+++ b/netlink.h
-@@ -16,6 +16,7 @@ int nl_gpause(struct cmd_context *ctx);
- int nl_gchannels(struct cmd_context *ctx);
- int nl_geee(struct cmd_context *ctx);
- int nl_gfec(struct cmd_context *ctx);
-+int nl_scoalesce(struct cmd_context *ctx);
- int nl_monitor(struct cmd_context *ctx);
- 
- void monitor_usage();
 -- 
 2.18.0
 

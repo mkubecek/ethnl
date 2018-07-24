@@ -1,4 +1,4 @@
-From 4bff82feebfe98be6174f3f13b28727607475019 Mon Sep 17 00:00:00 2001
+From 94b0f4c3fee5bda12d942ff64e0067db2d688c0a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:08:21 +0100
 Subject: [PATCH 14/21] netlink: add netlink handler for geee (--show-eee)
@@ -8,16 +8,17 @@ command ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_EEE mask.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- ethtool.c |  3 ++-
- netlink.c | 71 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- netlink.h |  1 +
- 3 files changed, 74 insertions(+), 1 deletion(-)
+ ethtool.c         |  3 ++-
+ netlink/extapi.h  |  1 +
+ netlink/monitor.c |  5 ++++
+ netlink/params.c  | 66 +++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 74 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 8c6f25ce342c..5f683cbc0b7d 100644
+index cf00e35d915a..ec3ac1e5ad1e 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4923,6 +4923,7 @@ int nl_gcoalesce(struct cmd_context *ctx) { return 0; }
+@@ -4926,6 +4926,7 @@ int nl_gcoalesce(struct cmd_context *ctx) { return 0; }
  int nl_gring(struct cmd_context *ctx) { return 0; }
  int nl_gpause(struct cmd_context *ctx) { return 0; }
  int nl_gchannels(struct cmd_context *ctx) { return 0; }
@@ -25,7 +26,7 @@ index 8c6f25ce342c..5f683cbc0b7d 100644
  #endif
  
  static const struct option {
-@@ -5093,7 +5094,7 @@ static const struct option {
+@@ -5096,7 +5097,7 @@ static const struct option {
  	  "		[ hex on|off ]\n"
  	  "		[ offset N ]\n"
  	  "		[ length N ]\n" },
@@ -34,11 +35,39 @@ index 8c6f25ce342c..5f683cbc0b7d 100644
  	  "Show EEE settings"},
  	{ "--set-eee", 1, do_seee, NULL,
  	  "Set EEE settings",
-diff --git a/netlink.c b/netlink.c
-index 564a4219ed80..0c8bfe3d6911 100644
---- a/netlink.c
-+++ b/netlink.c
-@@ -2159,6 +2159,58 @@ static int show_channels(struct nl_context *nlctx, const struct nlattr *nest)
+diff --git a/netlink/extapi.h b/netlink/extapi.h
+index ab851eddcce6..961afb02a26a 100644
+--- a/netlink/extapi.h
++++ b/netlink/extapi.h
+@@ -20,6 +20,7 @@ int nl_gcoalesce(struct cmd_context *ctx);
+ int nl_gring(struct cmd_context *ctx);
+ int nl_gpause(struct cmd_context *ctx);
+ int nl_gchannels(struct cmd_context *ctx);
++int nl_geee(struct cmd_context *ctx);
+ int nl_monitor(struct cmd_context *ctx);
+ 
+ void monitor_usage();
+diff --git a/netlink/monitor.c b/netlink/monitor.c
+index e8f0554b4989..5c9e95981bd8 100644
+--- a/netlink/monitor.c
++++ b/netlink/monitor.c
+@@ -81,6 +81,11 @@ static struct monitor_option monitor_opts[] = {
+ 		.cmd		= ETHNL_CMD_SET_PARAMS,
+ 		.info_mask	= ETH_PARAMS_IM_CHANNELS,
+ 	},
++	{
++		.pattern	= "--show-eee|--set-eee",
++		.cmd		= ETHNL_CMD_SET_PARAMS,
++		.info_mask	= ETH_PARAMS_IM_EEE,
++	},
+ };
+ 
+ static bool pattern_match(const char *s, const char *pattern)
+diff --git a/netlink/params.c b/netlink/params.c
+index fc6d74afa816..973881047d75 100644
+--- a/netlink/params.c
++++ b/netlink/params.c
+@@ -133,6 +133,58 @@ static int show_channels(struct nl_context *nlctx, const struct nlattr *nest)
  	return 0;
  }
  
@@ -94,10 +123,10 @@ index 564a4219ed80..0c8bfe3d6911 100644
 +	return 0;
 +}
 +
- static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
-@@ -2209,6 +2261,15 @@ static int get_params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -183,6 +235,15 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_ERROR;
  		}
  	}
@@ -113,42 +142,15 @@ index 564a4219ed80..0c8bfe3d6911 100644
  
  	return MNL_CB_OK;
  }
-@@ -2246,6 +2307,11 @@ int nl_gchannels(struct cmd_context *ctx)
+@@ -219,3 +280,8 @@ int nl_gchannels(struct cmd_context *ctx)
+ {
  	return params_request(ctx, ETH_PARAMS_IM_CHANNELS);
  }
- 
++
 +int nl_geee(struct cmd_context *ctx)
 +{
 +	return params_request(ctx, ETH_PARAMS_IM_EEE);
 +}
-+
- /* monitor */
- 
- static struct {
-@@ -2321,6 +2387,11 @@ static struct monitor_option monitor_opts[] = {
- 		.cmd		= ETHNL_CMD_SET_PARAMS,
- 		.info_mask	= ETH_PARAMS_IM_CHANNELS,
- 	},
-+	{
-+		.pattern	= "--show-eee|--set-eee",
-+		.cmd		= ETHNL_CMD_SET_PARAMS,
-+		.info_mask	= ETH_PARAMS_IM_EEE,
-+	},
- };
- 
- static bool pattern_match(const char *s, const char *pattern)
-diff --git a/netlink.h b/netlink.h
-index 9a047af90eb6..221afae69d98 100644
---- a/netlink.h
-+++ b/netlink.h
-@@ -14,6 +14,7 @@ int nl_gcoalesce(struct cmd_context *ctx);
- int nl_gring(struct cmd_context *ctx);
- int nl_gpause(struct cmd_context *ctx);
- int nl_gchannels(struct cmd_context *ctx);
-+int nl_geee(struct cmd_context *ctx);
- int nl_monitor(struct cmd_context *ctx);
- 
- void monitor_usage();
 -- 
 2.18.0
 

@@ -1,4 +1,4 @@
-From 38f6dfdc3099cde9693dce7c2635b23499d037ed Mon Sep 17 00:00:00 2001
+From 90c033b004fbe18781280c7190a4425d6b223b5b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:42:26 +0100
 Subject: [PATCH 08/21] netlink: add helpers for command line parsing
@@ -9,22 +9,31 @@ ioctl() interface and using them would be often inconvenient.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- netlink.c | 552 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 552 insertions(+)
+ Makefile.am       |   1 +
+ netlink/netlink.h |   4 +
+ netlink/parser.c  | 527 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/parser.h  |  45 ++++
+ 4 files changed, 577 insertions(+)
+ create mode 100644 netlink/parser.c
+ create mode 100644 netlink/parser.h
 
-diff --git a/netlink.c b/netlink.c
-index 56a6917d26bd..1518a8c7ae2a 100644
---- a/netlink.c
-+++ b/netlink.c
-@@ -2,6 +2,7 @@
- #include <string.h>
- #include <time.h>
- #include <errno.h>
-+#include <ctype.h>
- 
- #include "internal.h"
- #include "common.h"
-@@ -28,6 +29,10 @@ struct nl_context {
+diff --git a/Makefile.am b/Makefile.am
+index 70ed033cace3..fbc76a1c8306 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -23,6 +23,7 @@ if ETHTOOL_ENABLE_NETLINK
+ ethtool_SOURCES += \
+ 		  netlink/netlink.c netlink/netlink.h netlink/extapi.h \
+ 		  netlink/monitor.c netlink/strset.c netlink/strset.h \
++		  netlink/parser.c netlink/parser.h \
+ 		  netlink/drvinfo.c netlink/settings.c \
+ 		  uapi/linux/ethtool_netlink.h \
+ 		  uapi/linux/netlink.h uapi/linux/genetlink.h
+diff --git a/netlink/netlink.h b/netlink/netlink.h
+index 7cd2b90e3625..b56d66f6dccf 100644
+--- a/netlink/netlink.h
++++ b/netlink/netlink.h
+@@ -28,6 +28,10 @@ struct nl_context {
  	void *msg;
  	const char *devname;
  	bool is_dump;
@@ -35,37 +44,21 @@ index 56a6917d26bd..1518a8c7ae2a 100644
  	int exit_code;
  	bool is_monitor;
  	uint8_t filter_cmd;
-@@ -487,6 +492,553 @@ static void show_u32_yn(const struct nlattr **tb, unsigned int idx,
- 		printf("%s: %s\n", label,
- 		       mnl_attr_get_u32(tb[idx]) ? "yes" : "no");
- }
+diff --git a/netlink/parser.c b/netlink/parser.c
+new file mode 100644
+index 000000000000..589004d1f9f9
+--- /dev/null
++++ b/netlink/parser.c
+@@ -0,0 +1,527 @@
++#include <string.h>
++#include <stdlib.h>
++#include <errno.h>
++#include <ctype.h>
 +
-+/* command line parsing */
-+
-+struct lookup_entry_u32 {
-+	const char	*arg;
-+	u32		val;
-+};
-+
-+struct lookup_entry_u16 {
-+	const char	*arg;
-+	u16		val;
-+};
-+
-+struct lookup_entry_u8{
-+	const char	*arg;
-+	u8		val;
-+};
-+
-+typedef int (*param_parser_cb_t)(struct nl_context *, uint16_t, const void *);
-+
-+struct param_parser {
-+	const char		*arg;
-+	uint16_t		type;
-+	param_parser_cb_t	handler;
-+	const void		*handler_data;
-+	unsigned int		min_argc;
-+};
++#include "../internal.h"
++#include "../common.h"
++#include "netlink.h"
++#include "parser.h"
 +
 +static void parser_err_unknown_param(struct nl_context *nlctx)
 +{
@@ -168,8 +161,8 @@ index 56a6917d26bd..1518a8c7ae2a 100644
 +	return -EINVAL;
 +}
 +
-+static int nl_parse_direct_u32(struct nl_context *nlctx, uint16_t type,
-+			       const void *data)
++int nl_parse_direct_u32(struct nl_context *nlctx, uint16_t type,
++			const void *data)
 +{
 +	const char *arg = *nlctx->argp;
 +	u32 val;
@@ -186,8 +179,8 @@ index 56a6917d26bd..1518a8c7ae2a 100644
 +	return ethnla_put_u32(nlctx, type, val) ? -EMSGSIZE : 0;
 +}
 +
-+static int nl_parse_direct_u8(struct nl_context *nlctx, uint16_t type,
-+			      const void *data)
++int nl_parse_direct_u8(struct nl_context *nlctx, uint16_t type,
++		       const void *data)
 +{
 +	const char *arg = *nlctx->argp;
 +	u8 val;
@@ -204,7 +197,7 @@ index 56a6917d26bd..1518a8c7ae2a 100644
 +	return ethnla_put_u8(nlctx, type, val) ? -EMSGSIZE : 0;
 +}
 +
-+static int nl_parse_bool(struct nl_context *nlctx, uint16_t type, const void *data)
++int nl_parse_bool(struct nl_context *nlctx, uint16_t type, const void *data)
 +{
 +	const char *arg = *nlctx->argp;
 +	int ret;
@@ -223,8 +216,8 @@ index 56a6917d26bd..1518a8c7ae2a 100644
 +	return ret ? -EMSGSIZE : 0;
 +}
 +
-+static int nl_parse_lookup_u8(struct nl_context *nlctx, uint16_t type,
-+			      const void *data)
++int nl_parse_lookup_u8(struct nl_context *nlctx, uint16_t type,
++		       const void *data)
 +{
 +	const char *arg = *nlctx->argp;
 +	u8 val;
@@ -241,8 +234,8 @@ index 56a6917d26bd..1518a8c7ae2a 100644
 +	return ethnla_put_u8(nlctx, type, val) ? -EMSGSIZE : 0;
 +}
 +
-+static int nl_parse_bitfield32(struct nl_context *nlctx, uint16_t type,
-+			       const void *data)
++int nl_parse_bitfield32(struct nl_context *nlctx, uint16_t type,
++			const void *data)
 +{
 +	const char *arg = *nlctx->argp;
 +	const struct flag_info *flags = data;
@@ -536,8 +529,7 @@ index 56a6917d26bd..1518a8c7ae2a 100644
 +	return ret;
 +}
 +
-+static int nl_parse_bitset(struct nl_context *nlctx, uint16_t type,
-+			   const void *data)
++int nl_parse_bitset(struct nl_context *nlctx, uint16_t type, const void *data)
 +{
 +	if (is_numeric_bitset(*nlctx->argp))
 +		return nl_parse_bitset_compact(nlctx, type);
@@ -545,8 +537,8 @@ index 56a6917d26bd..1518a8c7ae2a 100644
 +		return nl_parse_bitset_list(nlctx, type, data);
 +}
 +
-+static int nl_parser(struct cmd_context *ctx, const struct param_parser *params,
-+		     unsigned int max_type)
++int nl_parser(struct cmd_context *ctx, const struct param_parser *params,
++	      unsigned int max_type)
 +{
 +	struct nl_context *nlctx = ctx->nlctx;
 +	bool attr_set[max_type];
@@ -585,10 +577,57 @@ index 56a6917d26bd..1518a8c7ae2a 100644
 +
 +	return 0;
 +}
+diff --git a/netlink/parser.h b/netlink/parser.h
+new file mode 100644
+index 000000000000..7308da25f093
+--- /dev/null
++++ b/netlink/parser.h
+@@ -0,0 +1,45 @@
++#ifndef ETHTOOL_NETLINK_PARSER_H__
++#define ETHTOOL_NETLINK_PARSER_H__
 +
- /* get ethtool family id */
- 
- static void ethnl_find_monitor_group(struct nl_context *nlctx,
++#include "netlink.h"
++
++struct lookup_entry_u32 {
++	const char	*arg;
++	u32		val;
++};
++
++struct lookup_entry_u16 {
++	const char	*arg;
++	u16		val;
++};
++
++struct lookup_entry_u8{
++	const char	*arg;
++	u8		val;
++};
++
++typedef int (*param_parser_cb_t)(struct nl_context *, uint16_t, const void *);
++
++struct param_parser {
++	const char		*arg;
++	uint16_t		type;
++	param_parser_cb_t	handler;
++	const void		*handler_data;
++	unsigned int		min_argc;
++};
++
++int nl_parse_direct_u32(struct nl_context *nlctx, uint16_t type,
++			const void *data);
++int nl_parse_direct_u8(struct nl_context *nlctx, uint16_t type,
++		       const void *data);
++int nl_parse_bool(struct nl_context *nlctx, uint16_t type, const void *data);
++int nl_parse_lookup_u8(struct nl_context *nlctx, uint16_t type,
++		       const void *data);
++int nl_parse_bitfield32(struct nl_context *nlctx, uint16_t type,
++			const void *data);
++int nl_parse_bitset(struct nl_context *nlctx, uint16_t type, const void *data);
++
++int nl_parser(struct cmd_context *ctx, const struct param_parser *params,
++	      unsigned int max_type);
++
++#endif /* ETHTOOL_NETLINK_PARSER_H__ */
 -- 
 2.18.0
 

@@ -1,4 +1,4 @@
-From 7e92823aeb52add78f3299c4f185b382a3fd753d Mon Sep 17 00:00:00 2001
+From 7ea63fee4095a8f457f43f170175b3aea33243b8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:32:39 +0100
 Subject: [PATCH 19/21] netlink: add netlink handler for schannels (-L)
@@ -8,16 +8,16 @@ ETHTOOL_CMD_SET_PARAMS.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- ethtool.c |  3 ++-
- netlink.c | 34 ++++++++++++++++++++++++++++++++++
- netlink.h |  1 +
+ ethtool.c        |  3 ++-
+ netlink/extapi.h |  1 +
+ netlink/params.c | 34 ++++++++++++++++++++++++++++++++++
  3 files changed, 37 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index da5bef5d66ea..22132aec3c5a 100644
+index 3b2b0772e361..c9d00cfcb3a0 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4928,6 +4928,7 @@ int nl_gfec(struct cmd_context *ctx) { return 0; }
+@@ -4931,6 +4931,7 @@ int nl_gfec(struct cmd_context *ctx) { return 0; }
  int nl_scoalesce(struct cmd_context *ctx) { return 0; }
  int nl_sring(struct cmd_context *ctx) { return 0; }
  int nl_spause(struct cmd_context *ctx) { return 0; }
@@ -25,7 +25,7 @@ index da5bef5d66ea..22132aec3c5a 100644
  #endif
  
  static const struct option {
-@@ -5081,7 +5082,7 @@ static const struct option {
+@@ -5084,7 +5085,7 @@ static const struct option {
  	  "		N\n"},
  	{ "-l|--show-channels", 1, do_gchannels, nl_gchannels,
  	  "Query Channels" },
@@ -34,14 +34,27 @@ index da5bef5d66ea..22132aec3c5a 100644
  	  "Set Channels",
  	  "               [ rx N ]\n"
  	  "               [ tx N ]\n"
-diff --git a/netlink.c b/netlink.c
-index 9315351438b6..5d99f2033ec7 100644
---- a/netlink.c
-+++ b/netlink.c
-@@ -2601,6 +2601,40 @@ int nl_spause(struct cmd_context *ctx)
+diff --git a/netlink/extapi.h b/netlink/extapi.h
+index ff14b3a77fa4..05c775be1b15 100644
+--- a/netlink/extapi.h
++++ b/netlink/extapi.h
+@@ -25,6 +25,7 @@ int nl_gfec(struct cmd_context *ctx);
+ int nl_scoalesce(struct cmd_context *ctx);
+ int nl_sring(struct cmd_context *ctx);
+ int nl_spause(struct cmd_context *ctx);
++int nl_schannels(struct cmd_context *ctx);
+ int nl_monitor(struct cmd_context *ctx);
+ 
+ void monitor_usage();
+diff --git a/netlink/params.c b/netlink/params.c
+index 180b7a4be65b..63fe3d22a2d6 100644
+--- a/netlink/params.c
++++ b/netlink/params.c
+@@ -574,3 +574,37 @@ int nl_spause(struct cmd_context *ctx)
+ 	return nl_set_param(ctx, "-A", spause_params, ETHA_PARAMS_PAUSE,
  			    ETHA_PAUSE_MAX);
  }
- 
++
 +static const struct param_parser schannels_params[] = {
 +	{
 +		.arg		= "rx",
@@ -75,22 +88,6 @@ index 9315351438b6..5d99f2033ec7 100644
 +	return nl_set_param(ctx, "-L", schannels_params, ETHA_PARAMS_CHANNELS,
 +			    ETHA_CHANNELS_MAX);
 +}
-+
- /* monitor */
- 
- static struct {
-diff --git a/netlink.h b/netlink.h
-index 1fc9aab0b574..fe8dd0b3fd84 100644
---- a/netlink.h
-+++ b/netlink.h
-@@ -19,6 +19,7 @@ int nl_gfec(struct cmd_context *ctx);
- int nl_scoalesce(struct cmd_context *ctx);
- int nl_sring(struct cmd_context *ctx);
- int nl_spause(struct cmd_context *ctx);
-+int nl_schannels(struct cmd_context *ctx);
- int nl_monitor(struct cmd_context *ctx);
- 
- void monitor_usage();
 -- 
 2.18.0
 

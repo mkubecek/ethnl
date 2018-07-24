@@ -1,4 +1,4 @@
-From ce0c53e4831f3476f01bf3500f02050837921240 Mon Sep 17 00:00:00 2001
+From b73067d8d3afdd1d30f031cf45fdec3f9bd0297f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:04:49 +0100
 Subject: [PATCH 17/21] netlink: add netlink handler for sring (-G)
@@ -8,16 +8,16 @@ ETHTOOL_CMD_SET_PARAMS.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- ethtool.c |  3 ++-
- netlink.c | 34 ++++++++++++++++++++++++++++++++++
- netlink.h |  1 +
+ ethtool.c        |  3 ++-
+ netlink/extapi.h |  1 +
+ netlink/params.c | 34 ++++++++++++++++++++++++++++++++++
  3 files changed, 37 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index ca8616e625eb..d7eeb403bff7 100644
+index 53b0c24e1bb5..4bc4d95e2bfa 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4926,6 +4926,7 @@ int nl_gchannels(struct cmd_context *ctx) { return 0; }
+@@ -4929,6 +4929,7 @@ int nl_gchannels(struct cmd_context *ctx) { return 0; }
  int nl_geee(struct cmd_context *ctx) { return 0; }
  int nl_gfec(struct cmd_context *ctx) { return 0; }
  int nl_scoalesce(struct cmd_context *ctx) { return 0; }
@@ -25,7 +25,7 @@ index ca8616e625eb..d7eeb403bff7 100644
  #endif
  
  static const struct option {
-@@ -4984,7 +4985,7 @@ static const struct option {
+@@ -4987,7 +4988,7 @@ static const struct option {
  	  "		[sample-interval N]\n" },
  	{ "-g|--show-ring", 1, do_gring, nl_gring,
  	  "Query RX/TX ring parameters" },
@@ -34,14 +34,27 @@ index ca8616e625eb..d7eeb403bff7 100644
  	  "Set RX/TX ring parameters",
  	  "		[ rx N ]\n"
  	  "		[ rx-mini N ]\n"
-diff --git a/netlink.c b/netlink.c
-index 655b1ebe2056..562c2aa78745 100644
---- a/netlink.c
-+++ b/netlink.c
-@@ -2539,6 +2539,40 @@ int nl_scoalesce(struct cmd_context *ctx)
+diff --git a/netlink/extapi.h b/netlink/extapi.h
+index ae9a3aee5761..fe7ccdb407da 100644
+--- a/netlink/extapi.h
++++ b/netlink/extapi.h
+@@ -23,6 +23,7 @@ int nl_gchannels(struct cmd_context *ctx);
+ int nl_geee(struct cmd_context *ctx);
+ int nl_gfec(struct cmd_context *ctx);
+ int nl_scoalesce(struct cmd_context *ctx);
++int nl_sring(struct cmd_context *ctx);
+ int nl_monitor(struct cmd_context *ctx);
+ 
+ void monitor_usage();
+diff --git a/netlink/params.c b/netlink/params.c
+index ec9199ba6b96..54a27698d5a6 100644
+--- a/netlink/params.c
++++ b/netlink/params.c
+@@ -512,3 +512,37 @@ int nl_scoalesce(struct cmd_context *ctx)
+ 	return nl_set_param(ctx, "-C", scoalesce_params, ETHA_PARAMS_COALESCE,
  			    ETHA_COALESCE_MAX);
  }
- 
++
 +static const struct param_parser sring_params[] = {
 +	{
 +		.arg		= "rx",
@@ -75,22 +88,6 @@ index 655b1ebe2056..562c2aa78745 100644
 +	return nl_set_param(ctx, "-G", sring_params, ETHA_PARAMS_RING,
 +			    ETHA_RING_MAX);
 +}
-+
- /* monitor */
- 
- static struct {
-diff --git a/netlink.h b/netlink.h
-index 9cdb7c71d3b9..6eccf02a22ef 100644
---- a/netlink.h
-+++ b/netlink.h
-@@ -17,6 +17,7 @@ int nl_gchannels(struct cmd_context *ctx);
- int nl_geee(struct cmd_context *ctx);
- int nl_gfec(struct cmd_context *ctx);
- int nl_scoalesce(struct cmd_context *ctx);
-+int nl_sring(struct cmd_context *ctx);
- int nl_monitor(struct cmd_context *ctx);
- 
- void monitor_usage();
 -- 
 2.18.0
 

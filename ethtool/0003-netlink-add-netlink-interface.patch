@@ -1,4 +1,4 @@
-From b21f7c062c5b4e6aece7dc9950a7d509bbd38f1e Mon Sep 17 00:00:00 2001
+From 62b9735145ef0f7899eacce465ea317bab051384 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 03/21] netlink: add netlink interface
@@ -18,25 +18,27 @@ completely.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Makefile.am                  |  10 +
+ Makefile.am                  |  11 +
  configure.ac                 |  12 +
- ethtool.c                    | 169 ++++++----
+ ethtool.c                    | 172 +++++++++----
  internal.h                   |   8 +
- netlink.c                    | 587 +++++++++++++++++++++++++++++++++++
- netlink.h                    |  10 +
+ netlink/extapi.h             |  16 ++
+ netlink/netlink.c            | 481 +++++++++++++++++++++++++++++++++++
+ netlink/netlink.h            | 143 +++++++++++
  uapi/linux/ethtool.h         |   7 +
- uapi/linux/ethtool_netlink.h | 283 +++++++++++++++++
- uapi/linux/genetlink.h       |  89 ++++++
- uapi/linux/netlink.h         | 247 +++++++++++++++
- 10 files changed, 1366 insertions(+), 56 deletions(-)
- create mode 100644 netlink.c
- create mode 100644 netlink.h
+ uapi/linux/ethtool_netlink.h | 283 +++++++++++++++++++++
+ uapi/linux/genetlink.h       |  89 +++++++
+ uapi/linux/netlink.h         | 247 ++++++++++++++++++
+ 11 files changed, 1413 insertions(+), 56 deletions(-)
+ create mode 100644 netlink/extapi.h
+ create mode 100644 netlink/netlink.c
+ create mode 100644 netlink/netlink.h
  create mode 100644 uapi/linux/ethtool_netlink.h
  create mode 100644 uapi/linux/genetlink.h
  create mode 100644 uapi/linux/netlink.h
 
 diff --git a/Makefile.am b/Makefile.am
-index e7da37a85499..692863fa6753 100644
+index e7da37a85499..bdb4f4df2b0f 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -7,6 +7,8 @@ EXTRA_DIST = LICENSE ethtool.8 ethtool.spec.in aclocal.m4 ChangeLog autogen.sh
@@ -48,14 +50,15 @@ index e7da37a85499..692863fa6753 100644
  if ETHTOOL_ENABLE_PRETTY_DUMP
  ethtool_SOURCES += \
  		  amd8111e.c de2104x.c e100.c e1000.c et131x.c igb.c	\
-@@ -17,6 +19,14 @@ ethtool_SOURCES += \
+@@ -17,6 +19,15 @@ ethtool_SOURCES += \
  		  ixgbevf.c tse.c vmxnet3.c qsfp.c qsfp.h fjes.c lan78xx.c
  endif
  
 +if ETHTOOL_ENABLE_NETLINK
 +ethtool_SOURCES += \
-+		  netlink.c netlink.h uapi/linux/ethtool_netlink.h \
-+		  uapi/linux/netlin.h uapi/linux/genetlink.h
++		  netlink/netlink.c netlink/netlink.h netlink/extapi.h \
++		  uapi/linux/ethtool_netlink.h \
++		  uapi/linux/netlink.h uapi/linux/genetlink.h
 +ethtool_CFLAGS += @MNL_CFLAGS@
 +ethtool_LDADD += @MNL_LIBS@
 +endif
@@ -86,18 +89,21 @@ index e891d917cf11..1896e44baf16 100644
  AC_CONFIG_FILES([Makefile ethtool.spec ethtool.8])
  AC_OUTPUT
 diff --git a/ethtool.c b/ethtool.c
-index fb93ae898312..0fee2cfe7acc 100644
+index fb93ae898312..20f9cd5a2b16 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -30,6 +30,7 @@
-  */
+@@ -48,6 +48,10 @@
+ #include <linux/sockios.h>
+ #include <linux/netlink.h>
  
- #include "internal.h"
-+#include "netlink.h"
- #include <string.h>
- #include <stdlib.h>
- #include <sys/stat.h>
-@@ -5048,14 +5049,20 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
++#ifdef ETHTOOL_ENABLE_NETLINK
++#include "netlink/extapi.h"
++#endif
++
+ #ifndef MAX_ADDR_LEN
+ #define MAX_ADDR_LEN	32
+ #endif
+@@ -5048,14 +5052,20 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
  
  static int show_usage(struct cmd_context *ctx);
  
@@ -119,7 +125,7 @@ index fb93ae898312..0fee2cfe7acc 100644
  	  "		[ speed %d ]\n"
  	  "		[ duplex half|full ]\n"
  	  "		[ port tp|aui|bnc|mii|fibre ]\n"
-@@ -5067,13 +5074,17 @@ static const struct option {
+@@ -5067,13 +5077,17 @@ static const struct option {
  	  "		[ wol p|u|m|b|a|g|s|d... ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
  	  "		[ msglvl %d | msglvl type on|off ... ]\n" },
@@ -141,7 +147,7 @@ index fb93ae898312..0fee2cfe7acc 100644
  	  "		[adaptive-rx on|off]\n"
  	  "		[adaptive-tx on|off]\n"
  	  "		[rx-usecs N]\n"
-@@ -5096,46 +5107,54 @@ static const struct option {
+@@ -5096,46 +5110,54 @@ static const struct option {
  	  "		[tx-usecs-high N]\n"
  	  "		[tx-frames-high N]\n"
  	  "		[sample-interval N]\n" },
@@ -211,7 +217,7 @@ index fb93ae898312..0fee2cfe7acc 100644
  	  "Configure Rx network flow classification options or rules",
  	  "		rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 m|v|t|s|d|f|n|r... [context %d] |\n"
-@@ -5160,55 +5179,64 @@ static const struct option {
+@@ -5160,55 +5182,64 @@ static const struct option {
  	  "			[ context %d ]\n"
  	  "			[ loc %d]] |\n"
  	  "		delete %d\n" },
@@ -293,7 +299,7 @@ index fb93ae898312..0fee2cfe7acc 100644
  	  "		[ flags %x ]\n"
  	  "		[ mgmt ]\n"
  	  "		[ mgmt-shared ]\n"
-@@ -5230,11 +5258,15 @@ static const struct option {
+@@ -5230,11 +5261,15 @@ static const struct option {
  	  "		[ ap-shared ]\n"
  	  "		[ dedicated ]\n"
  	  "		[ all ]\n"},
@@ -313,7 +319,7 @@ index fb93ae898312..0fee2cfe7acc 100644
  	{}
  };
  
-@@ -5261,11 +5293,35 @@ static int show_usage(struct cmd_context *ctx)
+@@ -5261,11 +5296,35 @@ static int show_usage(struct cmd_context *ctx)
  	return 0;
  }
  
@@ -349,7 +355,7 @@ index fb93ae898312..0fee2cfe7acc 100644
  	int k;
  
  	init_global_link_mode_masks();
-@@ -5291,6 +5347,7 @@ int main(int argc, char **argp)
+@@ -5291,6 +5350,7 @@ int main(int argc, char **argp)
  				argp++;
  				argc--;
  				func = args[k].func;
@@ -357,7 +363,7 @@ index fb93ae898312..0fee2cfe7acc 100644
  				want_device = args[k].want_device;
  				goto opt_found;
  			}
-@@ -5305,6 +5362,15 @@ int main(int argc, char **argp)
+@@ -5305,6 +5365,15 @@ int main(int argc, char **argp)
  	want_device = 1;
  
  opt_found:
@@ -373,7 +379,7 @@ index fb93ae898312..0fee2cfe7acc 100644
  	if (want_device) {
  		ctx.devname = *argp++;
  		argc--;
-@@ -5313,25 +5379,16 @@ opt_found:
+@@ -5313,25 +5382,16 @@ opt_found:
  			exit_bad_args();
  		if (strlen(ctx.devname) >= IFNAMSIZ)
  			exit_bad_args();
@@ -431,54 +437,47 @@ index 0b04a9794b6b..f7feade9f57e 100644
  };
  
  #ifdef TEST_ETHTOOL
-diff --git a/netlink.c b/netlink.c
+diff --git a/netlink/extapi.h b/netlink/extapi.h
 new file mode 100644
-index 000000000000..5aa94ab14659
+index 000000000000..05ab083d9b9c
 --- /dev/null
-+++ b/netlink.c
-@@ -0,0 +1,587 @@
++++ b/netlink/extapi.h
+@@ -0,0 +1,16 @@
++/*
++ * extapi.h - external netlink interface
++ *
++ * interface for general non-netlink code
++ */
++
++#ifndef ETHTOOL_EXTAPI_H__
++#define ETHTOOL_EXTAPI_H__
++
++struct cmd_context;
++struct nl_context;
++
++int netlink_init(struct cmd_context *ctx);
++int netlink_done(struct cmd_context *ctx);
++
++#endif /* ETHTOOL_EXTAPI_H__ */
+diff --git a/netlink/netlink.c b/netlink/netlink.c
+new file mode 100644
+index 000000000000..3d3641ff1181
+--- /dev/null
++++ b/netlink/netlink.c
+@@ -0,0 +1,481 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
 +#include <errno.h>
 +
-+#include "internal.h"
++#include "../internal.h"
 +#include "netlink.h"
-+
-+#include <libmnl/libmnl.h>
-+#include <linux/netlink.h>
-+#include <linux/genetlink.h>
-+#include <linux/ethtool_netlink.h>
-+
-+#define MAX_MSG_SIZE (4 << 20)		/* 4 MB */
-+#define WILDCARD_DEVNAME "*"
-+
-+struct nl_context {
-+	int ethnl_fam;
-+	struct mnl_socket *sk;
-+	char *buff;
-+	unsigned int buffsize;
-+	unsigned int port;
-+	unsigned int seq;
-+	struct nlmsghdr *nlhdr;
-+	struct genlmsghdr *gnlhdr;
-+	void *msg;
-+	const char *devname;
-+	bool is_dump;
-+	int exit_code;
-+};
-+
-+struct attr_tb_info {
-+	const struct nlattr **tb;
-+	unsigned int max_type;
-+};
-+#define DECLARE_ATTR_TB_INFO(tbl) \
-+	struct attr_tb_info tbl ## _info = { (tbl), (MNL_ARRAY_SIZE(tbl) - 1) }
++#include "extapi.h"
 +
 +/* misc helpers */
 +
-+static unsigned int copy_payload(void *buff, unsigned int maxlen,
-+				 const struct nlattr *attr)
++unsigned int nl_copy_payload(void *buff, unsigned int maxlen,
++			     const struct nlattr *attr)
 +{
 +	unsigned int len = mnl_attr_get_payload_len(attr);
 +
@@ -494,7 +493,7 @@ index 000000000000..5aa94ab14659
 + * to run on top of newer kernel which may send attributes that we do not
 + * know (yet). Rather than treating them as an error, just ignore them.
 + */
-+static int attr_cb(const struct nlattr *attr, void *data)
++int attr_cb(const struct nlattr *attr, void *data)
 +{
 +	const struct attr_tb_info *tb_info = data;
 +	int type = mnl_attr_get_type(attr);
@@ -505,8 +504,8 @@ index 000000000000..5aa94ab14659
 +	return MNL_CB_OK;
 +}
 +
-+static bool bitset_get_bit(const struct nlattr *bitset, bool mask,
-+			   unsigned int idx, int *retptr)
++bool bitset_get_bit(const struct nlattr *bitset, bool mask, unsigned int idx,
++		    int *retptr)
 +{
 +	const struct nlattr *bitset_tb[ETHA_BITSET_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(bitset_tb);
@@ -559,7 +558,7 @@ index 000000000000..5aa94ab14659
 +	return false;
 +}
 +
-+static bool bitset_is_empty(const struct nlattr *bitset, bool mask, int *retptr)
++bool bitset_is_empty(const struct nlattr *bitset, bool mask, int *retptr)
 +{
 +	const struct nlattr *bitset_tb[ETHA_BITSET_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(bitset_tb);
@@ -669,7 +668,7 @@ index 000000000000..5aa94ab14659
 +	return 0;
 +}
 +
-+static int msg_init(struct nl_context *nlctx, int cmd, unsigned int flags)
++int msg_init(struct nl_context *nlctx, int cmd, unsigned int flags)
 +{
 +	int ret;
 +
@@ -680,13 +679,6 @@ index 000000000000..5aa94ab14659
 +	nlctx->msg = mnl_nlmsg_get_payload_offset(nlctx->nlhdr, GENL_HDRLEN);
 +
 +	return 0;
-+}
-+
-+static ssize_t ethnl_sendmsg(struct nl_context *nlctx)
-+{
-+	struct nlmsghdr *nlhdr = nlctx->nlhdr;
-+
-+	return mnl_socket_sendto(nlctx->sk, nlhdr, nlhdr->nlmsg_len);
 +}
 +
 +static int ethnl_process_ack(struct nl_context *nlctx, ssize_t len)
@@ -721,7 +713,7 @@ index 000000000000..5aa94ab14659
 +	return nlerr->error;
 +}
 +
-+static int ethnl_process_reply(struct nl_context *nlctx, mnl_cb_t reply_cb)
++int ethnl_process_reply(struct nl_context *nlctx, mnl_cb_t reply_cb)
 +{
 +	struct nlmsghdr *nlhdr;
 +	ssize_t len;
@@ -752,8 +744,8 @@ index 000000000000..5aa94ab14659
 +
 +/* safe message composition */
 +
-+static bool ethnla_put(struct nl_context *nlctx, uint16_t type, size_t len,
-+		       const void *data)
++bool ethnla_put(struct nl_context *nlctx, uint16_t type, size_t len,
++		const void *data)
 +{
 +	struct nlmsghdr *nlhdr = nlctx->nlhdr;
 +
@@ -767,7 +759,7 @@ index 000000000000..5aa94ab14659
 +	return false;
 +}
 +
-+static struct nlattr *ethnla_nest_start(struct nl_context *nlctx, uint16_t type)
++struct nlattr *ethnla_nest_start(struct nl_context *nlctx, uint16_t type)
 +{
 +	struct nlmsghdr *nlhdr = nlctx->nlhdr;
 +	struct nlattr *attr;
@@ -781,43 +773,8 @@ index 000000000000..5aa94ab14659
 +	return NULL;
 +}
 +
-+static bool ethnla_put_u32(struct nl_context *nlctx, uint16_t type, u32 data)
-+{
-+	return ethnla_put(nlctx, type, sizeof(u32), &data);
-+}
-+
-+static bool ethnla_put_u8(struct nl_context *nlctx, uint16_t type, u8 data)
-+{
-+	return ethnla_put(nlctx, type, sizeof(u8), &data);
-+}
-+
-+static bool ethnla_put_flag(struct nl_context *nlctx, uint16_t type, bool val)
-+{
-+	if (val)
-+		return ethnla_put(nlctx, type, 0, &val);
-+	else
-+		return false;
-+}
-+
-+static bool ethnla_put_bitfield32(struct nl_context *nlctx, uint16_t type,
-+				  u32 value, u32 selector)
-+{
-+	struct nla_bitfield32 val = {
-+		.value		= value,
-+		.selector	= selector,
-+	};
-+
-+	return ethnla_put(nlctx, type, sizeof(val), &val);
-+}
-+
-+static bool ethnla_put_strz(struct nl_context *nlctx, uint16_t type,
-+			    const char *data)
-+{
-+	return ethnla_put(nlctx, type, strlen(data) + 1, data);
-+}
-+
-+static bool ethnla_put_dev(struct nl_context *nlctx, uint16_t type,
-+			   const char *devname)
++bool ethnla_put_dev(struct nl_context *nlctx, uint16_t type,
++		    const char *devname)
 +{
 +	struct nlattr *nest = ethnla_nest_start(nlctx, type);
 +	struct nlmsghdr *nlhdr = nlctx->nlhdr;
@@ -833,7 +790,7 @@ index 000000000000..5aa94ab14659
 +	return false;
 +}
 +
-+static const char *get_dev_name(const struct nlattr *nest)
++const char *get_dev_name(const struct nlattr *nest)
 +{
 +	const struct nlattr *dev_tb[ETHA_DEV_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(dev_tb);
@@ -849,8 +806,8 @@ index 000000000000..5aa94ab14659
 +
 +/* request helpers */
 +
-+static int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
-+				  uint16_t dev_attrtype)
++int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
++			   uint16_t dev_attrtype)
 +{
 +	bool is_dev = ctx->devname && strcmp(ctx->devname, WILDCARD_DEVNAME);
 +	struct nl_context *nlctx = ctx->nlctx;
@@ -870,7 +827,7 @@ index 000000000000..5aa94ab14659
 +	return 0;
 +}
 +
-+static int ethnl_send_get_request(struct cmd_context *ctx, mnl_cb_t cb)
++int ethnl_send_get_request(struct cmd_context *ctx, mnl_cb_t cb)
 +{
 +	struct nl_context *nlctx = ctx->nlctx;
 +	int ret;
@@ -885,41 +842,6 @@ index 000000000000..5aa94ab14659
 +	return nlctx->exit_code ?: 1;
 +}
 +
-+/* dump helpers */
-+
-+static const char *u8_to_bool(const struct nlattr *attr)
-+{
-+	if (attr)
-+		return mnl_attr_get_u8(attr) ? "on" : "off";
-+	else
-+		return "n/a";
-+}
-+
-+static void show_u32(const struct nlattr *attr, const char *lbl)
-+{
-+	if (attr)
-+		printf("%s%u\n", lbl, mnl_attr_get_u32(attr));
-+}
-+
-+static void show_bool(const struct nlattr *attr, const char *lbl)
-+{
-+	if (attr)
-+		printf("%s%s\n", lbl, mnl_attr_get_u8(attr) ? "on" : "off");
-+}
-+
-+static void show_string(const struct nlattr **tb, unsigned int idx,
-+			      const char *label)
-+{
-+	printf("%s: %s\n", label, tb[idx] ? mnl_attr_get_str(tb[idx]) : "");
-+}
-+
-+static void show_u32_yn(const struct nlattr **tb, unsigned int idx,
-+			const char *label)
-+{
-+	if (tb[idx])
-+		printf("%s: %s\n", label,
-+		       mnl_attr_get_u32(tb[idx]) ? "yes" : "no");
-+}
 +/* get ethtool family id */
 +
 +static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -1024,22 +946,155 @@ index 000000000000..5aa94ab14659
 +
 +	return 0;
 +}
-diff --git a/netlink.h b/netlink.h
+diff --git a/netlink/netlink.h b/netlink/netlink.h
 new file mode 100644
-index 000000000000..b10b168b1f5b
+index 000000000000..55f14755c641
 --- /dev/null
-+++ b/netlink.h
-@@ -0,0 +1,10 @@
-+#ifndef ETHTOOL_NETLINK_H__
-+#define ETHTOOL_NETLINK_H__
++++ b/netlink/netlink.h
+@@ -0,0 +1,143 @@
++/*
++ * netlink.h - common interface for all netlink code
++ *
++ * Declarations of data structures, global data and helpers for netlink code
++ */
 +
-+struct cmd_context;
-+struct nl_context;
++#ifndef ETHTOOL_NETLINK_INT_H__
++#define ETHTOOL_NETLINK_INT_H__
 +
-+int netlink_init(struct cmd_context *ctx);
-+int netlink_done(struct cmd_context *ctx);
++#include <libmnl/libmnl.h>
++#include <linux/netlink.h>
++#include <linux/genetlink.h>
++#include <linux/ethtool_netlink.h>
 +
-+#endif /* ETHTOOL_NETLINK_H__ */
++#define MAX_MSG_SIZE (4 << 20)		/* 4 MB */
++#define WILDCARD_DEVNAME "*"
++
++struct nl_context {
++	int ethnl_fam;
++	struct mnl_socket *sk;
++	char *buff;
++	unsigned int buffsize;
++	unsigned int port;
++	unsigned int seq;
++	struct nlmsghdr *nlhdr;
++	struct genlmsghdr *gnlhdr;
++	void *msg;
++	const char *devname;
++	bool is_dump;
++	int exit_code;
++};
++
++struct attr_tb_info {
++	const struct nlattr **tb;
++	unsigned int max_type;
++};
++#define DECLARE_ATTR_TB_INFO(tbl) \
++	struct attr_tb_info tbl ## _info = { (tbl), (MNL_ARRAY_SIZE(tbl) - 1) }
++
++unsigned int nl_copy_payload(void *buff, unsigned int maxlen,
++			     const struct nlattr *attr);
++bool ethnla_put(struct nl_context *nlctx, uint16_t type, size_t len,
++		const void *data);
++struct nlattr *ethnla_nest_start(struct nl_context *nlctx, uint16_t type);
++bool ethnla_put_dev(struct nl_context *nlctx, uint16_t type,
++		    const char *devname);
++const char *get_dev_name(const struct nlattr *nest);
++
++bool bitset_get_bit(const struct nlattr *bitset, bool mask, unsigned int idx,
++		    int *retptr);
++bool bitset_is_empty(const struct nlattr *bitset, bool mask, int *retptr);
++
++int msg_init(struct nl_context *nlctx, int cmd, unsigned int flags);
++int ethnl_process_reply(struct nl_context *nlctx, mnl_cb_t reply_cb);
++int attr_cb(const struct nlattr *attr, void *data);
++int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
++			   uint16_t dev_attrtype);
++int ethnl_send_get_request(struct cmd_context *ctx, mnl_cb_t cb);
++
++/* put data wrappers */
++
++static inline bool ethnla_put_u32(struct nl_context *nlctx, uint16_t type,
++				  u32 data)
++{
++	return ethnla_put(nlctx, type, sizeof(u32), &data);
++}
++
++static inline bool ethnla_put_u8(struct nl_context *nlctx, uint16_t type,
++				 u8 data)
++{
++	return ethnla_put(nlctx, type, sizeof(u8), &data);
++}
++
++static inline bool ethnla_put_flag(struct nl_context *nlctx, uint16_t type,
++				   bool val)
++{
++	if (val)
++		return ethnla_put(nlctx, type, 0, &val);
++	else
++		return false;
++}
++
++static inline bool ethnla_put_bitfield32(struct nl_context *nlctx,
++					 uint16_t type, u32 value, u32 selector)
++{
++	struct nla_bitfield32 val = {
++		.value		= value,
++		.selector	= selector,
++	};
++
++	return ethnla_put(nlctx, type, sizeof(val), &val);
++}
++
++static inline bool ethnla_put_strz(struct nl_context *nlctx, uint16_t type,
++				   const char *data)
++{
++	return ethnla_put(nlctx, type, strlen(data) + 1, data);
++}
++
++static inline ssize_t ethnl_sendmsg(struct nl_context *nlctx)
++{
++	struct nlmsghdr *nlhdr = nlctx->nlhdr;
++
++	return mnl_socket_sendto(nlctx->sk, nlhdr, nlhdr->nlmsg_len);
++}
++
++/* dump helpers */
++
++static inline const char *u8_to_bool(const struct nlattr *attr)
++{
++	if (attr)
++		return mnl_attr_get_u8(attr) ? "on" : "off";
++	else
++		return "n/a";
++}
++
++static inline void show_u32(const struct nlattr *attr, const char *lbl)
++{
++	if (attr)
++		printf("%s%u\n", lbl, mnl_attr_get_u32(attr));
++}
++
++static inline void show_bool(const struct nlattr *attr, const char *lbl)
++{
++	if (attr)
++		printf("%s%s\n", lbl, mnl_attr_get_u8(attr) ? "on" : "off");
++}
++
++static inline void show_string(const struct nlattr **tb, unsigned int idx,
++			       const char *label)
++{
++	printf("%s: %s\n", label, tb[idx] ? mnl_attr_get_str(tb[idx]) : "");
++}
++
++static inline void show_u32_yn(const struct nlattr **tb, unsigned int idx,
++			       const char *label)
++{
++	if (tb[idx])
++		printf("%s: %s\n", label,
++		       mnl_attr_get_u32(tb[idx]) ? "yes" : "no");
++}
++
++#endif /* ETHTOOL_NETLINK_INT_H__ */
 diff --git a/uapi/linux/ethtool.h b/uapi/linux/ethtool.h
 index 9dd347caf4ed..c51a966bb46e 100644
 --- a/uapi/linux/ethtool.h
