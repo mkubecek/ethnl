@@ -1,4 +1,4 @@
-From 778310a4ae939c8b5cb9a97a1f0cc8c7ea8f29b3 Mon Sep 17 00:00:00 2001
+From 1a077fdfeb62dcb65544547d16bb20f93fc171c5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 07/21] netlink: add netlink handler for gset (no option)
@@ -25,7 +25,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/settings.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 8aeaf4bd6fa5..70ed033cace3 100644
+index 7e24fe8c50f4..629f04e1202b 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -6,7 +6,7 @@ EXTRA_DIST = LICENSE ethtool.8 ethtool.spec.in aclocal.m4 ChangeLog autogen.sh
@@ -40,7 +40,7 @@ index 8aeaf4bd6fa5..70ed033cace3 100644
 @@ -23,7 +23,7 @@ if ETHTOOL_ENABLE_NETLINK
  ethtool_SOURCES += \
  		  netlink/netlink.c netlink/netlink.h netlink/extapi.h \
- 		  netlink/monitor.c netlink/strset.c netlink/strset.h \
+ 		  netlink/strset.c netlink/strset.h netlink/monitor.c \
 -		  netlink/drvinfo.c \
 +		  netlink/drvinfo.c netlink/settings.c \
  		  uapi/linux/ethtool_netlink.h \
@@ -646,18 +646,18 @@ index 546090a02a0d..20c9b03b2d3c 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 7dd17483420f..f6a18d98a21f 100644
+index ae7d6080e03d..28cf064bb40c 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -5,6 +5,7 @@
- #include "strset.h"
+@@ -67,6 +67,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
+ }
  
  int drvinfo_reply_cb(const struct nlmsghdr *nlhdr, void *data);
 +int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  
  static struct {
  	uint8_t		cmd;
-@@ -14,6 +15,10 @@ static struct {
+@@ -80,6 +81,10 @@ static struct {
  		.cmd	= ETHNL_CMD_SET_DRVINFO,
  		.cb	= drvinfo_reply_cb,
  	},
@@ -668,7 +668,7 @@ index 7dd17483420f..f6a18d98a21f 100644
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -47,6 +52,10 @@ static struct monitor_option monitor_opts[] = {
+@@ -113,6 +118,10 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "-i|--driver",
  		.cmd		= ETHNL_CMD_SET_DRVINFO,
  	},
@@ -680,7 +680,7 @@ index 7dd17483420f..f6a18d98a21f 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index da4ce7e5b9be..330dece4df80 100644
+index 9cdf38df22c2..e6216205a184 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -4,8 +4,10 @@
@@ -820,10 +820,10 @@ index da4ce7e5b9be..330dece4df80 100644
  
  int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index d46f1c0871f2..7cd2b90e3625 100644
+index 043dbcddb3fc..876c2a4c26f7 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -55,6 +55,10 @@ bool bitset_get_bit(const struct nlattr *bitset, bool mask, unsigned int idx,
+@@ -56,6 +56,10 @@ bool bitset_get_bit(const struct nlattr *bitset, bool mask, unsigned int idx,
  		    int *retptr);
  bool bitset_is_empty(const struct nlattr *bitset, bool mask, int *retptr);
  
@@ -836,7 +836,7 @@ index d46f1c0871f2..7cd2b90e3625 100644
  int attr_cb(const struct nlattr *attr, void *data);
 diff --git a/netlink/settings.c b/netlink/settings.c
 new file mode 100644
-index 000000000000..93c2f5da5deb
+index 000000000000..af56530cd59f
 --- /dev/null
 +++ b/netlink/settings.c
 @@ -0,0 +1,231 @@
@@ -1069,7 +1069,7 @@ index 000000000000..93c2f5da5deb
 +				     ETHA_SETTINGS_DEV);
 +	if (ret < 0)
 +		return ret;
-+	return ethnl_send_get_request(ctx, settings_reply_cb);
++	return ethnl_send_get_request(ctx->nlctx, settings_reply_cb);
 +}
 -- 
 2.18.0

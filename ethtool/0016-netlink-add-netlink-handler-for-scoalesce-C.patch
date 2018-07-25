@@ -1,4 +1,4 @@
-From 9cc0f3202d9e59502bea538144b9b68fa4347292 Mon Sep 17 00:00:00 2001
+From 17e96d20bab83f87e2f7f02901d2c9cbc0f0386a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 07:27:00 +0100
 Subject: [PATCH 16/21] netlink: add netlink handler for scoalesce (-C)
@@ -47,7 +47,7 @@ index 0df0af85d9c5..ae9a3aee5761 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index bdce8d84e025..ec9199ba6b96 100644
+index 3818e63912e8..f2266477efe5 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -328,3 +328,187 @@ int nl_gfec(struct cmd_context *ctx)

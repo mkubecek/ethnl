@@ -1,4 +1,4 @@
-From c320f49ab256840c427a5b5d74bc10ea894c62ff Mon Sep 17 00:00:00 2001
+From b869987987ae89fc8cd78b76e6ed363786be08f7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 09/21] netlink: add netlink handler for sset (-s)
@@ -68,10 +68,10 @@ index 20c9b03b2d3c..66573f0b4304 100644
  
  void monitor_usage();
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 330dece4df80..3febb4579068 100644
+index e6216205a184..03ea5c136d9b 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -559,6 +559,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
+@@ -558,6 +558,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
  	return (nlctx->ethnl_fam ? 0 : -EADDRNOTAVAIL);
  }
  
@@ -88,17 +88,17 @@ index 330dece4df80..3febb4579068 100644
  
  static int nlctx_init(struct nl_context *nlctx)
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index b56d66f6dccf..7578c259099a 100644
+index c083a508b18d..602eb82c1c5e 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -69,6 +69,7 @@ int attr_cb(const struct nlattr *attr, void *data);
+@@ -70,6 +70,7 @@ int attr_cb(const struct nlattr *attr, void *data);
  int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
  			   uint16_t dev_attrtype);
- int ethnl_send_get_request(struct cmd_context *ctx, mnl_cb_t cb);
+ int ethnl_send_get_request(struct nl_context *nlctx, mnl_cb_t cb);
 +int nomsg_reply_cb(const struct nlmsghdr *nlhdr, void *data);
+ int __init_aux_nlctx(struct nl_context *nlctx);
  
  /* put data wrappers */
- 
 diff --git a/netlink/parser.c b/netlink/parser.c
 index 589004d1f9f9..d1536ecb1d52 100644
 --- a/netlink/parser.c
@@ -174,7 +174,7 @@ index 7308da25f093..2fd9a8bb23d9 100644
  int nl_parser(struct cmd_context *ctx, const struct param_parser *params,
  	      unsigned int max_type);
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 93c2f5da5deb..4b1dfa3e8d47 100644
+index af56530cd59f..137d3aa7e415 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -5,6 +5,7 @@
@@ -187,7 +187,7 @@ index 93c2f5da5deb..4b1dfa3e8d47 100644
  
 @@ -229,3 +230,219 @@ int nl_gset(struct cmd_context *ctx)
  		return ret;
- 	return ethnl_send_get_request(ctx, settings_reply_cb);
+ 	return ethnl_send_get_request(ctx->nlctx, settings_reply_cb);
  }
 +
 +/* SET_SETTINGS */

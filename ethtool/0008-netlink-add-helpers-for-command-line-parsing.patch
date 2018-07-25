@@ -1,4 +1,4 @@
-From a3360ae60cc40ea82dcd43b667362fb3069cc934 Mon Sep 17 00:00:00 2001
+From 0528b5fd512cdd5309156072865a34976604a089 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:42:26 +0100
 Subject: [PATCH 08/21] netlink: add helpers for command line parsing
@@ -18,22 +18,22 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/parser.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 70ed033cace3..fbc76a1c8306 100644
+index 629f04e1202b..7cc4adc53c59 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -23,6 +23,7 @@ if ETHTOOL_ENABLE_NETLINK
  ethtool_SOURCES += \
  		  netlink/netlink.c netlink/netlink.h netlink/extapi.h \
- 		  netlink/monitor.c netlink/strset.c netlink/strset.h \
+ 		  netlink/strset.c netlink/strset.h netlink/monitor.c \
 +		  netlink/parser.c netlink/parser.h \
  		  netlink/drvinfo.c netlink/settings.c \
  		  uapi/linux/ethtool_netlink.h \
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 7cd2b90e3625..b56d66f6dccf 100644
+index 876c2a4c26f7..c083a508b18d 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -28,6 +28,10 @@ struct nl_context {
+@@ -29,6 +29,10 @@ struct nl_context {
  	void *msg;
  	const char *devname;
  	bool is_dump;

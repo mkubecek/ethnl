@@ -1,4 +1,4 @@
-From 8af528dab01384a48c5ec2d43443410f26c52d11 Mon Sep 17 00:00:00 2001
+From ec06558b3d190c6be104393955fc98e66f0fc751 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:08:21 +0100
 Subject: [PATCH 14/21] netlink: add netlink handler for geee (--show-eee)
@@ -48,10 +48,10 @@ index ab851eddcce6..961afb02a26a 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index e8f0554b4989..5c9e95981bd8 100644
+index 4e391b440e72..9a60ba000b91 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -81,6 +81,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -147,6 +147,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
  		.info_mask	= ETH_PARAMS_IM_CHANNELS,
  	},
@@ -64,7 +64,7 @@ index e8f0554b4989..5c9e95981bd8 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index fc6d74afa816..973881047d75 100644
+index e189429c16e2..8f5b510b4ceb 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -133,6 +133,58 @@ static int show_channels(struct nl_context *nlctx, const struct nlattr *nest)

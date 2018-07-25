@@ -1,4 +1,4 @@
-From af01f71c373c0bf87fa5f08f60c376852d090471 Mon Sep 17 00:00:00 2001
+From 8a48dc070ff21e9c23cb1d12dee4b84a4f37f957 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:32:39 +0100
 Subject: [PATCH 19/21] netlink: add netlink handler for schannels (-L)
@@ -47,7 +47,7 @@ index ff14b3a77fa4..05c775be1b15 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index 180b7a4be65b..63fe3d22a2d6 100644
+index 24d6c8120194..a127daa71d85 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -574,3 +574,37 @@ int nl_spause(struct cmd_context *ctx)

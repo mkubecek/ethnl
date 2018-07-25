@@ -1,7 +1,7 @@
-From a990034d16d43c355664168c338fcdae7b7a3d9c Mon Sep 17 00:00:00 2001
+From 05c4b33fc35cfecac4befcf6fe07a296ec495656 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 14:09:19 +0200
-Subject: [PATCH 05/21] netlink: add support for string sets
+Subject: [PATCH 04/21] netlink: add support for string sets
 
 Add infrastructure for querying kernel string sets (analog to ioct commands
 ETHTOOL_GSSET_INFO and ETHTOOL_GSTRINGS).
@@ -11,84 +11,31 @@ resolve bit indices to names when processing bitsets in compact format.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Makefile.am       |   2 +-
- netlink/monitor.c |  15 ++-
- netlink/strset.c  | 264 ++++++++++++++++++++++++++++++++++++++++++++++
- netlink/strset.h  |  16 +++
- 4 files changed, 295 insertions(+), 2 deletions(-)
+ Makefile.am      |   1 +
+ netlink/strset.c | 265 +++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/strset.h |  16 +++
+ 3 files changed, 282 insertions(+)
  create mode 100644 netlink/strset.c
  create mode 100644 netlink/strset.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 46aca32fae62..d4e3ea792d9c 100644
+index bdb4f4df2b0f..6a4d7083919e 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -22,7 +22,7 @@ endif
+@@ -22,6 +22,7 @@ endif
  if ETHTOOL_ENABLE_NETLINK
  ethtool_SOURCES += \
  		  netlink/netlink.c netlink/netlink.h netlink/extapi.h \
--		  netlink/monitor.c \
-+		  netlink/monitor.c netlink/strset.c netlink/strset.h \
++		  netlink/strset.c netlink/strset.h \
  		  uapi/linux/ethtool_netlink.h \
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
-diff --git a/netlink/monitor.c b/netlink/monitor.c
-index f8aa141fca40..815e8310c976 100644
---- a/netlink/monitor.c
-+++ b/netlink/monitor.c
-@@ -2,6 +2,7 @@
- 
- #include "../internal.h"
- #include "netlink.h"
-+#include "strset.h"
- 
- static struct {
- 	uint8_t		cmd;
-@@ -92,6 +93,7 @@ opt_found:
- 
- int nl_monitor(struct cmd_context *ctx)
- {
-+	bool is_dev;
- 	struct nl_context *nlctx = ctx->nlctx;
- 	uint32_t grpid = nlctx->mon_mcgrp_id;
- 	int ret;
-@@ -102,18 +104,29 @@ int nl_monitor(struct cmd_context *ctx)
- 	}
- 	if (parse_monitor(ctx) < 0)
- 		return 1;
-+	is_dev = ctx->devname && strcmp(ctx->devname, WILDCARD_DEVNAME);
- 
-+	ret = load_global_strings(ctx);
-+	if (ret < 0)
-+		return ret;
- 	ret = mnl_socket_setsockopt(nlctx->sk, NETLINK_ADD_MEMBERSHIP,
- 				    &grpid, sizeof(grpid));
- 	if (ret < 0)
- 		return ret;
-+	ret = load_perdev_strings(ctx, is_dev ? ctx->devname : NULL);
-+	if (ret < 0)
-+		return ret;
- 
- 	nlctx->filter_devname = ctx->devname;
- 	nlctx->is_monitor = true;
- 	nlctx->port = 0;
- 	nlctx->seq = 0;
- 
--	return ethnl_process_reply(nlctx, monitor_any_cb);
-+	fputs("listening...\n", stdout);
-+	fflush(stdout);
-+	ret = ethnl_process_reply(nlctx, monitor_any_cb);
-+	free_perdev_strings(NULL);
-+	return ret;
- }
- 
- void monitor_usage()
 diff --git a/netlink/strset.c b/netlink/strset.c
 new file mode 100644
-index 000000000000..a99995a7da89
+index 000000000000..9ea456748531
 --- /dev/null
 +++ b/netlink/strset.c
-@@ -0,0 +1,264 @@
+@@ -0,0 +1,265 @@
 +#include <errno.h>
 +#include <string.h>
 +
@@ -303,21 +250,19 @@ index 000000000000..a99995a7da89
 +	return set->strings[idx];
 +}
 +
-+int load_global_strings(struct cmd_context *ctx)
++int load_global_strings(struct nl_context *nlctx)
 +{
-+	struct nl_context *nlctx = ctx->nlctx;
 +	int ret;
 +
 +	ret = msg_init(nlctx, ETHNL_CMD_GET_STRSET, NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return ret;
-+	ret = ethnl_send_get_request(ctx, strset_reply_cb);
++	ret = ethnl_send_get_request(nlctx, strset_reply_cb);
 +	return ret;
 +}
 +
-+int load_perdev_strings(struct cmd_context *ctx, const char *dev)
++int load_perdev_strings(struct nl_context *nlctx, const char *dev)
 +{
-+	struct nl_context *nlctx = ctx->nlctx;
 +	int ret;
 +
 +	ret = msg_init(nlctx, ETHNL_CMD_GET_STRSET,
@@ -328,7 +273,7 @@ index 000000000000..a99995a7da89
 +		if (ethnla_put_dev(nlctx, ETHA_STRSET_DEV, dev))
 +			return -EMSGSIZE;
 +	}
-+	ret = ethnl_send_get_request(ctx, strset_reply_cb);
++	ret = ethnl_send_get_request(nlctx, strset_reply_cb);
 +	return ret;
 +}
 +
@@ -337,15 +282,18 @@ index 000000000000..a99995a7da89
 +	struct perdev_strings **p = &device_strings;
 +	unsigned int i;
 +
-+	for (p = &device_strings; *p; p = &((*p)->next)) {
++	p = &device_strings;
++	while (*p) {
 +		struct perdev_strings *perdev = *p;
 +
-+		if (devname && strcmp(perdev->devname, devname))
++		if (devname && strcmp(perdev->devname, devname)) {
++			p = &((*p)->next);
 +			continue;
++		}
 +		*p = perdev->next;
 +		for (i = 0; i <= ETH_SS_MAX; i++)
 +			drop_stringset(&perdev->strings[i]);
-+		free(*p);
++		free(perdev);
 +	}
 +
 +	if (!devname) {
@@ -355,7 +303,7 @@ index 000000000000..a99995a7da89
 +}
 diff --git a/netlink/strset.h b/netlink/strset.h
 new file mode 100644
-index 000000000000..6a2d0e651fec
+index 000000000000..81ddf33a5d15
 --- /dev/null
 +++ b/netlink/strset.h
 @@ -0,0 +1,16 @@
@@ -370,8 +318,8 @@ index 000000000000..6a2d0e651fec
 +unsigned int get_count(const struct stringset *set);
 +const char *get_string(const struct stringset *set, unsigned int idx);
 +
-+int load_global_strings(struct cmd_context *ctx);
-+int load_perdev_strings(struct cmd_context *ctx, const char *dev);
++int load_global_strings(struct nl_context *nlctx);
++int load_perdev_strings(struct nl_context *nlctx, const char *dev);
 +void free_perdev_strings(const char *devname);
 +
 +#endif /* ETHTOOL_NETLINK_STRSET_H__ */

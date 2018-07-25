@@ -1,4 +1,4 @@
-From fb0814148d5a3e71f5ee91d484d2a839c7a040ff Mon Sep 17 00:00:00 2001
+From 071ae5daf0bcce11822d0f82ac8d80fae3929286 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 03/21] netlink: add netlink interface
@@ -19,17 +19,17 @@ completely.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am                  |  11 +
- configure.ac                 |  12 +
- ethtool.c                    | 172 +++++++++----
+ configure.ac                 |  14 +-
+ ethtool.c                    | 172 ++++++++----
  internal.h                   |   8 +
  netlink/extapi.h             |  16 ++
- netlink/netlink.c            | 481 +++++++++++++++++++++++++++++++++++
- netlink/netlink.h            | 143 +++++++++++
+ netlink/netlink.c            | 506 +++++++++++++++++++++++++++++++++++
+ netlink/netlink.h            | 152 +++++++++++
  uapi/linux/ethtool.h         |   7 +
- uapi/linux/ethtool_netlink.h | 311 ++++++++++++++++++++++
- uapi/linux/genetlink.h       |  89 +++++++
- uapi/linux/netlink.h         | 247 ++++++++++++++++++
- 11 files changed, 1441 insertions(+), 56 deletions(-)
+ uapi/linux/ethtool_netlink.h | 311 +++++++++++++++++++++
+ uapi/linux/genetlink.h       |  89 ++++++
+ uapi/linux/netlink.h         | 247 +++++++++++++++++
+ 11 files changed, 1476 insertions(+), 57 deletions(-)
  create mode 100644 netlink/extapi.h
  create mode 100644 netlink/netlink.c
  create mode 100644 netlink/netlink.h
@@ -67,9 +67,18 @@ index e7da37a85499..bdb4f4df2b0f 100644
  check_PROGRAMS = test-cmdline test-features
  test_cmdline_SOURCES = test-cmdline.c test-common.c $(ethtool_SOURCES) 
 diff --git a/configure.ac b/configure.ac
-index e891d917cf11..1896e44baf16 100644
+index e891d917cf11..138039d49a2c 100644
 --- a/configure.ac
 +++ b/configure.ac
+@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
+ AC_INIT(ethtool, 4.17, netdev@vger.kernel.org)
+ AC_PREREQ(2.52)
+ AC_CONFIG_SRCDIR([ethtool.c])
+-AM_INIT_AUTOMAKE([gnu])
++AM_INIT_AUTOMAKE([gnu subdir-objects])
+ AC_CONFIG_HEADERS([ethtool-config.h])
+ 
+ AM_MAINTAINER_MODE
 @@ -40,5 +40,17 @@ if test x$enable_pretty_dump = xyes; then
  fi
  AM_CONDITIONAL([ETHTOOL_ENABLE_PRETTY_DUMP], [test x$enable_pretty_dump = xyes])
@@ -461,10 +470,10 @@ index 000000000000..05ab083d9b9c
 +#endif /* ETHTOOL_EXTAPI_H__ */
 diff --git a/netlink/netlink.c b/netlink/netlink.c
 new file mode 100644
-index 000000000000..3d3641ff1181
+index 000000000000..bce83e9e87f1
 --- /dev/null
 +++ b/netlink/netlink.c
-@@ -0,0 +1,481 @@
+@@ -0,0 +1,506 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -827,9 +836,8 @@ index 000000000000..3d3641ff1181
 +	return 0;
 +}
 +
-+int ethnl_send_get_request(struct cmd_context *ctx, mnl_cb_t cb)
++int ethnl_send_get_request(struct nl_context *nlctx, mnl_cb_t cb)
 +{
-+	struct nl_context *nlctx = ctx->nlctx;
 +	int ret;
 +
 +	ret = ethnl_sendmsg(nlctx);
@@ -904,7 +912,33 @@ index 000000000000..3d3641ff1181
 +	if (nlctx->sk)
 +		mnl_socket_close(nlctx->sk);
 +	free(nlctx->buff);
++	if (nlctx->aux_nlctx) {
++		nlctx_done(nlctx->aux_nlctx);
++		free(nlctx->aux_nlctx);
++	}
 +	memset(nlctx, '\0', sizeof(*nlctx));
++
++	return 0;
++}
++
++int __init_aux_nlctx(struct nl_context *nlctx)
++{
++	struct nl_context *aux;
++	int ret;
++
++	if (nlctx->aux_nlctx)
++		return 0;
++	aux = malloc(sizeof(*aux));
++	if (!aux)
++		return -ENOMEM;
++	ret = nlctx_init(aux);
++	if (ret < 0) {
++		free(aux);
++		return ret;
++	}
++
++	aux->ethnl_fam = nlctx->ethnl_fam;
++	nlctx->aux_nlctx = aux;
 +
 +	return 0;
 +}
@@ -948,10 +982,10 @@ index 000000000000..3d3641ff1181
 +}
 diff --git a/netlink/netlink.h b/netlink/netlink.h
 new file mode 100644
-index 000000000000..55f14755c641
+index 000000000000..39a4af3cb9cd
 --- /dev/null
 +++ b/netlink/netlink.h
-@@ -0,0 +1,143 @@
+@@ -0,0 +1,152 @@
 +/*
 + * netlink.h - common interface for all netlink code
 + *
@@ -972,6 +1006,7 @@ index 000000000000..55f14755c641
 +struct nl_context {
 +	int ethnl_fam;
 +	struct mnl_socket *sk;
++	struct nl_context *aux_nlctx;
 +	char *buff;
 +	unsigned int buffsize;
 +	unsigned int port;
@@ -1009,7 +1044,8 @@ index 000000000000..55f14755c641
 +int attr_cb(const struct nlattr *attr, void *data);
 +int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
 +			   uint16_t dev_attrtype);
-+int ethnl_send_get_request(struct cmd_context *ctx, mnl_cb_t cb);
++int ethnl_send_get_request(struct nl_context *nlctx, mnl_cb_t cb);
++int __init_aux_nlctx(struct nl_context *nlctx);
 +
 +/* put data wrappers */
 +
@@ -1092,6 +1128,13 @@ index 000000000000..55f14755c641
 +	if (tb[idx])
 +		printf("%s: %s\n", label,
 +		       mnl_attr_get_u32(tb[idx]) ? "yes" : "no");
++}
++
++/* misc */
++
++static inline int init_aux_nlctx(struct nl_context *nlctx)
++{
++	return nlctx->aux_nlctx ? 0 : __init_aux_nlctx(nlctx);
 +}
 +
 +#endif /* ETHTOOL_NETLINK_INT_H__ */

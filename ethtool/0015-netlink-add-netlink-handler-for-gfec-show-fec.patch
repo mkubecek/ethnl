@@ -1,4 +1,4 @@
-From 48cf0f39680b33648206e26700624be93de322c9 Mon Sep 17 00:00:00 2001
+From 5548f2bece3f1ff9a88d9554f30cd90646c391ed Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
 Subject: [PATCH 15/21] netlink: add netlink handler for gfec (--show-fec)
@@ -91,10 +91,10 @@ index 961afb02a26a..0df0af85d9c5 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 5c9e95981bd8..1fdc33d5ad92 100644
+index 9a60ba000b91..5d05bc74c843 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -86,6 +86,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -152,6 +152,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
  		.info_mask	= ETH_PARAMS_IM_EEE,
  	},
@@ -107,7 +107,7 @@ index 5c9e95981bd8..1fdc33d5ad92 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index 973881047d75..bdce8d84e025 100644
+index 8f5b510b4ceb..3818e63912e8 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -185,6 +185,35 @@ static int show_eee(struct nl_context *nlctx, const struct nlattr *nest)

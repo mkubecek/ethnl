@@ -1,4 +1,4 @@
-From 1705595d2534928ba3bfcc67a171d916091e0cc5 Mon Sep 17 00:00:00 2001
+From e1f194c04264a6b8d0b93d8c9b67f41179c54af5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:17:41 +0100
 Subject: [PATCH 18/21] netlink: add netlink handler for spause (-A)
@@ -47,7 +47,7 @@ index fe7ccdb407da..ff14b3a77fa4 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index 54a27698d5a6..180b7a4be65b 100644
+index 5a2c8678146f..24d6c8120194 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -546,3 +546,31 @@ int nl_sring(struct cmd_context *ctx)
