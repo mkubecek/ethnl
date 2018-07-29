@@ -1,9 +1,10 @@
-From d3bdaa156c2388db0a6d2ae67323642af27b83b5 Mon Sep 17 00:00:00 2001
+From 26ffda3b080026f5f0ca1d36dcdee201923b4f33 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
-Subject: [PATCH 06/21] netlink: add netlink handler for gdrv (-i)
+Subject: [PATCH 06/23] netlink: add netlink handler for gdrv (-i)
 
-Implement "-i" subcommand using netlink interface.
+Implement "-i" subcommand using netlink interface command
+ETHNL_CMD_GET_DRVINFO.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -28,18 +29,18 @@ index a412734fffd1..7e24fe8c50f4 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 1b2b1c4be4db..caa8bbc213a1 100644
+index b7f40d2f3826..0edb80b19b9d 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -5054,6 +5054,7 @@ static int show_usage(struct cmd_context *ctx);
- 
- #ifndef ETHTOOL_ENABLE_NETLINK
- /* Stubs to (not) use when building without netlink support */
-+int nl_gdrv(struct cmd_context *ctx) { return 0; }
+@@ -5056,6 +5056,7 @@ static int show_usage(struct cmd_context *ctx);
+ /* Just define all netlink handlers as null when building without netlink
+  * support so that we do not get unresolved symbols in args array below
+  */
++#define nl_gdrv		NULL
  #endif
  
  static const struct option {
-@@ -5123,7 +5124,7 @@ static const struct option {
+@@ -5125,7 +5126,7 @@ static const struct option {
  	{ "-K|--features|--offload", 1, do_sfeatures, NULL,
  	  "Set protocol offload and other features",
  	  "		FEATURE on|off ...\n" },

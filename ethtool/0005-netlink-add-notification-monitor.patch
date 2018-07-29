@@ -1,7 +1,7 @@
-From c8d87c413a095c38ef3aae8e08891f6e255639e3 Mon Sep 17 00:00:00 2001
+From a6033f12c548cb9655c930f792faaaf8d310dd03 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
-Subject: [PATCH 05/21] netlink: add notification monitor
+Subject: [PATCH 05/23] netlink: add notification monitor
 
 With 'ethtool --monitor [ --all | opt ] [dev]', let ethtool listen to
 netlink notification and display them in a format similar to output of
@@ -34,10 +34,10 @@ index 6a4d7083919e..a412734fffd1 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 20f9cd5a2b16..1b2b1c4be4db 100644
+index e8044a6af76c..b7f40d2f3826 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -5292,6 +5292,9 @@ static int show_usage(struct cmd_context *ctx)
+@@ -5294,6 +5294,9 @@ static int show_usage(struct cmd_context *ctx)
  		if (args[i].opthelp)
  			fputs(args[i].opthelp, stdout);
  	}
@@ -47,7 +47,7 @@ index 20f9cd5a2b16..1b2b1c4be4db 100644
  
  	return 0;
  }
-@@ -5333,6 +5336,20 @@ int main(int argc, char **argp)
+@@ -5335,6 +5338,20 @@ int main(int argc, char **argp)
  	argp++;
  	argc--;
  
@@ -306,10 +306,10 @@ index 000000000000..d7ed562356f1
 +	fputs("                [ DEVNAME | * ]\n", stdout);
 +}
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index bce83e9e87f1..9cdf38df22c2 100644
+index 0671c4589c72..69f692d2cf04 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -376,6 +376,31 @@ err:
+@@ -391,6 +391,31 @@ err:
  
  /* get ethtool family id */
  
@@ -341,7 +341,7 @@ index bce83e9e87f1..9cdf38df22c2 100644
  static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	struct nl_context *nlctx = data;
-@@ -383,9 +408,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -398,9 +423,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  
  	nlctx->ethnl_fam = 0;
  	mnl_attr_for_each(attr, nlhdr, GENL_HDRLEN) {
@@ -356,7 +356,7 @@ index bce83e9e87f1..9cdf38df22c2 100644
  		}
  	}
  
-@@ -462,6 +491,7 @@ int __init_aux_nlctx(struct nl_context *nlctx)
+@@ -478,6 +507,7 @@ int __init_aux_nlctx(struct nl_context *nlctx)
  	}
  
  	aux->ethnl_fam = nlctx->ethnl_fam;
@@ -365,7 +365,7 @@ index bce83e9e87f1..9cdf38df22c2 100644
  
  	return 0;
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 39a4af3cb9cd..043dbcddb3fc 100644
+index 547c865ed535..15bf9f3873b0 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -17,6 +17,7 @@
@@ -375,8 +375,8 @@ index 39a4af3cb9cd..043dbcddb3fc 100644
 +	uint32_t mon_mcgrp_id;
  	struct mnl_socket *sk;
  	struct nl_context *aux_nlctx;
- 	char *buff;
-@@ -29,6 +30,10 @@ struct nl_context {
+ 	void *cmd_private;
+@@ -30,6 +31,10 @@ struct nl_context {
  	const char *devname;
  	bool is_dump;
  	int exit_code;
@@ -387,7 +387,7 @@ index 39a4af3cb9cd..043dbcddb3fc 100644
  };
  
  struct attr_tb_info {
-@@ -142,6 +147,27 @@ static inline void show_u32_yn(const struct nlattr **tb, unsigned int idx,
+@@ -144,6 +149,27 @@ static inline void show_u32_yn(const struct nlattr **tb, unsigned int idx,
  		       mnl_attr_get_u32(tb[idx]) ? "yes" : "no");
  }
  

@@ -1,7 +1,7 @@
-From 071ae5daf0bcce11822d0f82ac8d80fae3929286 Mon Sep 17 00:00:00 2001
+From 83fc382c177f86c6d4badf82ba38ccbf7ff985f8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
-Subject: [PATCH 03/21] netlink: add netlink interface
+Subject: [PATCH 03/23] netlink: add netlink interface
 
 Add basic netlink interface based on genetlink and libmnl. This commit only
 adds the generic infrastructure but does not override any ethtool command
@@ -20,16 +20,16 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am                  |  11 +
  configure.ac                 |  14 +-
- ethtool.c                    | 172 ++++++++----
+ ethtool.c                    | 178 ++++++++----
  internal.h                   |   8 +
  netlink/extapi.h             |  16 ++
- netlink/netlink.c            | 506 +++++++++++++++++++++++++++++++++++
- netlink/netlink.h            | 152 +++++++++++
+ netlink/netlink.c            | 522 +++++++++++++++++++++++++++++++++++
+ netlink/netlink.h            | 154 +++++++++++
  uapi/linux/ethtool.h         |   7 +
- uapi/linux/ethtool_netlink.h | 311 +++++++++++++++++++++
+ uapi/linux/ethtool_netlink.h | 325 ++++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 ++++++
  uapi/linux/netlink.h         | 247 +++++++++++++++++
- 11 files changed, 1476 insertions(+), 57 deletions(-)
+ 11 files changed, 1514 insertions(+), 57 deletions(-)
  create mode 100644 netlink/extapi.h
  create mode 100644 netlink/netlink.c
  create mode 100644 netlink/netlink.h
@@ -98,7 +98,7 @@ index e891d917cf11..138039d49a2c 100644
  AC_CONFIG_FILES([Makefile ethtool.spec ethtool.8])
  AC_OUTPUT
 diff --git a/ethtool.c b/ethtool.c
-index fb93ae898312..20f9cd5a2b16 100644
+index fb93ae898312..e8044a6af76c 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -48,6 +48,10 @@
@@ -112,12 +112,14 @@ index fb93ae898312..20f9cd5a2b16 100644
  #ifndef MAX_ADDR_LEN
  #define MAX_ADDR_LEN	32
  #endif
-@@ -5048,14 +5052,20 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
+@@ -5048,14 +5052,22 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
  
  static int show_usage(struct cmd_context *ctx);
  
 +#ifndef ETHTOOL_ENABLE_NETLINK
-+/* Stubs to (not) use when building without netlink support */
++/* Just define all netlink handlers as null when building without netlink
++ * support so that we do not get unresolved symbols in args array below
++ */
 +#endif
 +
  static const struct option {
@@ -134,7 +136,7 @@ index fb93ae898312..20f9cd5a2b16 100644
  	  "		[ speed %d ]\n"
  	  "		[ duplex half|full ]\n"
  	  "		[ port tp|aui|bnc|mii|fibre ]\n"
-@@ -5067,13 +5077,17 @@ static const struct option {
+@@ -5067,13 +5079,17 @@ static const struct option {
  	  "		[ wol p|u|m|b|a|g|s|d... ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
  	  "		[ msglvl %d | msglvl type on|off ... ]\n" },
@@ -156,7 +158,7 @@ index fb93ae898312..20f9cd5a2b16 100644
  	  "		[adaptive-rx on|off]\n"
  	  "		[adaptive-tx on|off]\n"
  	  "		[rx-usecs N]\n"
-@@ -5096,46 +5110,54 @@ static const struct option {
+@@ -5096,46 +5112,54 @@ static const struct option {
  	  "		[tx-usecs-high N]\n"
  	  "		[tx-frames-high N]\n"
  	  "		[sample-interval N]\n" },
@@ -226,7 +228,7 @@ index fb93ae898312..20f9cd5a2b16 100644
  	  "Configure Rx network flow classification options or rules",
  	  "		rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 m|v|t|s|d|f|n|r... [context %d] |\n"
-@@ -5160,55 +5182,64 @@ static const struct option {
+@@ -5160,55 +5184,64 @@ static const struct option {
  	  "			[ context %d ]\n"
  	  "			[ loc %d]] |\n"
  	  "		delete %d\n" },
@@ -308,7 +310,7 @@ index fb93ae898312..20f9cd5a2b16 100644
  	  "		[ flags %x ]\n"
  	  "		[ mgmt ]\n"
  	  "		[ mgmt-shared ]\n"
-@@ -5230,11 +5261,15 @@ static const struct option {
+@@ -5230,11 +5263,15 @@ static const struct option {
  	  "		[ ap-shared ]\n"
  	  "		[ dedicated ]\n"
  	  "		[ all ]\n"},
@@ -328,7 +330,7 @@ index fb93ae898312..20f9cd5a2b16 100644
  	{}
  };
  
-@@ -5261,11 +5296,35 @@ static int show_usage(struct cmd_context *ctx)
+@@ -5261,11 +5298,35 @@ static int show_usage(struct cmd_context *ctx)
  	return 0;
  }
  
@@ -364,7 +366,7 @@ index fb93ae898312..20f9cd5a2b16 100644
  	int k;
  
  	init_global_link_mode_masks();
-@@ -5291,6 +5350,7 @@ int main(int argc, char **argp)
+@@ -5291,6 +5352,7 @@ int main(int argc, char **argp)
  				argp++;
  				argc--;
  				func = args[k].func;
@@ -372,7 +374,7 @@ index fb93ae898312..20f9cd5a2b16 100644
  				want_device = args[k].want_device;
  				goto opt_found;
  			}
-@@ -5305,6 +5365,15 @@ int main(int argc, char **argp)
+@@ -5305,6 +5367,15 @@ int main(int argc, char **argp)
  	want_device = 1;
  
  opt_found:
@@ -388,12 +390,11 @@ index fb93ae898312..20f9cd5a2b16 100644
  	if (want_device) {
  		ctx.devname = *argp++;
  		argc--;
-@@ -5313,25 +5382,16 @@ opt_found:
+@@ -5313,25 +5384,20 @@ opt_found:
  			exit_bad_args();
  		if (strlen(ctx.devname) >= IFNAMSIZ)
  			exit_bad_args();
-+	}
- 
+-
 -		/* Setup our control structures. */
 -		memset(&ctx.ifr, 0, sizeof(ctx.ifr));
 -		strcpy(ctx.ifr.ifr_name, ctx.devname);
@@ -408,17 +409,22 @@ index fb93ae898312..20f9cd5a2b16 100644
 -		}
 -	} else {
 -		ctx.fd = -1;
-+	if (!nl_func) {
-+		ret = ioctl_init(&ctx, want_device);
-+		if (ret)
-+			return ret;
  	}
  
  	ctx.argc = argc;
  	ctx.argp = argp;
  
--	return func(&ctx);
-+	return nl_func ? nl_func(&ctx) : func(&ctx);
++	if (nl_func) {
++		ret = nl_func(&ctx);
++		if ((ret != -EOPNOTSUPP) || !func)
++			return (ret >= 0) ? ret : 1;
++	}
++
++	ret = ioctl_init(&ctx, want_device);
++	if (ret)
++		return ret;
++
+ 	return func(&ctx);
  }
 diff --git a/internal.h b/internal.h
 index 0b04a9794b6b..f7feade9f57e 100644
@@ -470,10 +476,10 @@ index 000000000000..05ab083d9b9c
 +#endif /* ETHTOOL_EXTAPI_H__ */
 diff --git a/netlink/netlink.c b/netlink/netlink.c
 new file mode 100644
-index 000000000000..bce83e9e87f1
+index 000000000000..0671c4589c72
 --- /dev/null
 +++ b/netlink/netlink.c
-@@ -0,0 +1,506 @@
+@@ -0,0 +1,522 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -511,6 +517,21 @@ index 000000000000..bce83e9e87f1
 +		tb_info->tb[type] = attr;
 +
 +	return MNL_CB_OK;
++}
++
++uint32_t bitset_get_count(const struct nlattr *bitset, int *retptr)
++{
++	const struct nlattr *attr;
++
++	mnl_attr_for_each_nested(attr, bitset) {
++		if (mnl_attr_get_type(attr) != ETHA_BITSET_SIZE)
++			continue;
++		*retptr = 0;
++		return mnl_attr_get_u32(attr);
++	}
++
++	*retptr = -EFAULT;
++	return 0;
 +}
 +
 +bool bitset_get_bit(const struct nlattr *bitset, bool mask, unsigned int idx,
@@ -916,6 +937,7 @@ index 000000000000..bce83e9e87f1
 +		nlctx_done(nlctx->aux_nlctx);
 +		free(nlctx->aux_nlctx);
 +	}
++	free(nlctx->cmd_private);
 +	memset(nlctx, '\0', sizeof(*nlctx));
 +
 +	return 0;
@@ -982,10 +1004,10 @@ index 000000000000..bce83e9e87f1
 +}
 diff --git a/netlink/netlink.h b/netlink/netlink.h
 new file mode 100644
-index 000000000000..39a4af3cb9cd
+index 000000000000..547c865ed535
 --- /dev/null
 +++ b/netlink/netlink.h
-@@ -0,0 +1,152 @@
+@@ -0,0 +1,154 @@
 +/*
 + * netlink.h - common interface for all netlink code
 + *
@@ -1007,6 +1029,7 @@ index 000000000000..39a4af3cb9cd
 +	int ethnl_fam;
 +	struct mnl_socket *sk;
 +	struct nl_context *aux_nlctx;
++	void *cmd_private;
 +	char *buff;
 +	unsigned int buffsize;
 +	unsigned int port;
@@ -1035,6 +1058,7 @@ index 000000000000..39a4af3cb9cd
 +		    const char *devname);
 +const char *get_dev_name(const struct nlattr *nest);
 +
++uint32_t bitset_get_count(const struct nlattr *bitset, int *retptr);
 +bool bitset_get_bit(const struct nlattr *bitset, bool mask, unsigned int idx,
 +		    int *retptr);
 +bool bitset_is_empty(const struct nlattr *bitset, bool mask, int *retptr);
@@ -1165,10 +1189,10 @@ index 9dd347caf4ed..c51a966bb46e 100644
  /**
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..36ecf6904c31
+index 000000000000..13882326976e
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,311 @@
+@@ -0,0 +1,325 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#ifndef _LINUX_ETHTOOL_NETLINK_H_
@@ -1343,6 +1367,7 @@ index 000000000000..36ecf6904c31
 +	ETHA_SETTINGS_LINK_MODES,		/* bitset */
 +	ETHA_SETTINGS_PEER_MODES,		/* bitset */
 +	ETHA_SETTINGS_LINK,			/* u32 */
++	ETHA_SETTINGS_FEATURES,			/* nest - ETHA_FEATURES_* */
 +
 +	__ETHA_SETTINGS_MAX,
 +	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_MAX - 1)
@@ -1353,8 +1378,21 @@ index 000000000000..36ecf6904c31
 +#define ETH_SETTINGS_IM_MSGLEVEL		0x04
 +#define ETH_SETTINGS_IM_WOLINFO			0x08
 +#define ETH_SETTINGS_IM_LINK			0x10
++#define ETH_SETTINGS_IM_FEATURES		0x20
 +
-+#define ETH_SETTINGS_IM_DEFAULT			0x1f
++#define ETH_SETTINGS_IM_DEFAULT			0x3f
++
++enum {
++	ETHA_FEATURES_UNSPEC,
++	ETHA_FEATURES_HW,			/* bitset */
++	ETHA_FEATURES_WANTED,			/* bitset */
++	ETHA_FEATURES_ACTIVE,			/* bitset */
++	ETHA_FEATURES_NOCHANGE,			/* bitset */
++	ETHA_FEATURES_WANT_DIFF,		/* flag */
++
++	__ETHA_FEATURES_MAX,
++	ETHA_FEATURES_MAX = (__ETHA_FEATURES_MAX - 1)
++};
 +
 +/* GET_PARAMS / SET_PARAMS */
 +

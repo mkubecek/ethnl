@@ -1,9 +1,10 @@
-From b869987987ae89fc8cd78b76e6ed363786be08f7 Mon Sep 17 00:00:00 2001
+From 9ba722afe5357ba9ab3eb11ceef318328b9b552d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
-Subject: [PATCH 09/21] netlink: add netlink handler for sset (-s)
+Subject: [PATCH 09/23] netlink: add netlink handler for sset (-s)
 
-Implement "ethtool -s <dev>" subcommand using netlink interface.
+Implement "ethtool -s <dev>" subcommand using netlink interface command
+ETHNL_CMD_SET_SETTINGS.
 
 Add specific parsers for wol modes and MAC address (used for wake-on-lan
 password here).
@@ -16,22 +17,22 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  netlink/netlink.h  |   1 +
  netlink/parser.c   |  34 ++++++-
  netlink/parser.h   |   4 +
- netlink/settings.c | 217 +++++++++++++++++++++++++++++++++++++++++++++
- 7 files changed, 270 insertions(+), 5 deletions(-)
+ netlink/settings.c | 216 +++++++++++++++++++++++++++++++++++++++++++++
+ 7 files changed, 269 insertions(+), 5 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 030628332787..5db28bfda62e 100644
+index bc7969f829f6..0b40b96cf9bf 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4921,6 +4921,7 @@ static int show_usage(struct cmd_context *ctx);
- /* Stubs to (not) use when building without netlink support */
- int nl_gdrv(struct cmd_context *ctx) { return 0; }
- int nl_gset(struct cmd_context *ctx) { return 0; }
-+int nl_sset(struct cmd_context *ctx) { return 0; }
+@@ -4923,6 +4923,7 @@ static int show_usage(struct cmd_context *ctx);
+  */
+ #define nl_gdrv		NULL
+ #define nl_gset		NULL
++#define nl_sset		NULL
  #endif
  
  static const struct option {
-@@ -4931,19 +4932,19 @@ static const struct option {
+@@ -4933,19 +4934,19 @@ static const struct option {
  	char *help;
  	char *opthelp;
  } args[] = {
@@ -68,10 +69,10 @@ index 20c9b03b2d3c..66573f0b4304 100644
  
  void monitor_usage();
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index e6216205a184..03ea5c136d9b 100644
+index fc87577191f0..8b3dce970fd1 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -558,6 +558,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
+@@ -573,6 +573,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
  	return (nlctx->ethnl_fam ? 0 : -EADDRNOTAVAIL);
  }
  
@@ -88,10 +89,10 @@ index e6216205a184..03ea5c136d9b 100644
  
  static int nlctx_init(struct nl_context *nlctx)
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index c083a508b18d..602eb82c1c5e 100644
+index 32c2f9f33ba1..9c23526da627 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -70,6 +70,7 @@ int attr_cb(const struct nlattr *attr, void *data);
+@@ -72,6 +72,7 @@ int attr_cb(const struct nlattr *attr, void *data);
  int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
  			   uint16_t dev_attrtype);
  int ethnl_send_get_request(struct nl_context *nlctx, mnl_cb_t cb);
@@ -174,7 +175,7 @@ index 7308da25f093..2fd9a8bb23d9 100644
  int nl_parser(struct cmd_context *ctx, const struct param_parser *params,
  	      unsigned int max_type);
 diff --git a/netlink/settings.c b/netlink/settings.c
-index af56530cd59f..137d3aa7e415 100644
+index 120fc95aad19..b077a96325e5 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -5,6 +5,7 @@
@@ -185,9 +186,9 @@ index af56530cd59f..137d3aa7e415 100644
  
  /* GET_SETTINGS */
  
-@@ -229,3 +230,219 @@ int nl_gset(struct cmd_context *ctx)
- 		return ret;
- 	return ethnl_send_get_request(ctx->nlctx, settings_reply_cb);
+@@ -299,3 +300,218 @@ int nl_gset(struct cmd_context *ctx)
+ }
+ 
  }
 +
 +/* SET_SETTINGS */
@@ -385,7 +386,8 @@ index af56530cd59f..137d3aa7e415 100644
 +	nlctx->cmd = "-s";
 +	nlctx->argp = ctx->argp;
 +	nlctx->argc = ctx->argc;
-+	ret = msg_init(nlctx, ETHNL_CMD_SET_SETTINGS, NLM_F_REQUEST | NLM_F_ACK);
++	ret = msg_init(nlctx, ETHNL_CMD_SET_SETTINGS,
++		       NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return 2;
 +	if (ethnla_put_dev(nlctx, ETHA_SETTINGS_DEV, ctx->devname))
@@ -401,8 +403,6 @@ index af56530cd59f..137d3aa7e415 100644
 +	ret = ethnl_process_reply(nlctx, nomsg_reply_cb);
 +	if (ret == 0)
 +		return 0;
-+	errno = -ret;
-+	perror("netlink error");
 +	return nlctx->exit_code ?: 75;
 +}
 -- 

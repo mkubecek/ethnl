@@ -1,10 +1,10 @@
-From 6df444b5abba262cbf0a071babe92a6c734c3606 Mon Sep 17 00:00:00 2001
+From 76a97260e78fddfc7cbf4ddce075de26a830d4b6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:05:40 +0100
-Subject: [PATCH 13/21] netlink: add netlink handler for gchannels (-l)
+Subject: [PATCH 15/23] netlink: add netlink handler for gchannels (-l)
 
 Implement "ethtool -l <dev>" subcommand using netlink interface command
-ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_CHANNELS mask.
+ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_CHANNELS mask.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -15,18 +15,18 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 50 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 4e5ebde08bc5..cf00e35d915a 100644
+index 3a12b7c0c7ce..2bcc1944ba29 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4925,6 +4925,7 @@ int nl_sset(struct cmd_context *ctx) { return 0; }
- int nl_gcoalesce(struct cmd_context *ctx) { return 0; }
- int nl_gring(struct cmd_context *ctx) { return 0; }
- int nl_gpause(struct cmd_context *ctx) { return 0; }
-+int nl_gchannels(struct cmd_context *ctx) { return 0; }
+@@ -4882,6 +4882,7 @@ static int show_usage(struct cmd_context *ctx);
+ #define nl_gcoalesce	NULL
+ #define nl_gring	NULL
+ #define nl_gpause	NULL
++#define nl_gchannels	NULL
  #endif
  
  static const struct option {
-@@ -5076,7 +5077,7 @@ static const struct option {
+@@ -5033,7 +5034,7 @@ static const struct option {
  	{ "-W|--set-dump", 1, do_setfwdump, NULL,
  	  "Set dump flag of the device",
  	  "		N\n"},
@@ -36,10 +36,10 @@ index 4e5ebde08bc5..cf00e35d915a 100644
  	{ "-L|--set-channels", 1, do_schannels, NULL,
  	  "Set Channels",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 792592c0cedf..ab851eddcce6 100644
+index 3b918a443b96..fc027f62398c 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -19,6 +19,7 @@ int nl_sset(struct cmd_context *ctx);
+@@ -21,6 +21,7 @@ int nl_sfeatures(struct cmd_context *ctx);
  int nl_gcoalesce(struct cmd_context *ctx);
  int nl_gring(struct cmd_context *ctx);
  int nl_gpause(struct cmd_context *ctx);
@@ -48,10 +48,10 @@ index 792592c0cedf..ab851eddcce6 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 38832bbeb795..4e391b440e72 100644
+index 18e151980c3f..1b277606a78c 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -142,6 +142,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -153,6 +153,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
  		.info_mask	= ETH_PARAMS_IM_PAUSE,
  	},
@@ -64,7 +64,7 @@ index 38832bbeb795..4e391b440e72 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index 38ddd4fa4528..e189429c16e2 100644
+index b45aac166dcd..81547492532f 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -105,6 +105,34 @@ static int show_pause(struct nl_context *nlctx, const struct nlattr *nest)

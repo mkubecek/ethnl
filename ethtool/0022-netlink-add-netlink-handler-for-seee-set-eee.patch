@@ -1,10 +1,10 @@
-From 072a6f7724965a827a47ce99e163e459eef5109f Mon Sep 17 00:00:00 2001
+From 622072b1376dc468eec9f322c909d5b6b9d206c8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:43:19 +0100
-Subject: [PATCH 20/21] netlink: add netlink handler for seee (--set-eee)
+Subject: [PATCH 22/23] netlink: add netlink handler for seee (--set-eee)
 
 Implement "ethtool --set-eee <dev>" subcommand using netlink interface
-command ETHTOOL_CMD_SET_PARAMS.
+command ETHNL_CMD_SET_PARAMS.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -14,18 +14,18 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 38 insertions(+), 2 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index c9d00cfcb3a0..126ac605102d 100644
+index 9ac7f3c57ecb..bd85b0c50ce2 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4932,6 +4932,7 @@ int nl_scoalesce(struct cmd_context *ctx) { return 0; }
- int nl_sring(struct cmd_context *ctx) { return 0; }
- int nl_spause(struct cmd_context *ctx) { return 0; }
- int nl_schannels(struct cmd_context *ctx) { return 0; }
-+int nl_seee(struct cmd_context *ctx) { return 0; }
+@@ -4889,6 +4889,7 @@ static int show_usage(struct cmd_context *ctx);
+ #define nl_sring	NULL
+ #define nl_spause	NULL
+ #define nl_schannels	NULL
++#define nl_seee		NULL
  #endif
  
  static const struct option {
-@@ -5104,10 +5105,10 @@ static const struct option {
+@@ -5061,10 +5062,10 @@ static const struct option {
  	  "		[ length N ]\n" },
  	{ "--show-eee", 1, do_geee, nl_geee,
  	  "Show EEE settings"},
@@ -39,10 +39,10 @@ index c9d00cfcb3a0..126ac605102d 100644
  	  "		[ tx-timer %d ]\n"},
  	{ "--set-phy-tunable", 1, do_set_phy_tunable, NULL,
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 05c775be1b15..de89e3385e95 100644
+index bc33be82bdd5..80ed4afb5227 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -26,6 +26,7 @@ int nl_scoalesce(struct cmd_context *ctx);
+@@ -28,6 +28,7 @@ int nl_scoalesce(struct cmd_context *ctx);
  int nl_sring(struct cmd_context *ctx);
  int nl_spause(struct cmd_context *ctx);
  int nl_schannels(struct cmd_context *ctx);
@@ -51,10 +51,10 @@ index 05c775be1b15..de89e3385e95 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index a127daa71d85..9b8311f43c95 100644
+index 5e0f0d264187..1cc2ffbc4b27 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
-@@ -608,3 +608,37 @@ int nl_schannels(struct cmd_context *ctx)
+@@ -606,3 +606,37 @@ int nl_schannels(struct cmd_context *ctx)
  	return nl_set_param(ctx, "-L", schannels_params, ETHA_PARAMS_CHANNELS,
  			    ETHA_CHANNELS_MAX);
  }

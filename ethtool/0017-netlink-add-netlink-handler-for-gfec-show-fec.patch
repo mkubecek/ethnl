@@ -1,17 +1,11 @@
-From 5548f2bece3f1ff9a88d9554f30cd90646c391ed Mon Sep 17 00:00:00 2001
+From d311802e5604a21e7bc8a87c21dca60cb3a394ef Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
-Subject: [PATCH 15/21] netlink: add netlink handler for gfec (--show-fec)
+Subject: [PATCH 17/23] netlink: add netlink handler for gfec (--show-fec)
 
 Implement "ethtool --show-fec <dev>" subcommand showing Forward Error
 Correction (FEC) settings using netlink interface command
-ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_FEC mask.
-
-This command is not implemented yet in ioctl interface but kernel side
-implementation is ready since kernel 4.14-rc1. The command line syntax and
-output format were taken from the example in commit message of kernel
-commit 1a5f3da20bd9 ("net: ethtool: add support for forward error
-correction modes").
+ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_FEC mask.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -24,7 +18,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 63 insertions(+), 1 deletion(-)
 
 diff --git a/common.c b/common.c
-index 59897acd2512..a065dde34101 100644
+index db9a360ffae6..085014e895bf 100644
 --- a/common.c
 +++ b/common.c
 @@ -41,6 +41,16 @@ const struct flag_info flags_msglvl[] = {
@@ -45,10 +39,10 @@ index 59897acd2512..a065dde34101 100644
  	[DUPLEX_HALF]		= "Half",
  	[DUPLEX_FULL]		= "Full",
 diff --git a/common.h b/common.h
-index a980b844a0ed..aafd98530fe8 100644
+index 36f96ddaa3bd..c05e51b645f8 100644
 --- a/common.h
 +++ b/common.h
-@@ -8,6 +8,8 @@ struct flag_info {
+@@ -10,6 +10,8 @@ struct flag_info {
  
  extern const struct flag_info flags_msglvl[];
  extern const unsigned int n_flags_msglvl;
@@ -58,18 +52,18 @@ index a980b844a0ed..aafd98530fe8 100644
  
  enum link_mode_class {
 diff --git a/ethtool.c b/ethtool.c
-index ec3ac1e5ad1e..30992de8de23 100644
+index 1ad0cd10735a..2c838b7c7f53 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4927,6 +4927,7 @@ int nl_gring(struct cmd_context *ctx) { return 0; }
- int nl_gpause(struct cmd_context *ctx) { return 0; }
- int nl_gchannels(struct cmd_context *ctx) { return 0; }
- int nl_geee(struct cmd_context *ctx) { return 0; }
-+int nl_gfec(struct cmd_context *ctx) { return 0; }
+@@ -4884,6 +4884,7 @@ static int show_usage(struct cmd_context *ctx);
+ #define nl_gpause	NULL
+ #define nl_gchannels	NULL
+ #define nl_geee		NULL
++#define nl_gfec		NULL
  #endif
  
  static const struct option {
-@@ -5134,7 +5135,7 @@ static const struct option {
+@@ -5091,7 +5092,7 @@ static const struct option {
  	  "		[ ap-shared ]\n"
  	  "		[ dedicated ]\n"
  	  "		[ all ]\n"},
@@ -79,10 +73,10 @@ index ec3ac1e5ad1e..30992de8de23 100644
  	{ "--set-fec", 1, do_sfec, NULL,
  	  "Set FEC settings",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 961afb02a26a..0df0af85d9c5 100644
+index 40d708a4cb85..b40db721a4c5 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -21,6 +21,7 @@ int nl_gring(struct cmd_context *ctx);
+@@ -23,6 +23,7 @@ int nl_gring(struct cmd_context *ctx);
  int nl_gpause(struct cmd_context *ctx);
  int nl_gchannels(struct cmd_context *ctx);
  int nl_geee(struct cmd_context *ctx);
@@ -91,10 +85,10 @@ index 961afb02a26a..0df0af85d9c5 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 9a60ba000b91..5d05bc74c843 100644
+index 799371fdebc2..92031052a425 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -152,6 +152,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -163,6 +163,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
  		.info_mask	= ETH_PARAMS_IM_EEE,
  	},
@@ -107,7 +101,7 @@ index 9a60ba000b91..5d05bc74c843 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index 8f5b510b4ceb..3818e63912e8 100644
+index 55138b6fdc83..c187ca0b37c5 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -185,6 +185,35 @@ static int show_eee(struct nl_context *nlctx, const struct nlattr *nest)

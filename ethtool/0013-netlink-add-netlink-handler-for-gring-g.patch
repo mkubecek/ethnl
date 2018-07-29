@@ -1,10 +1,10 @@
-From 9757347334cb4fba8e835d8de95ef6c36afdaba7 Mon Sep 17 00:00:00 2001
+From 5b3c85cca0db879d2cdda2772f3b57da482ac32c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:59:50 +0100
-Subject: [PATCH 11/21] netlink: add netlink handler for gring (-g)
+Subject: [PATCH 13/23] netlink: add netlink handler for gring (-g)
 
 Implement "ethtool -g <dev>" subcommand using netlink interface command
-ETHTOOL_CMD_GET_PARAMS with ETH_PARAMS_IM_RING mask.
+ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_RING mask.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -15,18 +15,18 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 50 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 78dc65da0194..008cb437e886 100644
+index 24c70c372914..ba5c73e9abbe 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4923,6 +4923,7 @@ int nl_gdrv(struct cmd_context *ctx) { return 0; }
- int nl_gset(struct cmd_context *ctx) { return 0; }
- int nl_sset(struct cmd_context *ctx) { return 0; }
- int nl_gcoalesce(struct cmd_context *ctx) { return 0; }
-+int nl_gring(struct cmd_context *ctx) { return 0; }
+@@ -4880,6 +4880,7 @@ static int show_usage(struct cmd_context *ctx);
+ #define nl_gfeatures	NULL
+ #define nl_sfeatures	NULL
+ #define nl_gcoalesce	NULL
++#define nl_gring	NULL
  #endif
  
  static const struct option {
-@@ -4979,7 +4980,7 @@ static const struct option {
+@@ -4936,7 +4937,7 @@ static const struct option {
  	  "		[tx-usecs-high N]\n"
  	  "		[tx-frames-high N]\n"
  	  "		[sample-interval N]\n" },
@@ -36,22 +36,22 @@ index 78dc65da0194..008cb437e886 100644
  	{ "-G|--set-ring", 1, do_sring, NULL,
  	  "Set RX/TX ring parameters",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index a34843d71616..3fc0c6a2cc2b 100644
+index 8030bda4cbc9..cc13436c4517 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -17,6 +17,7 @@ int nl_gdrv(struct cmd_context *ctx);
- int nl_gset(struct cmd_context *ctx);
- int nl_sset(struct cmd_context *ctx);
+@@ -19,6 +19,7 @@ int nl_sset(struct cmd_context *ctx);
+ int nl_gfeatures(struct cmd_context *ctx);
+ int nl_sfeatures(struct cmd_context *ctx);
  int nl_gcoalesce(struct cmd_context *ctx);
 +int nl_gring(struct cmd_context *ctx);
  int nl_monitor(struct cmd_context *ctx);
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 522ae8e67171..7e05fc5e2dbc 100644
+index 5d494ba43923..10dad082de98 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -132,6 +132,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -143,6 +143,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
  		.info_mask	= ETH_PARAMS_IM_COALESCE,
  	},
@@ -64,7 +64,7 @@ index 522ae8e67171..7e05fc5e2dbc 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index a6de0d7b522a..755091c90d2b 100644
+index 30aee5758c42..6782d98a6956 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -55,6 +55,34 @@ static int show_coalesce(struct nl_context *nlctx, const struct nlattr *nest)
