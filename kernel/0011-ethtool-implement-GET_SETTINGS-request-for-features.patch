@@ -1,0 +1,373 @@
+From a3de125fd41a7d46259d5143acd07f3705c359d5 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Fri, 27 Jul 2018 15:42:51 +0200
+Subject: [PATCH 11/17] ethtool: implement GET_SETTINGS request for features
+
+With ETH_SETTINGS_IM_FEATURES info mask, ETHNL_CMD_GET_SETTINGS request
+gets network device feature values. This is the same information as
+provided via ETHTOOL_GFEATURES ioctl request.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ Documentation/networking/ethtool-netlink.txt |  33 ++--
+ include/uapi/linux/ethtool_netlink.h         |  15 +-
+ net/ethtool/common.h                         |   2 +
+ net/ethtool/ioctl.c                          |   2 -
+ net/ethtool/settings.c                       | 151 +++++++++++++++++++
+ 5 files changed, 191 insertions(+), 12 deletions(-)
+
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index 60d426cf6dad..82b839c03707 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -214,6 +214,7 @@ Info mask bits meaning:
+     ETH_SETTINGS_IM_MSGLEVEL		msglevel
+     ETH_SETTINGS_IM_WOLINFO		struct ethtool_wolinfo
+     ETH_SETTINGS_IM_LINK		link state
++    ETH_SETTINGS_IM_FEATURES		features
+ 
+ Response contents:
+ 
+@@ -233,6 +234,11 @@ Response contents:
+     ETHA_SETTINGS_LINK_MODES	(bitset)	device link modes
+     ETHA_SETTINGS_PEER_MODES	(bitset)	link partner link modes
+     ETHA_SETTINGS_LINK		(u32)		link state
++    ETHA_SETTINGS_FEATURES	(nested)	device features
++        ETHA_FEATURES_HW		(bitset)	dev->hw_features
++        ETHA_FEATURES_WANTED		(bitset)	dev->wanted_features
++        ETHA_FEATURES_ACTIVE		(bitset)	dev->features
++        ETHA_FEATURES_NOCHANGE		(bitset)	NETIF_F_NEVER_CHANGE
+ 
+ Most of the attributes have the same meaning (including values) as
+ corresponding members of ioctl structures. For ETHA_SETTINGS_MDIO_SUPPORT and
+@@ -242,6 +248,15 @@ ETHA_SETTINGS_LINK_MODES, value represent advertised modes and mask represents
+ supported modes. For ETHA_SETTINGS_PEER_MODES, both value and mask represent
+ partner advertised link modes.
+ 
++Bitmaps contained in ETHA_SETTINGS_FEATURES have the same meaning as bitmaps
++used in ioctl interference but attribute names are different (they are based
++on corresponding members of struct net_device). Legacy "flags" are not
++provided, if userspace needs them (most likely only ethtool for backward
++compatibility), it can calculate their values from related feature bits
++itself. ETHA_FEATURES_HW uses mask consisting of all features recognized by
++kernel (to provide all names when using verbose bitmap format), remaining
++three use mask equal to value (to save space).
++
+ GET_SETTINGS request is allowed for unprivileged user but ETHA_SETTINGS_SOPASS
+ is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
+ requests.
+@@ -278,30 +293,30 @@ ETHTOOL_GRINGPARAM		n/a
+ ETHTOOL_SRINGPARAM		n/a
+ ETHTOOL_GPAUSEPARAM		n/a
+ ETHTOOL_SPAUSEPARAM		n/a
+-ETHTOOL_GRXCSUM			n/a
++ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_SRXCSUM			n/a
+-ETHTOOL_GTXCSUM			n/a
++ETHTOOL_GTXCSUM			ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_STXCSUM			n/a
+-ETHTOOL_GSG			n/a
++ETHTOOL_GSG			ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_SSG			n/a
+ ETHTOOL_TEST			n/a
+ ETHTOOL_GSTRINGS		ETHNL_CMD_GET_STRSET
+ ETHTOOL_PHYS_ID			n/a
+ ETHTOOL_GSTATS			n/a
+-ETHTOOL_GTSO			n/a
++ETHTOOL_GTSO			ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_STSO			n/a
+ ETHTOOL_GPERMADDR		n/a
+-ETHTOOL_GUFO			n/a
++ETHTOOL_GUFO			ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_SUFO			n/a
+-ETHTOOL_GGSO			n/a
++ETHTOOL_GGSO			ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_SGSO			n/a
+-ETHTOOL_GFLAGS			n/a
++ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_SFLAGS			n/a
+ ETHTOOL_GPFLAGS			n/a
+ ETHTOOL_SPFLAGS			n/a
+ ETHTOOL_GRXFH			n/a
+ ETHTOOL_SRXFH			n/a
+-ETHTOOL_GGRO			n/a
++ETHTOOL_GGRO			ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_SGRO			n/a
+ ETHTOOL_GRXRINGS		n/a
+ ETHTOOL_GRXCLSRLCNT		n/a
+@@ -316,7 +331,7 @@ ETHTOOL_GRXNTUPLE		n/a
+ ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
+ ETHTOOL_GRXFHINDIR		n/a
+ ETHTOOL_SRXFHINDIR		n/a
+-ETHTOOL_GFEATURES		n/a
++ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_SFEATURES		n/a
+ ETHTOOL_GCHANNELS		n/a
+ ETHTOOL_SCHANNELS		n/a
+diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
+index 66df44aa7226..06c78b281275 100644
+--- a/include/uapi/linux/ethtool_netlink.h
++++ b/include/uapi/linux/ethtool_netlink.h
+@@ -170,6 +170,7 @@ enum {
+ 	ETHA_SETTINGS_LINK_MODES,		/* bitset */
+ 	ETHA_SETTINGS_PEER_MODES,		/* bitset */
+ 	ETHA_SETTINGS_LINK,			/* u32 */
++	ETHA_SETTINGS_FEATURES,			/* nest - ETHA_FEATURES_* */
+ 
+ 	__ETHA_SETTINGS_MAX,
+ 	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_MAX - 1)
+@@ -180,8 +181,20 @@ enum {
+ #define ETH_SETTINGS_IM_MSGLEVEL		0x04
+ #define ETH_SETTINGS_IM_WOLINFO			0x08
+ #define ETH_SETTINGS_IM_LINK			0x10
++#define ETH_SETTINGS_IM_FEATURES		0x20
+ 
+-#define ETH_SETTINGS_IM_DEFAULT			0x1f
++#define ETH_SETTINGS_IM_DEFAULT			0x3f
++
++enum {
++	ETHA_FEATURES_UNSPEC,
++	ETHA_FEATURES_HW,			/* bitset */
++	ETHA_FEATURES_WANTED,			/* bitset */
++	ETHA_FEATURES_ACTIVE,			/* bitset */
++	ETHA_FEATURES_NOCHANGE,			/* bitset */
++
++	__ETHA_FEATURES_MAX,
++	ETHA_FEATURES_MAX = (__ETHA_FEATURES_MAX - 1)
++};
+ 
+ /* generic netlink info */
+ #define ETHTOOL_GENL_NAME "ethtool"
+diff --git a/net/ethtool/common.h b/net/ethtool/common.h
+index ec90d4ccddf7..3b00ed6bfe10 100644
+--- a/net/ethtool/common.h
++++ b/net/ethtool/common.h
+@@ -6,6 +6,8 @@
+ #include <linux/netdevice.h>
+ #include <linux/ethtool.h>
+ 
++#define ETHTOOL_DEV_FEATURE_WORDS	((NETDEV_FEATURE_COUNT + 31) / 32)
++
+ extern const char netdev_features_strings[NETDEV_FEATURE_COUNT][ETH_GSTRING_LEN];
+ extern const char rss_hash_func_strings[ETH_RSS_HASH_FUNCS_COUNT][ETH_GSTRING_LEN];
+ extern const char tunable_strings[__ETHTOOL_TUNABLE_COUNT][ETH_GSTRING_LEN];
+diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
+index 8613434b6fc0..39e9aea60516 100644
+--- a/net/ethtool/ioctl.c
++++ b/net/ethtool/ioctl.c
+@@ -54,8 +54,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
+ 
+ /* Handlers for each ethtool command */
+ 
+-#define ETHTOOL_DEV_FEATURE_WORDS	((NETDEV_FEATURE_COUNT + 31) / 32)
+-
+ static int ethtool_get_features(struct net_device *dev, void __user *useraddr)
+ {
+ 	struct ethtool_gfeatures cmd = {
+diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
+index dd76599f311f..fdca418a6d8e 100644
+--- a/net/ethtool/settings.c
++++ b/net/ethtool/settings.c
+@@ -4,6 +4,66 @@
+ #include "common.h"
+ #include <linux/rtnetlink.h>
+ 
++#define FEATURE_NAME_PTR(id) [id] = netdev_features_strings[id]
++static const char *feature_names[] = {
++	FEATURE_NAME_PTR(NETIF_F_SG_BIT),
++	FEATURE_NAME_PTR(NETIF_F_IP_CSUM_BIT),
++	FEATURE_NAME_PTR(NETIF_F_HW_CSUM_BIT),
++	FEATURE_NAME_PTR(NETIF_F_IPV6_CSUM_BIT),
++	FEATURE_NAME_PTR(NETIF_F_HIGHDMA_BIT),
++	FEATURE_NAME_PTR(NETIF_F_FRAGLIST_BIT),
++	FEATURE_NAME_PTR(NETIF_F_HW_VLAN_CTAG_TX_BIT),
++
++	FEATURE_NAME_PTR(NETIF_F_HW_VLAN_CTAG_RX_BIT),
++	FEATURE_NAME_PTR(NETIF_F_HW_VLAN_CTAG_FILTER_BIT),
++	FEATURE_NAME_PTR(NETIF_F_HW_VLAN_STAG_TX_BIT),
++	FEATURE_NAME_PTR(NETIF_F_HW_VLAN_STAG_RX_BIT),
++	FEATURE_NAME_PTR(NETIF_F_HW_VLAN_STAG_FILTER_BIT),
++	FEATURE_NAME_PTR(NETIF_F_VLAN_CHALLENGED_BIT),
++	FEATURE_NAME_PTR(NETIF_F_GSO_BIT),
++	FEATURE_NAME_PTR(NETIF_F_LLTX_BIT),
++	FEATURE_NAME_PTR(NETIF_F_NETNS_LOCAL_BIT),
++	FEATURE_NAME_PTR(NETIF_F_GRO_BIT),
++	FEATURE_NAME_PTR(NETIF_F_GRO_HW_BIT),
++	FEATURE_NAME_PTR(NETIF_F_LRO_BIT),
++
++	FEATURE_NAME_PTR(NETIF_F_TSO_BIT),
++	FEATURE_NAME_PTR(NETIF_F_GSO_ROBUST_BIT),
++	FEATURE_NAME_PTR(NETIF_F_TSO_ECN_BIT),
++	FEATURE_NAME_PTR(NETIF_F_TSO_MANGLEID_BIT),
++	FEATURE_NAME_PTR(NETIF_F_TSO6_BIT),
++	FEATURE_NAME_PTR(NETIF_F_FSO_BIT),
++	FEATURE_NAME_PTR(NETIF_F_GSO_GRE_BIT),
++	FEATURE_NAME_PTR(NETIF_F_GSO_GRE_CSUM_BIT),
++	FEATURE_NAME_PTR(NETIF_F_GSO_IPXIP4_BIT),
++	FEATURE_NAME_PTR(NETIF_F_GSO_IPXIP6_BIT),
++	FEATURE_NAME_PTR(NETIF_F_GSO_UDP_TUNNEL_BIT),
++	FEATURE_NAME_PTR(NETIF_F_GSO_UDP_TUNNEL_CSUM_BIT),
++	FEATURE_NAME_PTR(NETIF_F_GSO_PARTIAL_BIT),
++	FEATURE_NAME_PTR(NETIF_F_GSO_SCTP_BIT),
++	FEATURE_NAME_PTR(NETIF_F_GSO_ESP_BIT),
++	FEATURE_NAME_PTR(NETIF_F_GSO_UDP_L4_BIT),
++
++	FEATURE_NAME_PTR(NETIF_F_FCOE_CRC_BIT),
++	FEATURE_NAME_PTR(NETIF_F_SCTP_CRC_BIT),
++	FEATURE_NAME_PTR(NETIF_F_FCOE_MTU_BIT),
++	FEATURE_NAME_PTR(NETIF_F_NTUPLE_BIT),
++	FEATURE_NAME_PTR(NETIF_F_RXHASH_BIT),
++	FEATURE_NAME_PTR(NETIF_F_RXCSUM_BIT),
++	FEATURE_NAME_PTR(NETIF_F_NOCACHE_COPY_BIT),
++	FEATURE_NAME_PTR(NETIF_F_LOOPBACK_BIT),
++	FEATURE_NAME_PTR(NETIF_F_RXFCS_BIT),
++	FEATURE_NAME_PTR(NETIF_F_RXALL_BIT),
++	FEATURE_NAME_PTR(NETIF_F_HW_L2FW_DOFFLOAD_BIT),
++	FEATURE_NAME_PTR(NETIF_F_HW_TC_BIT),
++	FEATURE_NAME_PTR(NETIF_F_HW_ESP_BIT),
++	FEATURE_NAME_PTR(NETIF_F_HW_ESP_TX_CSUM_BIT),
++	FEATURE_NAME_PTR(NETIF_F_RX_UDP_TUNNEL_PORT_BIT),
++	FEATURE_NAME_PTR(NETIF_F_HW_TLS_RECORD_BIT),
++	FEATURE_NAME_PTR(NETIF_F_HW_TLS_TX_BIT),
++	FEATURE_NAME_PTR(NETIF_F_HW_TLS_RX_BIT),
++};
++
+ struct settings_data {
+ 	struct ethtool_link_ksettings	ksettings;
+ 	struct ethtool_link_settings	*lsettings;
+@@ -12,6 +72,12 @@ struct settings_data {
+ 	u32				msglevel;
+ 	bool				lpm_empty;
+ 	u32				req_mask;
++	struct {
++		u32	hw[ETHTOOL_DEV_FEATURE_WORDS];
++		u32	wanted[ETHTOOL_DEV_FEATURE_WORDS];
++		u32	active[ETHTOOL_DEV_FEATURE_WORDS];
++		u32	nochange[ETHTOOL_DEV_FEATURE_WORDS];
++	} features;
+ };
+ 
+ struct settings_reqinfo {
+@@ -51,6 +117,7 @@ static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
+ 	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_NESTED },
+ 	[ETHA_SETTINGS_LINK]		= { .type = NLA_FLAG },
++	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_NESTED },
+ };
+ 
+ /* To keep things simple, reserve space for some attributes which may not
+@@ -105,6 +172,35 @@ static int settings_size(struct settings_data *data,
+ 	}
+ 	if (req_mask & ETH_SETTINGS_IM_LINK)
+ 		len += nla_total_size(sizeof(u32));
++	if (req_mask & ETH_SETTINGS_IM_FEATURES) {
++		ret = ethnl_bitset32_size(compact, NETDEV_FEATURE_COUNT,
++					  data->features.hw, NULL,
++					  feature_names);
++		if (ret < 0)
++			return ret;
++		len += ret;
++		ret = ethnl_bitset32_size(compact, NETDEV_FEATURE_COUNT,
++					  data->features.wanted,
++					  data->features.wanted,
++					  feature_names);
++		if (ret < 0)
++			return ret;
++		len += ret;
++		ret = ethnl_bitset32_size(compact, NETDEV_FEATURE_COUNT,
++					  data->features.active,
++					  data->features.active,
++					  feature_names);
++		if (ret < 0)
++			return ret;
++		len += ret;
++		ret = ethnl_bitset32_size(compact, NETDEV_FEATURE_COUNT,
++					  data->features.nochange,
++					  data->features.nochange,
++					  feature_names);
++		if (ret < 0)
++			return ret;
++		len += ret;
++	}
+ 
+ 	return len;
+ }
+@@ -150,6 +246,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
+ 	return ret;
+ }
+ 
++static void features_to_bitmap(u32 *dest, netdev_features_t src)
++{
++	unsigned int i;
++
++	for (i = 0; i < ETHTOOL_DEV_FEATURE_WORDS; i++)
++		dest[i] = (u32)(src >> (32 * i));
++}
++
++static int ethnl_get_features(struct net_device *dev,
++			      struct settings_data *data)
++{
++	features_to_bitmap(data->features.hw, dev->hw_features);
++	features_to_bitmap(data->features.wanted, dev->wanted_features);
++	features_to_bitmap(data->features.active, dev->features);
++	features_to_bitmap(data->features.nochange, NETIF_F_NEVER_CHANGE);
++	return 0;
++}
++
+ static int parse_settings_req(struct settings_reqinfo *req_info,
+ 			      struct genl_info *info, struct sk_buff *skb,
+ 			      const struct nlmsghdr *nlhdr)
+@@ -233,6 +347,8 @@ static int prepare_settings(struct settings_data *data,
+ 	}
+ 	if (req_mask & ETH_SETTINGS_IM_LINK)
+ 		data->link = __ethtool_get_link(dev);
++	if (req_mask & ETH_SETTINGS_IM_FEATURES)
++		ethnl_get_features(dev, data);
+ 	if (!req_info->have_rtnl)
+ 		rtnl_unlock();
+ 
+@@ -316,6 +432,41 @@ static int fill_settings(struct sk_buff *rskb, struct settings_data *data,
+ 		if (nla_put_u32(rskb, ETHA_SETTINGS_LINK, data->link))
+ 			return ret;
+ 	}
++	if (req_mask & ETH_SETTINGS_IM_FEATURES) {
++		struct nlattr *feat_attr;
++
++		feat_attr = ethnl_nest_start(rskb, ETHA_SETTINGS_FEATURES);
++		if (!feat_attr)
++			return -ENOMEM;
++		ret = ethnl_put_bitset32(rskb, ETHA_FEATURES_HW,
++					 compact, NETDEV_FEATURE_COUNT,
++					 data->features.hw, NULL,
++					 feature_names);
++		if (ret < 0)
++			return ret;
++		ret = ethnl_put_bitset32(rskb, ETHA_FEATURES_WANTED,
++					 compact, NETDEV_FEATURE_COUNT,
++					 data->features.wanted,
++					 data->features.wanted,
++					 feature_names);
++		if (ret < 0)
++			return ret;
++		ret = ethnl_put_bitset32(rskb, ETHA_FEATURES_ACTIVE,
++					 compact, NETDEV_FEATURE_COUNT,
++					 data->features.active,
++					 data->features.active,
++					 feature_names);
++		if (ret < 0)
++			return ret;
++		ret = ethnl_put_bitset32(rskb, ETHA_FEATURES_NOCHANGE,
++					 compact, NETDEV_FEATURE_COUNT,
++					 data->features.nochange,
++					 data->features.nochange,
++					 feature_names);
++		if (ret < 0)
++			return ret;
++		nla_nest_end(rskb, feat_attr);
++	}
+ 
+ 	return 0;
+ }
+-- 
+2.18.0
+

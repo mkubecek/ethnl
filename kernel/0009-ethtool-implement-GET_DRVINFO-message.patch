@@ -1,7 +1,7 @@
-From 4f80a4d571cdd01c5d937f5428e268b24301e987 Mon Sep 17 00:00:00 2001
+From 4dcd60f25efe368ada4e0c035dc1d7612ab59132 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
-Subject: [PATCH 09/15] ethtool: implement GET_DRVINFO message
+Subject: [PATCH 09/17] ethtool: implement GET_DRVINFO message
 
 Requests the same information as ETHTOOL_GDRVINFO command in ioct
 interface. This is read-only so that corresponding SET_DRVINFO exists but
@@ -414,10 +414,10 @@ index a91b597073f8..7b5831d35bca 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index e7608af72aa2..4c4fb4df20f3 100644
+index 237a2cb40be4..305baa02ff70 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -617,8 +617,10 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -670,8 +670,10 @@ static struct notifier_block ethnl_netdev_notifier = {
  /* genetlink setup */
  
  int ethnl_get_strset(struct sk_buff *skb, struct genl_info *info);
@@ -428,7 +428,7 @@ index e7608af72aa2..4c4fb4df20f3 100644
  
  int ethnl_strset_done(struct netlink_callback *cb);
  
-@@ -630,6 +632,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -683,6 +685,12 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_dumpit,
  		.done	= ethnl_strset_done,
  	},

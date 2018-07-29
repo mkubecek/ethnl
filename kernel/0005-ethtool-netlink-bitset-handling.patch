@@ -1,7 +1,7 @@
-From 5e3d63fbbad214345db4d495772c52bcafe951ce Mon Sep 17 00:00:00 2001
+From 1bfb9ecf84f6fe5b8c1f5201f63067a7e8591daf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
-Subject: [PATCH 05/15] ethtool: netlink bitset handling
+Subject: [PATCH 05/17] ethtool: netlink bitset handling
 
 Declare attribute type constants and add helper functions to handle
 arbitrary length bit sets.
@@ -10,9 +10,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  56 +++
  include/uapi/linux/ethtool_netlink.h         |  31 ++
- net/ethtool/netlink.c                        | 342 +++++++++++++++++++
- net/ethtool/netlink.h                        |  21 ++
- 4 files changed, 450 insertions(+)
+ net/ethtool/netlink.c                        | 395 +++++++++++++++++++
+ net/ethtool/netlink.h                        |  26 ++
+ 4 files changed, 508 insertions(+)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 120376e0f91b..a49dfe3ef4bb 100644
@@ -124,7 +124,7 @@ index 1df263d9feb7..98d6fae315f3 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index bf234e5bc660..7a858cd230db 100644
+index bf234e5bc660..df065fd3dc80 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -1,6 +1,7 @@
@@ -135,7 +135,7 @@ index bf234e5bc660..7a858cd230db 100644
  #include <net/sock.h>
  #include <linux/ethtool_netlink.h>
  #include "netlink.h"
-@@ -67,6 +68,347 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
+@@ -67,6 +68,400 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
  	return ret;
  }
  
@@ -190,8 +190,8 @@ index bf234e5bc660..7a858cd230db 100644
 +/* calculate size for a bitset attribute
 + * see ethnl_put_bitset() for arguments
 + */
-+int ethnl_bitset_size(bool compact, unsigned int size, u32 *val, u32 *mask,
-+		      const char *const *names)
++int ethnl_bitset32_size(bool compact, unsigned int size, u32 *val, u32 *mask,
++			const char *const *names)
 +{
 +	unsigned int nwords = (size + 31) / 32;
 +	unsigned int len;
@@ -214,7 +214,7 @@ index bf234e5bc660..7a858cd230db 100644
 +			/* index */
 +			bit_len = nla_total_size(sizeof(u32));
 +			/* name */
-+			bit_len += ethnl_str_size(names[i]);
++			bit_len += ethnl_str_size(names[i] ?: "");
 +			/* value */
 +			if (ethnl_test_bit(val, i))
 +				bit_len += nla_total_size(0);
@@ -229,6 +229,26 @@ index bf234e5bc660..7a858cd230db 100644
 +	return nla_total_size(len);
 +}
 +
++int ethnl_bitset_size(bool compact, unsigned int size, unsigned long *val,
++		      unsigned long *mask, const char *const *names)
++{
++	const unsigned int words = (size + 31) / 32;
++	u32 mask32[words];
++	u32 val32[words];
++	int ret;
++
++	bitmap_to_arr32(val32, val, size);
++	if (mask)
++		bitmap_to_arr32(mask32, mask, size);
++	ret = ethnl_bitset32_size(compact, size, val32, mask ? mask32 : NULL,
++				  names);
++	bitmap_from_arr32(val, val32, size);
++	if (mask)
++		bitmap_from_arr32(mask, mask32, size);
++
++	return ret;
++}
++
 +/* put bitset into a message
 + * skb:      skb with the message
 + * attrtype: attribute type for the bitset
@@ -238,9 +258,9 @@ index bf234e5bc660..7a858cd230db 100644
 + * mask:     mask of valid bits
 + * names:    bit names (only used for verbose format)
 + */
-+int ethnl_put_bitset(struct sk_buff *skb, int attrtype, bool compact,
-+		     unsigned int size, u32 *val, u32 *mask,
-+		     const char *const *names)
++int ethnl_put_bitset32(struct sk_buff *skb, int attrtype, bool compact,
++		       unsigned int size, u32 *val, u32 *mask,
++		       const char *const *names)
 +{
 +	struct nlattr *nest;
 +	struct nlattr *attr;
@@ -283,7 +303,7 @@ index bf234e5bc660..7a858cd230db 100644
 +			attr = ethnl_nest_start(skb, ETHA_BITS_BIT);
 +			if (!attr ||
 +			    nla_put_u32(skb, ETHA_BIT_INDEX, i) ||
-+			    nla_put_string(skb, ETHA_BIT_NAME, names[i]))
++			    nla_put_string(skb, ETHA_BIT_NAME, names[i] ?: ""))
 +				goto err;
 +			if (ethnl_test_bit(val, i))
 +				if (nla_put_flag(skb, ETHA_BIT_VALUE))
@@ -297,6 +317,27 @@ index bf234e5bc660..7a858cd230db 100644
 +	return 0;
 +err:
 +	nla_nest_cancel(skb, nest);
++	return ret;
++}
++
++int ethnl_put_bitset(struct sk_buff *skb, int attrtype, bool compact,
++		     unsigned int size, unsigned long *val, unsigned long *mask,
++		     const char *const *names)
++{
++	const unsigned int words = (size + 31) / 32;
++	u32 mask32[words];
++	u32 val32[words];
++	int ret;
++
++	bitmap_to_arr32(val32, val, size);
++	if (mask)
++		bitmap_to_arr32(mask32, mask, size);
++	ret = ethnl_put_bitset32(skb, attrtype, compact, size, val32,
++				 mask ? mask32 : NULL, names);
++	bitmap_from_arr32(val, val32, size);
++	if (mask)
++		bitmap_from_arr32(mask, mask32, size);
++
 +	return ret;
 +}
 +
@@ -321,15 +362,15 @@ index bf234e5bc660..7a858cd230db 100644
 +	unsigned int i;
 +
 +	for (i = 0; i < n_names; i++)
-+		if (!strncmp(names[i], name, name_len))
++		if (names[i] && !strncmp(names[i], name, name_len))
 +			return i;
 +
 +	return n_names;
 +}
 +
-+static int ethnl_update_bit(unsigned long *bitmap, unsigned int nbits,
-+			    struct nlattr *bit_attr, const char *const *names,
-+			    struct genl_info *info)
++static int ethnl_update_bit(unsigned long *bitmap, unsigned long *bitmask,
++			    unsigned int nbits, struct nlattr *bit_attr,
++			    const char *const *names, struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHA_BIT_MAX + 1];
 +	int ret, idx;
@@ -351,7 +392,7 @@ index bf234e5bc660..7a858cd230db 100644
 +			return genl_err_attr(info, -EOPNOTSUPP,
 +					     tb[ETHA_BIT_INDEX]);
 +		}
-+		if (tb[ETHA_BIT_NAME] &&
++		if (tb[ETHA_BIT_NAME] && names[idx] &&
 +		    strncmp(nla_data(tb[ETHA_BIT_NAME]), names[idx],
 +			    nla_len(tb[ETHA_BIT_NAME]))) {
 +			ETHNL_SET_ERRMSG(info, "bit index and name mismatch");
@@ -362,7 +403,7 @@ index bf234e5bc660..7a858cd230db 100644
 +					nla_data(tb[ETHA_BIT_NAME]),
 +					nla_len(tb[ETHA_BIT_NAME]));
 +		if (idx >= nbits) {
-+			ETHNL_SET_ERRMSG(info, "bit index too high");
++			ETHNL_SET_ERRMSG(info, "bit name not found");
 +			return genl_err_attr(info, -EOPNOTSUPP,
 +					     tb[ETHA_BIT_NAME]);
 +		}
@@ -375,11 +416,13 @@ index bf234e5bc660..7a858cd230db 100644
 +		set_bit(idx, bitmap);
 +	else
 +		clear_bit(idx, bitmap);
++	if (bitmask)
++		set_bit(idx, bitmask);
 +	return 0;
 +}
 +
-+bool ethnl_update_bitset(unsigned long *bitmap, unsigned int nbits,
-+			 struct nlattr *attr, int *err,
++bool ethnl_update_bitset(unsigned long *bitmap, unsigned long *bitmask,
++			 unsigned int nbits, struct nlattr *attr, int *err,
 +			 const char *const *names, struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHA_BITSET_MAX + 1];
@@ -403,22 +446,26 @@ index bf234e5bc660..7a858cd230db 100644
 +
 +	if (tb[ETHA_BITSET_BITS]) {
 +		DECLARE_BITMAP(val, nbits);
++		DECLARE_BITMAP(mask, nbits);
 +		struct nlattr *bit_attr;
 +		int rem;
 +
 +		*err = -EINVAL;
 +		if (tb[ETHA_BITSET_VALUE] || tb[ETHA_BITSET_MASK])
 +			return mod;
-+		bitmap_copy(val, bitmap, __ETHTOOL_LINK_MODE_MASK_NBITS);
++		bitmap_copy(val, bitmap, nbits);
++		bitmap_zero(mask, nbits);
 +		nla_for_each_nested(bit_attr, tb[ETHA_BITSET_BITS], rem) {
-+			*err = ethnl_update_bit(val, nbits, bit_attr, names,
-+						info);
++			*err = ethnl_update_bit(val, mask, nbits, bit_attr,
++						names, info);
 +			if (*err < 0)
 +				return mod;
 +		}
 +		mod = !bitmap_equal(val, bitmap, nbits);
 +		if (mod)
 +			bitmap_copy(bitmap, val, nbits);
++		if (bitmask)
++			bitmap_copy(bitmask, mask, nbits);
 +	} else {
 +		const unsigned int max_bits =
 +			max_t(unsigned int, nbits, change_bits);
@@ -453,6 +500,8 @@ index bf234e5bc660..7a858cd230db 100644
 +				return mod;
 +		}
 +
++		if (bitmask)
++			bitmap_copy(bitmask, mask, nbits);
 +		bitmap_and(val, val, mask, nbits);
 +		bitmap_complement(mask, mask, nbits);
 +		bitmap_and(mask, mask, bitmap, nbits);
@@ -466,17 +515,21 @@ index bf234e5bc660..7a858cd230db 100644
 +	return mod;
 +}
 +
-+bool ethnl_update_bitset32(u32 *bitmap, unsigned int nbits, struct nlattr *attr,
-+			   int *err, const char *const *names,
-+			   struct genl_info *info)
++bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
++			   struct nlattr *attr, int *err,
++			   const char *const *names, struct genl_info *info)
 +{
 +	DECLARE_BITMAP(tmp, nbits);
++	DECLARE_BITMAP(tmp_mask, nbits);
 +	bool mod;
 +
 +	bitmap_from_arr32(tmp, bitmap, nbits);
-+	mod = ethnl_update_bitset(tmp, nbits, attr, err, names, info);
++	bitmap_zero(tmp_mask, nbits);
++	mod = ethnl_update_bitset(tmp, tmp_mask, nbits, attr, err, names, info);
 +	if (!*err && mod)
 +		bitmap_to_arr32(bitmap, tmp, nbits);
++	if (bitmask)
++		bitmap_to_arr32(bitmask, tmp_mask, nbits);
 +	return (!*err && mod);
 +}
 +
@@ -484,10 +537,10 @@ index bf234e5bc660..7a858cd230db 100644
   * payload: payload length (without netlink, genetlink and ethnl headers)
   * dev:     device the reply is about
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index acfed5ba6b54..8c5276cd3e95 100644
+index acfed5ba6b54..6e9e854eec5d 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -20,6 +20,27 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -20,6 +20,32 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  				 u16 dev_attrtype, struct genl_info *info,
  				 void **ehdrp);
  
@@ -500,17 +553,22 @@ index acfed5ba6b54..8c5276cd3e95 100644
 +}
 +#endif
 +
-+int ethnl_bitset_size(bool compact, unsigned int size, u32 *val, u32 *mask,
-+		      const char *const *names);
++int ethnl_bitset_size(bool compact, unsigned int size, unsigned long *val,
++		      unsigned long *mask, const char *const *names);
++int ethnl_bitset32_size(bool compact, unsigned int size, u32 *val, u32 *mask,
++			const char *const *names);
 +int ethnl_put_bitset(struct sk_buff *skb, int attrtype, bool compact,
-+		     unsigned int size, u32 *val, u32 *mask,
++		     unsigned int size, unsigned long *val, unsigned long *mask,
 +		     const char *const *names);
-+bool ethnl_update_bitset(unsigned long *bitmap, unsigned int nbits,
-+			 struct nlattr *attr, int *err,
++int ethnl_put_bitset32(struct sk_buff *skb, int attrtype, bool compact,
++		       unsigned int size, u32 *val, u32 *mask,
++		       const char *const *names);
++bool ethnl_update_bitset(unsigned long *bitmap, unsigned long *bitmask,
++			 unsigned int nbits, struct nlattr *attr, int *err,
 +			 const char *const *names, struct genl_info *info);
-+bool ethnl_update_bitset32(u32 *bitmap, unsigned int nbits, struct nlattr *attr,
-+			   int *err, const char *const *names,
-+			   struct genl_info *info);
++bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
++			   struct nlattr *attr, int *err,
++			   const char *const *names, struct genl_info *info);
 +
  static inline int ethnl_str_size(const char *s)
  {

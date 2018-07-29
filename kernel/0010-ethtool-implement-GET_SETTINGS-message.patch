@@ -1,7 +1,7 @@
-From e3d240989968599eba7cc039b255191a7a3ba637 Mon Sep 17 00:00:00 2001
+From 67d3b68a50e95db9612cc96e42a52ce332f716a9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
-Subject: [PATCH 10/15] ethtool: implement GET_SETTINGS message
+Subject: [PATCH 10/17] ethtool: implement GET_SETTINGS message
 
 Requests the information provided by ETHTOOL_GLINKSETTINGS, ETHTOOL_GWOL
 and ETHTOOL_GMSGLVL. The info_mask header field can be used to request only
@@ -10,7 +10,7 @@ between flag-by-flag list and compact bitmaps for link modes in the reply.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  69 +++-
+ Documentation/networking/ethtool-netlink.txt |  69 ++-
  include/linux/ethtool_netlink.h              |   3 +
  include/linux/netdevice.h                    |   2 +
  include/uapi/linux/ethtool.h                 |   3 +
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/common.c                         | 112 +++++
  net/ethtool/common.h                         |   8 +
  net/ethtool/ioctl.c                          | 108 +----
- net/ethtool/netlink.c                        |  69 ++++
+ net/ethtool/netlink.c                        |  69 +++
  net/ethtool/netlink.h                        |   2 +
- net/ethtool/settings.c                       | 412 +++++++++++++++++++
- 12 files changed, 721 insertions(+), 106 deletions(-)
+ net/ethtool/settings.c                       | 416 +++++++++++++++++++
+ 12 files changed, 725 insertions(+), 106 deletions(-)
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -520,7 +520,7 @@ index 7b5831d35bca..8613434b6fc0 100644
  		return -EFAULT;
  	return 0;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 4c4fb4df20f3..c0bb3648d53f 100644
+index 305baa02ff70..6c14185a6466 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -2,12 +2,68 @@
@@ -592,7 +592,7 @@ index 4c4fb4df20f3..c0bb3648d53f 100644
  static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
  	[ETHA_DEV_UNSPEC]	= { .type = NLA_UNSPEC },
  	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -618,11 +674,14 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -671,11 +727,14 @@ static struct notifier_block ethnl_netdev_notifier = {
  
  int ethnl_get_strset(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
@@ -607,7 +607,7 @@ index 4c4fb4df20f3..c0bb3648d53f 100644
  
  static const struct genl_ops ethtool_genl_ops[] = {
  	{
-@@ -638,6 +697,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -691,6 +750,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.start	= ethnl_drvinfo_start,
  		.dumpit	= ethnl_dumpit,
  	},
@@ -621,7 +621,7 @@ index 4c4fb4df20f3..c0bb3648d53f 100644
  };
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
-@@ -662,6 +728,9 @@ static int __init ethtool_nl_init(void)
+@@ -715,6 +781,9 @@ static int __init ethtool_nl_init(void)
  {
  	int ret;
  
@@ -632,7 +632,7 @@ index 4c4fb4df20f3..c0bb3648d53f 100644
  	if (ret < 0)
  		return ret;
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 257f79474884..443475d3c19c 100644
+index 94c14ec2c3fc..789aceae9f5e 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -15,6 +15,8 @@ extern u32 ethnl_bcast_seq;
@@ -646,10 +646,10 @@ index 257f79474884..443475d3c19c 100644
  
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
-index 000000000000..6d136f25508e
+index 000000000000..dd76599f311f
 --- /dev/null
 +++ b/net/ethtool/settings.c
-@@ -0,0 +1,412 @@
+@@ -0,0 +1,416 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
@@ -732,15 +732,17 @@ index 000000000000..6d136f25508e
 +		u32 *lp_advertising =
 +			(u32 *)ksettings->link_modes.lp_advertising;
 +
-+		ret = ethnl_bitset_size(compact, __ETHTOOL_LINK_MODE_MASK_NBITS,
-+					advertising, supported,
-+					link_mode_names);
++		ret = ethnl_bitset32_size(compact,
++					  __ETHTOOL_LINK_MODE_MASK_NBITS,
++					  advertising, supported,
++					  link_mode_names);
 +		if (ret < 0)
 +			return ret;
 +		len += ret;
-+		ret = ethnl_bitset_size(compact, __ETHTOOL_LINK_MODE_MASK_NBITS,
-+					lp_advertising, lp_advertising,
-+					link_mode_names);
++		ret = ethnl_bitset32_size(compact,
++					  __ETHTOOL_LINK_MODE_MASK_NBITS,
++					  lp_advertising, lp_advertising,
++					  link_mode_names);
 +		if (ret < 0)
 +			return ret;
 +		len += ret;
@@ -925,17 +927,19 @@ index 000000000000..6d136f25508e
 +		u32 *lp_advertising =
 +			(u32 *)data->ksettings.link_modes.lp_advertising;
 +
-+		ret = ethnl_put_bitset(rskb, ETHA_SETTINGS_LINK_MODES, compact,
-+				       __ETHTOOL_LINK_MODE_MASK_NBITS,
-+				       advertising, supported, link_mode_names);
++		ret = ethnl_put_bitset32(rskb, ETHA_SETTINGS_LINK_MODES,
++					 compact,
++					 __ETHTOOL_LINK_MODE_MASK_NBITS,
++					 advertising, supported,
++					 link_mode_names);
 +		if (ret < 0)
 +			return ret;
 +		if (!data->lpm_empty) {
-+			ret = ethnl_put_bitset(rskb, ETHA_SETTINGS_PEER_MODES,
-+					       compact,
-+					       __ETHTOOL_LINK_MODE_MASK_NBITS,
-+					       lp_advertising, lp_advertising,
-+					       link_mode_names);
++			ret = ethnl_put_bitset32(rskb, ETHA_SETTINGS_PEER_MODES,
++						 compact,
++						 __ETHTOOL_LINK_MODE_MASK_NBITS,
++						 lp_advertising, lp_advertising,
++						 link_mode_names);
 +			if (ret < 0)
 +				return ret;
 +		}

@@ -1,7 +1,7 @@
-From f7925a734d4a3dda3a21434cc2a8ac0975ac1234 Mon Sep 17 00:00:00 2001
+From 22dbf704924ba1c0621b6394e336364daadbbd9f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
-Subject: [PATCH 08/15] ethtool: implement GET_STRSET message
+Subject: [PATCH 08/17] ethtool: implement GET_STRSET message
 
 Requests a contents of a string set, i.e. indexed array of strings; this
 information is provided by ETHTOOL_GSSET_INFO and ETHTOOL_GSTRINGS commands
@@ -353,10 +353,10 @@ index c9993c6c2fd4..a91b597073f8 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 9fc76b759128..e7608af72aa2 100644
+index 543560778c80..237a2cb40be4 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -616,7 +616,20 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -669,7 +669,20 @@ static struct notifier_block ethnl_netdev_notifier = {
  
  /* genetlink setup */
  

@@ -1,7 +1,7 @@
-From dbae48fe282269b1df36f1799efaf92dbf08639d Mon Sep 17 00:00:00 2001
+From 766faf06bab06022ab53820e2d6bc7b213fcd989 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
-Subject: [PATCH 12/15] ethtool: implement SET_SETTINGS message
+Subject: [PATCH 13/17] ethtool: implement SET_SETTINGS message
 
 Sets the information provided by ETHTOOL_SLINKSETTINGS, ETHTOOL_SWOL and
 ETHTOOL_SMSGLVL. Unlike with ioctl(), userspace can send only some
@@ -13,11 +13,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  43 +-
  net/ethtool/netlink.c                        |   6 +
- net/ethtool/settings.c                       | 494 +++++++++++++++++++
- 3 files changed, 538 insertions(+), 5 deletions(-)
+ net/ethtool/settings.c                       | 495 +++++++++++++++++++
+ 3 files changed, 539 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 60d426cf6dad..623fb5dca24d 100644
+index 3993652f81a9..c7fe4f518972 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -124,7 +124,7 @@ List of message types
@@ -29,8 +29,8 @@ index 60d426cf6dad..623fb5dca24d 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -251,6 +251,39 @@ to them are broadcasted as notifications on change of these settings using
- netlink or ioctl ethtool interface.
+@@ -267,6 +267,39 @@ netlink or ioctl ethtool interface; feature notifications are also sent
+ whenever netdev_update_features() or netdev_change_features() is called.
  
  
 +SET_SETTINGS
@@ -69,7 +69,7 @@ index 60d426cf6dad..623fb5dca24d 100644
  Request translation
  -------------------
  
-@@ -261,13 +294,13 @@ have their netlink replacement yet.
+@@ -277,13 +310,13 @@ have their netlink replacement yet.
  ioctl command			netlink command
  ---------------------------------------------------------------------
  ETHTOOL_GSET			ETHNL_CMD_GET_SETTINGS
@@ -86,7 +86,7 @@ index 60d426cf6dad..623fb5dca24d 100644
  ETHTOOL_NWAY_RST		n/a
  ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
-@@ -335,7 +368,7 @@ ETHTOOL_STUNABLE		n/a
+@@ -351,7 +384,7 @@ ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
  ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
@@ -96,10 +96,10 @@ index 60d426cf6dad..623fb5dca24d 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index f3440002b62a..3226e4b1c3c2 100644
+index 0e2158092a44..6e183caca01f 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -677,6 +677,7 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -730,6 +730,7 @@ static struct notifier_block ethnl_netdev_notifier = {
  int ethnl_get_strset(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info);
@@ -107,7 +107,7 @@ index f3440002b62a..3226e4b1c3c2 100644
  
  int ethnl_strset_start(struct netlink_callback *cb);
  int ethnl_drvinfo_start(struct netlink_callback *cb);
-@@ -706,6 +707,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -759,6 +760,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_dumpit,
  		.done	= ethnl_settings_done,
  	},
@@ -120,10 +120,10 @@ index f3440002b62a..3226e4b1c3c2 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index e8dd00ba60f8..0c3fab771b13 100644
+index 739bd006c924..678199e621a2 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -22,6 +22,222 @@ struct settings_reqinfo {
+@@ -88,6 +88,222 @@ struct settings_reqinfo {
  	bool				have_rtnl;
  };
  
@@ -346,7 +346,7 @@ index e8dd00ba60f8..0c3fab771b13 100644
  /* We want to allow ~0 as selector for backward compatibility (to just set
   * given set of modes, whatever kernel supports) so that we allow all bits
   * on validation and do our own sanity check later.
-@@ -451,3 +667,281 @@ void ethnl_settings_notify(struct netdev_notifier_ethtool_info *info)
+@@ -606,3 +822,282 @@ void ethnl_settings_notify(struct netdev_notifier_ethtool_info *info)
  err_skb:
  	nlmsg_free(skb);
  }
@@ -454,7 +454,7 @@ index e8dd00ba60f8..0c3fab771b13 100644
 +	if (ethnl_update_u8(&lsettings->eth_tp_mdix_ctrl,
 +			    tb[ETHA_SETTINGS_TP_MDIX_CTRL]))
 +		mod = true;
-+	if (ethnl_update_bitset(ksettings.link_modes.advertising,
++	if (ethnl_update_bitset(ksettings.link_modes.advertising, NULL,
 +				__ETHTOOL_LINK_MODE_MASK_NBITS,
 +				tb[ETHA_SETTINGS_LINK_MODES],
 +				&ret, link_mode_names, info))
@@ -516,7 +516,7 @@ index e8dd00ba60f8..0c3fab771b13 100644
 +	if (ethnl_update_u8(&cmd.eth_tp_mdix_ctrl,
 +			    tb[ETHA_SETTINGS_TP_MDIX_CTRL]))
 +		mod = true;
-+	if (ethnl_update_bitset(advertising, nbits,
++	if (ethnl_update_bitset(advertising, NULL, nbits,
 +				tb[ETHA_SETTINGS_LINK_MODES],
 +				&ret, link_mode_names, info)) {
 +		bitmap_to_arr32(&cmd.advertising, advertising, nbits);
@@ -614,7 +614,8 @@ index e8dd00ba60f8..0c3fab771b13 100644
 +			goto out_unlock;
 +		}
 +		msglvl = dev->ethtool_ops->get_msglevel(dev);
-+		if (ethnl_update_bitfield32(&msglvl, tb[ETHA_SETTINGS_MSGLVL])) {
++		if (ethnl_update_bitfield32(&msglvl,
++					    tb[ETHA_SETTINGS_MSGLVL])) {
 +			dev->ethtool_ops->set_msglevel(dev, msglvl);
 +			req_mask |= ETH_SETTINGS_IM_MSGLEVEL;
 +		}

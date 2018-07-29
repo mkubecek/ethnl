@@ -1,7 +1,7 @@
-From 785cf5e19cf0744b31be095b8492a7cb0688279d Mon Sep 17 00:00:00 2001
+From 0f59c43203698da554069328f1a96026bf9bf037 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:36:49 -0400
-Subject: [PATCH 11/15] ethtool: implement SET_SETTINGS notification
+Subject: [PATCH 12/17] ethtool: implement SET_SETTINGS notification
 
 SET_SETTINGS notification message has the same format as response to
 GET_SETTINGS request and is broadcasted on change of relevant fields. Info
@@ -12,13 +12,50 @@ ioctl interface.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/ethtool/ioctl.c    | 30 ++++++++++++++++++++++++++----
- net/ethtool/netlink.c  |  2 ++
- net/ethtool/settings.c | 41 +++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 69 insertions(+), 4 deletions(-)
+ Documentation/networking/ethtool-netlink.txt |  3 +-
+ net/core/dev.c                               |  3 ++
+ net/ethtool/ioctl.c                          | 36 +++++++++++++++--
+ net/ethtool/netlink.c                        |  2 +
+ net/ethtool/settings.c                       | 41 ++++++++++++++++++++
+ 5 files changed, 80 insertions(+), 5 deletions(-)
 
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index 82b839c03707..3993652f81a9 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -263,7 +263,8 @@ requests.
+ 
+ GET_SETTINGS requests allow dumps and messages in the same format as response
+ to them are broadcasted as notifications on change of these settings using
+-netlink or ioctl ethtool interface.
++netlink or ioctl ethtool interface; feature notifications are also sent
++whenever netdev_update_features() or netdev_change_features() is called.
+ 
+ 
+ Request translation
+diff --git a/net/core/dev.c b/net/core/dev.c
+index 8a0773a52dd7..66932a9f133e 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -93,6 +93,7 @@
+ #include <linux/netdevice.h>
+ #include <linux/etherdevice.h>
+ #include <linux/ethtool.h>
++#include <linux/ethtool_netlink.h>
+ #include <linux/notifier.h>
+ #include <linux/skbuff.h>
+ #include <linux/bpf.h>
+@@ -1318,6 +1319,8 @@ int dev_get_alias(const struct net_device *dev, char *name, size_t len)
+ void netdev_features_change(struct net_device *dev)
+ {
+ 	call_netdevice_notifiers(NETDEV_FEAT_CHANGE, dev);
++	netdev_ethtool_info_change(dev, NULL, ETHNL_CMD_SET_SETTINGS,
++				   ETH_SETTINGS_IM_FEATURES);
+ }
+ EXPORT_SYMBOL(netdev_features_change);
+ 
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 8613434b6fc0..0e09b290b4e8 100644
+index 39e9aea60516..2754d3f6fd75 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -27,6 +27,7 @@
@@ -29,7 +66,34 @@ index 8613434b6fc0..0e09b290b4e8 100644
  #include "common.h"
  
  /*
-@@ -640,6 +641,7 @@ static int ethtool_get_settings(struct net_device *dev, void __user *useraddr)
+@@ -125,6 +126,8 @@ static int ethtool_set_features(struct net_device *dev, void __user *useraddr)
+ 	dev->wanted_features &= ~valid;
+ 	dev->wanted_features |= wanted & valid;
+ 	__netdev_update_features(dev);
++	netdev_ethtool_info_change(dev, NULL, ETHNL_CMD_SET_SETTINGS,
++				   ETH_SETTINGS_IM_FEATURES);
+ 
+ 	if ((dev->wanted_features ^ dev->features) & valid)
+ 		ret |= ETHTOOL_F_WISH;
+@@ -243,6 +246,8 @@ static int ethtool_set_one_feature(struct net_device *dev,
+ 		dev->wanted_features &= ~mask;
+ 
+ 	__netdev_update_features(dev);
++	netdev_ethtool_info_change(dev, NULL, ETHNL_CMD_SET_SETTINGS,
++				   ETH_SETTINGS_IM_FEATURES);
+ 
+ 	return 0;
+ }
+@@ -298,6 +303,8 @@ static int __ethtool_set_flags(struct net_device *dev, u32 data)
+ 		(dev->wanted_features & ~changed) | (features & changed);
+ 
+ 	__netdev_update_features(dev);
++	netdev_ethtool_info_change(dev, NULL, ETHNL_CMD_SET_SETTINGS,
++				   ETH_SETTINGS_IM_FEATURES);
+ 
+ 	return 0;
+ }
+@@ -638,6 +645,7 @@ static int ethtool_get_settings(struct net_device *dev, void __user *useraddr)
  static int ethtool_set_settings(struct net_device *dev, void __user *useraddr)
  {
  	struct ethtool_cmd cmd;
@@ -37,7 +101,7 @@ index 8613434b6fc0..0e09b290b4e8 100644
  
  	ASSERT_RTNL();
  
-@@ -657,8 +659,14 @@ static int ethtool_set_settings(struct net_device *dev, void __user *useraddr)
+@@ -655,8 +663,14 @@ static int ethtool_set_settings(struct net_device *dev, void __user *useraddr)
  		link_ksettings.base.cmd = ETHTOOL_SLINKSETTINGS;
  		link_ksettings.base.link_mode_masks_nwords
  			= __ETHTOOL_LINK_MODE_MASK_NU32;
@@ -54,7 +118,7 @@ index 8613434b6fc0..0e09b290b4e8 100644
  	}
  
  	/* legacy %ethtool_cmd API */
-@@ -670,7 +678,12 @@ static int ethtool_set_settings(struct net_device *dev, void __user *useraddr)
+@@ -668,7 +682,12 @@ static int ethtool_set_settings(struct net_device *dev, void __user *useraddr)
  	if (!dev->ethtool_ops->set_settings)
  		return -EOPNOTSUPP;
  
@@ -68,7 +132,7 @@ index 8613434b6fc0..0e09b290b4e8 100644
  }
  
  static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
-@@ -1281,6 +1294,7 @@ static int ethtool_get_wol(struct net_device *dev, char __user *useraddr)
+@@ -1279,6 +1298,7 @@ static int ethtool_get_wol(struct net_device *dev, char __user *useraddr)
  static int ethtool_set_wol(struct net_device *dev, char __user *useraddr)
  {
  	struct ethtool_wolinfo wol;
@@ -76,7 +140,7 @@ index 8613434b6fc0..0e09b290b4e8 100644
  
  	if (!dev->ethtool_ops->set_wol)
  		return -EOPNOTSUPP;
-@@ -1288,7 +1302,11 @@ static int ethtool_set_wol(struct net_device *dev, char __user *useraddr)
+@@ -1286,7 +1306,11 @@ static int ethtool_set_wol(struct net_device *dev, char __user *useraddr)
  	if (copy_from_user(&wol, useraddr, sizeof(wol)))
  		return -EFAULT;
  
@@ -89,7 +153,7 @@ index 8613434b6fc0..0e09b290b4e8 100644
  }
  
  static int ethtool_get_eee(struct net_device *dev, char __user *useraddr)
-@@ -2480,6 +2498,10 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
+@@ -2478,6 +2502,10 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
  	case ETHTOOL_SMSGLVL:
  		rc = ethtool_set_value_void(dev, useraddr,
  				       dev->ethtool_ops->set_msglevel);
@@ -101,10 +165,10 @@ index 8613434b6fc0..0e09b290b4e8 100644
  	case ETHTOOL_GEEE:
  		rc = ethtool_get_eee(dev, useraddr);
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index c0bb3648d53f..f3440002b62a 100644
+index 6c14185a6466..0e2158092a44 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -576,7 +576,9 @@ int ethnl_dumpit(struct sk_buff *skb, struct netlink_callback *cb)
+@@ -629,7 +629,9 @@ int ethnl_dumpit(struct sk_buff *skb, struct netlink_callback *cb)
  
  typedef void (*ethnl_notify_handler_t)(struct netdev_notifier_ethtool_info *);
  
@@ -115,10 +179,10 @@ index c0bb3648d53f..f3440002b62a 100644
  
  static void __ethnl_notify(struct netdev_notifier_ethtool_info *info)
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 6d136f25508e..e8dd00ba60f8 100644
+index fdca418a6d8e..739bd006c924 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -410,3 +410,44 @@ int ethnl_settings_done(struct netlink_callback *cb)
+@@ -565,3 +565,44 @@ int ethnl_settings_done(struct netlink_callback *cb)
  
  	return 0;
  }

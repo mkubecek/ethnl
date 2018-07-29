@@ -1,7 +1,7 @@
-From 441a83fe46abd0d1c1b3e20db9b5c52c603c4cc3 Mon Sep 17 00:00:00 2001
+From b0a6a8fd66eb610a30f5f4af7143ffa3a27fcee3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
-Subject: [PATCH 03/15] ethtool: introduce ethtool netlink interface
+Subject: [PATCH 03/17] ethtool: introduce ethtool netlink interface
 
 No function implemented yet, only genetlink and module infrastructure.
 Register/unregister genetlink family "ethtool" and allow the module to be
@@ -239,7 +239,7 @@ index 000000000000..3c0c5c70692b
 +
 +#endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/Kconfig b/net/Kconfig
-index f738a6f27665..f7996dd11ae1 100644
+index 228dfa382eec..12e763449525 100644
 --- a/net/Kconfig
 +++ b/net/Kconfig
 @@ -445,6 +445,13 @@ config FAILOVER
