@@ -1,0 +1,59 @@
+This is still work in progress and only a very small part of the ioctl
+interface is reimplemented but I would like to get some comments before
+the patchset becomes too big and changing things becomes too tedious.
+
+The interface used for communication between ethtool and kernel is based on
+ioctl() and suffers from many problems. The most pressing seems the be the
+lack of extensibility. While some of the newer commands use structures
+designed to allow future extensions (e.g. GFEATURES or TEST), most either
+allow no extension at all (GPAUSEPARAM, GCOALESCE) or only limited set of
+reserved fields (GDRVINFO, GEEE). Even most of those which support future
+extensions limit the data types that can be used.
+
+This series aims to provide an alternative interface based on netlink which
+is what other network configuration utilities use. In particular, it uses
+generic netlink (family "ethtool"). The goal is to provide an interface
+which would be extensible, flexible and practical both for ethtool and for
+other network configuration tools (e.g. wicked or systemd-networkd).
+
+The interface is documented in Documentation/networking/ethtool-netlink.txt
+
+I'll post RFC patch series for ethtool in a few days, it still needs some
+more polishing.
+
+Basic concepts:
+
+- the interface is based on generic netlink (family name "ethtool")
+
+- provide everything ioctl can do but allow easier future extensions
+
+- inextensibility of ioctl interface resulted in way too many commands,
+  many of them obsoleted by newer ones; reduce the number by  ignoring the
+  obsolete commands and grouping some together
+
+- for "set" type commands, netlink allows providing only the attributes to
+  be changed; therefore we don't need a get-modify-set cycle, userspace can
+  simply say what it wants to change and how
+
+- be less dependent on ethtool and kernel being in sync; allow e.g. saying
+  "ethtool -s eth0 advertise xyz off" without knowing what "xyz" means;
+  it's kernel's job to know what mode "xyz" is and if it exists and is
+  supported
+
+Unresolved questions/tasks:
+
+- allow dumps for "get" type requests, e.g. listing EEE settings for all
+  interfaces in current netns
+
+- find reasonable format for data transfers (e.g. eeprom dump or flash)
+
+- while the netlink interface allows easy future extensions, ethtool_ops
+  interface does not; some settings could be implemented using tunables and
+  accessed via relevant netlink messages (as well as tunables) from
+  userspace but in the long term, something better will be needed
+
+- it would be nice if driver could provide useful error/warning messages to
+  be passed to userspace via extended ACK; example: while testing, I found
+  a driver which only allows values 0, 1, 3 and 10000 for certain parameter
+  but the only way poor user can find out is either by trying all values or
+  by checking driver source
