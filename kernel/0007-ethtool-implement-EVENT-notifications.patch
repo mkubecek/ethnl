@@ -1,4 +1,4 @@
-From 11dcbb7c1219e95dc21d1e3ecb096214f67e44f0 Mon Sep 17 00:00:00 2001
+From 816eaa57a92e0a7d5e144dba3370b095c7f84e5b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 07/17] ethtool: implement EVENT notifications
@@ -14,10 +14,10 @@ another socket for rtnetlink.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 22 ++++++++++
- include/uapi/linux/ethtool_netlink.h         | 28 +++++++++++++
- net/ethtool/netlink.c                        | 44 ++++++++++++++++++++
- 3 files changed, 94 insertions(+)
+ Documentation/networking/ethtool-netlink.txt | 22 +++++++
+ include/uapi/linux/ethtool_netlink.h         | 28 +++++++++
+ net/ethtool/netlink.c                        | 61 ++++++++++++++++++++
+ 3 files changed, 111 insertions(+)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index a49dfe3ef4bb..0e83397f2975 100644
@@ -109,12 +109,12 @@ index 444a668e4a08..f162cd6f80d4 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index e4a20bb6c1d4..543560778c80 100644
+index 78ab3a640203..aeaecf91cf6a 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -607,6 +607,44 @@ void ethnl_notify(struct net_device *dev, struct netlink_ext_ack *extack,
- 	return __ethnl_notify(&ethtool_info);
+@@ -591,6 +591,63 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  }
+ EXPORT_SYMBOL(ethtool_notify);
  
 +static unsigned int dev_notify_size(void)
 +{
@@ -154,22 +154,39 @@ index e4a20bb6c1d4..543560778c80 100644
 +	nlmsg_free(skb);
 +}
 +
- static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
- 			      void *ptr)
- {
-@@ -614,6 +652,12 @@ static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
- 	case NETDEV_ETHTOOL:
- 		__ethnl_notify(ptr);
- 		break;
++static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
++			      void *ptr)
++{
++	switch(event) {
 +	case NETDEV_REGISTER:
 +		ethnl_notify_devlist(ptr, ETHA_EVENT_NEWDEV, ETHA_NEWDEV_DEV);
 +		break;
 +	case NETDEV_UNREGISTER:
 +		ethnl_notify_devlist(ptr, ETHA_EVENT_DELDEV, ETHA_DELDEV_DEV);
 +		break;
- 	}
++	}
++
++	return NOTIFY_DONE;
++}
++
++static struct notifier_block ethnl_netdev_notifier = {
++	.notifier_call = ethnl_netdev_event,
++};
++
+ /* genetlink setup */
  
- 	return NOTIFY_DONE;
+ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -622,6 +679,10 @@ static int __init ethnl_init(void)
+ 	if (ret < 0)
+ 		panic("ethtool: could not register genetlink family\n");
+ 
++	ret = register_netdevice_notifier(&ethnl_netdev_notifier);
++	if (ret < 0)
++		panic("ethtool: could not register netdev notifier\n");
++
+ 	return 0;
+ }
+ 
 -- 
 2.18.0
 

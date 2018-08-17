@@ -1,4 +1,4 @@
-From 9cdbbd33778aaf7e5e261dc233a7cc53bb9c2540 Mon Sep 17 00:00:00 2001
+From 27c51fdfca411456e288acd4154da1fcae8fa977 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 17/17] ethtool: implement SET_PARAMS message
@@ -17,7 +17,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 499 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 630eebd7e741..2b70736110fe 100644
+index 2025d013c724..a5dd194b2857 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -126,7 +126,7 @@ List of message types
@@ -29,7 +29,7 @@ index 630eebd7e741..2b70736110fe 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -408,6 +408,63 @@ to them are broadcasted as notifications on change of these settings using
+@@ -404,6 +404,63 @@ to them are broadcasted as notifications on change of these settings using
  netlink or ioctl ethtool interface.
  
  
@@ -93,7 +93,7 @@ index 630eebd7e741..2b70736110fe 100644
  
  Request translation
  -------------------
-@@ -431,11 +488,11 @@ ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
+@@ -427,11 +484,11 @@ ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		ETHNL_CMD_GET_PARAMS
@@ -108,7 +108,7 @@ index 630eebd7e741..2b70736110fe 100644
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SRXCSUM			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GTXCSUM			ETHNL_CMD_GET_SETTINGS
-@@ -477,7 +534,7 @@ ETHTOOL_SRXFHINDIR		n/a
+@@ -473,7 +530,7 @@ ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		n/a
  ETHTOOL_GCHANNELS		ETHNL_CMD_GET_PARAMS
@@ -117,7 +117,7 @@ index 630eebd7e741..2b70736110fe 100644
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
  ETHTOOL_GET_DUMP_DATA		n/a
-@@ -485,7 +542,7 @@ ETHTOOL_GET_TS_INFO		n/a
+@@ -481,7 +538,7 @@ ETHTOOL_GET_TS_INFO		n/a
  ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
@@ -126,7 +126,7 @@ index 630eebd7e741..2b70736110fe 100644
  ETHTOOL_GRSSH			n/a
  ETHTOOL_SRSSH			n/a
  ETHTOOL_GTUNABLE		n/a
-@@ -497,5 +554,5 @@ ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
+@@ -493,5 +550,5 @@ ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		ETHNL_CMD_GET_PARAMS
@@ -134,10 +134,10 @@ index 630eebd7e741..2b70736110fe 100644
 +ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index b24a0e045ec0..17fee1ce077b 100644
+index 33ed579275ca..d92d59a42505 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -735,6 +735,7 @@ int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
+@@ -720,6 +720,7 @@ int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_params(struct sk_buff *skb, struct genl_info *info);
@@ -145,7 +145,7 @@ index b24a0e045ec0..17fee1ce077b 100644
  
  int ethnl_strset_start(struct netlink_callback *cb);
  int ethnl_drvinfo_start(struct netlink_callback *cb);
-@@ -778,6 +779,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -763,6 +764,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_dumpit,
  		.done	= ethnl_params_done,
  	},
@@ -158,10 +158,10 @@ index b24a0e045ec0..17fee1ce077b 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 773e13fc1ae6..8cbf33ad81b8 100644
+index 957c699e83e1..70fee121c016 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -577,3 +577,432 @@ void ethnl_params_notify(struct netdev_notifier_ethtool_info *info)
+@@ -578,3 +578,432 @@ void ethnl_params_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  err_skb:
  	nlmsg_free(skb);
  }
@@ -589,7 +589,7 @@ index 773e13fc1ae6..8cbf33ad81b8 100644
 +	ret = 0;
 +out_unlock:
 +	if (req_mask)
-+		ethnl_notify(dev, NULL, ETHNL_CMD_SET_PARAMS, req_mask);
++		ethtool_notify(dev, NULL, ETHNL_CMD_SET_PARAMS, req_mask);
 +	rtnl_unlock();
 +	dev_put(dev);
 +	return ret;

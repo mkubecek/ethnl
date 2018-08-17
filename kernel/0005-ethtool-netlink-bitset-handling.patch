@@ -1,4 +1,4 @@
-From 1bfb9ecf84f6fe5b8c1f5201f63067a7e8591daf Mon Sep 17 00:00:00 2001
+From 691eecf582452afebc8f1ba7a0b8087cc562a389 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 05/17] ethtool: netlink bitset handling
@@ -124,18 +124,17 @@ index 1df263d9feb7..98d6fae315f3 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index bf234e5bc660..df065fd3dc80 100644
+index 0a2e930434d1..1e1f3fb5a9d7 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -1,6 +1,7 @@
+@@ -1,5 +1,6 @@
  /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
  
- #include <linux/module.h>
 +#include <linux/bitmap.h>
  #include <net/sock.h>
  #include <linux/ethtool_netlink.h>
  #include "netlink.h"
-@@ -67,6 +68,400 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
+@@ -71,6 +72,400 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
  	return ret;
  }
  

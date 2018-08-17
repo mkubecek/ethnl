@@ -1,12 +1,10 @@
-From b0a6a8fd66eb610a30f5f4af7143ffa3a27fcee3 Mon Sep 17 00:00:00 2001
+From 312466a2d4044b67c2e61719ec810d86b9022330 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 03/17] ethtool: introduce ethtool netlink interface
 
-No function implemented yet, only genetlink and module infrastructure.
-Register/unregister genetlink family "ethtool" and allow the module to be
-autoloaded by genetlink code (if built as a module, distributions would
-probably prefer "y").
+No function implemented yet, only genetlink and init infrastructure.
+Register/unregister genetlink family "ethtool".
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -15,9 +13,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool_netlink.h         |  19 +++
  net/Kconfig                                  |   7 +
  net/ethtool/Makefile                         |   6 +-
- net/ethtool/netlink.c                        |  41 +++++
+ net/ethtool/netlink.c                        |  34 ++++
  net/ethtool/netlink.h                        |  12 ++
- 7 files changed, 261 insertions(+), 1 deletion(-)
+ 7 files changed, 254 insertions(+), 1 deletion(-)
  create mode 100644 Documentation/networking/ethtool-netlink.txt
  create mode 100644 include/linux/ethtool_netlink.h
  create mode 100644 include/uapi/linux/ethtool_netlink.h
@@ -239,7 +237,7 @@ index 000000000000..3c0c5c70692b
 +
 +#endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/Kconfig b/net/Kconfig
-index 228dfa382eec..12e763449525 100644
+index 228dfa382eec..0bd3dbe07393 100644
 --- a/net/Kconfig
 +++ b/net/Kconfig
 @@ -445,6 +445,13 @@ config FAILOVER
@@ -247,8 +245,8 @@ index 228dfa382eec..12e763449525 100644
  	  paravirtual datapath when the VF is unplugged.
  
 +config ETHTOOL_NETLINK
-+	tristate "Netlink interface for ethtool"
-+	default m
++	bool "Netlink interface for ethtool"
++	default y
 +	help
 +	   New netlink based interface for ethtool which is going to obsolete
 +	   the old ioctl based one once it provides all features.
@@ -271,13 +269,12 @@ index 3ebfab2bca66..f30e0da88be5 100644
 +ethtool_nl-y	:= netlink.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
 new file mode 100644
-index 000000000000..1c6efb9b2eae
+index 000000000000..54370910fcd4
 --- /dev/null
 +++ b/net/ethtool/netlink.c
-@@ -0,0 +1,41 @@
+@@ -0,0 +1,34 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
-+#include <linux/module.h>
 +#include <linux/ethtool_netlink.h>
 +#include "netlink.h"
 +
@@ -298,24 +295,18 @@ index 000000000000..1c6efb9b2eae
 +
 +/* module setup */
 +
-+static int __init ethtool_nl_init(void)
++static int __init ethnl_init(void)
 +{
-+	return genl_register_family(&ethtool_genl_family);
++	int ret;
++
++	ret = genl_register_family(&ethtool_genl_family);
++	if (ret < 0)
++		panic("ethtool: could not register genetlink family\n");
++
++	return 0;
 +}
 +
-+static void __exit ethtool_nl_exit(void)
-+{
-+	genl_unregister_family(&ethtool_genl_family);
-+}
-+
-+module_init(ethtool_nl_init);
-+module_exit(ethtool_nl_exit);
-+
-+/* alias for module autoload */
-+MODULE_ALIAS_GENL_FAMILY(ETHTOOL_GENL_NAME);
-+MODULE_AUTHOR("Michal Kubecek <mkubecek@suse.cz>");
-+MODULE_DESCRIPTION("Netlink interface for ethtool");
-+MODULE_LICENSE("GPL");
++subsys_initcall(ethnl_init);
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
 new file mode 100644
 index 000000000000..63063b582ca2

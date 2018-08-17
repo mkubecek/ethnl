@@ -1,4 +1,4 @@
-From f7a8c8bfc69deae25669aaf4a42feedcfce58209 Mon Sep 17 00:00:00 2001
+From 67cca7cdde952013ecba8f6e02aed78c11bc63b7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 04/17] ethtool: helper functions for netlink interface
@@ -8,9 +8,9 @@ Misc helpers used by ethtool netlink code.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  include/uapi/linux/ethtool_netlink.h |  11 ++
- net/ethtool/netlink.c                | 163 +++++++++++++++++++++++++++
+ net/ethtool/netlink.c                | 168 +++++++++++++++++++++++++++
  net/ethtool/netlink.h                | 124 ++++++++++++++++++++
- 3 files changed, 298 insertions(+)
+ 3 files changed, 303 insertions(+)
 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 index 3c0c5c70692b..1df263d9feb7 100644
@@ -35,13 +35,12 @@ index 3c0c5c70692b..1df263d9feb7 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 1c6efb9b2eae..bf234e5bc660 100644
+index 54370910fcd4..0a2e930434d1 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -1,9 +1,172 @@
+@@ -1,8 +1,176 @@
  /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
  
- #include <linux/module.h>
 +#include <net/sock.h>
  #include <linux/ethtool_netlink.h>
  #include "netlink.h"
@@ -59,6 +58,11 @@ index 1c6efb9b2eae..bf234e5bc660 100644
 +	struct net_device *dev;
 +	int ret;
 +
++	if (!nest) {
++		ETHNL_SET_ERRMSG(info,
++				 "mandatory device identification missing");
++		return ERR_PTR(-EINVAL);
++	}
 +	ret = nla_parse_nested(tb, ETHA_DEV_MAX, nest, dev_policy,
 +			       info->extack);
 +	if (ret < 0)

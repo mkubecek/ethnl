@@ -1,4 +1,4 @@
-From 22dbf704924ba1c0621b6394e336364daadbbd9f Mon Sep 17 00:00:00 2001
+From 5a897a89a6bbed4fdf652914843a0e897c9b338d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 08/17] ethtool: implement GET_STRSET message
@@ -23,12 +23,12 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool.h                 |   4 +
  include/uapi/linux/ethtool_netlink.h         |  42 ++
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/common.c                         |  87 +++
+ net/ethtool/common.c                         |  87 ++++
  net/ethtool/common.h                         |  13 +
  net/ethtool/ioctl.c                          |  80 ---
  net/ethtool/netlink.c                        |  13 +
- net/ethtool/strset.c                         | 552 +++++++++++++++++++
- 9 files changed, 716 insertions(+), 83 deletions(-)
+ net/ethtool/strset.c                         | 514 +++++++++++++++++++
+ 9 files changed, 678 insertions(+), 83 deletions(-)
  create mode 100644 net/ethtool/common.c
  create mode 100644 net/ethtool/common.h
  create mode 100644 net/ethtool/strset.c
@@ -65,7 +65,7 @@ index 0e83397f2975..8b43f41a8140 100644
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		n/a
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
-index 7363f18e65a5..2ae393963704 100644
+index dc69391d2bba..aac7124b7def 100644
 --- a/include/uapi/linux/ethtool.h
 +++ b/include/uapi/linux/ethtool.h
 @@ -578,6 +578,10 @@ enum ethtool_stringset {
@@ -353,10 +353,10 @@ index c9993c6c2fd4..a91b597073f8 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 543560778c80..237a2cb40be4 100644
+index aeaecf91cf6a..1652d4571a23 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -669,7 +669,20 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -650,7 +650,20 @@ static struct notifier_block ethnl_netdev_notifier = {
  
  /* genetlink setup */
  
@@ -379,10 +379,10 @@ index 543560778c80..237a2cb40be4 100644
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
 new file mode 100644
-index 000000000000..32543c68fae8
+index 000000000000..db70645ee25e
 --- /dev/null
 +++ b/net/ethtool/strset.c
-@@ -0,0 +1,552 @@
+@@ -0,0 +1,514 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include <linux/ethtool.h>
@@ -896,44 +896,6 @@ index 000000000000..32543c68fae8
 +	kfree(req_info);
 +
 +	return 0;
-+}
-+
-+void ethnl_strset_notify(struct netdev_notifier_ethtool_info *info)
-+{
-+	struct strset_reqinfo req_info = {
-+		.dev		= info->info.dev,
-+		.have_rtnl	= true,
-+	};
-+	struct strset_data data;
-+	struct sk_buff *skb;
-+	int reply_len;
-+	void *ehdr;
-+	int ret;
-+
-+	ret = prepare_strset(&data, &req_info, NULL, req_info.dev);
-+	if (ret < 0)
-+		return;
-+	reply_len = strset_size(&data, &req_info);
-+	if (reply_len < 0)
-+		return;
-+	skb = genlmsg_new(reply_len, GFP_KERNEL);
-+	if (!skb)
-+		return;
-+	ehdr = genlmsg_put(skb, 0, ++ethnl_bcast_seq, &ethtool_genl_family, 0,
-+			   ETHNL_CMD_SET_STRSET);
-+	ret = ethnl_fill_dev(skb, req_info.dev, ETHA_STRSET_DEV);
-+	if (ret < 0)
-+		goto err_skb;
-+	ret = fill_strset(skb, &data, &req_info);
-+	if (ret < 0)
-+		goto err_skb;
-+	genlmsg_end(skb, ehdr);
-+
-+	genlmsg_multicast(&ethtool_genl_family, skb, 0, ETHNL_MCGRP_MONITOR,
-+			  GFP_KERNEL);
-+	return;
-+err_skb:
-+	nlmsg_free(skb);
 +}
 -- 
 2.18.0

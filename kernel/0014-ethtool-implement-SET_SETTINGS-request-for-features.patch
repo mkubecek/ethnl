@@ -1,4 +1,4 @@
-From 1127951c1ac8d2fb6fcb3d6caba6f45bcd74a37d Mon Sep 17 00:00:00 2001
+From 70ca49d603ddfbe1325a231eb47919640c460e24 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 14/17] ethtool: implement SET_SETTINGS request for features
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 150 insertions(+), 8 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index c7fe4f518972..307d8c6c6c85 100644
+index 0f3430735633..4dbd3f4cb13b 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -285,6 +285,9 @@ to be passed with SET_SETTINGS request:
+@@ -281,6 +281,9 @@ to be passed with SET_SETTINGS request:
      ETHA_SETTINGS_SOPASS        (binary)        SecureOn(tm) password
      ETHA_SETTINGS_MSGLVL        (bitfield32)    debug level
      ETHA_SETTINGS_LINK_MODES    (bitset)        device link modes
@@ -32,7 +32,7 @@ index c7fe4f518972..307d8c6c6c85 100644
  
  For both bitfield32 types, value and selector work the usual way, i.e. bits
  set in selector are set to corresponding bits from value and the rest is
-@@ -299,6 +302,17 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
+@@ -295,6 +298,17 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
  is supposed to allow requesting changes without knowing what exactly kernel
  supports.
  
@@ -50,7 +50,7 @@ index c7fe4f518972..307d8c6c6c85 100644
  
  Request translation
  -------------------
-@@ -328,30 +342,30 @@ ETHTOOL_SRINGPARAM		n/a
+@@ -324,30 +338,30 @@ ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
  ETHTOOL_SPAUSEPARAM		n/a
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
@@ -90,10 +90,10 @@ index c7fe4f518972..307d8c6c6c85 100644
  ETHTOOL_GRXCLSRLCNT		n/a
  ETHTOOL_GRXCLSRULE		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 06c78b281275..8dfcb9ef4009 100644
+index 70ce4dcf658c..3c9df73089e9 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -191,6 +191,7 @@ enum {
+@@ -184,6 +184,7 @@ enum {
  	ETHA_FEATURES_WANTED,			/* bitset */
  	ETHA_FEATURES_ACTIVE,			/* bitset */
  	ETHA_FEATURES_NOCHANGE,			/* bitset */
@@ -102,10 +102,10 @@ index 06c78b281275..8dfcb9ef4009 100644
  	__ETHA_FEATURES_MAX,
  	ETHA_FEATURES_MAX = (__ETHA_FEATURES_MAX - 1)
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 678199e621a2..475582b7950c 100644
+index 08a8b93a933e..64e341e53a04 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -1016,6 +1016,122 @@ static int ethnl_update_lsettings(struct genl_info *info, struct nlattr **tb,
+@@ -1014,6 +1014,122 @@ static int ethnl_update_lsettings(struct genl_info *info, struct nlattr **tb,
  	return 0;
  }
  
@@ -228,7 +228,7 @@ index 678199e621a2..475582b7950c 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-@@ -1092,6 +1208,17 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -1089,6 +1205,17 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  			req_mask |= ETH_SETTINGS_IM_MSGLEVEL;
  		}
  	}

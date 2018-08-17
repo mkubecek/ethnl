@@ -1,4 +1,4 @@
-From e0e0433fd250dc331caa23aa739d7841e9602e0f Mon Sep 17 00:00:00 2001
+From 8025ff592fca3e54f859d7b200c1ec4b8a37544b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
 Subject: [PATCH 06/17] ethtool: support for netlink notifications
@@ -15,13 +15,12 @@ RTNL (and, obviously, allow sleeping).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- include/linux/ethtool_netlink.h      |  5 ++
- include/linux/netdevice.h            | 23 ++++++++
- include/uapi/linux/ethtool_netlink.h |  2 +
- net/core/dev.c                       | 24 +++++++-
- net/ethtool/netlink.c                | 82 +++++++++++++++++++++++++++-
- net/ethtool/netlink.h                |  5 ++
- 6 files changed, 139 insertions(+), 2 deletions(-)
+ include/linux/ethtool_netlink.h      |  5 +++++
+ include/linux/netdevice.h            | 11 ++++++++++
+ include/uapi/linux/ethtool_netlink.h |  2 ++
+ net/ethtool/netlink.c                | 31 ++++++++++++++++++++++++++++
+ net/ethtool/netlink.h                |  5 +++++
+ 5 files changed, 54 insertions(+)
 
 diff --git a/include/linux/ethtool_netlink.h b/include/linux/ethtool_netlink.h
 index 0412adb4f42f..2a15e64a16f3 100644
@@ -39,39 +38,20 @@ index 0412adb4f42f..2a15e64a16f3 100644
  
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index c1295c7a452e..c4b0c575d57e 100644
+index ca5ab98053c8..3f8a70503247 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -2444,6 +2444,7 @@ enum netdev_cmd {
- 	NETDEV_CVLAN_FILTER_DROP_INFO,
- 	NETDEV_SVLAN_FILTER_PUSH_INFO,
- 	NETDEV_SVLAN_FILTER_DROP_INFO,
-+	NETDEV_ETHTOOL,
- };
- const char *netdev_cmd_to_name(enum netdev_cmd cmd);
- 
-@@ -4221,6 +4222,28 @@ struct netdev_notifier_bonding_info {
+@@ -4232,6 +4232,17 @@ struct netdev_notifier_bonding_info {
  void netdev_bonding_info_change(struct net_device *dev,
  				struct netdev_bonding_info *bonding_info);
  
-+struct netdev_ethtool_info {
-+	unsigned int cmd;
-+	u32 req_mask;
-+};
-+
-+struct netdev_notifier_ethtool_info {
-+	struct netdev_notifier_info info; /* must be first */
-+	struct netdev_ethtool_info ethtool_info;
-+};
-+
 +#if IS_ENABLED(CONFIG_ETHTOOL_NETLINK)
-+int netdev_ethtool_info_change(struct net_device *dev,
-+			       struct netlink_ext_ack *extack,
-+			       unsigned int cmd, u32 req_mask);
++void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
++		    unsigned int cmd, u32 req_mask);
 +#else
-+static inline void netdev_ethtool_info_change(struct net_device *dev,
-+					      struct netlink_ext_ack *extack,
-+					      unsigned int cmd, u32 req_mask)
++static inline void ethtool_notify(struct net_device *dev,
++				  struct netlink_ext_ack *extack,
++				  unsigned int cmd, u32 req_mask)
 +{
 +}
 +#endif
@@ -90,53 +70,11 @@ index 98d6fae315f3..444a668e4a08 100644
 +#define ETHTOOL_MCGRP_MONITOR_NAME "monitor"
 +
  #endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
-diff --git a/net/core/dev.c b/net/core/dev.c
-index 87c42c8249ae..8a0773a52dd7 100644
---- a/net/core/dev.c
-+++ b/net/core/dev.c
-@@ -1585,7 +1585,7 @@ const char *netdev_cmd_to_name(enum netdev_cmd cmd)
- 	N(PRECHANGEUPPER) N(CHANGELOWERSTATE) N(UDP_TUNNEL_PUSH_INFO)
- 	N(UDP_TUNNEL_DROP_INFO) N(CHANGE_TX_QUEUE_LEN)
- 	N(CVLAN_FILTER_PUSH_INFO) N(CVLAN_FILTER_DROP_INFO)
--	N(SVLAN_FILTER_PUSH_INFO) N(SVLAN_FILTER_DROP_INFO)
-+	N(SVLAN_FILTER_PUSH_INFO) N(SVLAN_FILTER_DROP_INFO) N(ETHTOOL)
- 	}
- #undef N
- 	return "UNKNOWN_NETDEV_EVENT";
-@@ -7058,6 +7058,28 @@ void netdev_bonding_info_change(struct net_device *dev,
- }
- EXPORT_SYMBOL(netdev_bonding_info_change);
- 
-+#if IS_ENABLED(CONFIG_ETHTOOL_NETLINK)
-+int netdev_ethtool_info_change(struct net_device *dev,
-+			       struct netlink_ext_ack *extack,
-+			       unsigned int cmd, u32 req_mask)
-+{
-+	struct netdev_notifier_ethtool_info ethtool_info = {
-+		.info = {
-+			.dev = dev,
-+			.extack = extack,
-+		},
-+		.ethtool_info = {
-+			.cmd = cmd,
-+			.req_mask = req_mask,
-+		},
-+	};
-+
-+	return call_netdevice_notifiers_info(NETDEV_ETHTOOL,
-+					     &ethtool_info.info);
-+}
-+EXPORT_SYMBOL(netdev_ethtool_info_change);
-+#endif
-+
- static void netdev_adjacent_add_links(struct net_device *dev)
- {
- 	struct netdev_adjacent *iter;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index df065fd3dc80..e4a20bb6c1d4 100644
+index 1e1f3fb5a9d7..78ab3a640203 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -6,6 +6,8 @@
+@@ -5,6 +5,8 @@
  #include <linux/ethtool_netlink.h>
  #include "netlink.h"
  
@@ -145,75 +83,32 @@ index df065fd3dc80..e4a20bb6c1d4 100644
  static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
  	[ETHA_DEV_UNSPEC]	= { .type = NLA_UNSPEC },
  	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -19,6 +21,11 @@ struct net_device *ethnl_dev_get(struct genl_info *info, struct nlattr *nest)
- 	struct net_device *dev;
- 	int ret;
- 
-+	if (!nest) {
-+		ETHNL_SET_ERRMSG(info,
-+				 "mandatory device identification missing");
-+		return ERR_PTR(-EINVAL);
-+	}
- 	ret = nla_parse_nested(tb, ETHA_DEV_MAX, nest, dev_policy,
- 			       info->extack);
- 	if (ret < 0)
-@@ -562,11 +569,69 @@ int ethnl_dumpit(struct sk_buff *skb, struct netlink_callback *cb)
+@@ -566,11 +568,38 @@ int ethnl_dumpit(struct sk_buff *skb, struct netlink_callback *cb)
  	return ret;
  }
  
 +/* notifications */
 +
-+typedef void (*ethnl_notify_handler_t)(struct netdev_notifier_ethtool_info *);
++typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
++				       struct netlink_ext_ack *extack,
++				       unsigned int cmd, u32 req_mask);
 +
 +ethnl_notify_handler_t ethnl_notify_handlers[] = {
 +};
 +
-+static void __ethnl_notify(struct netdev_notifier_ethtool_info *info)
++void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
++		    unsigned int cmd, u32 req_mask)
 +{
-+	unsigned int cmd = info->ethtool_info.cmd;
-+
 +	ASSERT_RTNL();
++
 +	if (likely(cmd < ARRAY_SIZE(ethnl_notify_handlers) &&
 +		   ethnl_notify_handlers[cmd]))
-+		ethnl_notify_handlers[cmd](info);
++		ethnl_notify_handlers[cmd](dev, extack, cmd, req_mask);
 +	else
 +		WARN_ONCE(1, "notification %u not implemented (dev=%s, req_mask=0x%x\n",
-+			  cmd, netdev_name(info->info.dev),
-+			  info->ethtool_info.req_mask);
++			  cmd, netdev_name(dev), req_mask);
 +}
-+
-+void ethnl_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-+		  unsigned int cmd, u32 req_mask)
-+{
-+	struct netdev_notifier_ethtool_info ethtool_info = {
-+		.info = {
-+			.dev = dev,
-+			.extack = extack,
-+		},
-+		.ethtool_info = {
-+			.cmd = cmd,
-+			.req_mask = req_mask,
-+		},
-+	};
-+
-+	return __ethnl_notify(&ethtool_info);
-+}
-+
-+static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
-+			      void *ptr)
-+{
-+	switch(event) {
-+	case NETDEV_ETHTOOL:
-+		__ethnl_notify(ptr);
-+		break;
-+	}
-+
-+	return NOTIFY_DONE;
-+}
-+
-+static struct notifier_block ethnl_netdev_notifier = {
-+	.notifier_call = ethnl_netdev_event,
-+};
++EXPORT_SYMBOL(ethtool_notify);
 +
  /* genetlink setup */
  
@@ -227,7 +122,7 @@ index df065fd3dc80..e4a20bb6c1d4 100644
  struct genl_family ethtool_genl_family = {
  	.hdrsize	= 0,
  	.name		= ETHTOOL_GENL_NAME,
-@@ -575,17 +640,32 @@ struct genl_family ethtool_genl_family = {
+@@ -579,6 +608,8 @@ struct genl_family ethtool_genl_family = {
  	.parallel_ops	= true,
  	.ops		= ethtool_genl_ops,
  	.n_ops		= ARRAY_SIZE(ethtool_genl_ops),
@@ -236,31 +131,6 @@ index df065fd3dc80..e4a20bb6c1d4 100644
  };
  
  /* module setup */
- 
- static int __init ethtool_nl_init(void)
- {
--	return genl_register_family(&ethtool_genl_family);
-+	int ret;
-+
-+	ret = genl_register_family(&ethtool_genl_family);
-+	if (ret < 0)
-+		return ret;
-+	ret = register_netdevice_notifier(&ethnl_netdev_notifier);
-+	if (ret < 0)
-+		goto err_unregister;
-+	return 0;
-+
-+err_unregister:
-+	genl_unregister_family(&ethtool_genl_family);
-+	return ret;
- }
- 
- static void __exit ethtool_nl_exit(void)
- {
-+	unregister_netdevice_notifier(&ethnl_netdev_notifier);
- 	genl_unregister_family(&ethtool_genl_family);
- }
- 
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
 index 6e9e854eec5d..94c14ec2c3fc 100644
 --- a/net/ethtool/netlink.h
