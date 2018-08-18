@@ -1,4 +1,4 @@
-From a1c5e9a354780b3d5fca5d448e6c35f6313bc0d9 Mon Sep 17 00:00:00 2001
+From 76cb3715cb3ea378dace007145880abe44582b87 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
 Subject: [PATCH 12/23] netlink: add netlink handler for gcoalesce (-c)
@@ -30,10 +30,10 @@ index 7cc4adc53c59..bedf9edaac47 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index b2f93a331098..24c70c372914 100644
+index 1998fd1d4715..630a17f079ea 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4879,6 +4879,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4882,6 +4882,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sset		NULL
  #define nl_gfeatures	NULL
  #define nl_sfeatures	NULL
@@ -41,7 +41,7 @@ index b2f93a331098..24c70c372914 100644
  #endif
  
  static const struct option {
-@@ -4909,7 +4910,7 @@ static const struct option {
+@@ -4912,7 +4913,7 @@ static const struct option {
  	  "		[ autoneg on|off ]\n"
  	  "		[ rx on|off ]\n"
  	  "		[ tx on|off ]\n" },

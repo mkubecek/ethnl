@@ -1,4 +1,4 @@
-From 26ffda3b080026f5f0ca1d36dcdee201923b4f33 Mon Sep 17 00:00:00 2001
+From 9f9413374be9f2d2805319012002547d4d833a75 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
 Subject: [PATCH 06/23] netlink: add netlink handler for gdrv (-i)
@@ -10,10 +10,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |  1 +
  ethtool.c         |  3 ++-
- netlink/drvinfo.c | 43 +++++++++++++++++++++++++++++++++++++++++++
+ netlink/drvinfo.c | 37 +++++++++++++++++++++++++++++++++++++
  netlink/extapi.h  |  1 +
  netlink/monitor.c | 10 ++++++++++
- 5 files changed, 57 insertions(+), 1 deletion(-)
+ 5 files changed, 51 insertions(+), 1 deletion(-)
  create mode 100644 netlink/drvinfo.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -29,10 +29,10 @@ index a412734fffd1..7e24fe8c50f4 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index b7f40d2f3826..0edb80b19b9d 100644
+index 3fe44fe9415a..dccc6aa67abc 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -5056,6 +5056,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5061,6 +5061,7 @@ static int show_usage(struct cmd_context *ctx);
  /* Just define all netlink handlers as null when building without netlink
   * support so that we do not get unresolved symbols in args array below
   */
@@ -40,7 +40,7 @@ index b7f40d2f3826..0edb80b19b9d 100644
  #endif
  
  static const struct option {
-@@ -5125,7 +5126,7 @@ static const struct option {
+@@ -5130,7 +5131,7 @@ static const struct option {
  	{ "-K|--features|--offload", 1, do_sfeatures, NULL,
  	  "Set protocol offload and other features",
  	  "		FEATURE on|off ...\n" },
@@ -51,10 +51,10 @@ index b7f40d2f3826..0edb80b19b9d 100644
  	  "Do a register dump",
 diff --git a/netlink/drvinfo.c b/netlink/drvinfo.c
 new file mode 100644
-index 000000000000..78b4394788a5
+index 000000000000..b48f25c72b57
 --- /dev/null
 +++ b/netlink/drvinfo.c
-@@ -0,0 +1,43 @@
+@@ -0,0 +1,37 @@
 +#include "../internal.h"
 +#include "netlink.h"
 +
@@ -75,15 +75,9 @@ index 000000000000..78b4394788a5
 +		fprintf(stdout, "\nDriver info for %s:\n", nlctx->devname);
 +
 +	show_string(tb, ETHA_DRVINFO_DRIVER, "driver");
-+	show_string(tb, ETHA_DRVINFO_VERSION, "version");
 +	show_string(tb, ETHA_DRVINFO_FWVERSION, "firmware-version");
 +	show_string(tb, ETHA_DRVINFO_EROM_VER, "expansion-rom-version");
 +	show_string(tb, ETHA_DRVINFO_BUSINFO, "bus-info");
-+	show_u32_yn(tb, ETHA_DRVINFO_N_STATS, "supports-statistics");
-+	show_u32_yn(tb, ETHA_DRVINFO_TESTINFO_LEN, "supports-test");
-+	show_u32_yn(tb, ETHA_DRVINFO_EEDUMP_LEN, "supports-eeprom-access");
-+	show_u32_yn(tb, ETHA_DRVINFO_REGDUMP_LEN, "supports-register-dump");
-+	show_u32_yn(tb, ETHA_DRVINFO_N_PRIV_FLAGS, "supports-priv-flags");
 +
 +	return MNL_CB_OK;
 +}

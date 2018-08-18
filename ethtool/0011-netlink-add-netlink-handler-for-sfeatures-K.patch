@@ -1,4 +1,4 @@
-From 72e0ca806f24935c068f0da8b0dcd909042285e2 Mon Sep 17 00:00:00 2001
+From 26911958b37258f9a8b761f048fb9ec5b8bd7b09 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:25:31 +0200
 Subject: [PATCH 11/23] netlink: add netlink handler for sfeatures (-K)
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 295 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index b29086bbabde..b2f93a331098 100644
+index 5beba6b3770f..1998fd1d4715 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4878,6 +4878,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4881,6 +4881,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gset		NULL
  #define nl_sset		NULL
  #define nl_gfeatures	NULL
@@ -32,7 +32,7 @@ index b29086bbabde..b2f93a331098 100644
  #endif
  
  static const struct option {
-@@ -4944,7 +4945,7 @@ static const struct option {
+@@ -4947,7 +4948,7 @@ static const struct option {
  	  "		[ tx N ]\n" },
  	{ "-k|--show-features|--show-offload", 1, do_gfeatures, nl_gfeatures,
  	  "Get state of protocol offload and other features" },
@@ -54,10 +54,10 @@ index c656ff862687..ad67e81449ba 100644
  
  void monitor_usage();
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 51a01b400224..b7bfe14668df 100644
+index 0a4b7900f2b1..22a3bbf6ae75 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -741,3 +741,295 @@ int nl_sset(struct cmd_context *ctx)
+@@ -743,3 +743,295 @@ int nl_sset(struct cmd_context *ctx)
  		return 0;
  	return nlctx->exit_code ?: 75;
  }

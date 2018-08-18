@@ -1,4 +1,4 @@
-From d311802e5604a21e7bc8a87c21dca60cb3a394ef Mon Sep 17 00:00:00 2001
+From bafb343cdd7eff52d7cb4f33725a93ddf2a560bc Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
 Subject: [PATCH 17/23] netlink: add netlink handler for gfec (--show-fec)
@@ -18,7 +18,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 63 insertions(+), 1 deletion(-)
 
 diff --git a/common.c b/common.c
-index db9a360ffae6..085014e895bf 100644
+index 4de22854f1de..b8605922e0f6 100644
 --- a/common.c
 +++ b/common.c
 @@ -41,6 +41,16 @@ const struct flag_info flags_msglvl[] = {
@@ -52,10 +52,10 @@ index 36f96ddaa3bd..c05e51b645f8 100644
  
  enum link_mode_class {
 diff --git a/ethtool.c b/ethtool.c
-index 1ad0cd10735a..2c838b7c7f53 100644
+index f79de4d0aef9..5d3e52abca46 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4884,6 +4884,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4887,6 +4887,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gpause	NULL
  #define nl_gchannels	NULL
  #define nl_geee		NULL
@@ -63,7 +63,7 @@ index 1ad0cd10735a..2c838b7c7f53 100644
  #endif
  
  static const struct option {
-@@ -5091,7 +5092,7 @@ static const struct option {
+@@ -5094,7 +5095,7 @@ static const struct option {
  	  "		[ ap-shared ]\n"
  	  "		[ dedicated ]\n"
  	  "		[ all ]\n"},

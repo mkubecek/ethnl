@@ -1,4 +1,4 @@
-From 9ba722afe5357ba9ab3eb11ceef318328b9b552d Mon Sep 17 00:00:00 2001
+From 89de79e707810638c8a77e3e23507ba39ddfdc93 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 09/23] netlink: add netlink handler for sset (-s)
@@ -17,14 +17,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  netlink/netlink.h  |   1 +
  netlink/parser.c   |  34 ++++++-
  netlink/parser.h   |   4 +
- netlink/settings.c | 216 +++++++++++++++++++++++++++++++++++++++++++++
- 7 files changed, 269 insertions(+), 5 deletions(-)
+ netlink/settings.c | 218 +++++++++++++++++++++++++++++++++++++++++++++
+ 7 files changed, 271 insertions(+), 5 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index bc7969f829f6..0b40b96cf9bf 100644
+index eefd8348f0d5..ffe4d9c36f7e 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4923,6 +4923,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4926,6 +4926,7 @@ static int show_usage(struct cmd_context *ctx);
   */
  #define nl_gdrv		NULL
  #define nl_gset		NULL
@@ -32,7 +32,7 @@ index bc7969f829f6..0b40b96cf9bf 100644
  #endif
  
  static const struct option {
-@@ -4933,19 +4934,19 @@ static const struct option {
+@@ -4936,19 +4937,19 @@ static const struct option {
  	char *help;
  	char *opthelp;
  } args[] = {
@@ -89,7 +89,7 @@ index fc87577191f0..8b3dce970fd1 100644
  
  static int nlctx_init(struct nl_context *nlctx)
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 32c2f9f33ba1..9c23526da627 100644
+index d6f545390e5e..98e5c43a9531 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -72,6 +72,7 @@ int attr_cb(const struct nlattr *attr, void *data);
@@ -175,7 +175,7 @@ index 7308da25f093..2fd9a8bb23d9 100644
  int nl_parser(struct cmd_context *ctx, const struct param_parser *params,
  	      unsigned int max_type);
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 120fc95aad19..b077a96325e5 100644
+index c9aca462ff82..7e3460b980d2 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -5,6 +5,7 @@
@@ -186,7 +186,7 @@ index 120fc95aad19..b077a96325e5 100644
  
  /* GET_SETTINGS */
  
-@@ -299,3 +300,218 @@ int nl_gset(struct cmd_context *ctx)
+@@ -299,3 +300,220 @@ int nl_gset(struct cmd_context *ctx)
  }
  
  }
@@ -201,6 +201,7 @@ index 120fc95aad19..b077a96325e5 100644
 +	WAKE_ARP_BIT		= 4,
 +	WAKE_MAGIC_BIT		= 5,
 +	WAKE_MAGICSECURE_BIT	= 6,
++	WAKE_FILTER_BIT		= 7,
 +};
 +
 +#define WAKE_ALL (WAKE_PHY | WAKE_UCAST | WAKE_MCAST | WAKE_BCAST | WAKE_ARP | \
@@ -214,6 +215,7 @@ index 120fc95aad19..b077a96325e5 100644
 +	[WAKE_ARP_BIT]		= 'a',
 +	[WAKE_MAGIC_BIT]	= 'g',
 +	[WAKE_MAGICSECURE_BIT]	= 's',
++	[WAKE_FILTER_BIT]	= 'f',
 +};
 +
 +static int __nl_parse_wol_modes(struct nl_context *nlctx, const char *str,

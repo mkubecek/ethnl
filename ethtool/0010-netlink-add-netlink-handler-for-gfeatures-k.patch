@@ -1,4 +1,4 @@
-From 184c7cae56aa3fa9a2116874cd7024ec45f4d05e Mon Sep 17 00:00:00 2001
+From 4cf2353826a4d65d7fa23361e8f6b59bb2c7ba80 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
 Subject: [PATCH 10/23] netlink: add netlink handler for gfeatures (-k)
@@ -22,10 +22,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 296 insertions(+), 58 deletions(-)
 
 diff --git a/common.c b/common.c
-index 59897acd2512..db9a360ffae6 100644
+index c8f2cf349add..4de22854f1de 100644
 --- a/common.c
 +++ b/common.c
-@@ -283,3 +283,33 @@ void dump_mdix(u8 mdix, u8 mdix_ctrl)
+@@ -285,3 +285,33 @@ void dump_mdix(u8 mdix, u8 mdix_ctrl)
  		fprintf(stdout, "\n");
  	}
  }
@@ -99,7 +99,7 @@ index a980b844a0ed..36f96ddaa3bd 100644
  extern const unsigned int link_modes_count;
  
 diff --git a/ethtool.c b/ethtool.c
-index 0b40b96cf9bf..b29086bbabde 100644
+index ffe4d9c36f7e..5beba6b3770f 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -61,8 +61,6 @@
@@ -172,7 +172,7 @@ index 0b40b96cf9bf..b29086bbabde 100644
  	/* Name and offload flag index for each feature */
  	struct feature_def def[0];
  };
-@@ -1325,7 +1278,7 @@ static void dump_features(const struct feature_defs *defs,
+@@ -1328,7 +1281,7 @@ static void dump_features(const struct feature_defs *defs,
  	int indent;
  	int i, j;
  
@@ -181,7 +181,7 @@ index 0b40b96cf9bf..b29086bbabde 100644
  		/* Don't show features whose state is unknown on this
  		 * kernel version
  		 */
-@@ -1640,7 +1593,7 @@ static struct feature_defs *get_feature_defs(struct cmd_context *ctx)
+@@ -1643,7 +1596,7 @@ static struct feature_defs *get_feature_defs(struct cmd_context *ctx)
  		defs->def[i].off_flag_index = -1;
  
  		for (j = 0;
@@ -190,7 +190,7 @@ index 0b40b96cf9bf..b29086bbabde 100644
  			     defs->def[i].off_flag_index < 0;
  		     j++) {
  			const char *pattern =
-@@ -2082,7 +2035,7 @@ get_features(struct cmd_context *ctx, const struct feature_defs *defs)
+@@ -2085,7 +2038,7 @@ get_features(struct cmd_context *ctx, const struct feature_defs *defs)
  
  	state->off_flags = 0;
  
@@ -199,7 +199,7 @@ index 0b40b96cf9bf..b29086bbabde 100644
  		value = off_flag_def[i].value;
  		if (!off_flag_def[i].get_cmd)
  			continue;
-@@ -2198,14 +2151,14 @@ static int do_sfeatures(struct cmd_context *ctx)
+@@ -2201,14 +2154,14 @@ static int do_sfeatures(struct cmd_context *ctx)
  	/* Generate cmdline_info for legacy flags and kernel-named
  	 * features, and parse our arguments.
  	 */
@@ -216,7 +216,7 @@ index 0b40b96cf9bf..b29086bbabde 100644
  		flag_to_cmdline_info(off_flag_def[i].short_name,
  				     off_flag_def[i].value,
  				     &off_flags_wanted, &off_flags_mask,
-@@ -2215,9 +2168,9 @@ static int do_sfeatures(struct cmd_context *ctx)
+@@ -2218,9 +2171,9 @@ static int do_sfeatures(struct cmd_context *ctx)
  			defs->def[i].name, FEATURE_FIELD_FLAG(i),
  			&FEATURE_WORD(efeatures->features, i, requested),
  			&FEATURE_WORD(efeatures->features, i, valid),
@@ -228,7 +228,7 @@ index 0b40b96cf9bf..b29086bbabde 100644
  	free(cmdline_features);
  
  	if (!any_changed) {
-@@ -2237,7 +2190,7 @@ static int do_sfeatures(struct cmd_context *ctx)
+@@ -2240,7 +2193,7 @@ static int do_sfeatures(struct cmd_context *ctx)
  		 * related features that the user did not specify and that
  		 * are not fixed.  Warn if all related features are fixed.
  		 */
@@ -237,7 +237,7 @@ index 0b40b96cf9bf..b29086bbabde 100644
  			int fixed = 1;
  
  			if (!(off_flags_mask & off_flag_def[i].value))
-@@ -2278,7 +2231,7 @@ static int do_sfeatures(struct cmd_context *ctx)
+@@ -2281,7 +2234,7 @@ static int do_sfeatures(struct cmd_context *ctx)
  			goto err;
  		}
  	} else {
@@ -246,7 +246,7 @@ index 0b40b96cf9bf..b29086bbabde 100644
  			if (!off_flag_def[i].set_cmd)
  				continue;
  			if (off_flags_mask & off_flag_def[i].value) {
-@@ -4924,6 +4877,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4927,6 +4880,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gdrv		NULL
  #define nl_gset		NULL
  #define nl_sset		NULL
@@ -254,7 +254,7 @@ index 0b40b96cf9bf..b29086bbabde 100644
  #endif
  
  static const struct option {
-@@ -4988,7 +4942,7 @@ static const struct option {
+@@ -4991,7 +4945,7 @@ static const struct option {
  	  "		[ rx-mini N ]\n"
  	  "		[ rx-jumbo N ]\n"
  	  "		[ tx N ]\n" },
@@ -293,7 +293,7 @@ index 32d842611011..e3b8bb46f561 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/settings.c b/netlink/settings.c
-index b077a96325e5..51a01b400224 100644
+index 7e3460b980d2..0a4b7900f2b1 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -5,6 +5,7 @@

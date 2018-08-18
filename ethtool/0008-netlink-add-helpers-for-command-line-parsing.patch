@@ -1,4 +1,4 @@
-From 70e163a6ce3f75f44876b30bf28b26b132b4f27a Mon Sep 17 00:00:00 2001
+From 1e282888cf702d014dad0ba2826e95794c4a6be7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:42:26 +0100
 Subject: [PATCH 08/23] netlink: add helpers for command line parsing
@@ -30,7 +30,7 @@ index 629f04e1202b..7cc4adc53c59 100644
  		  uapi/linux/ethtool_netlink.h \
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index a572a165718e..32c2f9f33ba1 100644
+index 14828635413f..d6f545390e5e 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -30,6 +30,10 @@ struct nl_context {

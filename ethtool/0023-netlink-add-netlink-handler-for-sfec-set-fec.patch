@@ -1,4 +1,4 @@
-From 61559cddb892494c58aa6b72a5f1d21ecf9cb2d7 Mon Sep 17 00:00:00 2001
+From 03987fa79a7aada173bd896a37050bddeb201ce6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:51:36 +0100
 Subject: [PATCH 23/23] netlink: add netlink handler for sfec (--set-fec)
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 20 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index bd85b0c50ce2..8160ab200a16 100644
+index 3b59dc7e06d2..426854b8de7b 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4890,6 +4890,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4893,6 +4893,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_spause	NULL
  #define nl_schannels	NULL
  #define nl_seee		NULL
@@ -25,7 +25,7 @@ index bd85b0c50ce2..8160ab200a16 100644
  #endif
  
  static const struct option {
-@@ -5099,7 +5100,7 @@ static const struct option {
+@@ -5102,7 +5103,7 @@ static const struct option {
  	  "		[ all ]\n"},
  	{ "--show-fec", 1, do_gfec, nl_gfec,
  	  "Show FEC settings"},

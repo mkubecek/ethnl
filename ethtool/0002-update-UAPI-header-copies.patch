@@ -1,4 +1,4 @@
-From 306859c07222bd90adb7dec35900133a14dc433d Mon Sep 17 00:00:00 2001
+From 57352c99e20e2bfcc9d7314a8bd204b6ae3ffac8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 24 Nov 2017 01:02:29 +0100
 Subject: [PATCH 02/23] update UAPI header copies
@@ -7,32 +7,9 @@ Update to current net-next (commit 3bc950c34b28).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- uapi/linux/ethtool.h    |  6 +++++-
  uapi/linux/net_tstamp.h | 19 +++++++++++++++++++
- 2 files changed, 24 insertions(+), 1 deletion(-)
+ 1 file changed, 19 insertions(+)
 
-diff --git a/uapi/linux/ethtool.h b/uapi/linux/ethtool.h
-index 8cc61e9ab40b..9dd347caf4ed 100644
---- a/uapi/linux/ethtool.h
-+++ b/uapi/linux/ethtool.h
-@@ -215,12 +215,16 @@ struct ethtool_value {
- 	__u32	data;
- };
- 
-+#define PFC_STORM_PREVENTION_AUTO	0xffff
-+#define PFC_STORM_PREVENTION_DISABLE	0
-+
- enum tunable_id {
- 	ETHTOOL_ID_UNSPEC,
- 	ETHTOOL_RX_COPYBREAK,
- 	ETHTOOL_TX_COPYBREAK,
-+	ETHTOOL_PFC_PREVENTION_TOUT, /* timeout in msecs */
- 	/*
--	 * Add your fresh new tubale attribute above and remember to update
-+	 * Add your fresh new tunable attribute above and remember to update
- 	 * tunable_strings[] in net/core/ethtool.c
- 	 */
- 	__ETHTOOL_TUNABLE_COUNT,
 diff --git a/uapi/linux/net_tstamp.h b/uapi/linux/net_tstamp.h
 index 3d421d912193..97ff3c17ec4d 100644
 --- a/uapi/linux/net_tstamp.h

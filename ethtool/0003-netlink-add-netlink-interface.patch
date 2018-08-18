@@ -1,4 +1,4 @@
-From 83fc382c177f86c6d4badf82ba38ccbf7ff985f8 Mon Sep 17 00:00:00 2001
+From da96df85cdc21ac647d6d72b328c27bd6a3f3cb1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 03/23] netlink: add netlink interface
@@ -24,12 +24,12 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  internal.h                   |   8 +
  netlink/extapi.h             |  16 ++
  netlink/netlink.c            | 522 +++++++++++++++++++++++++++++++++++
- netlink/netlink.h            | 154 +++++++++++
- uapi/linux/ethtool.h         |   7 +
- uapi/linux/ethtool_netlink.h | 325 ++++++++++++++++++++++
+ netlink/netlink.h            | 146 ++++++++++
+ uapi/linux/ethtool.h         |   4 +
+ uapi/linux/ethtool_netlink.h | 318 +++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 ++++++
  uapi/linux/netlink.h         | 247 +++++++++++++++++
- 11 files changed, 1514 insertions(+), 57 deletions(-)
+ 11 files changed, 1496 insertions(+), 57 deletions(-)
  create mode 100644 netlink/extapi.h
  create mode 100644 netlink/netlink.c
  create mode 100644 netlink/netlink.h
@@ -98,7 +98,7 @@ index e891d917cf11..138039d49a2c 100644
  AC_CONFIG_FILES([Makefile ethtool.spec ethtool.8])
  AC_OUTPUT
 diff --git a/ethtool.c b/ethtool.c
-index fb93ae898312..e8044a6af76c 100644
+index aa2bbe9e4c65..5730ee9edb16 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -48,6 +48,10 @@
@@ -112,7 +112,7 @@ index fb93ae898312..e8044a6af76c 100644
  #ifndef MAX_ADDR_LEN
  #define MAX_ADDR_LEN	32
  #endif
-@@ -5048,14 +5052,22 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
+@@ -5053,14 +5057,22 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
  
  static int show_usage(struct cmd_context *ctx);
  
@@ -136,7 +136,7 @@ index fb93ae898312..e8044a6af76c 100644
  	  "		[ speed %d ]\n"
  	  "		[ duplex half|full ]\n"
  	  "		[ port tp|aui|bnc|mii|fibre ]\n"
-@@ -5067,13 +5079,17 @@ static const struct option {
+@@ -5072,13 +5084,17 @@ static const struct option {
  	  "		[ wol p|u|m|b|a|g|s|d... ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
  	  "		[ msglvl %d | msglvl type on|off ... ]\n" },
@@ -158,7 +158,7 @@ index fb93ae898312..e8044a6af76c 100644
  	  "		[adaptive-rx on|off]\n"
  	  "		[adaptive-tx on|off]\n"
  	  "		[rx-usecs N]\n"
-@@ -5096,46 +5112,54 @@ static const struct option {
+@@ -5101,46 +5117,54 @@ static const struct option {
  	  "		[tx-usecs-high N]\n"
  	  "		[tx-frames-high N]\n"
  	  "		[sample-interval N]\n" },
@@ -228,7 +228,7 @@ index fb93ae898312..e8044a6af76c 100644
  	  "Configure Rx network flow classification options or rules",
  	  "		rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 m|v|t|s|d|f|n|r... [context %d] |\n"
-@@ -5160,55 +5184,64 @@ static const struct option {
+@@ -5165,55 +5189,64 @@ static const struct option {
  	  "			[ context %d ]\n"
  	  "			[ loc %d]] |\n"
  	  "		delete %d\n" },
@@ -310,7 +310,7 @@ index fb93ae898312..e8044a6af76c 100644
  	  "		[ flags %x ]\n"
  	  "		[ mgmt ]\n"
  	  "		[ mgmt-shared ]\n"
-@@ -5230,11 +5263,15 @@ static const struct option {
+@@ -5235,11 +5268,15 @@ static const struct option {
  	  "		[ ap-shared ]\n"
  	  "		[ dedicated ]\n"
  	  "		[ all ]\n"},
@@ -330,7 +330,7 @@ index fb93ae898312..e8044a6af76c 100644
  	{}
  };
  
-@@ -5261,11 +5298,35 @@ static int show_usage(struct cmd_context *ctx)
+@@ -5266,11 +5303,35 @@ static int show_usage(struct cmd_context *ctx)
  	return 0;
  }
  
@@ -366,7 +366,7 @@ index fb93ae898312..e8044a6af76c 100644
  	int k;
  
  	init_global_link_mode_masks();
-@@ -5291,6 +5352,7 @@ int main(int argc, char **argp)
+@@ -5296,6 +5357,7 @@ int main(int argc, char **argp)
  				argp++;
  				argc--;
  				func = args[k].func;
@@ -374,7 +374,7 @@ index fb93ae898312..e8044a6af76c 100644
  				want_device = args[k].want_device;
  				goto opt_found;
  			}
-@@ -5305,6 +5367,15 @@ int main(int argc, char **argp)
+@@ -5310,6 +5372,15 @@ int main(int argc, char **argp)
  	want_device = 1;
  
  opt_found:
@@ -390,7 +390,7 @@ index fb93ae898312..e8044a6af76c 100644
  	if (want_device) {
  		ctx.devname = *argp++;
  		argc--;
-@@ -5313,25 +5384,20 @@ opt_found:
+@@ -5318,25 +5389,20 @@ opt_found:
  			exit_bad_args();
  		if (strlen(ctx.devname) >= IFNAMSIZ)
  			exit_bad_args();
@@ -1004,10 +1004,10 @@ index 000000000000..0671c4589c72
 +}
 diff --git a/netlink/netlink.h b/netlink/netlink.h
 new file mode 100644
-index 000000000000..547c865ed535
+index 000000000000..4905fe9533e4
 --- /dev/null
 +++ b/netlink/netlink.h
-@@ -0,0 +1,154 @@
+@@ -0,0 +1,146 @@
 +/*
 + * netlink.h - common interface for all netlink code
 + *
@@ -1146,14 +1146,6 @@ index 000000000000..547c865ed535
 +	printf("%s: %s\n", label, tb[idx] ? mnl_attr_get_str(tb[idx]) : "");
 +}
 +
-+static inline void show_u32_yn(const struct nlattr **tb, unsigned int idx,
-+			       const char *label)
-+{
-+	if (tb[idx])
-+		printf("%s: %s\n", label,
-+		       mnl_attr_get_u32(tb[idx]) ? "yes" : "no");
-+}
-+
 +/* misc */
 +
 +static inline int init_aux_nlctx(struct nl_context *nlctx)
@@ -1163,20 +1155,10 @@ index 000000000000..547c865ed535
 +
 +#endif /* ETHTOOL_NETLINK_INT_H__ */
 diff --git a/uapi/linux/ethtool.h b/uapi/linux/ethtool.h
-index 9dd347caf4ed..c51a966bb46e 100644
+index 6bfbb85f9402..d753ef616c7f 100644
 --- a/uapi/linux/ethtool.h
 +++ b/uapi/linux/ethtool.h
-@@ -141,6 +141,9 @@ static __inline__ __u32 ethtool_cmd_speed(const struct ethtool_cmd *ep)
-  */
- #define ETH_MDIO_SUPPORTS_C45	2
- 
-+/* All defined ETH_MDIO_SUPPORTS_* flags */
-+#define ETH_MDIO_SUPPORTS_ALL (ETH_MDIO_SUPPORTS_C22 | ETH_MDIO_SUPPORTS_C45)
-+
- #define ETHTOOL_FWVERS_LEN	32
- #define ETHTOOL_BUSINFO_LEN	32
- #define ETHTOOL_EROMVERS_LEN	32
-@@ -576,6 +579,10 @@ enum ethtool_stringset {
+@@ -576,6 +576,10 @@ enum ethtool_stringset {
  	ETH_SS_TUNABLES,
  	ETH_SS_PHY_STATS,
  	ETH_SS_PHY_TUNABLES,
@@ -1189,10 +1171,10 @@ index 9dd347caf4ed..c51a966bb46e 100644
  /**
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..13882326976e
+index 000000000000..d1b89018dde7
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,325 @@
+@@ -0,0 +1,318 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#ifndef _LINUX_ETHTOOL_NETLINK_H_
@@ -1331,15 +1313,9 @@ index 000000000000..13882326976e
 +	ETHA_DRVINFO_UNSPEC,
 +	ETHA_DRVINFO_DEV,			/* nest - ETHA_DEV_* */
 +	ETHA_DRVINFO_DRIVER,			/* string */
-+	ETHA_DRVINFO_VERSION,			/* string */
 +	ETHA_DRVINFO_FWVERSION,			/* string */
 +	ETHA_DRVINFO_BUSINFO,			/* string */
 +	ETHA_DRVINFO_EROM_VER,			/* string */
-+	ETHA_DRVINFO_N_PRIV_FLAGS,		/* u32 */
-+	ETHA_DRVINFO_N_STATS,			/* u32 */
-+	ETHA_DRVINFO_TESTINFO_LEN,		/* u32 */
-+	ETHA_DRVINFO_EEDUMP_LEN,		/* u32 */
-+	ETHA_DRVINFO_REGDUMP_LEN,		/* u32 */
 +
 +	__ETHA_DRVINFO_MAX,
 +	ETHA_DRVINFO_MAX = (__ETHA_DRVINFO_MAX - 1)
@@ -1357,7 +1333,6 @@ index 000000000000..13882326976e
 +	ETHA_SETTINGS_PORT,			/* u8 */
 +	ETHA_SETTINGS_PHYADDR,			/* u8 */
 +	ETHA_SETTINGS_AUTONEG,			/* u8 */
-+	ETHA_SETTINGS_MDIO_SUPPORT,		/* bitfield32 */
 +	ETHA_SETTINGS_TP_MDIX,			/* u8 */
 +	ETHA_SETTINGS_TP_MDIX_CTRL,		/* u8 */
 +	ETHA_SETTINGS_TRANSCEIVER,		/* u8 */
@@ -1366,7 +1341,7 @@ index 000000000000..13882326976e
 +	ETHA_SETTINGS_MSGLVL,			/* bitfield32 */
 +	ETHA_SETTINGS_LINK_MODES,		/* bitset */
 +	ETHA_SETTINGS_PEER_MODES,		/* bitset */
-+	ETHA_SETTINGS_LINK,			/* u32 */
++	ETHA_SETTINGS_LINK,			/* u8 */
 +	ETHA_SETTINGS_FEATURES,			/* nest - ETHA_FEATURES_* */
 +
 +	__ETHA_SETTINGS_MAX,

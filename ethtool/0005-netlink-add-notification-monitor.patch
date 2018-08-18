@@ -1,4 +1,4 @@
-From a6033f12c548cb9655c930f792faaaf8d310dd03 Mon Sep 17 00:00:00 2001
+From bfaa66b7ae7e43463f9b197f96b76ce486f73c66 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
 Subject: [PATCH 05/23] netlink: add notification monitor
@@ -34,10 +34,10 @@ index 6a4d7083919e..a412734fffd1 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index e8044a6af76c..b7f40d2f3826 100644
+index 5730ee9edb16..3fe44fe9415a 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -5294,6 +5294,9 @@ static int show_usage(struct cmd_context *ctx)
+@@ -5299,6 +5299,9 @@ static int show_usage(struct cmd_context *ctx)
  		if (args[i].opthelp)
  			fputs(args[i].opthelp, stdout);
  	}
@@ -47,7 +47,7 @@ index e8044a6af76c..b7f40d2f3826 100644
  
  	return 0;
  }
-@@ -5335,6 +5338,20 @@ int main(int argc, char **argp)
+@@ -5340,6 +5343,20 @@ int main(int argc, char **argp)
  	argp++;
  	argc--;
  
@@ -365,7 +365,7 @@ index 0671c4589c72..69f692d2cf04 100644
  
  	return 0;
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 547c865ed535..15bf9f3873b0 100644
+index 4905fe9533e4..64e6df854105 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -17,6 +17,7 @@
@@ -387,8 +387,8 @@ index 547c865ed535..15bf9f3873b0 100644
  };
  
  struct attr_tb_info {
-@@ -144,6 +149,27 @@ static inline void show_u32_yn(const struct nlattr **tb, unsigned int idx,
- 		       mnl_attr_get_u32(tb[idx]) ? "yes" : "no");
+@@ -136,6 +141,27 @@ static inline void show_string(const struct nlattr **tb, unsigned int idx,
+ 	printf("%s: %s\n", label, tb[idx] ? mnl_attr_get_str(tb[idx]) : "");
  }
  
 +/* reply content filtering */

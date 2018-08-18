@@ -1,4 +1,4 @@
-From a21cfb05daa9331b304ad004f44873b0688314b3 Mon Sep 17 00:00:00 2001
+From d2c5ed7f6995aa2428b88719f9a2198bc1fefd6b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 07/23] netlink: add netlink handler for gset (no option)
@@ -12,15 +12,15 @@ into new file common.c.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am        |   4 +-
- common.c           | 285 ++++++++++++++++++++++++++++++++++++++++++
+ common.c           | 287 ++++++++++++++++++++++++++++++++++++++++++
  common.h           |  60 +++++++++
- ethtool.c          | 151 ++---------------------
+ ethtool.c          | 153 ++---------------------
  netlink/extapi.h   |   1 +
  netlink/monitor.c  |  14 +++
  netlink/netlink.c  | 120 ++++++++++++++++++
  netlink/netlink.h  |   4 +
  netlink/settings.c | 301 +++++++++++++++++++++++++++++++++++++++++++++
- 9 files changed, 796 insertions(+), 144 deletions(-)
+ 9 files changed, 798 insertions(+), 146 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
  create mode 100644 netlink/settings.c
@@ -49,10 +49,10 @@ index 7e24fe8c50f4..629f04e1202b 100644
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/common.c b/common.c
 new file mode 100644
-index 000000000000..59897acd2512
+index 000000000000..c8f2cf349add
 --- /dev/null
 +++ b/common.c
-@@ -0,0 +1,285 @@
+@@ -0,0 +1,287 @@
 +#include "internal.h"
 +#include "common.h"
 +
@@ -286,6 +286,8 @@ index 000000000000..59897acd2512
 +			*p++ = 'g';
 +		if (wolopts & WAKE_MAGICSECURE)
 +			*p++ = 's';
++		if (wolopts & WAKE_FILTER)
++			*p++ = 'f';
 +	} else {
 +		*p = 'd';
 +	}
@@ -405,7 +407,7 @@ index 000000000000..a980b844a0ed
 +
 +#endif /* ETHTOOL_COMMON_H__ */
 diff --git a/ethtool.c b/ethtool.c
-index 0edb80b19b9d..bc7969f829f6 100644
+index dccc6aa67abc..eefd8348f0d5 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -30,6 +30,7 @@
@@ -535,7 +537,7 @@ index 0edb80b19b9d..bc7969f829f6 100644
  
  	return 0;
  }
-@@ -946,56 +862,6 @@ static int parse_wolopts(char *optstr, u32 *data)
+@@ -949,58 +865,6 @@ static int parse_wolopts(char *optstr, u32 *data)
  	return 0;
  }
  
@@ -561,6 +563,8 @@ index 0edb80b19b9d..bc7969f829f6 100644
 -			*p++ = 'g';
 -		if (wolopts & WAKE_MAGICSECURE)
 -			*p++ = 's';
+-		if (wolopts & WAKE_FILTER)
+-			*p++ = 'f';
 -	} else {
 -		*p = 'd';
 -	}
@@ -592,7 +596,7 @@ index 0edb80b19b9d..bc7969f829f6 100644
  static int parse_rxfhashopts(char *optstr, u32 *data)
  {
  	*data = 0;
-@@ -2738,8 +2604,7 @@ static int do_gset(struct cmd_context *ctx)
+@@ -2743,8 +2607,7 @@ static int do_gset(struct cmd_context *ctx)
  		fprintf(stdout, "	Current message level: 0x%08x (%d)\n"
  			"			       ",
  			edata.data, edata.data);
@@ -602,7 +606,7 @@ index 0edb80b19b9d..bc7969f829f6 100644
  		fprintf(stdout, "\n");
  		allfail = 0;
  	} else if (errno != EOPNOTSUPP) {
-@@ -2785,13 +2650,13 @@ static int do_sset(struct cmd_context *ctx)
+@@ -2790,13 +2653,13 @@ static int do_sset(struct cmd_context *ctx)
  	int msglvl_changed = 0;
  	u32 msglvl_wanted = 0;
  	u32 msglvl_mask = 0;
@@ -618,7 +622,7 @@ index 0edb80b19b9d..bc7969f829f6 100644
  		flag_to_cmdline_info(flags_msglvl[i].name,
  				     flags_msglvl[i].value,
  				     &msglvl_wanted, &msglvl_mask,
-@@ -5057,6 +4922,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5062,6 +4925,7 @@ static int show_usage(struct cmd_context *ctx);
   * support so that we do not get unresolved symbols in args array below
   */
  #define nl_gdrv		NULL
@@ -626,7 +630,7 @@ index 0edb80b19b9d..bc7969f829f6 100644
  #endif
  
  static const struct option {
-@@ -5381,6 +5247,7 @@ int main(int argc, char **argp)
+@@ -5386,6 +5250,7 @@ int main(int argc, char **argp)
  	}
  	if ((*argp)[0] == '-')
  		exit_bad_args();
@@ -826,7 +830,7 @@ index 69f692d2cf04..fc87577191f0 100644
  
  int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 15bf9f3873b0..a572a165718e 100644
+index 64e6df854105..14828635413f 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -58,6 +58,10 @@ bool bitset_get_bit(const struct nlattr *bitset, bool mask, unsigned int idx,
@@ -842,7 +846,7 @@ index 15bf9f3873b0..a572a165718e 100644
  int attr_cb(const struct nlattr *attr, void *data);
 diff --git a/netlink/settings.c b/netlink/settings.c
 new file mode 100644
-index 000000000000..120fc95aad19
+index 000000000000..c9aca462ff82
 --- /dev/null
 +++ b/netlink/settings.c
 @@ -0,0 +1,301 @@
@@ -1100,7 +1104,7 @@ index 000000000000..120fc95aad19
 +		allfail = false;
 +	}
 +	if (tb[ETHA_SETTINGS_LINK] && mask_ok(nlctx, ETH_SETTINGS_IM_LINK)) {
-+		u32 link = mnl_attr_get_u32(tb[ETHA_SETTINGS_LINK]);
++		u32 link = mnl_attr_get_u8(tb[ETHA_SETTINGS_LINK]);
 +
 +		if (first) {
 +			printf("Settings for %s:\n", nlctx->devname);
