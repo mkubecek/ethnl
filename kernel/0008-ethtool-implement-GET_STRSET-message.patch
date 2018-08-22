@@ -1,4 +1,4 @@
-From 5a897a89a6bbed4fdf652914843a0e897c9b338d Mon Sep 17 00:00:00 2001
+From 5e7a3b407a552a1d6f35644eb7dfd4a62e0ffd36 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 08/17] ethtool: implement GET_STRSET message
@@ -23,12 +23,12 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool.h                 |   4 +
  include/uapi/linux/ethtool_netlink.h         |  42 ++
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/common.c                         |  87 ++++
+ net/ethtool/common.c                         |  83 +++
  net/ethtool/common.h                         |  13 +
  net/ethtool/ioctl.c                          |  80 ---
  net/ethtool/netlink.c                        |  13 +
- net/ethtool/strset.c                         | 514 +++++++++++++++++++
- 9 files changed, 678 insertions(+), 83 deletions(-)
+ net/ethtool/strset.c                         | 508 +++++++++++++++++++
+ 9 files changed, 668 insertions(+), 83 deletions(-)
  create mode 100644 net/ethtool/common.c
  create mode 100644 net/ethtool/common.h
  create mode 100644 net/ethtool/strset.c
@@ -151,10 +151,10 @@ index f30e0da88be5..ba260d5b53b2 100644
 +ethtool_nl-y	:= netlink.o strset.o
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
 new file mode 100644
-index 000000000000..208259c51b73
+index 000000000000..0b1ff5a1a918
 --- /dev/null
 +++ b/net/ethtool/common.c
-@@ -0,0 +1,87 @@
+@@ -0,0 +1,83 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "common.h"
@@ -217,7 +217,6 @@ index 000000000000..208259c51b73
 +	[NETIF_F_HW_TLS_TX_BIT] =	 "tls-hw-tx-offload",
 +	[NETIF_F_HW_TLS_RX_BIT] =	 "tls-hw-rx-offload",
 +};
-+EXPORT_SYMBOL(netdev_features_strings);
 +
 +const char
 +rss_hash_func_strings[ETH_RSS_HASH_FUNCS_COUNT][ETH_GSTRING_LEN] = {
@@ -225,7 +224,6 @@ index 000000000000..208259c51b73
 +	[ETH_RSS_HASH_XOR_BIT] =	"xor",
 +	[ETH_RSS_HASH_CRC32_BIT] =	"crc32",
 +};
-+EXPORT_SYMBOL(rss_hash_func_strings);
 +
 +const char
 +tunable_strings[__ETHTOOL_TUNABLE_COUNT][ETH_GSTRING_LEN] = {
@@ -234,14 +232,12 @@ index 000000000000..208259c51b73
 +	[ETHTOOL_TX_COPYBREAK]	= "tx-copybreak",
 +	[ETHTOOL_PFC_PREVENTION_TOUT] = "pfc-prevention-tout",
 +};
-+EXPORT_SYMBOL(tunable_strings);
 +
 +const char
 +phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN] = {
 +	[ETHTOOL_ID_UNSPEC]     = "Unspec",
 +	[ETHTOOL_PHY_DOWNSHIFT]	= "phy-downshift",
 +};
-+EXPORT_SYMBOL(phy_tunable_strings);
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
 new file mode 100644
 index 000000000000..45c6492e4aee
@@ -379,10 +375,10 @@ index aeaecf91cf6a..1652d4571a23 100644
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
 new file mode 100644
-index 000000000000..db70645ee25e
+index 000000000000..29590e7f8866
 --- /dev/null
 +++ b/net/ethtool/strset.c
-@@ -0,0 +1,514 @@
+@@ -0,0 +1,508 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include <linux/ethtool.h>
@@ -451,12 +447,6 @@ index 000000000000..db70645ee25e
 +		.per_dev	= false,
 +		.count		= ARRAY_SIZE(phy_tunable_strings),
 +		.data		= { .legacy = phy_tunable_strings },
-+	},
-+	[ETH_SS_LINK_MODES] = {
-+		.type		= ETH_SS_TYPE_SIMPLE,
-+		.per_dev	= false,
-+		.count		= __ETHTOOL_LINK_MODE_MASK_NBITS,
-+		.data		= { .simple = link_mode_names },
 +	},
 +};
 +

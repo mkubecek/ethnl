@@ -1,4 +1,4 @@
-From 67cca7cdde952013ecba8f6e02aed78c11bc63b7 Mon Sep 17 00:00:00 2001
+From ebcc4efaa3a82a2e5ddf0b4f13a99db3f71dc73e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 04/17] ethtool: helper functions for netlink interface

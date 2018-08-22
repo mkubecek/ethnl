@@ -1,4 +1,4 @@
-From ab101555c4e9ceee1a6eaae25ae56bb746777032 Mon Sep 17 00:00:00 2001
+From 160dc65dd6c57aae656925b209a75098959a6e15 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:36:49 -0400
 Subject: [PATCH 12/17] ethtool: implement SET_SETTINGS notification
@@ -20,10 +20,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 83 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 9a90c6df0720..a9c5fc2f0d2b 100644
+index fd3dd8b4cb6e..be0fdc467630 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -259,7 +259,8 @@ requests.
+@@ -281,7 +281,8 @@ requests.
  
  GET_SETTINGS requests allow dumps and messages in the same format as response
  to them are broadcasted as notifications on change of these settings using
@@ -55,7 +55,7 @@ index 325fc5088370..9e58570d8dec 100644
  EXPORT_SYMBOL(netdev_features_change);
  
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 39e9aea60516..7e6fe361d2fa 100644
+index 550e2c904bed..f100a909abb9 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -27,6 +27,7 @@
@@ -152,7 +152,7 @@ index 39e9aea60516..7e6fe361d2fa 100644
  }
  
  static int ethtool_get_eee(struct net_device *dev, char __user *useraddr)
-@@ -2478,6 +2501,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
+@@ -2462,6 +2485,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
  	case ETHTOOL_SMSGLVL:
  		rc = ethtool_set_value_void(dev, useraddr,
  				       dev->ethtool_ops->set_msglevel);
@@ -163,7 +163,7 @@ index 39e9aea60516..7e6fe361d2fa 100644
  	case ETHTOOL_GEEE:
  		rc = ethtool_get_eee(dev, useraddr);
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index a2855893f9ce..582683f97c16 100644
+index 2c1a553f442a..fb08a94099f7 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -630,7 +630,12 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
@@ -180,10 +180,10 @@ index a2855893f9ce..582683f97c16 100644
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 4385857b5324..6e2ddcd9949a 100644
+index ec052cf84c69..b390a40316d1 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -561,3 +561,46 @@ int ethnl_settings_done(struct netlink_callback *cb)
+@@ -543,3 +543,46 @@ int ethnl_settings_done(struct netlink_callback *cb)
  
  	return 0;
  }

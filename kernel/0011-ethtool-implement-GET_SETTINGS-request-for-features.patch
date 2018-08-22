@@ -1,4 +1,4 @@
-From f87fdf315ffbd8d1841d35671a641686403fb30f Mon Sep 17 00:00:00 2001
+From ea7ace0f13f36bad4f1ed262b2425781f5c7ef53 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 11/17] ethtool: implement GET_SETTINGS request for features
@@ -17,10 +17,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 191 insertions(+), 12 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 2c41c0663af7..9a90c6df0720 100644
+index c3d29a5db62b..fd3dd8b4cb6e 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -211,6 +211,7 @@ Info mask bits meaning:
+@@ -233,6 +233,7 @@ Info mask bits meaning:
      ETH_SETTINGS_IM_MSGLEVEL		msglevel
      ETH_SETTINGS_IM_WOLINFO		struct ethtool_wolinfo
      ETH_SETTINGS_IM_LINK		link state
@@ -28,7 +28,7 @@ index 2c41c0663af7..9a90c6df0720 100644
  
  Response contents:
  
-@@ -229,6 +230,11 @@ Response contents:
+@@ -251,6 +252,11 @@ Response contents:
      ETHA_SETTINGS_LINK_MODES	(bitset)	device link modes
      ETHA_SETTINGS_PEER_MODES	(bitset)	link partner link modes
      ETHA_SETTINGS_LINK		(u8)		link state
@@ -40,7 +40,7 @@ index 2c41c0663af7..9a90c6df0720 100644
  
  Most of the attributes have the same meaning (including values) as
  corresponding members of ioctl structures. For ETHA_SETTINGS_MSGLVL, selector
-@@ -238,6 +244,15 @@ advertised modes and mask represents supported modes. For
+@@ -260,6 +266,15 @@ advertised modes and mask represents supported modes. For
  ETHA_SETTINGS_PEER_MODES, both value and mask represent partner advertised
  link modes.
  
@@ -56,7 +56,7 @@ index 2c41c0663af7..9a90c6df0720 100644
  GET_SETTINGS request is allowed for unprivileged user but ETHA_SETTINGS_SOPASS
  is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
  requests.
-@@ -274,30 +289,30 @@ ETHTOOL_GRINGPARAM		n/a
+@@ -296,30 +311,30 @@ ETHTOOL_GRINGPARAM		n/a
  ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
  ETHTOOL_SPAUSEPARAM		n/a
@@ -76,7 +76,7 @@ index 2c41c0663af7..9a90c6df0720 100644
 -ETHTOOL_GTSO			n/a
 +ETHTOOL_GTSO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_STSO			n/a
- ETHTOOL_GPERMADDR		n/a
+ ETHTOOL_GPERMADDR		ETHNL_CMD_GET_INFO
 -ETHTOOL_GUFO			n/a
 +ETHTOOL_GUFO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SUFO			n/a
@@ -95,7 +95,7 @@ index 2c41c0663af7..9a90c6df0720 100644
  ETHTOOL_SGRO			n/a
  ETHTOOL_GRXRINGS		n/a
  ETHTOOL_GRXCLSRLCNT		n/a
-@@ -312,7 +327,7 @@ ETHTOOL_GRXNTUPLE		n/a
+@@ -334,7 +349,7 @@ ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
  ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
@@ -105,10 +105,10 @@ index 2c41c0663af7..9a90c6df0720 100644
  ETHTOOL_GCHANNELS		n/a
  ETHTOOL_SCHANNELS		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 0234aa143063..70ce4dcf658c 100644
+index 09adcee3f935..7236d12fd78c 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -163,6 +163,7 @@ enum {
+@@ -201,6 +201,7 @@ enum {
  	ETHA_SETTINGS_LINK_MODES,		/* bitset */
  	ETHA_SETTINGS_PEER_MODES,		/* bitset */
  	ETHA_SETTINGS_LINK,			/* u8 */
@@ -116,7 +116,7 @@ index 0234aa143063..70ce4dcf658c 100644
  
  	__ETHA_SETTINGS_MAX,
  	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_MAX - 1)
-@@ -173,8 +174,20 @@ enum {
+@@ -211,8 +212,20 @@ enum {
  #define ETH_SETTINGS_IM_MSGLEVEL		0x04
  #define ETH_SETTINGS_IM_WOLINFO			0x08
  #define ETH_SETTINGS_IM_LINK			0x10
@@ -139,7 +139,7 @@ index 0234aa143063..70ce4dcf658c 100644
  /* generic netlink info */
  #define ETHTOOL_GENL_NAME "ethtool"
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
-index ec90d4ccddf7..3b00ed6bfe10 100644
+index c02bf6d3a7f0..1f6b8955438b 100644
 --- a/net/ethtool/common.h
 +++ b/net/ethtool/common.h
 @@ -6,6 +6,8 @@
@@ -152,7 +152,7 @@ index ec90d4ccddf7..3b00ed6bfe10 100644
  extern const char rss_hash_func_strings[ETH_RSS_HASH_FUNCS_COUNT][ETH_GSTRING_LEN];
  extern const char tunable_strings[__ETHTOOL_TUNABLE_COUNT][ETH_GSTRING_LEN];
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 8613434b6fc0..39e9aea60516 100644
+index b8f59f56e51f..550e2c904bed 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -54,8 +54,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
@@ -165,7 +165,7 @@ index 8613434b6fc0..39e9aea60516 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index cb483733669e..4385857b5324 100644
+index 47de6b53594a..ec052cf84c69 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -4,6 +4,66 @@
@@ -292,7 +292,7 @@ index cb483733669e..4385857b5324 100644
  
  	return len;
  }
-@@ -149,6 +245,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
+@@ -131,6 +227,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
  	return ret;
  }
  
@@ -317,7 +317,7 @@ index cb483733669e..4385857b5324 100644
  static int parse_settings_req(struct settings_reqinfo *req_info,
  			      struct genl_info *info, struct sk_buff *skb,
  			      const struct nlmsghdr *nlhdr)
-@@ -232,6 +346,8 @@ static int prepare_settings(struct settings_data *data,
+@@ -214,6 +328,8 @@ static int prepare_settings(struct settings_data *data,
  	}
  	if (req_mask & ETH_SETTINGS_IM_LINK)
  		data->link = __ethtool_get_link(dev);
@@ -326,7 +326,7 @@ index cb483733669e..4385857b5324 100644
  	if (!req_info->have_rtnl)
  		rtnl_unlock();
  
-@@ -312,6 +428,41 @@ static int fill_settings(struct sk_buff *rskb, struct settings_data *data,
+@@ -294,6 +410,41 @@ static int fill_settings(struct sk_buff *rskb, struct settings_data *data,
  		if (nla_put_u8(rskb, ETHA_SETTINGS_LINK, data->link))
  			return ret;
  	}

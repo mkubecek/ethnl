@@ -1,4 +1,4 @@
-From 94c0a77e9218d7cfa0117528c12a9c922d6c911c Mon Sep 17 00:00:00 2001
+From 2bd9c191955bc4411ef5732d34d88eba7dc59dee Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 13/17] ethtool: implement SET_SETTINGS message
@@ -13,23 +13,23 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  43 +-
  net/ethtool/netlink.c                        |   6 +
- net/ethtool/settings.c                       | 494 +++++++++++++++++++
- 3 files changed, 538 insertions(+), 5 deletions(-)
+ net/ethtool/settings.c                       | 413 +++++++++++++++++++
+ 3 files changed, 457 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index a9c5fc2f0d2b..0f3430735633 100644
+index be0fdc467630..865679ce57b0 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -124,7 +124,7 @@ List of message types
-     ETHNL_CMD_GET_DRVINFO
-     ETHNL_CMD_SET_DRVINFO		response only
+     ETHNL_CMD_GET_INFO
+     ETHNL_CMD_SET_INFO			response only
      ETHNL_CMD_GET_SETTINGS
 -    ETHNL_CMD_SET_SETTINGS		response only (for now)
 +    ETHNL_CMD_SET_SETTINGS
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -263,6 +263,39 @@ netlink or ioctl ethtool interface; feature notifications are also sent
+@@ -285,6 +285,39 @@ netlink or ioctl ethtool interface; feature notifications are also sent
  whenever netdev_update_features() or netdev_change_features() is called.
  
  
@@ -69,13 +69,13 @@ index a9c5fc2f0d2b..0f3430735633 100644
  Request translation
  -------------------
  
-@@ -273,13 +306,13 @@ have their netlink replacement yet.
+@@ -295,13 +328,13 @@ have their netlink replacement yet.
  ioctl command			netlink command
  ---------------------------------------------------------------------
  ETHTOOL_GSET			ETHNL_CMD_GET_SETTINGS
 -ETHTOOL_SSET			n/a
 +ETHTOOL_SSET			ETHNL_CMD_SET_SETTINGS
- ETHTOOL_GDRVINFO		ETHNL_CMD_GET_DRVINFO
+ ETHTOOL_GDRVINFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GREGS			n/a
  ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
 -ETHTOOL_SWOL			n/a
@@ -86,7 +86,7 @@ index a9c5fc2f0d2b..0f3430735633 100644
  ETHTOOL_NWAY_RST		n/a
  ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
-@@ -347,7 +380,7 @@ ETHTOOL_STUNABLE		n/a
+@@ -369,7 +402,7 @@ ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
  ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
@@ -96,17 +96,17 @@ index a9c5fc2f0d2b..0f3430735633 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 582683f97c16..b4905f0acf62 100644
+index fb08a94099f7..34a5e79a2740 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -714,6 +714,7 @@ static struct notifier_block ethnl_netdev_notifier = {
  int ethnl_get_strset(struct sk_buff *skb, struct genl_info *info);
- int ethnl_get_drvinfo(struct sk_buff *skb, struct genl_info *info);
+ int ethnl_get_info(struct sk_buff *skb, struct genl_info *info);
  int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info);
 +int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  
  int ethnl_strset_start(struct netlink_callback *cb);
- int ethnl_drvinfo_start(struct netlink_callback *cb);
+ int ethnl_info_start(struct netlink_callback *cb);
 @@ -743,6 +744,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_dumpit,
  		.done	= ethnl_settings_done,
@@ -120,7 +120,7 @@ index 582683f97c16..b4905f0acf62 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 6e2ddcd9949a..08a8b93a933e 100644
+index b390a40316d1..5a82e34368fe 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -88,6 +88,222 @@ struct settings_reqinfo {
@@ -346,7 +346,7 @@ index 6e2ddcd9949a..08a8b93a933e 100644
  /* We want to allow ~0 as selector for backward compatibility (to just set
   * given set of modes, whatever kernel supports) so that we allow all bits
   * on validation and do our own sanity check later.
-@@ -604,3 +820,281 @@ void ethnl_settings_notify(struct net_device *dev,
+@@ -586,3 +802,200 @@ void ethnl_settings_notify(struct net_device *dev,
  err_skb:
  	nlmsg_free(skb);
  }
@@ -361,24 +361,6 @@ index 6e2ddcd9949a..08a8b93a933e 100644
 +
 +	if (ret < 0)
 +		ETHNL_SET_ERRMSG(info, "link settings update failed");
-+	return ret;
-+}
-+
-+static int ethnl_set_legacy_settings(struct genl_info *info,
-+				     struct net_device *dev,
-+				     struct ethtool_cmd *cmd)
-+{
-+	int ret;
-+
-+	if (!dev->ethtool_ops->set_settings) {
-+		/* we already tried ->set_link_ksettings */
-+		ETHNL_SET_ERRMSG(info, "link settings update unsupported");
-+		return -EOPNOTSUPP;
-+	}
-+	ret = dev->ethtool_ops->set_settings(dev, cmd);
-+	if (ret < 0)
-+		ETHNL_SET_ERRMSG(info, "link settings update failed");
-+
 +	return ret;
 +}
 +
@@ -481,69 +463,6 @@ index 6e2ddcd9949a..08a8b93a933e 100644
 +	return mod ? 1 : 0;
 +}
 +
-+/* Update legacy settings using ->set_settings() callback. */
-+static int ethnl_update_lsettings(struct genl_info *info, struct nlattr **tb,
-+				  struct net_device *dev)
-+{
-+	struct ethtool_cmd cmd = {};
-+	const unsigned int nbits = sizeof(cmd.advertising) * BITS_PER_BYTE;
-+	DECLARE_BITMAP(advertising, nbits);
-+	DECLARE_BITMAP(supported, nbits);
-+	bool mod = false;
-+	u32 speed;
-+	int ret;
-+
-+	ret = ethnl_get_legacy_settings(info, dev, &cmd);
-+	if (ret < 0)
-+		return ret;
-+	bitmap_from_arr32(supported, &cmd.supported, nbits);
-+	bitmap_from_arr32(advertising, &cmd.advertising, nbits);
-+
-+	mod = false;
-+	speed = ethtool_cmd_speed(&cmd);
-+	if (ethnl_update_u32(&speed, tb[ETHA_SETTINGS_SPEED])) {
-+		ethtool_cmd_speed_set(&cmd, speed);
-+		mod = true;
-+	}
-+	if (ethnl_update_u8(&cmd.duplex, tb[ETHA_SETTINGS_DUPLEX]))
-+		mod = true;
-+	if (ethnl_update_u8(&cmd.port, tb[ETHA_SETTINGS_PORT]))
-+		mod = true;
-+	if (ethnl_update_u8(&cmd.phy_address, tb[ETHA_SETTINGS_PHYADDR]))
-+		mod = true;
-+	if (ethnl_update_u8(&cmd.autoneg, tb[ETHA_SETTINGS_AUTONEG]))
-+		mod = true;
-+	if (ethnl_update_u8(&cmd.eth_tp_mdix_ctrl,
-+			    tb[ETHA_SETTINGS_TP_MDIX_CTRL]))
-+		mod = true;
-+	if (ethnl_update_bitset(advertising, NULL, nbits,
-+				tb[ETHA_SETTINGS_LINK_MODES],
-+				&ret, link_mode_names, info)) {
-+		bitmap_to_arr32(&cmd.advertising, advertising, nbits);
-+		mod = true;
-+	}
-+	if (ret < 0)
-+		return ret;
-+
-+	if (!tb[ETHA_SETTINGS_LINK_MODES] && cmd.autoneg &&
-+	    (tb[ETHA_SETTINGS_SPEED] || tb[ETHA_SETTINGS_DUPLEX])) {
-+		if (auto_link_modes(supported, advertising, nbits,
-+				    tb[ETHA_SETTINGS_SPEED],
-+				    tb[ETHA_SETTINGS_DUPLEX])) {
-+			bitmap_to_arr32(&cmd.advertising, advertising, nbits);
-+			mod = true;
-+		}
-+	}
-+
-+	if (mod) {
-+		ret = ethnl_set_legacy_settings(info, dev, &cmd);
-+		if (ret < 0)
-+			return ret;
-+	}
-+
-+	return 0;
-+}
-+
 +int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
@@ -574,10 +493,10 @@ index 6e2ddcd9949a..08a8b93a933e 100644
 +	    tb[ETHA_SETTINGS_PORT] || tb[ETHA_SETTINGS_PHYADDR] ||
 +	    tb[ETHA_SETTINGS_AUTONEG] || tb[ETHA_SETTINGS_TP_MDIX_CTRL] ||
 +	    tb[ETHA_SETTINGS_LINK_MODES]) {
-+		if (dev->ethtool_ops->get_link_ksettings)
-+			ret = ethnl_update_ksettings(info, tb, dev);
-+		else
-+			ret = ethnl_update_lsettings(info, tb, dev);
++		ret = -EOPNOTSUPP;
++		if (!dev->ethtool_ops->get_link_ksettings)
++			goto out_unlock;
++		ret = ethnl_update_ksettings(info, tb, dev);
 +		if (ret < 0)
 +			goto out_unlock;
 +		req_mask |= ETH_SETTINGS_IM_LINKINFO |
