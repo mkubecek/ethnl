@@ -1,0 +1,144 @@
+From 6a766049a0d060ed70817b6917dffd238046c733 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Wed, 22 Aug 2018 23:24:37 +0200
+Subject: [PATCH 07/25] netlink: add netlink handler for permaddr (-P)
+
+Implement "-P" subcommand using netlink interface command
+ETHNL_CMD_GET_INFO.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ ethtool.c        |  3 ++-
+ netlink/extapi.h |  1 +
+ netlink/info.c   | 66 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 69 insertions(+), 1 deletion(-)
+
+diff --git a/ethtool.c b/ethtool.c
+index f90448a8d123..2ebc51bc4b4f 100644
+--- a/ethtool.c
++++ b/ethtool.c
+@@ -5061,6 +5061,7 @@ static int show_usage(struct cmd_context *ctx);
+  * support so that we do not get unresolved symbols in args array below
+  */
+ #define nl_gdrv		NULL
++#define nl_permaddr	NULL
+ #endif
+ 
+ static const struct option {
+@@ -5204,7 +5205,7 @@ static const struct option {
+ 	{ "-f|--flash", 1, do_flash, NULL,
+ 	  "Flash firmware image from the specified file to a region on the device",
+ 	  "               FILENAME [ REGION-NUMBER-TO-FLASH ]\n" },
+-	{ "-P|--show-permaddr", 1, do_permaddr, NULL,
++	{ "-P|--show-permaddr", 1, do_permaddr, nl_permaddr,
+ 	  "Show permanent hardware address" },
+ 	{ "-w|--get-dump", 1, do_getfwdump, NULL,
+ 	  "Get dump flag, data",
+diff --git a/netlink/extapi.h b/netlink/extapi.h
+index 546090a02a0d..3e3a03894e99 100644
+--- a/netlink/extapi.h
++++ b/netlink/extapi.h
+@@ -14,6 +14,7 @@ int netlink_init(struct cmd_context *ctx);
+ int netlink_done(struct cmd_context *ctx);
+ 
+ int nl_gdrv(struct cmd_context *ctx);
++int nl_permaddr(struct cmd_context *ctx);
+ int nl_monitor(struct cmd_context *ctx);
+ 
+ void monitor_usage();
+diff --git a/netlink/info.c b/netlink/info.c
+index 8fa0c3e36088..fda8b6a76bf4 100644
+--- a/netlink/info.c
++++ b/netlink/info.c
+@@ -1,4 +1,5 @@
+ #include <errno.h>
++#include <net/if_arp.h>
+ 
+ #include "../internal.h"
+ #include "netlink.h"
+@@ -25,6 +26,57 @@ static int show_drvinfo(struct nl_context *nlctx, const struct nlattr *nest)
+ 	return MNL_CB_OK;
+ }
+ 
++static int show_permaddr(struct nl_context *nlctx, const struct nlattr *nest)
++{
++	const struct nlattr *tb[ETHA_PERMADDR_MAX + 1] = {};
++	DECLARE_ATTR_TB_INFO(tb);
++	unsigned int i;
++	int ret;
++
++	if (!nest)
++		return -EOPNOTSUPP;
++	ret = mnl_attr_parse_nested(nest, attr_cb, &tb_info);
++	if (ret < 0)
++		return ret;
++
++	if (nlctx->is_dump || nlctx->is_monitor)
++		printf("\nPermanent address of %s:\n", nlctx->devname);
++	if (tb[ETHA_PERMADDR_ADDRESS]) {
++		const uint8_t *addr =
++			mnl_attr_get_payload(tb[ETHA_PERMADDR_ADDRESS]);
++		unsigned int len =
++			mnl_attr_get_payload_len(tb[ETHA_PERMADDR_ADDRESS]);
++
++		printf("Permanent address:");
++		for (i = 0; i < len; i++)
++			printf("%c%02x", i ? ':' : ' ', addr[i]);
++		putchar('\n');
++	}
++	if (tb[ETHA_PERMADDR_TYPE]) {
++		unsigned int type = mnl_attr_get_u16(tb[ETHA_PERMADDR_TYPE]);
++		const char *name = NULL;
++
++		switch(type) {
++		case ARPHRD_ETHER:
++			name = "ethernet";
++			break;
++		case ARPHRD_INFINIBAND:
++			name = "infiniband";
++			break;
++		case ARPHRD_LOOPBACK:
++			name = "loopback";
++			break;
++		}
++
++		printf("ARP hardware type: 0x%04x", type);
++		if (name)
++			printf(" (%s)", name);
++		putchar('\n');
++	}
++
++	return MNL_CB_OK;
++}
++
+ int info_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ {
+ 	const struct nlattr *tb[ETHA_INFO_MAX + 1] = {};
+@@ -48,6 +100,15 @@ int info_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ 			return MNL_CB_ERROR;
+ 		}
+ 	}
++	if (mask_ok(nlctx, ETH_INFO_IM_PERMADDR)) {
++		ret = show_permaddr(nlctx, tb[ETHA_INFO_PERMADDR]);
++		if ((ret < 0) && show_only(nlctx, ETH_INFO_IM_PERMADDR)) {
++			nlctx->exit_code = 1;
++			errno = -ret;
++			perror("Cannot read permanent address");
++			return MNL_CB_ERROR;
++		}
++	}
+ 
+ 	return MNL_CB_OK;
+ }
+@@ -68,3 +129,8 @@ int nl_gdrv(struct cmd_context *ctx)
+ {
+ 	return info_request(ctx, ETH_INFO_IM_DRVINFO);
+ }
++
++int nl_permaddr(struct cmd_context *ctx)
++{
++	return info_request(ctx, ETH_INFO_IM_PERMADDR);
++}
+-- 
+2.18.0
+

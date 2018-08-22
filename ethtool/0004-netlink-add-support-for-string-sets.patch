@@ -1,7 +1,7 @@
-From 3222360920bcb3b65f4e2cea15efcf2642f39c21 Mon Sep 17 00:00:00 2001
+From e85c665e128b87a3458c71d027cdf35b4811329a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 14:09:19 +0200
-Subject: [PATCH 04/23] netlink: add support for string sets
+Subject: [PATCH 04/25] netlink: add support for string sets
 
 Add infrastructure for querying kernel string sets (analog to ioct commands
 ETHTOOL_GSSET_INFO and ETHTOOL_GSTRINGS).
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/strset.h
 
 diff --git a/Makefile.am b/Makefile.am
-index bdb4f4df2b0f..6a4d7083919e 100644
+index 1c16a8253333..c7c7eeba79d1 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -22,6 +22,7 @@ endif

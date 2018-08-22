@@ -1,7 +1,7 @@
-From 2af11248c851389fbb51adb24ad548d901e2ea34 Mon Sep 17 00:00:00 2001
+From 4593d0d302196064cfba2f05208e81b821edfad7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 07:27:00 +0100
-Subject: [PATCH 18/23] netlink: add netlink handler for scoalesce (-C)
+Subject: [PATCH 20/25] netlink: add netlink handler for scoalesce (-C)
 
 Implement "ethtool -C <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_PARAMS.
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 185 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 5d3e52abca46..5de700c6e8a7 100644
+index 5dab52079547..1ed4103baf2b 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4888,6 +4888,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4849,6 +4849,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gchannels	NULL
  #define nl_geee		NULL
  #define nl_gfec		NULL
@@ -25,7 +25,7 @@ index 5d3e52abca46..5de700c6e8a7 100644
  #endif
  
  static const struct option {
-@@ -4920,7 +4921,7 @@ static const struct option {
+@@ -4881,7 +4882,7 @@ static const struct option {
  	  "		[ tx on|off ]\n" },
  	{ "-c|--show-coalesce", 1, do_gcoalesce, nl_gcoalesce,
  	  "Show coalesce options" },
@@ -35,10 +35,10 @@ index 5d3e52abca46..5de700c6e8a7 100644
  	  "		[adaptive-rx on|off]\n"
  	  "		[adaptive-tx on|off]\n"
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index b40db721a4c5..2379309f084e 100644
+index 81f8b1ec572a..fd3e0ca062f4 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -24,6 +24,7 @@ int nl_gpause(struct cmd_context *ctx);
+@@ -26,6 +26,7 @@ int nl_gpause(struct cmd_context *ctx);
  int nl_gchannels(struct cmd_context *ctx);
  int nl_geee(struct cmd_context *ctx);
  int nl_gfec(struct cmd_context *ctx);

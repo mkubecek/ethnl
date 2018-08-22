@@ -1,7 +1,7 @@
-From d2c5ed7f6995aa2428b88719f9a2198bc1fefd6b Mon Sep 17 00:00:00 2001
+From a946d8a19839bd2b5cae2fc6a9db51476b195f91 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
-Subject: [PATCH 07/23] netlink: add netlink handler for gset (no option)
+Subject: [PATCH 09/25] netlink: add netlink handler for gset (no option)
 
 Implement "ethtool <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_SETTINGS.
@@ -11,50 +11,39 @@ into new file common.c.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Makefile.am        |   4 +-
- common.c           | 287 ++++++++++++++++++++++++++++++++++++++++++
- common.h           |  60 +++++++++
- ethtool.c          | 153 ++---------------------
+ Makefile.am        |   2 +-
+ common.c           | 285 ++++++++++++++++++++++++++++++++++++++++++
+ common.h           |  56 +++++++++
+ ethtool.c          | 152 ++---------------------
  netlink/extapi.h   |   1 +
  netlink/monitor.c  |  14 +++
  netlink/netlink.c  | 120 ++++++++++++++++++
  netlink/netlink.h  |   4 +
  netlink/settings.c | 301 +++++++++++++++++++++++++++++++++++++++++++++
- 9 files changed, 798 insertions(+), 146 deletions(-)
- create mode 100644 common.c
- create mode 100644 common.h
+ 9 files changed, 790 insertions(+), 145 deletions(-)
  create mode 100644 netlink/settings.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 7e24fe8c50f4..629f04e1202b 100644
+index 4006e7da5074..4afe329db81a 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -6,7 +6,7 @@ EXTRA_DIST = LICENSE ethtool.8 ethtool.spec.in aclocal.m4 ChangeLog autogen.sh
- 
- sbin_PROGRAMS = ethtool
- ethtool_SOURCES = ethtool.c uapi/linux/ethtool.h internal.h \
--		  uapi/linux/net_tstamp.h rxclass.c
-+		  uapi/linux/net_tstamp.h rxclass.c common.c common.h
- ethtool_CFLAGS = -I./uapi -Wall
- ethtool_LDADD =  -lm
- if ETHTOOL_ENABLE_PRETTY_DUMP
 @@ -23,7 +23,7 @@ if ETHTOOL_ENABLE_NETLINK
  ethtool_SOURCES += \
  		  netlink/netlink.c netlink/netlink.h netlink/extapi.h \
  		  netlink/strset.c netlink/strset.h netlink/monitor.c \
--		  netlink/drvinfo.c \
-+		  netlink/drvinfo.c netlink/settings.c \
+-		  netlink/info.c \
++		  netlink/info.c netlink/settings.c \
  		  uapi/linux/ethtool_netlink.h \
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/common.c b/common.c
-new file mode 100644
-index 000000000000..c8f2cf349add
---- /dev/null
+index 9e807b1cf5b9..962f3f9c318c 100644
+--- a/common.c
 +++ b/common.c
-@@ -0,0 +1,287 @@
-+#include "internal.h"
-+#include "common.h"
+@@ -35,3 +35,288 @@ char *rx_filter_labels[N_RX_FILTERS] = {
+ 	"ptpv2-delay-req       (HWTSTAMP_FILTER_PTP_V2_DELAY_REQ)",
+ 	"ntp-all               (HWTSTAMP_FILTER_NTP_ALL)",
+ };
 +
 +#ifndef HAVE_NETIF_MSG
 +enum {
@@ -341,14 +330,13 @@ index 000000000000..c8f2cf349add
 +	}
 +}
 diff --git a/common.h b/common.h
-new file mode 100644
-index 000000000000..a980b844a0ed
---- /dev/null
+index 7c08ec2d7c2f..37edac765e65 100644
+--- a/common.h
 +++ b/common.h
-@@ -0,0 +1,60 @@
-+#ifndef ETHTOOL_COMMON_H__
-+#define ETHTOOL_COMMON_H__
-+
+@@ -10,4 +10,60 @@ extern char *tx_type_labels[N_TX_TYPES];
+ #define N_RX_FILTERS (HWTSTAMP_FILTER_NTP_ALL + 1)
+ extern char *rx_filter_labels[N_RX_FILTERS];
+ 
 +struct flag_info {
 +	const char *name;
 +	u32 value;
@@ -405,20 +393,12 @@ index 000000000000..a980b844a0ed
 +int dump_wol(struct ethtool_wolinfo *wol);
 +void dump_mdix(u8 mdix, u8 mdix_ctrl);
 +
-+#endif /* ETHTOOL_COMMON_H__ */
+ #endif /* ETHTOOL_COMMON_H__ */
 diff --git a/ethtool.c b/ethtool.c
-index dccc6aa67abc..eefd8348f0d5 100644
+index 8ba5f62be237..1739854ba047 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -30,6 +30,7 @@
-  */
- 
- #include "internal.h"
-+#include "common.h"
- #include <string.h>
- #include <stdlib.h>
- #include <sys/stat.h>
-@@ -56,26 +57,6 @@
+@@ -57,26 +57,6 @@
  #define MAX_ADDR_LEN	32
  #endif
  
@@ -445,7 +425,7 @@ index dccc6aa67abc..eefd8348f0d5 100644
  #ifndef NETLINK_GENERIC
  #define NETLINK_GENERIC	16
  #endif
-@@ -123,29 +104,6 @@ struct cmdline_info {
+@@ -122,29 +102,6 @@ struct cmdline_info {
  	void *seen_val;
  };
  
@@ -475,7 +455,7 @@ index dccc6aa67abc..eefd8348f0d5 100644
  struct off_flag_def {
  	const char *short_name;
  	const char *long_name;
-@@ -428,26 +386,6 @@ static void flag_to_cmdline_info(const char *name, u32 value,
+@@ -427,26 +384,6 @@ static void flag_to_cmdline_info(const char *name, u32 value,
  	cli->seen_val = mask;
  }
  
@@ -502,7 +482,7 @@ index dccc6aa67abc..eefd8348f0d5 100644
  static int rxflow_str_to_type(const char *str)
  {
  	int flow_type = 0;
-@@ -853,31 +791,9 @@ dump_link_usettings(const struct ethtool_link_usettings *link_usettings)
+@@ -852,31 +789,9 @@ dump_link_usettings(const struct ethtool_link_usettings *link_usettings)
  		(link_usettings->base.autoneg == AUTONEG_DISABLE) ?
  		"off" : "on");
  
@@ -537,7 +517,7 @@ index dccc6aa67abc..eefd8348f0d5 100644
  
  	return 0;
  }
-@@ -949,58 +865,6 @@ static int parse_wolopts(char *optstr, u32 *data)
+@@ -948,58 +863,6 @@ static int parse_wolopts(char *optstr, u32 *data)
  	return 0;
  }
  
@@ -596,7 +576,7 @@ index dccc6aa67abc..eefd8348f0d5 100644
  static int parse_rxfhashopts(char *optstr, u32 *data)
  {
  	*data = 0;
-@@ -2743,8 +2607,7 @@ static int do_gset(struct cmd_context *ctx)
+@@ -2701,8 +2564,7 @@ static int do_gset(struct cmd_context *ctx)
  		fprintf(stdout, "	Current message level: 0x%08x (%d)\n"
  			"			       ",
  			edata.data, edata.data);
@@ -606,7 +586,7 @@ index dccc6aa67abc..eefd8348f0d5 100644
  		fprintf(stdout, "\n");
  		allfail = 0;
  	} else if (errno != EOPNOTSUPP) {
-@@ -2790,13 +2653,13 @@ static int do_sset(struct cmd_context *ctx)
+@@ -2748,13 +2610,13 @@ static int do_sset(struct cmd_context *ctx)
  	int msglvl_changed = 0;
  	u32 msglvl_wanted = 0;
  	u32 msglvl_mask = 0;
@@ -622,15 +602,15 @@ index dccc6aa67abc..eefd8348f0d5 100644
  		flag_to_cmdline_info(flags_msglvl[i].name,
  				     flags_msglvl[i].value,
  				     &msglvl_wanted, &msglvl_mask,
-@@ -5062,6 +4925,7 @@ static int show_usage(struct cmd_context *ctx);
-  * support so that we do not get unresolved symbols in args array below
-  */
+@@ -5022,6 +4884,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gdrv		NULL
+ #define nl_permaddr	NULL
+ #define nl_tsinfo	NULL
 +#define nl_gset		NULL
  #endif
  
  static const struct option {
-@@ -5386,6 +5250,7 @@ int main(int argc, char **argp)
+@@ -5346,6 +5209,7 @@ int main(int argc, char **argp)
  	}
  	if ((*argp)[0] == '-')
  		exit_bad_args();
@@ -639,32 +619,32 @@ index dccc6aa67abc..eefd8348f0d5 100644
  	want_device = 1;
  
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 546090a02a0d..20c9b03b2d3c 100644
+index 0de6cbd653cc..938e71700f97 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -14,6 +14,7 @@ int netlink_init(struct cmd_context *ctx);
- int netlink_done(struct cmd_context *ctx);
- 
+@@ -16,6 +16,7 @@ int netlink_done(struct cmd_context *ctx);
  int nl_gdrv(struct cmd_context *ctx);
+ int nl_permaddr(struct cmd_context *ctx);
+ int nl_tsinfo(struct cmd_context *ctx);
 +int nl_gset(struct cmd_context *ctx);
  int nl_monitor(struct cmd_context *ctx);
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index ae7d6080e03d..32d842611011 100644
+index ad2d8c72d437..f93b61172950 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -67,6 +67,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
  }
  
- int drvinfo_reply_cb(const struct nlmsghdr *nlhdr, void *data);
+ int info_reply_cb(const struct nlmsghdr *nlhdr, void *data);
 +int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  
  static struct {
  	uint8_t		cmd;
 @@ -80,6 +81,10 @@ static struct {
- 		.cmd	= ETHNL_CMD_SET_DRVINFO,
- 		.cb	= drvinfo_reply_cb,
+ 		.cmd	= ETHNL_CMD_SET_INFO,
+ 		.cb	= info_reply_cb,
  	},
 +	{
 +		.cmd	= ETHNL_CMD_SET_SETTINGS,
@@ -675,7 +655,7 @@ index ae7d6080e03d..32d842611011 100644
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
 @@ -113,6 +118,15 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "-i|--driver",
- 		.cmd		= ETHNL_CMD_SET_DRVINFO,
+ 		.cmd		= ETHNL_CMD_SET_INFO,
  	},
 +	{
 +		.pattern	= "|-s|--change",
@@ -690,7 +670,7 @@ index ae7d6080e03d..32d842611011 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 69f692d2cf04..fc87577191f0 100644
+index 4bf662eead9d..ae794813ef6c 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -4,8 +4,10 @@
@@ -704,7 +684,7 @@ index 69f692d2cf04..fc87577191f0 100644
  
  /* misc helpers */
  
-@@ -352,6 +354,124 @@ const char *get_dev_name(const struct nlattr *nest)
+@@ -414,6 +416,124 @@ const char *get_dev_name(const struct nlattr *nest)
  	return mnl_attr_get_str(dev_tb[ETHA_DEV_NAME]);
  }
  
@@ -830,12 +810,12 @@ index 69f692d2cf04..fc87577191f0 100644
  
  int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 64e6df854105..14828635413f 100644
+index 531b40939d04..c9980e4233c7 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -58,6 +58,10 @@ bool bitset_get_bit(const struct nlattr *bitset, bool mask, unsigned int idx,
- 		    int *retptr);
- bool bitset_is_empty(const struct nlattr *bitset, bool mask, int *retptr);
+@@ -61,6 +61,10 @@ typedef void (*bitset_walk_callback)(unsigned int, const char *, bool, void *);
+ int walk_bitset(const struct nlattr *bitset, int ss_index,
+ 		bitset_walk_callback cb, void *data);
  
 +int dump_link_modes(const struct nlattr *bitset, bool mask, unsigned class,
 +		    const char *before, const char *between, const char *after,

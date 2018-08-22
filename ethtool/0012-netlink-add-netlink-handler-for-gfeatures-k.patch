@@ -1,7 +1,7 @@
-From 4cf2353826a4d65d7fa23361e8f6b59bb2c7ba80 Mon Sep 17 00:00:00 2001
+From 47ce779675f24568b08ed887f298a95599d5f720 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
-Subject: [PATCH 10/23] netlink: add netlink handler for gfeatures (-k)
+Subject: [PATCH 12/25] netlink: add netlink handler for gfeatures (-k)
 
 Implement "ethtool -k <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_SETTINGS with ETH_SETTINGS_IM_FEATURES mask.
@@ -14,18 +14,18 @@ slightly different from mapping used by kernel ioctl code.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  common.c           |  30 ++++++
- common.h           |  21 +++++
- ethtool.c          |  70 +++-----------
+ common.h           |  19 ++++
+ ethtool.c          |  68 +++-----------
  netlink/extapi.h   |   1 +
  netlink/monitor.c  |   6 ++
  netlink/settings.c | 226 +++++++++++++++++++++++++++++++++++++++++++++
- 6 files changed, 296 insertions(+), 58 deletions(-)
+ 6 files changed, 294 insertions(+), 56 deletions(-)
 
 diff --git a/common.c b/common.c
-index c8f2cf349add..4de22854f1de 100644
+index 962f3f9c318c..f52a1ba5f04c 100644
 --- a/common.c
 +++ b/common.c
-@@ -285,3 +285,33 @@ void dump_mdix(u8 mdix, u8 mdix_ctrl)
+@@ -320,3 +320,33 @@ void dump_mdix(u8 mdix, u8 mdix_ctrl)
  		fprintf(stdout, "\n");
  	}
  }
@@ -60,19 +60,10 @@ index c8f2cf349add..4de22854f1de 100644
 +	  0,		   0,		    ETH_FLAG_RXHASH,	0 },
 +};
 diff --git a/common.h b/common.h
-index a980b844a0ed..36f96ddaa3bd 100644
+index 37edac765e65..749bf389e9e1 100644
 --- a/common.h
 +++ b/common.h
-@@ -1,6 +1,8 @@
- #ifndef ETHTOOL_COMMON_H__
- #define ETHTOOL_COMMON_H__
- 
-+#define KERNEL_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))
-+
- struct flag_info {
- 	const char *name;
- 	u32 value;
-@@ -25,6 +27,25 @@ struct link_mode_info {
+@@ -34,6 +34,25 @@ struct link_mode_info {
  	u8			duplex;
  };
  
@@ -99,19 +90,10 @@ index a980b844a0ed..36f96ddaa3bd 100644
  extern const unsigned int link_modes_count;
  
 diff --git a/ethtool.c b/ethtool.c
-index ffe4d9c36f7e..5beba6b3770f 100644
+index a6e6437fa553..3c7f7b818386 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -61,8 +61,6 @@
- #define NETLINK_GENERIC	16
- #endif
- 
--#define KERNEL_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))
--
- static void exit_bad_args(void) __attribute__((noreturn));
- 
- static void exit_bad_args(void)
-@@ -104,51 +102,6 @@ struct cmdline_info {
+@@ -102,51 +102,6 @@ struct cmdline_info {
  	void *seen_val;
  };
  
@@ -163,7 +145,7 @@ index ffe4d9c36f7e..5beba6b3770f 100644
  struct feature_def {
  	char name[ETH_GSTRING_LEN];
  	int off_flag_index; /* index in off_flag_def; negative if none match */
-@@ -157,7 +110,7 @@ struct feature_def {
+@@ -155,7 +110,7 @@ struct feature_def {
  struct feature_defs {
  	size_t n_features;
  	/* Number of features each offload flag is associated with */
@@ -172,7 +154,7 @@ index ffe4d9c36f7e..5beba6b3770f 100644
  	/* Name and offload flag index for each feature */
  	struct feature_def def[0];
  };
-@@ -1328,7 +1281,7 @@ static void dump_features(const struct feature_defs *defs,
+@@ -1326,7 +1281,7 @@ static void dump_features(const struct feature_defs *defs,
  	int indent;
  	int i, j;
  
@@ -181,7 +163,7 @@ index ffe4d9c36f7e..5beba6b3770f 100644
  		/* Don't show features whose state is unknown on this
  		 * kernel version
  		 */
-@@ -1643,7 +1596,7 @@ static struct feature_defs *get_feature_defs(struct cmd_context *ctx)
+@@ -1600,7 +1555,7 @@ static struct feature_defs *get_feature_defs(struct cmd_context *ctx)
  		defs->def[i].off_flag_index = -1;
  
  		for (j = 0;
@@ -190,7 +172,7 @@ index ffe4d9c36f7e..5beba6b3770f 100644
  			     defs->def[i].off_flag_index < 0;
  		     j++) {
  			const char *pattern =
-@@ -2085,7 +2038,7 @@ get_features(struct cmd_context *ctx, const struct feature_defs *defs)
+@@ -2042,7 +1997,7 @@ get_features(struct cmd_context *ctx, const struct feature_defs *defs)
  
  	state->off_flags = 0;
  
@@ -199,7 +181,7 @@ index ffe4d9c36f7e..5beba6b3770f 100644
  		value = off_flag_def[i].value;
  		if (!off_flag_def[i].get_cmd)
  			continue;
-@@ -2201,14 +2154,14 @@ static int do_sfeatures(struct cmd_context *ctx)
+@@ -2158,14 +2113,14 @@ static int do_sfeatures(struct cmd_context *ctx)
  	/* Generate cmdline_info for legacy flags and kernel-named
  	 * features, and parse our arguments.
  	 */
@@ -216,7 +198,7 @@ index ffe4d9c36f7e..5beba6b3770f 100644
  		flag_to_cmdline_info(off_flag_def[i].short_name,
  				     off_flag_def[i].value,
  				     &off_flags_wanted, &off_flags_mask,
-@@ -2218,9 +2171,9 @@ static int do_sfeatures(struct cmd_context *ctx)
+@@ -2175,9 +2130,9 @@ static int do_sfeatures(struct cmd_context *ctx)
  			defs->def[i].name, FEATURE_FIELD_FLAG(i),
  			&FEATURE_WORD(efeatures->features, i, requested),
  			&FEATURE_WORD(efeatures->features, i, valid),
@@ -228,7 +210,7 @@ index ffe4d9c36f7e..5beba6b3770f 100644
  	free(cmdline_features);
  
  	if (!any_changed) {
-@@ -2240,7 +2193,7 @@ static int do_sfeatures(struct cmd_context *ctx)
+@@ -2197,7 +2152,7 @@ static int do_sfeatures(struct cmd_context *ctx)
  		 * related features that the user did not specify and that
  		 * are not fixed.  Warn if all related features are fixed.
  		 */
@@ -237,7 +219,7 @@ index ffe4d9c36f7e..5beba6b3770f 100644
  			int fixed = 1;
  
  			if (!(off_flags_mask & off_flag_def[i].value))
-@@ -2281,7 +2234,7 @@ static int do_sfeatures(struct cmd_context *ctx)
+@@ -2238,7 +2193,7 @@ static int do_sfeatures(struct cmd_context *ctx)
  			goto err;
  		}
  	} else {
@@ -246,15 +228,15 @@ index ffe4d9c36f7e..5beba6b3770f 100644
  			if (!off_flag_def[i].set_cmd)
  				continue;
  			if (off_flags_mask & off_flag_def[i].value) {
-@@ -4927,6 +4880,7 @@ static int show_usage(struct cmd_context *ctx);
- #define nl_gdrv		NULL
+@@ -4886,6 +4841,7 @@ static int show_usage(struct cmd_context *ctx);
+ #define nl_tsinfo	NULL
  #define nl_gset		NULL
  #define nl_sset		NULL
 +#define nl_gfeatures	NULL
  #endif
  
  static const struct option {
-@@ -4991,7 +4945,7 @@ static const struct option {
+@@ -4950,7 +4906,7 @@ static const struct option {
  	  "		[ rx-mini N ]\n"
  	  "		[ rx-jumbo N ]\n"
  	  "		[ tx N ]\n" },
@@ -264,11 +246,11 @@ index ffe4d9c36f7e..5beba6b3770f 100644
  	{ "-K|--features|--offload", 1, do_sfeatures, NULL,
  	  "Set protocol offload and other features",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 66573f0b4304..c656ff862687 100644
+index e3b8c6949f36..d955966da72d 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -16,6 +16,7 @@ int netlink_done(struct cmd_context *ctx);
- int nl_gdrv(struct cmd_context *ctx);
+@@ -18,6 +18,7 @@ int nl_permaddr(struct cmd_context *ctx);
+ int nl_tsinfo(struct cmd_context *ctx);
  int nl_gset(struct cmd_context *ctx);
  int nl_sset(struct cmd_context *ctx);
 +int nl_gfeatures(struct cmd_context *ctx);
@@ -276,7 +258,7 @@ index 66573f0b4304..c656ff862687 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 32d842611011..e3b8bb46f561 100644
+index f93b61172950..c4cb693acb61 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -127,6 +127,12 @@ static struct monitor_option monitor_opts[] = {

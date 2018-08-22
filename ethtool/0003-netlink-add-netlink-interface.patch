@@ -1,7 +1,7 @@
-From da96df85cdc21ac647d6d72b328c27bd6a3f3cb1 Mon Sep 17 00:00:00 2001
+From b20f31e25c377831cd47013ee345240490ee137f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
-Subject: [PATCH 03/23] netlink: add netlink interface
+Subject: [PATCH 03/25] netlink: add netlink interface
 
 Add basic netlink interface based on genetlink and libmnl. This commit only
 adds the generic infrastructure but does not override any ethtool command
@@ -18,18 +18,23 @@ completely.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Makefile.am                  |  11 +
+ Makefile.am                  |  13 +-
+ common.c                     |   2 +
+ common.h                     |   6 +
  configure.ac                 |  14 +-
- ethtool.c                    | 178 ++++++++----
+ ethtool.c                    | 181 +++++++----
  internal.h                   |   8 +
- netlink/extapi.h             |  16 ++
- netlink/netlink.c            | 522 +++++++++++++++++++++++++++++++++++
- netlink/netlink.h            | 146 ++++++++++
- uapi/linux/ethtool.h         |   4 +
- uapi/linux/ethtool_netlink.h | 318 +++++++++++++++++++++
+ netlink/extapi.h             |  16 +
+ netlink/netlink.c            | 584 +++++++++++++++++++++++++++++++++++
+ netlink/netlink.h            | 149 +++++++++
+ uapi/linux/ethtool.h         |  11 +
+ uapi/linux/ethtool_netlink.h | 356 +++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 ++++++
- uapi/linux/netlink.h         | 247 +++++++++++++++++
- 11 files changed, 1496 insertions(+), 57 deletions(-)
+ uapi/linux/net_tstamp.h      |  13 +
+ uapi/linux/netlink.h         | 247 +++++++++++++++
+ 14 files changed, 1629 insertions(+), 60 deletions(-)
+ create mode 100644 common.c
+ create mode 100644 common.h
  create mode 100644 netlink/extapi.h
  create mode 100644 netlink/netlink.c
  create mode 100644 netlink/netlink.h
@@ -38,13 +43,15 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 uapi/linux/netlink.h
 
 diff --git a/Makefile.am b/Makefile.am
-index e7da37a85499..bdb4f4df2b0f 100644
+index e7da37a85499..1c16a8253333 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -7,6 +7,8 @@ EXTRA_DIST = LICENSE ethtool.8 ethtool.spec.in aclocal.m4 ChangeLog autogen.sh
+@@ -6,7 +6,9 @@ EXTRA_DIST = LICENSE ethtool.8 ethtool.spec.in aclocal.m4 ChangeLog autogen.sh
+ 
  sbin_PROGRAMS = ethtool
  ethtool_SOURCES = ethtool.c uapi/linux/ethtool.h internal.h \
- 		  uapi/linux/net_tstamp.h rxclass.c
+-		  uapi/linux/net_tstamp.h rxclass.c
++		  uapi/linux/net_tstamp.h rxclass.c common.c common.h
 +ethtool_CFLAGS = -I./uapi -Wall
 +ethtool_LDADD =  -lm
  if ETHTOOL_ENABLE_PRETTY_DUMP
@@ -66,6 +73,26 @@ index e7da37a85499..bdb4f4df2b0f 100644
  TESTS = test-cmdline test-features
  check_PROGRAMS = test-cmdline test-features
  test_cmdline_SOURCES = test-cmdline.c test-common.c $(ethtool_SOURCES) 
+diff --git a/common.c b/common.c
+new file mode 100644
+index 000000000000..1428b9b674f9
+--- /dev/null
++++ b/common.c
+@@ -0,0 +1,2 @@
++#include "internal.h"
++#include "common.h"
+diff --git a/common.h b/common.h
+new file mode 100644
+index 000000000000..286c2055f2d7
+--- /dev/null
++++ b/common.h
+@@ -0,0 +1,6 @@
++#ifndef ETHTOOL_COMMON_H__
++#define ETHTOOL_COMMON_H__
++
++#define KERNEL_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))
++
++#endif /* ETHTOOL_COMMON_H__ */
 diff --git a/configure.ac b/configure.ac
 index e891d917cf11..138039d49a2c 100644
 --- a/configure.ac
@@ -98,10 +125,18 @@ index e891d917cf11..138039d49a2c 100644
  AC_CONFIG_FILES([Makefile ethtool.spec ethtool.8])
  AC_OUTPUT
 diff --git a/ethtool.c b/ethtool.c
-index aa2bbe9e4c65..5730ee9edb16 100644
+index e8b7703293d2..61c37d5c4a6a 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -48,6 +48,10 @@
+@@ -30,6 +30,7 @@
+  */
+ 
+ #include "internal.h"
++#include "common.h"
+ #include <string.h>
+ #include <stdlib.h>
+ #include <sys/stat.h>
+@@ -48,6 +49,10 @@
  #include <linux/sockios.h>
  #include <linux/netlink.h>
  
@@ -112,7 +147,16 @@ index aa2bbe9e4c65..5730ee9edb16 100644
  #ifndef MAX_ADDR_LEN
  #define MAX_ADDR_LEN	32
  #endif
-@@ -5053,14 +5057,22 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
+@@ -76,8 +81,6 @@ enum {
+ #define NETLINK_GENERIC	16
+ #endif
+ 
+-#define KERNEL_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))
+-
+ static void exit_bad_args(void) __attribute__((noreturn));
+ 
+ static void exit_bad_args(void)
+@@ -5053,14 +5056,22 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
  
  static int show_usage(struct cmd_context *ctx);
  
@@ -136,8 +180,8 @@ index aa2bbe9e4c65..5730ee9edb16 100644
  	  "		[ speed %d ]\n"
  	  "		[ duplex half|full ]\n"
  	  "		[ port tp|aui|bnc|mii|fibre ]\n"
-@@ -5072,13 +5084,17 @@ static const struct option {
- 	  "		[ wol p|u|m|b|a|g|s|d... ]\n"
+@@ -5072,13 +5083,17 @@ static const struct option {
+ 	  "		[ wol p|u|m|b|a|g|s|f|d... ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
  	  "		[ msglvl %d | msglvl type on|off ... ]\n" },
 -	{ "-a|--show-pause", 1, do_gpause, "Show pause options" },
@@ -158,7 +202,7 @@ index aa2bbe9e4c65..5730ee9edb16 100644
  	  "		[adaptive-rx on|off]\n"
  	  "		[adaptive-tx on|off]\n"
  	  "		[rx-usecs N]\n"
-@@ -5101,46 +5117,54 @@ static const struct option {
+@@ -5101,46 +5116,54 @@ static const struct option {
  	  "		[tx-usecs-high N]\n"
  	  "		[tx-frames-high N]\n"
  	  "		[sample-interval N]\n" },
@@ -228,7 +272,7 @@ index aa2bbe9e4c65..5730ee9edb16 100644
  	  "Configure Rx network flow classification options or rules",
  	  "		rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 m|v|t|s|d|f|n|r... [context %d] |\n"
-@@ -5165,55 +5189,64 @@ static const struct option {
+@@ -5165,55 +5188,64 @@ static const struct option {
  	  "			[ context %d ]\n"
  	  "			[ loc %d]] |\n"
  	  "		delete %d\n" },
@@ -310,7 +354,7 @@ index aa2bbe9e4c65..5730ee9edb16 100644
  	  "		[ flags %x ]\n"
  	  "		[ mgmt ]\n"
  	  "		[ mgmt-shared ]\n"
-@@ -5235,11 +5268,15 @@ static const struct option {
+@@ -5235,11 +5267,15 @@ static const struct option {
  	  "		[ ap-shared ]\n"
  	  "		[ dedicated ]\n"
  	  "		[ all ]\n"},
@@ -330,7 +374,7 @@ index aa2bbe9e4c65..5730ee9edb16 100644
  	{}
  };
  
-@@ -5266,11 +5303,35 @@ static int show_usage(struct cmd_context *ctx)
+@@ -5266,11 +5302,35 @@ static int show_usage(struct cmd_context *ctx)
  	return 0;
  }
  
@@ -366,7 +410,7 @@ index aa2bbe9e4c65..5730ee9edb16 100644
  	int k;
  
  	init_global_link_mode_masks();
-@@ -5296,6 +5357,7 @@ int main(int argc, char **argp)
+@@ -5296,6 +5356,7 @@ int main(int argc, char **argp)
  				argp++;
  				argc--;
  				func = args[k].func;
@@ -374,7 +418,7 @@ index aa2bbe9e4c65..5730ee9edb16 100644
  				want_device = args[k].want_device;
  				goto opt_found;
  			}
-@@ -5310,6 +5372,15 @@ int main(int argc, char **argp)
+@@ -5310,6 +5371,15 @@ int main(int argc, char **argp)
  	want_device = 1;
  
  opt_found:
@@ -390,7 +434,7 @@ index aa2bbe9e4c65..5730ee9edb16 100644
  	if (want_device) {
  		ctx.devname = *argp++;
  		argc--;
-@@ -5318,25 +5389,20 @@ opt_found:
+@@ -5318,25 +5388,20 @@ opt_found:
  			exit_bad_args();
  		if (strlen(ctx.devname) >= IFNAMSIZ)
  			exit_bad_args();
@@ -476,10 +520,10 @@ index 000000000000..05ab083d9b9c
 +#endif /* ETHTOOL_EXTAPI_H__ */
 diff --git a/netlink/netlink.c b/netlink/netlink.c
 new file mode 100644
-index 000000000000..0671c4589c72
+index 000000000000..ac690484e06a
 --- /dev/null
 +++ b/netlink/netlink.c
-@@ -0,0 +1,522 @@
+@@ -0,0 +1,584 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -642,6 +686,68 @@ index 000000000000..0671c4589c72
 +	fprintf(stderr, "malformed netlink message (bitset)\n");
 +	*retptr = ret;
 +	return true;
++}
++
++int walk_bitset(const struct nlattr *bitset, int ss_index,
++		bitset_walk_callback cb, void *data)
++{
++	const struct nlattr *bitset_tb[ETHA_BITSET_MAX + 1] = {};
++	DECLARE_ATTR_TB_INFO(bitset_tb);
++	const struct nlattr *bits;
++	const struct nlattr *bit;
++	int ret;
++
++	ret = mnl_attr_parse_nested(bitset, attr_cb, &bitset_tb_info);
++	if (ret < 0)
++		return ret;
++
++	bits = bitset_tb[ETHA_BITSET_VALUE];
++	if (bits) {
++		const struct nlattr *mask = bitset_tb[ETHA_BITSET_MASK];
++		const struct stringset *labels = global_stringset(ss_index);
++		unsigned int count, nwords, idx;
++		uint32_t *val_bm;
++		uint32_t *mask_bm;
++
++		if (!mask || !bitset_tb[ETHA_BITSET_SIZE])
++			return -EFAULT;
++		count = mnl_attr_get_u32(bitset_tb[ETHA_BITSET_SIZE]);
++		nwords = (count + 31) / 32;
++		if ((mnl_attr_get_payload_len(bits) / 4 < nwords) ||
++		    (mnl_attr_get_payload_len(mask) / 4 < nwords))
++			return -EFAULT;
++
++		val_bm = mnl_attr_get_payload(bits);
++		mask_bm = mnl_attr_get_payload(mask);
++		for (idx = 0; idx < count; idx++)
++			if (mask_bm[idx / 32] & (1 << (idx % 32)))
++				cb(idx, get_string(labels, idx),
++				   val_bm[idx / 32] & (1 << (idx % 32)), data);
++		return 0;
++	}
++
++	bits = bitset_tb[ETHA_BITSET_BITS];
++	if (!bits)
++		return -EFAULT;
++	mnl_attr_for_each_nested(bit, bits) {
++		const struct nlattr *tb[ETHA_BIT_MAX + 1] = {};
++		DECLARE_ATTR_TB_INFO(tb);
++		const char *name;
++		unsigned int idx;
++
++		if (mnl_attr_get_type(bit) != ETHA_BITS_BIT)
++			continue;
++
++		ret = mnl_attr_parse_nested(bit, attr_cb, &tb_info);
++		if (ret < 0 || !tb[ETHA_BIT_INDEX] || !tb[ETHA_BIT_NAME])
++			return -EFAULT;
++
++		idx = mnl_attr_get_u32(tb[ETHA_BIT_INDEX]);
++		name = mnl_attr_get_str(tb[ETHA_BIT_NAME]);
++		cb(idx, name, tb[ETHA_BIT_VALUE] != NULL, data);
++	}
++
++	return 0;
 +}
 +
 +static int __msg_init(struct nl_context *nlctx, int family, int cmd,
@@ -1004,10 +1110,10 @@ index 000000000000..0671c4589c72
 +}
 diff --git a/netlink/netlink.h b/netlink/netlink.h
 new file mode 100644
-index 000000000000..4905fe9533e4
+index 000000000000..69d164b6f134
 --- /dev/null
 +++ b/netlink/netlink.h
-@@ -0,0 +1,146 @@
+@@ -0,0 +1,149 @@
 +/*
 + * netlink.h - common interface for all netlink code
 + *
@@ -1062,6 +1168,9 @@ index 000000000000..4905fe9533e4
 +bool bitset_get_bit(const struct nlattr *bitset, bool mask, unsigned int idx,
 +		    int *retptr);
 +bool bitset_is_empty(const struct nlattr *bitset, bool mask, int *retptr);
++typedef void (*bitset_walk_callback)(unsigned int, const char *, bool, void *);
++int walk_bitset(const struct nlattr *bitset, int ss_index,
++		bitset_walk_callback cb, void *data);
 +
 +int msg_init(struct nl_context *nlctx, int cmd, unsigned int flags);
 +int ethnl_process_reply(struct nl_context *nlctx, mnl_cb_t reply_cb);
@@ -1155,13 +1264,27 @@ index 000000000000..4905fe9533e4
 +
 +#endif /* ETHTOOL_NETLINK_INT_H__ */
 diff --git a/uapi/linux/ethtool.h b/uapi/linux/ethtool.h
-index 6bfbb85f9402..d753ef616c7f 100644
+index 6bfbb85f9402..1f49a3d3a07a 100644
 --- a/uapi/linux/ethtool.h
 +++ b/uapi/linux/ethtool.h
-@@ -576,6 +576,10 @@ enum ethtool_stringset {
+@@ -565,6 +565,10 @@ struct ethtool_pauseparam {
+  * @ETH_SS_RSS_HASH_FUNCS: RSS hush function names
+  * @ETH_SS_PHY_STATS: Statistic names, for use with %ETHTOOL_GPHYSTATS
+  * @ETH_SS_PHY_TUNABLES: PHY tunable names
++ * @ETH_SS_TSTAMP_SOF: timestamping flag names
++ * @ETH_SS_TSTAMP_TX_TYPE: timestamping Tx type names
++ * @ETH_SS_TSTAMP_RX_FILTER: timestamping Rx filter names
++ * @ETH_SS_LINK_MODES: link mode names
+  */
+ enum ethtool_stringset {
+ 	ETH_SS_TEST		= 0,
+@@ -576,6 +580,13 @@ enum ethtool_stringset {
  	ETH_SS_TUNABLES,
  	ETH_SS_PHY_STATS,
  	ETH_SS_PHY_TUNABLES,
++	ETH_SS_TSTAMP_SOF,
++	ETH_SS_TSTAMP_TX_TYPE,
++	ETH_SS_TSTAMP_RX_FILTER,
 +	ETH_SS_LINK_MODES,
 +
 +	__ETH_SS_MAX,
@@ -1171,10 +1294,10 @@ index 6bfbb85f9402..d753ef616c7f 100644
  /**
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..d1b89018dde7
+index 000000000000..47fa82bc0438
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,318 @@
+@@ -0,0 +1,356 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#ifndef _LINUX_ETHTOOL_NETLINK_H_
@@ -1187,8 +1310,8 @@ index 000000000000..d1b89018dde7
 +	ETHNL_CMD_EVENT,		/* only for notifications */
 +	ETHNL_CMD_GET_STRSET,
 +	ETHNL_CMD_SET_STRSET,		/* only for reply */
-+	ETHNL_CMD_GET_DRVINFO,
-+	ETHNL_CMD_SET_DRVINFO,		/* only for reply */
++	ETHNL_CMD_GET_INFO,
++	ETHNL_CMD_SET_INFO,		/* only for reply */
 +	ETHNL_CMD_GET_SETTINGS,
 +	ETHNL_CMD_SET_SETTINGS,
 +	ETHNL_CMD_GET_PARAMS,
@@ -1307,11 +1430,29 @@ index 000000000000..d1b89018dde7
 +	ETHA_STRSET_MAX = (__ETHA_STRSET_MAX - 1)
 +};
 +
-+/* GET_DRVINFO / SET_DRVINFO */
++/* GET_INFO / SET_INFO */
++
++enum {
++	ETHA_INFO_UNSPEC,
++	ETHA_INFO_DEV,				/* nest - ETHA_DEV_* */
++	ETHA_INFO_INFOMASK,			/* u32 */
++	ETHA_INFO_COMPACT,			/* flag */
++	ETHA_INFO_DRVINFO,			/* nest - ETHA_DRVINFO_* */
++	ETHA_INFO_PERMADDR,			/* nest - ETHA_PERMADDR_* */
++	ETHA_INFO_TSINFO,			/* nest - ETHA_TSINFO_* */
++
++	__ETHA_INFO_MAX,
++	ETHA_INFO_MAX = (__ETHA_INFO_MAX - 1)
++};
++
++#define ETH_INFO_IM_DRVINFO			0x01
++#define ETH_INFO_IM_PERMADDR			0x02
++#define ETH_INFO_IM_TSINFO			0x04
++
++#define ETH_INFO_IM_DEFAULT			0x07
 +
 +enum {
 +	ETHA_DRVINFO_UNSPEC,
-+	ETHA_DRVINFO_DEV,			/* nest - ETHA_DEV_* */
 +	ETHA_DRVINFO_DRIVER,			/* string */
 +	ETHA_DRVINFO_FWVERSION,			/* string */
 +	ETHA_DRVINFO_BUSINFO,			/* string */
@@ -1319,6 +1460,26 @@ index 000000000000..d1b89018dde7
 +
 +	__ETHA_DRVINFO_MAX,
 +	ETHA_DRVINFO_MAX = (__ETHA_DRVINFO_MAX - 1)
++};
++
++enum {
++	ETHA_PERMADDR_UNSPEC,
++	ETHA_PERMADDR_ADDRESS,			/* binary */
++	ETHA_PERMADDR_TYPE,			/* u16 */
++
++	__ETHA_PERMADDR_MAX,
++	ETHA_PERMADDR_MAX = (__ETHA_PERMADDR_MAX - 1)
++};
++
++enum {
++	ETHA_TSINFO_UNSPEC,
++	ETHA_TSINFO_TIMESTAMPING,		/* bitset */
++	ETHA_TSINFO_PHC_INDEX,			/* u32 */
++	ETHA_TSINFO_TX_TYPES,			/* bitset */
++	ETHA_TSINFO_RX_FILTERS,			/* bitset */
++
++	__ETHA_TSINFO_MAX,
++	ETHA_TSINFO_MAX = (__ETHA_TSINFO_MAX - 1)
 +};
 +
 +/* GET_SETTINGS / SET_SETTINGS */
@@ -1588,6 +1749,44 @@ index 000000000000..1317119cbff8
 +
 +
 +#endif /* __LINUX_GENERIC_NETLINK_H */
+diff --git a/uapi/linux/net_tstamp.h b/uapi/linux/net_tstamp.h
+index 97ff3c17ec4d..3166ff0f497e 100644
+--- a/uapi/linux/net_tstamp.h
++++ b/uapi/linux/net_tstamp.h
+@@ -30,6 +30,9 @@ enum {
+ 	SOF_TIMESTAMPING_OPT_STATS = (1<<12),
+ 	SOF_TIMESTAMPING_OPT_PKTINFO = (1<<13),
+ 	SOF_TIMESTAMPING_OPT_TX_SWHW = (1<<14),
++	/* when adding a flag, please update so_timestamping_labels array
++	 * in net/ethtool/info.c
++	 */
+ 
+ 	SOF_TIMESTAMPING_LAST = SOF_TIMESTAMPING_OPT_TX_SWHW,
+ 	SOF_TIMESTAMPING_MASK = (SOF_TIMESTAMPING_LAST - 1) |
+@@ -90,6 +93,11 @@ enum hwtstamp_tx_types {
+ 	 * queue.
+ 	 */
+ 	HWTSTAMP_TX_ONESTEP_SYNC,
++	/* when adding a value, please update tstamp_tx_type_labels array
++	 * in net/ethtool/info.c
++	 */
++
++	HWTSTAMP_TX_LAST = HWTSTAMP_TX_ONESTEP_SYNC
+ };
+ 
+ /* possible values for hwtstamp_config->rx_filter */
+@@ -132,6 +140,11 @@ enum hwtstamp_rx_filters {
+ 
+ 	/* NTP, UDP, all versions and packet modes */
+ 	HWTSTAMP_FILTER_NTP_ALL,
++	/* when adding a value, please update tstamp_rx_filter_labels array
++	 * in net/ethtool/info.c
++	 */
++
++	HWTSTAMP_FILTER_LAST = HWTSTAMP_FILTER_NTP_ALL
+ };
+ 
+ /* SCM_TIMESTAMPING_PKTINFO control message */
 diff --git a/uapi/linux/netlink.h b/uapi/linux/netlink.h
 new file mode 100644
 index 000000000000..0b2c29bd081f

@@ -1,7 +1,7 @@
-From 99252e2cf22c5f5f71eef8a3f4fa79037340ce8b Mon Sep 17 00:00:00 2001
+From b06b9054ed0b6f357c0bfffab8472014b3721f9a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:04:49 +0100
-Subject: [PATCH 19/23] netlink: add netlink handler for sring (-G)
+Subject: [PATCH 21/25] netlink: add netlink handler for sring (-G)
 
 Implement "ethtool -G <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_PARAMS.
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 37 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 5de700c6e8a7..00faf5a8b22b 100644
+index 1ed4103baf2b..dcfcc779fe8c 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4889,6 +4889,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4850,6 +4850,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_geee		NULL
  #define nl_gfec		NULL
  #define nl_scoalesce	NULL
@@ -25,7 +25,7 @@ index 5de700c6e8a7..00faf5a8b22b 100644
  #endif
  
  static const struct option {
-@@ -4947,7 +4948,7 @@ static const struct option {
+@@ -4908,7 +4909,7 @@ static const struct option {
  	  "		[sample-interval N]\n" },
  	{ "-g|--show-ring", 1, do_gring, nl_gring,
  	  "Query RX/TX ring parameters" },
@@ -35,10 +35,10 @@ index 5de700c6e8a7..00faf5a8b22b 100644
  	  "		[ rx N ]\n"
  	  "		[ rx-mini N ]\n"
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 2379309f084e..d6d01ee9eae3 100644
+index fd3e0ca062f4..747731a8fe97 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -25,6 +25,7 @@ int nl_gchannels(struct cmd_context *ctx);
+@@ -27,6 +27,7 @@ int nl_gchannels(struct cmd_context *ctx);
  int nl_geee(struct cmd_context *ctx);
  int nl_gfec(struct cmd_context *ctx);
  int nl_scoalesce(struct cmd_context *ctx);

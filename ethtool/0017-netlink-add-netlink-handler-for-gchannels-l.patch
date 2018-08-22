@@ -1,7 +1,7 @@
-From 5019251c725c20f7801ab8f989ba1f6a795fc469 Mon Sep 17 00:00:00 2001
+From 6811622b3818273e6fb7917d6bfb85260535487d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:05:40 +0100
-Subject: [PATCH 15/23] netlink: add netlink handler for gchannels (-l)
+Subject: [PATCH 17/25] netlink: add netlink handler for gchannels (-l)
 
 Implement "ethtool -l <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_CHANNELS mask.
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 50 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 6ef2a8c3110f..815e38dfb029 100644
+index c81f77285860..f92e98f9ce0b 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4885,6 +4885,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4846,6 +4846,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gcoalesce	NULL
  #define nl_gring	NULL
  #define nl_gpause	NULL
@@ -26,7 +26,7 @@ index 6ef2a8c3110f..815e38dfb029 100644
  #endif
  
  static const struct option {
-@@ -5036,7 +5037,7 @@ static const struct option {
+@@ -4997,7 +4998,7 @@ static const struct option {
  	{ "-W|--set-dump", 1, do_setfwdump, NULL,
  	  "Set dump flag of the device",
  	  "		N\n"},
@@ -36,10 +36,10 @@ index 6ef2a8c3110f..815e38dfb029 100644
  	{ "-L|--set-channels", 1, do_schannels, NULL,
  	  "Set Channels",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 3b918a443b96..fc027f62398c 100644
+index 1f7de2a7992c..4c33b3d0ee6a 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -21,6 +21,7 @@ int nl_sfeatures(struct cmd_context *ctx);
+@@ -23,6 +23,7 @@ int nl_sfeatures(struct cmd_context *ctx);
  int nl_gcoalesce(struct cmd_context *ctx);
  int nl_gring(struct cmd_context *ctx);
  int nl_gpause(struct cmd_context *ctx);
@@ -48,7 +48,7 @@ index 3b918a443b96..fc027f62398c 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 18e151980c3f..1b277606a78c 100644
+index 0f35a17cdc7d..8ba94d36474e 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -153,6 +153,11 @@ static struct monitor_option monitor_opts[] = {

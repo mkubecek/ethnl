@@ -1,7 +1,7 @@
-From bafb343cdd7eff52d7cb4f33725a93ddf2a560bc Mon Sep 17 00:00:00 2001
+From 50674d599687472e85ff7b2f84c8d8a4cd477eaf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
-Subject: [PATCH 17/23] netlink: add netlink handler for gfec (--show-fec)
+Subject: [PATCH 19/25] netlink: add netlink handler for gfec (--show-fec)
 
 Implement "ethtool --show-fec <dev>" subcommand showing Forward Error
 Correction (FEC) settings using netlink interface command
@@ -18,10 +18,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 63 insertions(+), 1 deletion(-)
 
 diff --git a/common.c b/common.c
-index 4de22854f1de..b8605922e0f6 100644
+index f52a1ba5f04c..ab97ac59b72f 100644
 --- a/common.c
 +++ b/common.c
-@@ -41,6 +41,16 @@ const struct flag_info flags_msglvl[] = {
+@@ -76,6 +76,16 @@ const struct flag_info flags_msglvl[] = {
  };
  const unsigned int n_flags_msglvl = ARRAY_SIZE(flags_msglvl) - 1;
  
@@ -39,10 +39,10 @@ index 4de22854f1de..b8605922e0f6 100644
  	[DUPLEX_HALF]		= "Half",
  	[DUPLEX_FULL]		= "Full",
 diff --git a/common.h b/common.h
-index 36f96ddaa3bd..c05e51b645f8 100644
+index 749bf389e9e1..6c238701783f 100644
 --- a/common.h
 +++ b/common.h
-@@ -10,6 +10,8 @@ struct flag_info {
+@@ -17,6 +17,8 @@ struct flag_info {
  
  extern const struct flag_info flags_msglvl[];
  extern const unsigned int n_flags_msglvl;
@@ -52,10 +52,10 @@ index 36f96ddaa3bd..c05e51b645f8 100644
  
  enum link_mode_class {
 diff --git a/ethtool.c b/ethtool.c
-index f79de4d0aef9..5d3e52abca46 100644
+index 35f8a9fb252d..5dab52079547 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4887,6 +4887,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4848,6 +4848,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gpause	NULL
  #define nl_gchannels	NULL
  #define nl_geee		NULL
@@ -63,7 +63,7 @@ index f79de4d0aef9..5d3e52abca46 100644
  #endif
  
  static const struct option {
-@@ -5094,7 +5095,7 @@ static const struct option {
+@@ -5055,7 +5056,7 @@ static const struct option {
  	  "		[ ap-shared ]\n"
  	  "		[ dedicated ]\n"
  	  "		[ all ]\n"},
@@ -73,10 +73,10 @@ index f79de4d0aef9..5d3e52abca46 100644
  	{ "--set-fec", 1, do_sfec, NULL,
  	  "Set FEC settings",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 40d708a4cb85..b40db721a4c5 100644
+index 23949cb632ec..81f8b1ec572a 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -23,6 +23,7 @@ int nl_gring(struct cmd_context *ctx);
+@@ -25,6 +25,7 @@ int nl_gring(struct cmd_context *ctx);
  int nl_gpause(struct cmd_context *ctx);
  int nl_gchannels(struct cmd_context *ctx);
  int nl_geee(struct cmd_context *ctx);
@@ -85,7 +85,7 @@ index 40d708a4cb85..b40db721a4c5 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 799371fdebc2..92031052a425 100644
+index 658f658c83af..0883063d6af3 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -163,6 +163,11 @@ static struct monitor_option monitor_opts[] = {

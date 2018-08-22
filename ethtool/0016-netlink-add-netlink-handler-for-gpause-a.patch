@@ -1,7 +1,7 @@
-From 1bd460c4c7b3e7b48dc26c1320a5fd84bfc0beea Mon Sep 17 00:00:00 2001
+From d38b66484759f6530aef6e4b2940cdfa829272ca Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:04:09 +0100
-Subject: [PATCH 14/23] netlink: add netlink handler for gpause (-a)
+Subject: [PATCH 16/25] netlink: add netlink handler for gpause (-a)
 
 Implement "ethtool -a <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_PAUSE mask.
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 44 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 7557628a2157..6ef2a8c3110f 100644
+index 80aa988ba76b..c81f77285860 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4884,6 +4884,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4845,6 +4845,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sfeatures	NULL
  #define nl_gcoalesce	NULL
  #define nl_gring	NULL
@@ -26,8 +26,8 @@ index 7557628a2157..6ef2a8c3110f 100644
  #endif
  
  static const struct option {
-@@ -4907,7 +4908,7 @@ static const struct option {
- 	  "		[ wol %d[/%d] |  p|u|m|b|a|g|s|d...[/p|u|m|b|a|g|s|d...] ]\n"
+@@ -4868,7 +4869,7 @@ static const struct option {
+ 	  "		[ wol %d[/%d] |  p|u|m|b|a|g|s|f|d...[/p|u|m|b|a|g|s|f|d...] ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
  	  "		[ msglvl %d[/%d] | type on|off ... [--] ]\n" },
 -	{ "-a|--show-pause", 1, do_gpause, NULL,
@@ -36,10 +36,10 @@ index 7557628a2157..6ef2a8c3110f 100644
  	{ "-A|--pause", 1, do_spause, NULL,
  	  "Set pause options",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index cc13436c4517..3b918a443b96 100644
+index 9c84a80d223c..1f7de2a7992c 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -20,6 +20,7 @@ int nl_gfeatures(struct cmd_context *ctx);
+@@ -22,6 +22,7 @@ int nl_gfeatures(struct cmd_context *ctx);
  int nl_sfeatures(struct cmd_context *ctx);
  int nl_gcoalesce(struct cmd_context *ctx);
  int nl_gring(struct cmd_context *ctx);
@@ -48,7 +48,7 @@ index cc13436c4517..3b918a443b96 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 10dad082de98..18e151980c3f 100644
+index 72c9f1057b4b..0f35a17cdc7d 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -148,6 +148,11 @@ static struct monitor_option monitor_opts[] = {
