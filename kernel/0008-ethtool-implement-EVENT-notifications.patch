@@ -1,7 +1,7 @@
-From 95e32bfe0aa70ef1621f1b25358df1e79f2a9115 Mon Sep 17 00:00:00 2001
+From c0c9960f1514e8f3edfdfc54e797e79000cdc16e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
-Subject: [PATCH 07/17] ethtool: implement EVENT notifications
+Subject: [PATCH 08/19] ethtool: implement EVENT notifications
 
 Two types of netlink notifications are introduced: ETHA_EVENT_NEWDEV to
 notify about newly registered network devices and ETHA_EVENT_DELDEV to
@@ -63,7 +63,7 @@ index a49dfe3ef4bb..0e83397f2975 100644
  -------------------
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 444a668e4a08..f162cd6f80d4 100644
+index 011f840423be..271097e477fb 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -7,6 +7,7 @@
@@ -72,10 +72,10 @@ index 444a668e4a08..f162cd6f80d4 100644
  	ETHNL_CMD_NOOP,
 +	ETHNL_CMD_EVENT,		/* only for notifications */
  
- 	__ETHNL_CMD_MAX,
- 	ETHNL_CMD_MAX = (__ETHNL_CMD_MAX - 1)
+ 	__ETHNL_CMD_CNT,
+ 	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
 @@ -54,6 +55,33 @@ enum {
- 	ETHA_BITSET_MAX = (__ETHA_BITSET_MAX - 1)
+ 	ETHA_BITSET_MAX = (__ETHA_BITSET_CNT - 1)
  };
  
 +/* events */
@@ -84,16 +84,16 @@ index 444a668e4a08..f162cd6f80d4 100644
 +	ETHA_NEWDEV_UNSPEC,
 +	ETHA_NEWDEV_DEV,			/* nest - ETHA_DEV_* */
 +
-+	__ETHA_NEWDEV_MAX,
-+	ETHA_NEWDEV_MAX = (__ETHA_NEWDEV_MAX - 1)
++	__ETHA_NEWDEV_CNT,
++	ETHA_NEWDEV_MAX = (__ETHA_NEWDEV_CNT - 1)
 +};
 +
 +enum {
 +	ETHA_DELDEV_UNSPEC,
 +	ETHA_DELDEV_DEV,			/* nest - ETHA_DEV_* */
 +
-+	__ETHA_DELDEV_MAX,
-+	ETHA_DELDEV_MAX = (__ETHA_DELDEV_MAX - 1)
++	__ETHA_DELDEV_CNT,
++	ETHA_DELDEV_MAX = (__ETHA_DELDEV_CNT - 1)
 +};
 +
 +enum {
@@ -101,25 +101,25 @@ index 444a668e4a08..f162cd6f80d4 100644
 +	ETHA_EVENT_NEWDEV,			/* nest - ETHA_NEWDEV_* */
 +	ETHA_EVENT_DELDEV,			/* nest - ETHA_DELDEV_* */
 +
-+	__ETHA_EVENT_MAX,
-+	ETHA_EVENT_MAX = (__ETHA_EVENT_MAX - 1)
++	__ETHA_EVENT_CNT,
++	ETHA_EVENT_MAX = (__ETHA_EVENT_CNT - 1)
 +};
 +
  /* generic netlink info */
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 78ab3a640203..aeaecf91cf6a 100644
+index 6809afbf596a..e34fdd846902 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -591,6 +591,63 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
+@@ -522,6 +522,63 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  }
  EXPORT_SYMBOL(ethtool_notify);
  
-+static unsigned int dev_notify_size(void)
++/* size of NEWDEV/DELDEV notification */
++static inline unsigned int dev_notify_size(void)
 +{
-+	return nla_total_size(nla_total_size(nla_total_size(sizeof(u32)) +
-+					     nla_total_size(IFNAMSIZ)));
++	return nla_total_size(dev_ident_size());
 +}
 +
 +static void ethnl_notify_devlist(struct netdev_notifier_info *info,
@@ -176,7 +176,7 @@ index 78ab3a640203..aeaecf91cf6a 100644
  /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -622,6 +679,10 @@ static int __init ethnl_init(void)
+@@ -553,6 +610,10 @@ static int __init ethnl_init(void)
  	if (ret < 0)
  		panic("ethtool: could not register genetlink family\n");
  

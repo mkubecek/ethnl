@@ -1,7 +1,7 @@
-From dd1b7e034fed4bf655c8fa69bf906ee10a793438 Mon Sep 17 00:00:00 2001
+From 7a2e05a772d86c5e62d1e7546abae4ef1c864e19 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
-Subject: [PATCH 03/17] ethtool: introduce ethtool netlink interface
+Subject: [PATCH 04/19] ethtool: introduce ethtool netlink interface
 
 No function implemented yet, only genetlink and init infrastructure.
 Register/unregister genetlink family "ethtool".
@@ -213,7 +213,7 @@ index 000000000000..0412adb4f42f
 +#endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..3c0c5c70692b
+index 000000000000..d8a8d3c72c2f
 --- /dev/null
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -0,0 +1,19 @@
@@ -227,8 +227,8 @@ index 000000000000..3c0c5c70692b
 +enum {
 +	ETHNL_CMD_NOOP,
 +
-+	__ETHNL_CMD_MAX,
-+	ETHNL_CMD_MAX = (__ETHNL_CMD_MAX - 1)
++	__ETHNL_CMD_CNT,
++	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
 +};
 +
 +/* generic netlink info */

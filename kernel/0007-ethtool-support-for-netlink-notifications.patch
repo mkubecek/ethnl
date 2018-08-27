@@ -1,7 +1,7 @@
-From 5a922ac50d6953f4f6e25acb7d7c6ee57db53649 Mon Sep 17 00:00:00 2001
+From 2dec02c71ae1f7ef59caaf85079b3de202ab5284 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
-Subject: [PATCH 06/17] ethtool: support for netlink notifications
+Subject: [PATCH 07/19] ethtool: support for netlink notifications
 
 Add infrastructure for ethtool netlink notifications. There is only one
 multicast group, "monitor" which userspace can use to get notifications.
@@ -60,7 +60,7 @@ index ca5ab98053c8..3f8a70503247 100644
  struct sk_buff *skb_gso_segment(struct sk_buff *skb, netdev_features_t features)
  {
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 98d6fae315f3..444a668e4a08 100644
+index cfee7acfc6d8..011f840423be 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -58,4 +58,6 @@ enum {
@@ -71,7 +71,7 @@ index 98d6fae315f3..444a668e4a08 100644
 +
  #endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 1e1f3fb5a9d7..78ab3a640203 100644
+index 9134a8131b79..6809afbf596a 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -5,6 +5,8 @@
@@ -83,8 +83,8 @@ index 1e1f3fb5a9d7..78ab3a640203 100644
  static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
  	[ETHA_DEV_UNSPEC]	= { .type = NLA_UNSPEC },
  	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -566,11 +568,38 @@ int ethnl_dumpit(struct sk_buff *skb, struct netlink_callback *cb)
- 	return ret;
+@@ -497,11 +499,38 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+ 	return NULL;
  }
  
 +/* notifications */
@@ -122,7 +122,7 @@ index 1e1f3fb5a9d7..78ab3a640203 100644
  struct genl_family ethtool_genl_family = {
  	.hdrsize	= 0,
  	.name		= ETHTOOL_GENL_NAME,
-@@ -579,6 +608,8 @@ struct genl_family ethtool_genl_family = {
+@@ -510,6 +539,8 @@ struct genl_family ethtool_genl_family = {
  	.parallel_ops	= true,
  	.ops		= ethtool_genl_ops,
  	.n_ops		= ARRAY_SIZE(ethtool_genl_ops),
@@ -132,7 +132,7 @@ index 1e1f3fb5a9d7..78ab3a640203 100644
  
  /* module setup */
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 6e9e854eec5d..94c14ec2c3fc 100644
+index 8472fc7e2f03..62988fd5d2ef 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -11,6 +11,8 @@
@@ -144,8 +144,8 @@ index 6e9e854eec5d..94c14ec2c3fc 100644
  extern struct genl_family ethtool_genl_family;
  
  struct net_device *ethnl_dev_get(struct genl_info *info, struct nlattr *nest);
-@@ -159,4 +161,7 @@ static inline bool ethnl_is_privileged(struct sk_buff *skb)
- 	return netlink_ns_capable(skb, net->user_ns, CAP_NET_ADMIN);
+@@ -170,4 +172,7 @@ static unsigned int dev_ident_size(void)
+ 			      nla_total_size(IFNAMSIZ));
  }
  
 +void ethnl_notify(struct net_device *dev, struct netlink_ext_ack *extack,

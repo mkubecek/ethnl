@@ -1,7 +1,7 @@
-From c34a8834cd54ee9ef2f7bc0c5ceec82e142e43a1 Mon Sep 17 00:00:00 2001
+From 8634727249395ae959f310264a94c5655a1b7089 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
-Subject: [PATCH 17/17] ethtool: implement SET_PARAMS message
+Subject: [PATCH 19/19] ethtool: implement SET_PARAMS message
 
 Sets the information provided by ETHTOOL_SCOALESCE, ETHTOOL_SRINGPARAM,
 ETHTOOL_SPAUSEPARAM, ETHTOOL_SCHANNELS, ETHTOOL_SEEE and ETHTOOL_SFECPARAM.
@@ -13,11 +13,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  71 ++-
  net/ethtool/netlink.c                        |   6 +
- net/ethtool/params.c                         | 429 +++++++++++++++++++
- 3 files changed, 499 insertions(+), 7 deletions(-)
+ net/ethtool/params.c                         | 431 +++++++++++++++++++
+ 3 files changed, 501 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 7cab1e9e5747..623502372018 100644
+index 0792aec2998e..f75d76dddd21 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -126,7 +126,7 @@ List of message types
@@ -134,20 +134,20 @@ index 7cab1e9e5747..623502372018 100644
 +ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index a33e9be5034a..945d182d9831 100644
+index cac129040751..ddb8f5bd5a62 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -720,6 +720,7 @@ int ethnl_get_info(struct sk_buff *skb, struct genl_info *info);
- int ethnl_get_settings(struct sk_buff *skb, struct genl_info *info);
+@@ -919,6 +919,7 @@ static struct notifier_block ethnl_netdev_notifier = {
+ /* genetlink setup */
+ 
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
- int ethnl_get_params(struct sk_buff *skb, struct genl_info *info);
 +int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
  
- int ethnl_strset_start(struct netlink_callback *cb);
- int ethnl_info_start(struct netlink_callback *cb);
-@@ -763,6 +764,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
- 		.dumpit	= ethnl_dumpit,
- 		.done	= ethnl_params_done,
+ static const struct genl_ops ethtool_genl_ops[] = {
+ 	{
+@@ -954,6 +955,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+ 		.dumpit	= ethnl_get_dumpit,
+ 		.done	= ethnl_get_done,
  	},
 +	{
 +		.cmd	= ETHNL_CMD_SET_PARAMS,
@@ -158,13 +158,15 @@ index a33e9be5034a..945d182d9831 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 957c699e83e1..70fee121c016 100644
+index 220e4961d191..786ca5b3a0d7 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -578,3 +578,432 @@ void ethnl_params_notify(struct net_device *dev, struct netlink_ext_ack *extack,
- err_skb:
- 	nlmsg_free(skb);
- }
+@@ -470,3 +470,434 @@ const struct get_request_ops params_request_ops = {
+ 	.reply_size		= params_size,
+ 	.fill_reply		= fill_params,
+ };
++
++/* SET_PARAMS */
 +
 +static const struct nla_policy coalesce_policy[ETHA_COALESCE_MAX + 1] = {
 +	[ETHA_COALESCE_UNSPEC]			= { .type = NLA_UNSPEC },

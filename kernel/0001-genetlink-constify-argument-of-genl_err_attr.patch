@@ -1,0 +1,29 @@
+From 292b1937c94d96c02b65e6ac6973c0b267a967b3 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Mon, 27 Aug 2018 18:36:03 +0200
+Subject: [PATCH 01/19] genetlink: constify argument of genl_err_attr()
+
+The genl_err_attr() helper sets netlink_ext_ack::bad_attr which has type
+const struct nlattr *, make the attr argument also const.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ include/net/genetlink.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/net/genetlink.h b/include/net/genetlink.h
+index decf6012a401..aa2e5888f18d 100644
+--- a/include/net/genetlink.h
++++ b/include/net/genetlink.h
+@@ -112,7 +112,7 @@ static inline void genl_info_net_set(struct genl_info *info, struct net *net)
+ #define GENL_SET_ERR_MSG(info, msg) NL_SET_ERR_MSG((info)->extack, msg)
+ 
+ static inline int genl_err_attr(struct genl_info *info, int err,
+-				struct nlattr *attr)
++				const struct nlattr *attr)
+ {
+ 	info->extack->bad_attr = attr;
+ 
+-- 
+2.18.0
+

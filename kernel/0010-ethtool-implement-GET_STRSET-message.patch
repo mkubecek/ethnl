@@ -1,7 +1,7 @@
-From 5e7a3b407a552a1d6f35644eb7dfd4a62e0ffd36 Mon Sep 17 00:00:00 2001
+From 9262f3e9327e7d8680c0aaa68d7c1829c45039a5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
-Subject: [PATCH 08/17] ethtool: implement GET_STRSET message
+Subject: [PATCH 10/19] ethtool: implement GET_STRSET message
 
 Requests a contents of a string set, i.e. indexed array of strings; this
 information is provided by ETHTOOL_GSSET_INFO and ETHTOOL_GSTRINGS commands
@@ -23,12 +23,12 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool.h                 |   4 +
  include/uapi/linux/ethtool_netlink.h         |  42 ++
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/common.c                         |  83 +++
+ net/ethtool/common.c                         |  83 ++++
  net/ethtool/common.h                         |  13 +
- net/ethtool/ioctl.c                          |  80 ---
- net/ethtool/netlink.c                        |  13 +
- net/ethtool/strset.c                         | 508 +++++++++++++++++++
- 9 files changed, 668 insertions(+), 83 deletions(-)
+ net/ethtool/ioctl.c                          |  80 ----
+ net/ethtool/netlink.c                        |   7 +
+ net/ethtool/strset.c                         | 417 +++++++++++++++++++
+ 9 files changed, 571 insertions(+), 83 deletions(-)
  create mode 100644 net/ethtool/common.c
  create mode 100644 net/ethtool/common.h
  create mode 100644 net/ethtool/strset.c
@@ -80,7 +80,7 @@ index dc69391d2bba..aac7124b7def 100644
  
  /**
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index f162cd6f80d4..5177c1940c2b 100644
+index 271097e477fb..2b07635c5274 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -8,6 +8,8 @@
@@ -90,10 +90,10 @@ index f162cd6f80d4..5177c1940c2b 100644
 +	ETHNL_CMD_GET_STRSET,
 +	ETHNL_CMD_SET_STRSET,		/* only for reply */
  
- 	__ETHNL_CMD_MAX,
- 	ETHNL_CMD_MAX = (__ETHNL_CMD_MAX - 1)
+ 	__ETHNL_CMD_CNT,
+ 	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
 @@ -82,6 +84,46 @@ enum {
- 	ETHA_EVENT_MAX = (__ETHA_EVENT_MAX - 1)
+ 	ETHA_EVENT_MAX = (__ETHA_EVENT_CNT - 1)
  };
  
 +/* string sets */
@@ -103,16 +103,16 @@ index f162cd6f80d4..5177c1940c2b 100644
 +	ETHA_STRING_INDEX,			/* u32 */
 +	ETHA_STRING_VALUE,			/* string */
 +
-+	__ETHA_STRING_MAX,
-+	ETHA_STRING_MAX = (__ETHA_STRING_MAX - 1)
++	__ETHA_STRING_CNT,
++	ETHA_STRING_MAX = (__ETHA_STRING_CNT - 1)
 +};
 +
 +enum {
 +	ETHA_STRINGS_UNSPEC,
 +	ETHA_STRINGS_STRING,			/* nest - ETHA_STRINGS_* */
 +
-+	__ETHA_STRINGS_MAX,
-+	ETHA_STRINGS_MAX = (__ETHA_STRINGS_MAX - 1)
++	__ETHA_STRINGS_CNT,
++	ETHA_STRINGS_MAX = (__ETHA_STRINGS_CNT - 1)
 +};
 +
 +enum {
@@ -121,8 +121,8 @@ index f162cd6f80d4..5177c1940c2b 100644
 +	ETHA_STRINGSET_COUNT,			/* u32 */
 +	ETHA_STRINGSET_STRINGS,			/* nest - ETHA_STRINGS_* */
 +
-+	__ETHA_STRINGSET_MAX,
-+	ETHA_STRINGSET_MAX = (__ETHA_STRINGSET_MAX - 1)
++	__ETHA_STRINGSET_CNT,
++	ETHA_STRINGSET_MAX = (__ETHA_STRINGSET_CNT - 1)
 +};
 +
 +/* GET_STRINGSET / SET_STRINGSET */
@@ -132,8 +132,8 @@ index f162cd6f80d4..5177c1940c2b 100644
 +	ETHA_STRSET_DEV,			/* nest - ETHA_DEV_* */
 +	ETHA_STRSET_STRINGSET,			/* nest - ETHA_STRSET_* */
 +
-+	__ETHA_STRSET_MAX,
-+	ETHA_STRSET_MAX = (__ETHA_STRSET_MAX - 1)
++	__ETHA_STRSET_CNT,
++	ETHA_STRSET_MAX = (__ETHA_STRSET_CNT - 1)
 +};
 +
  /* generic netlink info */
@@ -349,36 +349,29 @@ index c9993c6c2fd4..a91b597073f8 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index aeaecf91cf6a..1652d4571a23 100644
+index c23ff0f66b53..d20d70be04d9 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -650,7 +650,20 @@ static struct notifier_block ethnl_netdev_notifier = {
- 
+@@ -861,6 +861,13 @@ static struct notifier_block ethnl_netdev_notifier = {
  /* genetlink setup */
  
-+int ethnl_get_strset(struct sk_buff *skb, struct genl_info *info);
-+
-+int ethnl_strset_start(struct netlink_callback *cb);
-+
-+int ethnl_strset_done(struct netlink_callback *cb);
-+
  static const struct genl_ops ethtool_genl_ops[] = {
 +	{
 +		.cmd	= ETHNL_CMD_GET_STRSET,
-+		.doit	= ethnl_get_strset,
-+		.start	= ethnl_strset_start,
-+		.dumpit	= ethnl_dumpit,
-+		.done	= ethnl_strset_done,
++		.doit	= ethnl_get_doit,
++		.start	= ethnl_get_start,
++		.dumpit	= ethnl_get_dumpit,
++		.done	= ethnl_get_done,
 +	},
  };
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
 new file mode 100644
-index 000000000000..29590e7f8866
+index 000000000000..a49624ddc8f0
 --- /dev/null
 +++ b/net/ethtool/strset.c
-@@ -0,0 +1,508 @@
+@@ -0,0 +1,417 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include <linux/ethtool.h>
@@ -451,14 +444,12 @@ index 000000000000..29590e7f8866
 +};
 +
 +struct strset_data {
-+	struct net_device	*dev;
-+	struct strset_info	info[ETH_SS_MAX + 1];
-+};
++	struct common_req_info		reqinfo_base;
++	u32				req_ids;
 +
-+struct strset_reqinfo {
-+	struct net_device	*dev;
-+	u32			req_ids;
-+	bool			have_rtnl;
++	/* everything below here will be reset for each device in dumps */
++	struct common_reply_data	repdata_base;
++	struct strset_info		info[ETH_SS_MAX + 1];
 +};
 +
 +static const struct nla_policy get_strset_policy[ETHA_STRSET_MAX + 1] = {
@@ -472,96 +463,31 @@ index 000000000000..29590e7f8866
 +	[ETHA_STRINGSET_STRINGS]	= { .type = NLA_NESTED },
 +};
 +
-+static int legacy_set_size(const char (*set)[ETH_GSTRING_LEN], unsigned count)
++static bool id_requested(const struct strset_data *data, u32 id)
 +{
-+	unsigned len = 0;
-+	unsigned int i;
-+
-+	for (i = 0; i < count; i++)
-+		len += nla_total_size(nla_total_size(sizeof(u32)) +
-+				      ethnl_str_size(set[i]));
-+	len = 2 * nla_total_size(sizeof(u32)) + nla_total_size(len);
-+
-+	return nla_total_size(len);
++	return data->req_ids & (1U << id);
 +}
 +
-+static int simple_set_size(const char * const *set, unsigned count)
-+{
-+	unsigned len = 0;
-+	unsigned int i;
-+
-+	for (i = 0; i < count; i++)
-+		len += nla_total_size(nla_total_size(sizeof(u32)) +
-+				      ethnl_str_size(set[i]));
-+	len = 2 * nla_total_size(sizeof(u32)) + nla_total_size(len);
-+
-+	return nla_total_size(len);
-+}
-+
-+static int set_size(const struct strset_info *info)
-+{
-+	if (info->count == 0)
-+		return 0;
-+
-+	switch(info->type) {
-+	case ETH_SS_TYPE_LEGACY:
-+		return legacy_set_size(info->data.legacy, info->count);
-+	case ETH_SS_TYPE_SIMPLE:
-+		return simple_set_size(info->data.simple, info->count);
-+	default:
-+		return -EINVAL;
-+	};
-+}
-+
-+static bool id_requested(const struct strset_reqinfo *req_info, u32 id)
-+{
-+	return req_info->req_ids & (1U << id);
-+}
-+
-+static bool include_set(struct strset_data *data,
-+			struct strset_reqinfo *req_info, u32 id)
++static bool include_set(const struct strset_data *data, u32 id)
 +{
 +	/* once ETH_SS_MAX reaches 32, we will need to change
-+	 * strset_info::req_ids to u64; one day we might even need to use
++	 * strset_data::req_ids to u64; one day we might even need to use
 +	 * generic bitmap but let's not complicate the code prematurely
 +	 */
-+	BUILD_BUG_ON(ETH_SS_MAX >= BITS_PER_BYTE * sizeof(req_info->req_ids));
++	BUILD_BUG_ON(ETH_SS_MAX >= BITS_PER_BYTE * sizeof(data->req_ids));
 +
-+	if (req_info->req_ids)
-+		return id_requested(req_info, id);
++	if (data->req_ids)
++		return id_requested(data, id);
 +	else {
 +		bool per_dev = data->info[id].per_dev;
 +
 +		if (data->info[id].type == ETH_SS_TYPE_NONE)
 +			return false;
-+		return data->dev ? per_dev : !per_dev;
++		return data->repdata_base.dev ? per_dev : !per_dev;
 +	}
 +}
 +
-+static int strset_size(struct strset_data *data,
-+		       struct strset_reqinfo *req_info)
-+{
-+	unsigned int i;
-+	int len = 0;
-+	int ret;
-+	for (i = 0; i <= ETH_SS_MAX; i++) {
-+		const struct strset_info *info = &data->info[i];
-+
-+		if (!include_set(data, req_info, i) ||
-+		    (info->type == ETH_SS_TYPE_NONE))
-+			continue;
-+
-+		ret = set_size(info);
-+		if (ret < 0)
-+			return ret;
-+		else
-+			len += ret;
-+	}
-+
-+	return len;
-+}
-+
-+const char *str_value(struct strset_info *info, unsigned int i)
++const char *str_value(const struct strset_info *info, unsigned int i)
 +{
 +	switch(info->type) {
 +	case ETH_SS_TYPE_LEGACY:
@@ -591,42 +517,39 @@ index 000000000000..29590e7f8866
 +	return 0;
 +}
 +
-+static int parse_strset_req(struct strset_reqinfo *req_info,
-+			    struct genl_info *info, struct sk_buff *skb,
-+			    const struct nlmsghdr *nlhdr)
++static int parse_strset(struct common_req_info *req_info, struct sk_buff *skb,
++			struct genl_info *info, const struct nlmsghdr *nlhdr)
 +{
-+	struct nlattr *tb[ETHA_STRSET_MAX + 1];
-+	int ret;
++	struct strset_data *data =
++		container_of(req_info, struct strset_data, reqinfo_base);
++	struct nlattr *attr;
++	int rem, ret;
 +
-+	memset(req_info, '\0', sizeof(*req_info));
-+
-+	ret = genlmsg_parse(nlhdr, &ethtool_genl_family, tb,
-+			    ETHA_STRSET_MAX, get_strset_policy,
-+			    info ? info->extack : NULL);
++	ret = nlmsg_validate(nlhdr, GENL_HDRLEN, ETHA_STRSET_MAX,
++			     get_strset_policy, info ? info->extack : NULL);
 +	if (ret < 0)
 +		return ret;
 +
-+	if (tb[ETHA_STRSET_DEV]) {
-+		req_info->dev = ethnl_dev_get(info, tb[ETHA_STRSET_DEV]);
-+		if (IS_ERR(req_info->dev)) {
-+			ret = PTR_ERR(req_info->dev);
-+			req_info->dev = NULL;
-+			return ret;
-+		}
-+	}
-+	if (tb[ETHA_STRSET_STRINGSET]) {
-+		struct nlattr *set;
-+		int rem;
++	nlmsg_for_each_attr(attr, nlhdr, GENL_HDRLEN, rem) {
++		u32 id;
 +
-+		nlmsg_for_each_attr(set, nlhdr, GENL_HDRLEN, rem) {
-+			u32 id;
-+
-+			ret = get_strset_id(set, &id, info);
++		switch(nla_type(attr)) {
++		case ETHA_STRSET_DEV:
++			req_info->dev = ethnl_dev_get(info, attr);
++			if (IS_ERR(req_info->dev)) {
++				ret = PTR_ERR(req_info->dev);
++				req_info->dev = NULL;
++				return ret;
++			}
++			break;
++		case ETHA_STRSET_STRINGSET:
++			ret = get_strset_id(attr, &id, info);
 +			if (ret < 0)
 +				return ret;
 +			if (ret > ETH_SS_MAX)
 +				return -EOPNOTSUPP;
-+			req_info->req_ids |= (1U << id);
++			data->req_ids |= (1U << id);
++			break;
 +		}
 +	}
 +
@@ -681,30 +604,31 @@ index 000000000000..29590e7f8866
 +	return 0;
 +}
 +
-+static int prepare_strset(struct strset_data *data,
-+			  struct strset_reqinfo *req_info,
-+			  struct genl_info *info, struct net_device *dev)
++static int prepare_strset(struct common_req_info *req_info,
++			  struct genl_info *info)
 +{
++	struct strset_data *data =
++		container_of(req_info, struct strset_data, reqinfo_base);
++	struct net_device *dev = data->repdata_base.dev;
 +	unsigned int i;
 +	int ret;
 +
-+	memset(data, '\0', sizeof(*data));
 +	memcpy(&data->info, &info_template, sizeof(data->info));
-+	data->dev = dev;
 +
-+	if (!dev)
-+		for (i = 0; i <= ETH_SS_MAX; i++)
-+			if (id_requested(req_info, i) &&
++	if (!dev) {
++		for (i = 0; i <= ETH_SS_MAX; i++) {
++			if (id_requested(data, i) &&
 +			    data->info[i].per_dev) {
 +				ETHNL_SET_ERRMSG(info,
 +						 "requested per device strings without dev");
 +				return -EINVAL;
 +			}
++		}
++	}
 +
-+	if (!req_info->have_rtnl)
-+		rtnl_lock();
++	req_rtnl_lock(req_info);
 +	for (i = 0; i <= ETH_SS_MAX; i++) {
-+		if (!include_set(data, req_info, i) || !data->info[i].per_dev)
++		if (!include_set(data, i) || !data->info[i].per_dev)
 +		    continue;
 +		if (WARN_ONCE(data->info[i].type != ETH_SS_TYPE_LEGACY,
 +			      "unexpected string set type %u",
@@ -715,20 +639,85 @@ index 000000000000..29590e7f8866
 +		if (ret < 0)
 +			goto err_free;
 +	}
-+	if (!req_info->have_rtnl)
-+		rtnl_unlock();
++	req_rtnl_unlock(req_info);
 +
 +	return 0;
 +err_free:
-+	if (!req_info->have_rtnl)
-+		rtnl_unlock();
++	req_rtnl_unlock(req_info);
 +	free_strset(data);
 +	return ret;
 +}
 +
-+static int fill_set(struct sk_buff *skb, struct strset_data *data, u32 id)
++static int legacy_set_size(const char (*set)[ETH_GSTRING_LEN], unsigned count)
 +{
-+	struct strset_info *info = &data->info[id];
++	unsigned len = 0;
++	unsigned int i;
++
++	for (i = 0; i < count; i++)
++		len += nla_total_size(nla_total_size(sizeof(u32)) +
++				      ethnl_str_size(set[i]));
++	len = 2 * nla_total_size(sizeof(u32)) + nla_total_size(len);
++
++	return nla_total_size(len);
++}
++
++static int simple_set_size(const char * const *set, unsigned count)
++{
++	unsigned len = 0;
++	unsigned int i;
++
++	for (i = 0; i < count; i++)
++		len += nla_total_size(nla_total_size(sizeof(u32)) +
++				      ethnl_str_size(set[i]));
++	len = 2 * nla_total_size(sizeof(u32)) + nla_total_size(len);
++
++	return nla_total_size(len);
++}
++
++static int set_size(const struct strset_info *info)
++{
++	if (info->count == 0)
++		return 0;
++
++	switch(info->type) {
++	case ETH_SS_TYPE_LEGACY:
++		return legacy_set_size(info->data.legacy, info->count);
++	case ETH_SS_TYPE_SIMPLE:
++		return simple_set_size(info->data.simple, info->count);
++	default:
++		return -EINVAL;
++	};
++}
++
++static int strset_size(const struct common_req_info *req_info)
++{
++	const struct strset_data *data =
++		container_of(req_info, struct strset_data, reqinfo_base);
++	unsigned int i;
++	int len = 0;
++	int ret;
++
++	len += dev_ident_size();
++	for (i = 0; i <= ETH_SS_MAX; i++) {
++		const struct strset_info *info = &data->info[i];
++
++		if (!include_set(data, i) ||
++		    (info->type == ETH_SS_TYPE_NONE))
++			continue;
++
++		ret = set_size(info);
++		if (ret < 0)
++			return ret;
++		else
++			len += ret;
++	}
++
++	return len;
++}
++
++static int fill_set(struct sk_buff *skb, const struct strset_data *data, u32 id)
++{
++	const struct strset_info *info = &data->info[id];
 +	struct nlattr *strings;
 +	struct nlattr *nest;
 +	unsigned int i = (unsigned int)(-1);
@@ -769,14 +758,16 @@ index 000000000000..29590e7f8866
 +	return -EMSGSIZE;
 +}
 +
-+static int fill_strset(struct sk_buff *skb, struct strset_data *data,
-+		       struct strset_reqinfo *req_info)
++static int fill_strset(struct sk_buff *skb,
++		       const struct common_req_info *req_info)
 +{
++	const struct strset_data *data =
++		container_of(req_info, struct strset_data, reqinfo_base);
 +	unsigned int i;
 +	int ret;
 +
 +	for (i = 0; i <= ETH_SS_MAX; i++)
-+		if (include_set(data, req_info, i)) {
++		if (include_set(data, i)) {
 +		    ret = fill_set(skb, data, i);
 +		    if (ret < 0)
 +			    return ret;
@@ -785,108 +776,19 @@ index 000000000000..29590e7f8866
 +	return 0;
 +}
 +
-+int ethnl_get_strset(struct sk_buff *skb, struct genl_info *info)
-+{
-+	struct strset_data data;
-+	struct strset_reqinfo req_info;
-+	struct sk_buff *rskb;
-+	int reply_len;
-+	void *ehdr;
-+	int ret;
++const struct get_request_ops strset_request_ops = {
++	.request_cmd		= ETHNL_CMD_GET_STRSET,
++	.reply_cmd		= ETHNL_CMD_SET_STRSET,
++	.dev_attrtype		= ETHA_STRSET_DEV,
++	.data_size		= sizeof(struct strset_data),
++	.repdata_offset		= offsetof(struct strset_data, repdata_base),
++	.allow_nodev_do		= true,
 +
-+	ret = parse_strset_req(&req_info, info, skb, info->nlhdr);
-+	if (ret < 0)
-+		goto err_dev;
-+	ret = prepare_strset(&data, &req_info, info, req_info.dev);
-+	if (ret < 0)
-+		goto err_dev;
-+	ret = strset_size(&data, &req_info);
-+	if (ret < 0)
-+		goto err_data;
-+	reply_len = ret;
-+	ret = -ENOMEM;
-+	rskb = ethnl_reply_init(reply_len, req_info.dev, ETHNL_CMD_SET_STRSET,
-+				ETHA_STRSET_DEV, info, &ehdr);
-+	if (!rskb)
-+		goto err_data;
-+	ret = fill_strset(rskb, &data, &req_info);
-+	if (ret < 0)
-+		goto err;
-+
-+	genlmsg_end(rskb, ehdr);
-+	free_strset(&data);
-+	if (req_info.dev)
-+		dev_put(req_info.dev);
-+	return genlmsg_reply(rskb, info);
-+
-+err:
-+	WARN_ONCE(ret == -EMSGSIZE,
-+		  "calculated message payload length (%d) not sufficient\n",
-+		  reply_len);
-+	nlmsg_free(rskb);
-+err_data:
-+	free_strset(&data);
-+err_dev:
-+	if (req_info.dev)
-+		dev_put(req_info.dev);
-+	return ret;
-+}
-+
-+static int strset_dump(struct sk_buff *skb, struct netlink_callback *cb,
-+		       struct net_device *dev)
-+{
-+	struct strset_data data;
-+	struct strset_reqinfo *req_info;
-+	int ret;
-+
-+	req_info = (struct strset_reqinfo *)cb->args[4];
-+	ret = prepare_strset(&data, req_info, NULL, dev);
-+	if (ret < 0)
-+		return ret;
-+	ret = ethnl_fill_dev(skb, dev, ETHA_STRSET_DEV);
-+	if (ret < 0)
-+		goto out;
-+	ret = fill_strset(skb, &data, req_info);
-+out:
-+	free_strset(&data);
-+	return ret;
-+}
-+
-+int ethnl_strset_start(struct netlink_callback *cb)
-+{
-+	struct strset_reqinfo *req_info;
-+	int ret;
-+
-+	req_info = kmalloc(sizeof(*req_info), GFP_KERNEL);
-+	if (!req_info)
-+		return -ENOMEM;
-+	ret = parse_strset_req(req_info, NULL, cb->skb, cb->nlh);
-+	if (ret < 0) {
-+		if (req_info->dev)
-+			dev_put(req_info->dev);
-+		req_info->dev = NULL;
-+		return ret;
-+	}
-+
-+	cb->args[0] = (long)strset_dump;
-+	cb->args[1] = ETHNL_CMD_SET_STRSET;
-+	cb->args[4] = (long)req_info;
-+	cb->min_dump_alloc = 65535;
-+
-+	return 0;
-+}
-+
-+int ethnl_strset_done(struct netlink_callback *cb)
-+{
-+	struct strset_reqinfo *req_info;
-+
-+	req_info = (struct strset_reqinfo *)cb->args[4];
-+	if (req_info->dev)
-+		dev_put(req_info->dev);
-+	kfree(req_info);
-+
-+	return 0;
-+}
++	.parse_request		= parse_strset,
++	.prepare_data		= prepare_strset,
++	.reply_size		= strset_size,
++	.fill_reply		= fill_strset,
++};
 -- 
 2.18.0
 

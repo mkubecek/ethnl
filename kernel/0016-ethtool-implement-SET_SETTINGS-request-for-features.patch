@@ -1,7 +1,7 @@
-From 072cf82c55074e94775518ebf0da5e2903d07a75 Mon Sep 17 00:00:00 2001
+From e385bba87e2e63b68c0a25c65906bf56a0d65ac5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
-Subject: [PATCH 14/17] ethtool: implement SET_SETTINGS request for features
+Subject: [PATCH 16/19] ethtool: implement SET_SETTINGS request for features
 
 Using ETHNL_SETTINGS_FEATURES attribute, userspace can modify device
 features. Actual change is subject to netdev_change_features() sanity
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 150 insertions(+), 8 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 865679ce57b0..d95279e6a9f5 100644
+index 2dff04af2e75..4e98a8d9a746 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -303,6 +303,9 @@ to be passed with SET_SETTINGS request:
@@ -90,7 +90,7 @@ index 865679ce57b0..d95279e6a9f5 100644
  ETHTOOL_GRXCLSRLCNT		n/a
  ETHTOOL_GRXCLSRULE		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 7236d12fd78c..6342367f23ac 100644
+index be0548c25917..9c685830a56a 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -222,6 +222,7 @@ enum {
@@ -99,13 +99,13 @@ index 7236d12fd78c..6342367f23ac 100644
  	ETHA_FEATURES_NOCHANGE,			/* bitset */
 +	ETHA_FEATURES_WANT_DIFF,		/* flag */
  
- 	__ETHA_FEATURES_MAX,
- 	ETHA_FEATURES_MAX = (__ETHA_FEATURES_MAX - 1)
+ 	__ETHA_FEATURES_CNT,
+ 	ETHA_FEATURES_MAX = (__ETHA_FEATURES_CNT - 1)
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 5a82e34368fe..fce9bc5c6b5b 100644
+index ae46b34d7376..7781040ce675 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -915,6 +915,122 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
+@@ -815,6 +815,122 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
  	return mod ? 1 : 0;
  }
  
@@ -228,7 +228,7 @@ index 5a82e34368fe..fce9bc5c6b5b 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-@@ -990,6 +1106,17 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -890,6 +1006,17 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  			req_mask |= ETH_SETTINGS_IM_MSGLEVEL;
  		}
  	}

@@ -1,7 +1,7 @@
-From 40569d7e534dd5723c433c17534ff43ba7805039 Mon Sep 17 00:00:00 2001
+From f68041884802625b6aedb1c908e61558850db14b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:43:07 -0400
-Subject: [PATCH 16/17] ethtool: implement SET_PARAMS notification
+Subject: [PATCH 18/19] ethtool: implement SET_PARAMS notification
 
 SET_PARAMS notification message has the same format as response to
 GET_PARAMS request and is broadcasted on change of relevant fields. Info
@@ -13,9 +13,8 @@ ioctl interface.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  net/ethtool/ioctl.c   | 42 ++++++++++++++++++++++++++++++++++++------
- net/ethtool/netlink.c |  4 ++++
- net/ethtool/params.c  | 41 +++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 81 insertions(+), 6 deletions(-)
+ net/ethtool/netlink.c |  1 +
+ 2 files changed, 37 insertions(+), 6 deletions(-)
 
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
 index f100a909abb9..c6f35d8ec27f 100644
@@ -148,72 +147,17 @@ index f100a909abb9..c6f35d8ec27f 100644
  
  /* The main entry point in this file.  Called from net/core/dev_ioctl.c */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 410c76400508..a33e9be5034a 100644
+index ac602cba7f85..cac129040751 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -633,9 +633,13 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
- void ethnl_settings_notify(struct net_device *dev,
- 			   struct netlink_ext_ack *extack,
- 			   unsigned int cmd, u32 req_mask);
-+void ethnl_params_notify(struct net_device *dev,
-+			   struct netlink_ext_ack *extack,
-+			   unsigned int cmd, u32 req_mask);
+@@ -842,6 +842,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  
  ethnl_notify_handler_t ethnl_notify_handlers[] = {
- 	[ETHNL_CMD_SET_SETTINGS]	= ethnl_settings_notify,
-+	[ETHNL_CMD_SET_PARAMS]		= ethnl_params_notify,
+ 	[ETHNL_CMD_SET_SETTINGS]	= ethnl_std_notify,
++	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 07d4c527abf2..957c699e83e1 100644
---- a/net/ethtool/params.c
-+++ b/net/ethtool/params.c
-@@ -537,3 +537,44 @@ int ethnl_params_done(struct netlink_callback *cb)
- 
- 	return 0;
- }
-+
-+void ethnl_params_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-+			 unsigned int cmd, u32 req_mask)
-+{
-+	struct params_reqinfo req_info = {
-+		.dev		= dev,
-+		.req_mask	= req_mask,
-+		.compact	= true,
-+		.have_rtnl	= true,
-+	};
-+	struct params_data data;
-+	struct sk_buff *skb;
-+	int reply_len;
-+	void *ehdr;
-+	int ret;
-+
-+	ret = prepare_params(&data, &req_info, NULL, req_info.dev);
-+	if (ret < 0)
-+		return;
-+	reply_len = params_size(&data, &req_info);
-+	if (ret < 0)
-+		return;
-+	skb = genlmsg_new(reply_len, GFP_KERNEL);
-+	if (!skb)
-+		return;
-+	ehdr = genlmsg_put(skb, 0, ++ethnl_bcast_seq, &ethtool_genl_family, 0,
-+			   ETHNL_CMD_SET_PARAMS);
-+	ret = ethnl_fill_dev(skb, req_info.dev, ETHA_PARAMS_DEV);
-+	if (ret < 0)
-+		goto err_skb;
-+	ret = fill_params(skb, &data, &req_info);
-+	if (ret < 0)
-+		goto err_skb;
-+	genlmsg_end(skb, ehdr);
-+
-+	genlmsg_multicast(&ethtool_genl_family, skb, 0, ETHNL_MCGRP_MONITOR,
-+			  GFP_KERNEL);
-+	return;
-+err_skb:
-+	nlmsg_free(skb);
-+}
 -- 
 2.18.0
 
