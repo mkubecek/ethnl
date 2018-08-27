@@ -1,7 +1,7 @@
-From a3947126340402bf4b216d060664003f6ada47ce Mon Sep 17 00:00:00 2001
+From f7bd738ce83df4ab0ed35a4c286bf6495dbbaef5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:59:50 +0100
-Subject: [PATCH 15/25] netlink: add netlink handler for gring (-g)
+Subject: [PATCH 16/26] netlink: add netlink handler for gring (-g)
 
 Implement "ethtool -g <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_RING mask.
@@ -15,7 +15,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 50 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 9bb246a60f28..80aa988ba76b 100644
+index 1b2d6fb36a1c..342f5554d442 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4844,6 +4844,7 @@ static int show_usage(struct cmd_context *ctx);

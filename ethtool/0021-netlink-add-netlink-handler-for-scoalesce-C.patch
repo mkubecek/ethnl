@@ -1,7 +1,7 @@
-From 4593d0d302196064cfba2f05208e81b821edfad7 Mon Sep 17 00:00:00 2001
+From b39a707059b394e83544815567452fe6141abed0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 07:27:00 +0100
-Subject: [PATCH 20/25] netlink: add netlink handler for scoalesce (-C)
+Subject: [PATCH 21/26] netlink: add netlink handler for scoalesce (-C)
 
 Implement "ethtool -C <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_PARAMS.
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 185 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 5dab52079547..1ed4103baf2b 100644
+index b3ac546b08f6..d5979d58341c 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4849,6 +4849,7 @@ static int show_usage(struct cmd_context *ctx);

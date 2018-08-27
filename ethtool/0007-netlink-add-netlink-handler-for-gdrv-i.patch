@@ -1,7 +1,7 @@
-From ae66fb11451df431109fe5fd484517a1cd9d299e Mon Sep 17 00:00:00 2001
+From 5b552fe85f9be34b2d6f785ae2161240ea44f4ba Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
-Subject: [PATCH 06/25] netlink: add netlink handler for gdrv (-i)
+Subject: [PATCH 07/26] netlink: add netlink handler for gdrv (-i)
 
 Implement "-i" subcommand using netlink interface command
 ETHNL_CMD_GET_INFO.
@@ -29,7 +29,7 @@ index 188364c0c837..4006e7da5074 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 25efca7e3afb..f90448a8d123 100644
+index 6943834f4142..4ed41d08057a 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -5060,6 +5060,7 @@ static int show_usage(struct cmd_context *ctx);

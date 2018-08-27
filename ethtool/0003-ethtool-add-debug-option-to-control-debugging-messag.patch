@@ -1,0 +1,81 @@
+From afa8ab6d6eb1fec6db902334c63f313027db349a Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Sun, 26 Aug 2018 18:06:30 +0200
+Subject: [PATCH 03/26] ethtool: add --debug option to control debugging
+ messages
+
+Introduce --debug option to control which debugging messages will be shown.
+Argument is a number which is interpreted as bit mask; default value is
+zero (i.e. no debug messages).
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ ethtool.c  | 18 ++++++++++++++++--
+ internal.h |  6 ++++++
+ 2 files changed, 22 insertions(+), 2 deletions(-)
+
+diff --git a/ethtool.c b/ethtool.c
+index e8b7703293d2..2ef3bc271d6d 100644
+--- a/ethtool.c
++++ b/ethtool.c
+@@ -5251,10 +5251,10 @@ static int show_usage(struct cmd_context *ctx)
+ 	fprintf(stdout, PACKAGE " version " VERSION "\n");
+ 	fprintf(stdout,
+ 		"Usage:\n"
+-		"        ethtool DEVNAME\t"
++		"        ethtool [ --debug MASK ] DEVNAME\t"
+ 		"Display standard information about device\n");
+ 	for (i = 0; args[i].opts; i++) {
+-		fputs("        ethtool ", stdout);
++		fputs("        ethtool [ --debug MASK ] ", stdout);
+ 		fprintf(stdout, "%s %s\t%s\n",
+ 			args[i].opts,
+ 			args[i].want_device ? "DEVNAME" : "\t",
+@@ -5279,6 +5279,20 @@ int main(int argc, char **argp)
+ 	argp++;
+ 	argc--;
+ 
++	ctx.debug = 0;
++	if (*argp && !strcmp(*argp, "--debug")) {
++		char *eptr;
++
++		if (argc < 2)
++			exit_bad_args();
++		ctx.debug = strtoul(argp[1], &eptr, 0);
++		if (!argp[1][0] || *eptr)
++			exit_bad_args();
++
++		argp += 2;
++		argc -= 2;
++	}
++
+ 	/* First argument must be either a valid option or a device
+ 	 * name to get settings for (which we don't expect to begin
+ 	 * with '-').
+diff --git a/internal.h b/internal.h
+index 0b04a9794b6b..5125b230f7dd 100644
+--- a/internal.h
++++ b/internal.h
+@@ -105,6 +105,11 @@ static inline int test_bit(unsigned int nr, const unsigned long *addr)
+ #define SIOCETHTOOL     0x8946
+ #endif
+ 
++/* debugging flags */
++enum {
++	DEBUG_PARSE,
++};
++
+ /* Internal values for old-style offload flags.  Values and names
+  * must not clash with the flags defined for ETHTOOL_{G,S}FLAGS.
+  */
+@@ -195,6 +200,7 @@ struct cmd_context {
+ 	struct ifreq ifr;	/* ifreq suitable for ethtool ioctl */
+ 	int argc;		/* number of arguments to the sub-command */
+ 	char **argp;		/* arguments to the sub-command */
++	unsigned long debug;	/* debugging mask */
+ };
+ 
+ #ifdef TEST_ETHTOOL
+-- 
+2.18.0
+

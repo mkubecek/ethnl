@@ -1,7 +1,7 @@
-From c9410e7b00e3adbc7126d5b82bde48c2969a01d3 Mon Sep 17 00:00:00 2001
+From b69140ec9627099780b55ace7de794bc92d01654 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Aug 2018 23:26:42 +0200
-Subject: [PATCH 08/25] netlink: add netlink handler for tsinfo (-T)
+Subject: [PATCH 09/26] netlink: add netlink handler for tsinfo (-T)
 
 Implement "-T" subcommand using netlink interface command
 ETHNL_CMD_GET_INFO.
@@ -74,7 +74,7 @@ index 286c2055f2d7..7c08ec2d7c2f 100644
 +
  #endif /* ETHTOOL_COMMON_H__ */
 diff --git a/ethtool.c b/ethtool.c
-index 2ebc51bc4b4f..8ba5f62be237 100644
+index 376b350e7196..1fcd23244822 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -1609,47 +1609,6 @@ static void dump_fec(u32 fec)

@@ -1,7 +1,7 @@
-From 0b1aa989ac63245ae186af41543bcac3bb1b7f58 Mon Sep 17 00:00:00 2001
+From e92708177ce251000d4920884c4c0c37e9d1750a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
-Subject: [PATCH 11/25] netlink: add netlink handler for sset (-s)
+Subject: [PATCH 12/26] netlink: add netlink handler for sset (-s)
 
 Implement "ethtool -s <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_SETTINGS.
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  7 files changed, 271 insertions(+), 5 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 1739854ba047..a6e6437fa553 100644
+index 0d4e0abe8179..1a50958ea0d6 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4885,6 +4885,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -69,10 +69,10 @@ index 938e71700f97..e3b8c6949f36 100644
  
  void monitor_usage();
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index ae794813ef6c..6ffbcfff6c9a 100644
+index 7ed0cb34070b..450be9cc9d67 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -635,6 +635,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
+@@ -724,6 +724,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
  	return (nlctx->ethnl_fam ? 0 : -EADDRNOTAVAIL);
  }
  
@@ -87,12 +87,12 @@ index ae794813ef6c..6ffbcfff6c9a 100644
 +
  /* initialization */
  
- static int nlctx_init(struct nl_context *nlctx)
+ static int nlctx_init(struct nl_context *nlctx, unsigned long debug)
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index b081db554267..d0d2c3822ec6 100644
+index a40d93483832..b763d871c626 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -75,6 +75,7 @@ int attr_cb(const struct nlattr *attr, void *data);
+@@ -76,6 +76,7 @@ int attr_cb(const struct nlattr *attr, void *data);
  int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
  			   uint16_t dev_attrtype);
  int ethnl_send_get_request(struct nl_context *nlctx, mnl_cb_t cb);

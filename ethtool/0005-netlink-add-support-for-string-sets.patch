@@ -1,7 +1,7 @@
-From e85c665e128b87a3458c71d027cdf35b4811329a Mon Sep 17 00:00:00 2001
+From 886031e45598b021568c5bfcf62a823dc0241770 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 14:09:19 +0200
-Subject: [PATCH 04/25] netlink: add support for string sets
+Subject: [PATCH 05/26] netlink: add support for string sets
 
 Add infrastructure for querying kernel string sets (analog to ioct commands
 ETHTOOL_GSSET_INFO and ETHTOOL_GSTRINGS).
@@ -32,7 +32,7 @@ index 1c16a8253333..c7c7eeba79d1 100644
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/netlink/strset.c b/netlink/strset.c
 new file mode 100644
-index 000000000000..9ea456748531
+index 000000000000..1e335f22cebb
 --- /dev/null
 +++ b/netlink/strset.c
 @@ -0,0 +1,265 @@
@@ -245,7 +245,7 @@ index 000000000000..9ea456748531
 +
 +const char *get_string(const struct stringset *set, unsigned int idx)
 +{
-+	if (idx > set->count)
++	if (idx >= set->count)
 +		return NULL;
 +	return set->strings[idx];
 +}

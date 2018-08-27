@@ -1,7 +1,7 @@
-From cf7aabfb5a620da8ce0abf09cd8973a7a460231a Mon Sep 17 00:00:00 2001
+From 21c53518e3d13d17bed0ea572eb7c3df1ce052d5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:17:41 +0100
-Subject: [PATCH 22/25] netlink: add netlink handler for spause (-A)
+Subject: [PATCH 23/26] netlink: add netlink handler for spause (-A)
 
 Implement "ethtool -A <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_PARAMS.
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 31 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index dcfcc779fe8c..91fa08d56b48 100644
+index 54c700087b22..60c283a6cf28 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4851,6 +4851,7 @@ static int show_usage(struct cmd_context *ctx);

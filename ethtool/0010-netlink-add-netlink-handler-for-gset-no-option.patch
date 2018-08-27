@@ -1,7 +1,7 @@
-From a946d8a19839bd2b5cae2fc6a9db51476b195f91 Mon Sep 17 00:00:00 2001
+From b8c413be513ff49db89896903147a83c365b61bb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
-Subject: [PATCH 09/25] netlink: add netlink handler for gset (no option)
+Subject: [PATCH 10/26] netlink: add netlink handler for gset (no option)
 
 Implement "ethtool <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_SETTINGS.
@@ -395,7 +395,7 @@ index 7c08ec2d7c2f..37edac765e65 100644
 +
  #endif /* ETHTOOL_COMMON_H__ */
 diff --git a/ethtool.c b/ethtool.c
-index 8ba5f62be237..1739854ba047 100644
+index 1fcd23244822..0d4e0abe8179 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -57,26 +57,6 @@
@@ -610,7 +610,7 @@ index 8ba5f62be237..1739854ba047 100644
  #endif
  
  static const struct option {
-@@ -5346,6 +5209,7 @@ int main(int argc, char **argp)
+@@ -5359,6 +5222,7 @@ int main(int argc, char **argp)
  	}
  	if ((*argp)[0] == '-')
  		exit_bad_args();
@@ -670,7 +670,7 @@ index ad2d8c72d437..f93b61172950 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 4bf662eead9d..ae794813ef6c 100644
+index 958bfaa94506..7ed0cb34070b 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -4,8 +4,10 @@
@@ -684,7 +684,7 @@ index 4bf662eead9d..ae794813ef6c 100644
  
  /* misc helpers */
  
-@@ -414,6 +416,124 @@ const char *get_dev_name(const struct nlattr *nest)
+@@ -495,6 +497,124 @@ const char *get_dev_name(const struct nlattr *nest)
  	return mnl_attr_get_str(dev_tb[ETHA_DEV_NAME]);
  }
  
@@ -732,7 +732,7 @@ index 4bf662eead9d..ae794813ef6c 100644
 +				continue;
 +			name = get_string(lm_strings, idx);
 +			if (!name) {
-+				snprintf(buff, sizeof(buff), "b%d", idx);
++				snprintf(buff, sizeof(buff), "BIT%u", idx);
 +				name = buff;
 +			}
 +			if (first)
@@ -810,10 +810,10 @@ index 4bf662eead9d..ae794813ef6c 100644
  
  int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 531b40939d04..c9980e4233c7 100644
+index 7ad49f996880..1228f02e531e 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -61,6 +61,10 @@ typedef void (*bitset_walk_callback)(unsigned int, const char *, bool, void *);
+@@ -62,6 +62,10 @@ typedef void (*bitset_walk_callback)(unsigned int, const char *, bool, void *);
  int walk_bitset(const struct nlattr *bitset, int ss_index,
  		bitset_walk_callback cb, void *data);
  

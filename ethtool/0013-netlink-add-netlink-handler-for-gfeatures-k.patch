@@ -1,7 +1,7 @@
-From 47ce779675f24568b08ed887f298a95599d5f720 Mon Sep 17 00:00:00 2001
+From fc8cfa9afb0579e59fc3e08602ee4358bd89e938 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
-Subject: [PATCH 12/25] netlink: add netlink handler for gfeatures (-k)
+Subject: [PATCH 13/26] netlink: add netlink handler for gfeatures (-k)
 
 Implement "ethtool -k <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_SETTINGS with ETH_SETTINGS_IM_FEATURES mask.
@@ -90,7 +90,7 @@ index 37edac765e65..749bf389e9e1 100644
  extern const unsigned int link_modes_count;
  
 diff --git a/ethtool.c b/ethtool.c
-index a6e6437fa553..3c7f7b818386 100644
+index 1a50958ea0d6..ea7afb12f405 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -102,51 +102,6 @@ struct cmdline_info {

@@ -1,7 +1,7 @@
-From f54c962410fbaaca3bdc94b6fa1e83724c1bc091 Mon Sep 17 00:00:00 2001
+From dea600dd23cbaa496329d0487c246571b6d56c89 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
-Subject: [PATCH 05/25] netlink: add notification monitor
+Subject: [PATCH 06/26] netlink: add notification monitor
 
 With 'ethtool --monitor [ --all | opt ] [dev]', let ethtool listen to
 netlink notification and display them in a format similar to output of
@@ -12,12 +12,12 @@ device name or "*" is passed, show notifications for all devices.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |   2 +-
- ethtool.c         |  17 ++++
+ ethtool.c         |  16 ++++
  netlink/extapi.h  |   4 +
  netlink/monitor.c | 218 ++++++++++++++++++++++++++++++++++++++++++++++
  netlink/netlink.c |  32 ++++++-
  netlink/netlink.h |  26 ++++++
- 6 files changed, 297 insertions(+), 2 deletions(-)
+ 6 files changed, 296 insertions(+), 2 deletions(-)
  create mode 100644 netlink/monitor.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -34,7 +34,7 @@ index c7c7eeba79d1..188364c0c837 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 61c37d5c4a6a..25efca7e3afb 100644
+index e689019e35d2..6943834f4142 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -5298,6 +5298,9 @@ static int show_usage(struct cmd_context *ctx)
@@ -47,10 +47,10 @@ index 61c37d5c4a6a..25efca7e3afb 100644
  
  	return 0;
  }
-@@ -5339,6 +5342,20 @@ int main(int argc, char **argp)
- 	argp++;
- 	argc--;
- 
+@@ -5352,6 +5355,19 @@ int main(int argc, char **argp)
+ 		argp += 2;
+ 		argc -= 2;
+ 	}
 +#ifdef ETHTOOL_ENABLE_NETLINK
 +	if (*argp && !strcmp(*argp, "--monitor")) {
 +		if (netlink_init(&ctx)) {
@@ -64,10 +64,9 @@ index 61c37d5c4a6a..25efca7e3afb 100644
 +		}
 +	}
 +#endif
-+
+ 
  	/* First argument must be either a valid option or a device
  	 * name to get settings for (which we don't expect to begin
- 	 * with '-').
 diff --git a/netlink/extapi.h b/netlink/extapi.h
 index 05ab083d9b9c..827e3732888a 100644
 --- a/netlink/extapi.h
@@ -306,10 +305,10 @@ index 000000000000..d7ed562356f1
 +	fputs("                [ DEVNAME | * ]\n", stdout);
 +}
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index ac690484e06a..4bf662eead9d 100644
+index 3a40ab6eb517..958bfaa94506 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -453,6 +453,31 @@ err:
+@@ -542,6 +542,31 @@ err:
  
  /* get ethtool family id */
  
@@ -341,7 +340,7 @@ index ac690484e06a..4bf662eead9d 100644
  static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	struct nl_context *nlctx = data;
-@@ -460,9 +485,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -549,9 +574,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  
  	nlctx->ethnl_fam = 0;
  	mnl_attr_for_each(attr, nlhdr, GENL_HDRLEN) {
@@ -356,7 +355,7 @@ index ac690484e06a..4bf662eead9d 100644
  		}
  	}
  
-@@ -540,6 +569,7 @@ int __init_aux_nlctx(struct nl_context *nlctx)
+@@ -630,6 +659,7 @@ int __init_aux_nlctx(struct nl_context *nlctx)
  	}
  
  	aux->ethnl_fam = nlctx->ethnl_fam;
@@ -365,18 +364,18 @@ index ac690484e06a..4bf662eead9d 100644
  
  	return 0;
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 69d164b6f134..531b40939d04 100644
+index 5fe0731a433b..7ad49f996880 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -17,6 +17,7 @@
- 
+@@ -18,6 +18,7 @@
  struct nl_context {
+ 	unsigned long debug;
  	int ethnl_fam;
 +	uint32_t mon_mcgrp_id;
  	struct mnl_socket *sk;
  	struct nl_context *aux_nlctx;
  	void *cmd_private;
-@@ -30,6 +31,10 @@ struct nl_context {
+@@ -31,6 +32,10 @@ struct nl_context {
  	const char *devname;
  	bool is_dump;
  	int exit_code;
@@ -387,7 +386,7 @@ index 69d164b6f134..531b40939d04 100644
  };
  
  struct attr_tb_info {
-@@ -139,6 +144,27 @@ static inline void show_string(const struct nlattr **tb, unsigned int idx,
+@@ -135,6 +140,27 @@ static inline void show_string(const struct nlattr **tb, unsigned int idx,
  	printf("%s: %s\n", label, tb[idx] ? mnl_attr_get_str(tb[idx]) : "");
  }
  
@@ -414,7 +413,7 @@ index 69d164b6f134..531b40939d04 100644
 +
  /* misc */
  
- static inline int init_aux_nlctx(struct nl_context *nlctx)
+ static inline bool debug_on(unsigned long debug, unsigned int bit)
 -- 
 2.18.0
 

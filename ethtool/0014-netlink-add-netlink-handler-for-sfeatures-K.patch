@@ -1,7 +1,7 @@
-From 81cadc15a288bac090e8d6071cb3af80b69fcca2 Mon Sep 17 00:00:00 2001
+From 29ec6f891b30608169faeb274f0b9ec1daf4d4d6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:25:31 +0200
-Subject: [PATCH 13/25] netlink: add netlink handler for sfeatures (-K)
+Subject: [PATCH 14/26] netlink: add netlink handler for sfeatures (-K)
 
 Implement "ethtool -K <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_SETTINGS.
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 295 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 3c7f7b818386..186f83f57f38 100644
+index ea7afb12f405..8d6e48f2cfe5 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4842,6 +4842,7 @@ static int show_usage(struct cmd_context *ctx);

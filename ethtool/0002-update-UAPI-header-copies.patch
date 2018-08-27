@@ -1,7 +1,7 @@
-From c6b23f7dacc5887c772b70931c07f9892f849909 Mon Sep 17 00:00:00 2001
+From 1139ae84e590ce2f3aed73bb28a5add43c2857a9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 24 Nov 2017 01:02:29 +0100
-Subject: [PATCH 02/25] update UAPI header copies
+Subject: [PATCH 02/26] update UAPI header copies
 
 Update to current net-next (commit 3bc950c34b28).
 

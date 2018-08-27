@@ -1,7 +1,7 @@
-From 6a766049a0d060ed70817b6917dffd238046c733 Mon Sep 17 00:00:00 2001
+From 7869875d06deb22e50e1012782a07b367729f216 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Aug 2018 23:24:37 +0200
-Subject: [PATCH 07/25] netlink: add netlink handler for permaddr (-P)
+Subject: [PATCH 08/26] netlink: add netlink handler for permaddr (-P)
 
 Implement "-P" subcommand using netlink interface command
 ETHNL_CMD_GET_INFO.
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 69 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index f90448a8d123..2ebc51bc4b4f 100644
+index 4ed41d08057a..376b350e7196 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -5061,6 +5061,7 @@ static int show_usage(struct cmd_context *ctx);

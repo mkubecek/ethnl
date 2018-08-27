@@ -1,7 +1,7 @@
-From 010d852b6752394dc6f9dcbcceb296b8c9402faf Mon Sep 17 00:00:00 2001
+From 7726c28da59e175dacb702ecaf1c8399ca91d716 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:51:36 +0100
-Subject: [PATCH 25/25] netlink: add netlink handler for sfec (--set-fec)
+Subject: [PATCH 26/26] netlink: add netlink handler for sfec (--set-fec)
 
 Implement "ethtool --set-fec <dev>" subcommand using netlink interface
 command ETHNL_CMD_SET_PARAMS.
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 20 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 91a7f7761cda..6b3c7d9b813a 100644
+index 020a161e24a3..364834f1f69c 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4854,6 +4854,7 @@ static int show_usage(struct cmd_context *ctx);

@@ -1,7 +1,7 @@
-From 9d4efc48d7ec93d592f1112205610ff54661111a Mon Sep 17 00:00:00 2001
+From 06fb489705d27d73faf5e74c249bcc738fe24fd8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:42:26 +0100
-Subject: [PATCH 10/25] netlink: add helpers for command line parsing
+Subject: [PATCH 11/26] netlink: add helpers for command line parsing
 
 Support for easier parsing of subcommand parameters and their values from
 command line. Existing parser helpers in ethtool.c are closely tied to
@@ -30,10 +30,10 @@ index 4afe329db81a..9e4be2589064 100644
  		  uapi/linux/ethtool_netlink.h \
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index c9980e4233c7..b081db554267 100644
+index 1228f02e531e..a40d93483832 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -30,6 +30,10 @@ struct nl_context {
+@@ -31,6 +31,10 @@ struct nl_context {
  	void *msg;
  	const char *devname;
  	bool is_dump;

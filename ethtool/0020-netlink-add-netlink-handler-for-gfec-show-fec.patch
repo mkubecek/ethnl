@@ -1,7 +1,7 @@
-From 50674d599687472e85ff7b2f84c8d8a4cd477eaf Mon Sep 17 00:00:00 2001
+From f1a0954a25a5fdb69b98d1c6b71d95dae40743fa Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
-Subject: [PATCH 19/25] netlink: add netlink handler for gfec (--show-fec)
+Subject: [PATCH 20/26] netlink: add netlink handler for gfec (--show-fec)
 
 Implement "ethtool --show-fec <dev>" subcommand showing Forward Error
 Correction (FEC) settings using netlink interface command
@@ -52,7 +52,7 @@ index 749bf389e9e1..6c238701783f 100644
  
  enum link_mode_class {
 diff --git a/ethtool.c b/ethtool.c
-index 35f8a9fb252d..5dab52079547 100644
+index 6fecdf01eed6..b3ac546b08f6 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4848,6 +4848,7 @@ static int show_usage(struct cmd_context *ctx);
