@@ -1,7 +1,7 @@
-From f169e5bb322e90b58597e6893fdac0987e2b4d9f Mon Sep 17 00:00:00 2001
+From ca7603eddc2aeda836c5781579e50fa8ed2fa153 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
-Subject: [PATCH 13/19] ethtool: implement GET_SETTINGS request for features
+Subject: [PATCH 12/21] ethtool: implement GET_SETTINGS request for features
 
 With ETH_SETTINGS_IM_FEATURES info mask, ETHNL_CMD_GET_SETTINGS request
 gets network device feature values. This is the same information as
@@ -139,7 +139,7 @@ index c6a26b5497d2..be0548c25917 100644
  /* generic netlink info */
  #define ETHTOOL_GENL_NAME "ethtool"
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
-index c02bf6d3a7f0..1f6b8955438b 100644
+index b2b935a4569a..3c763b4d54bc 100644
 --- a/net/ethtool/common.h
 +++ b/net/ethtool/common.h
 @@ -6,6 +6,8 @@
@@ -152,7 +152,7 @@ index c02bf6d3a7f0..1f6b8955438b 100644
  extern const char rss_hash_func_strings[ETH_RSS_HASH_FUNCS_COUNT][ETH_GSTRING_LEN];
  extern const char tunable_strings[__ETHTOOL_TUNABLE_COUNT][ETH_GSTRING_LEN];
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index b8f59f56e51f..550e2c904bed 100644
+index dcedd319c335..ee1015b4bb90 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -54,8 +54,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
@@ -165,7 +165,7 @@ index b8f59f56e51f..550e2c904bed 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 943648444f14..455b55cd125d 100644
+index 85a126ad6a6b..b165b18acf88 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -4,6 +4,66 @@
@@ -281,16 +281,16 @@ index 943648444f14..455b55cd125d 100644
  static int prepare_settings(struct common_req_info *req_info,
  			    struct genl_info *info)
  {
-@@ -150,6 +235,8 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -152,6 +237,8 @@ static int prepare_settings(struct common_req_info *req_info,
  	}
  	if (req_mask & ETH_SETTINGS_IM_LINK)
  		data->link = __ethtool_get_link(dev);
 +	if (req_mask & ETH_SETTINGS_IM_FEATURES)
 +		ethnl_get_features(dev, data);
- 	req_rtnl_unlock(req_info);
+ 	ethnl_after_ops(dev, req_info->have_rtnl);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -212,6 +299,35 @@ static int settings_size(const struct common_req_info *req_info)
+@@ -214,6 +301,35 @@ static int settings_size(const struct common_req_info *req_info)
  	}
  	if (info_mask & ETH_SETTINGS_IM_LINK)
  		len += nla_total_size(sizeof(u32));
@@ -326,7 +326,7 @@ index 943648444f14..455b55cd125d 100644
  
  	return len;
  }
-@@ -280,6 +396,41 @@ static int fill_wolinfo(struct sk_buff *skb,
+@@ -282,6 +398,41 @@ static int fill_wolinfo(struct sk_buff *skb,
  	return 0;
  }
  
@@ -368,7 +368,7 @@ index 943648444f14..455b55cd125d 100644
  static int fill_settings(struct sk_buff *skb,
  			 const struct common_req_info *req_info)
  {
-@@ -314,6 +465,11 @@ static int fill_settings(struct sk_buff *skb,
+@@ -316,6 +467,11 @@ static int fill_settings(struct sk_buff *skb,
  		if (nla_put_u8(skb, ETHA_SETTINGS_LINK, data->link))
  			return -EMSGSIZE;
  	}

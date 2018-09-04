@@ -1,7 +1,7 @@
-From b0989de2f72be4633038d9159eb1b98deda9dbaf Mon Sep 17 00:00:00 2001
+From 4e89873e1fd70028b2b50cc4f65d7cae6fc06837 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
-Subject: [PATCH 11/19] ethtool: implement GET_INFO message
+Subject: [PATCH 10/21] ethtool: implement GET_INFO message
 
 Requests the information provided by commands ETHTOOL_GDRVINFO,
 ETHTOOL_GPERMADDR and ETHTOOL_GET_TS_INFO in ioctl interface. This is
@@ -12,17 +12,17 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  61 +++-
  include/uapi/linux/ethtool.h                 |   7 +-
- include/uapi/linux/ethtool_netlink.h         |  54 ++++
+ include/uapi/linux/ethtool_netlink.h         |  54 +++
  include/uapi/linux/net_tstamp.h              |  13 +
  net/ethtool/Makefile                         |   4 +-
  net/ethtool/common.c                         |  66 ++++
  net/ethtool/common.h                         |   4 +
- net/ethtool/info.c                           | 323 +++++++++++++++++++
+ net/ethtool/info.c                           | 325 +++++++++++++++++++
  net/ethtool/ioctl.c                          |  62 +---
- net/ethtool/netlink.c                        |   7 +
+ net/ethtool/netlink.c                        |   9 +
  net/ethtool/netlink.h                        |   9 +
- net/ethtool/strset.c                         |  18 ++
- 12 files changed, 568 insertions(+), 60 deletions(-)
+ net/ethtool/strset.c                         |  18 +
+ 12 files changed, 572 insertions(+), 60 deletions(-)
  create mode 100644 net/ethtool/info.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -126,10 +126,10 @@ index 8b43f41a8140..a4c0258eb42d 100644
  ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			n/a
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
-index aac7124b7def..244edaff9eae 100644
+index f6fc60539af4..64bfd987510a 100644
 --- a/include/uapi/linux/ethtool.h
 +++ b/include/uapi/linux/ethtool.h
-@@ -567,6 +567,9 @@ struct ethtool_pauseparam {
+@@ -563,6 +563,9 @@ struct ethtool_pauseparam {
   * @ETH_SS_RSS_HASH_FUNCS: RSS hush function names
   * @ETH_SS_PHY_STATS: Statistic names, for use with %ETHTOOL_GPHYSTATS
   * @ETH_SS_PHY_TUNABLES: PHY tunable names
@@ -139,7 +139,7 @@ index aac7124b7def..244edaff9eae 100644
   */
  enum ethtool_stringset {
  	ETH_SS_TEST		= 0,
-@@ -578,7 +581,9 @@ enum ethtool_stringset {
+@@ -574,7 +577,9 @@ enum ethtool_stringset {
  	ETH_SS_TUNABLES,
  	ETH_SS_PHY_STATS,
  	ETH_SS_PHY_TUNABLES,
@@ -376,10 +376,10 @@ index 45c6492e4aee..12e916fdd04a 100644
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
 new file mode 100644
-index 000000000000..d4053c25ff87
+index 000000000000..1a24acd9cb56
 --- /dev/null
 +++ b/net/ethtool/info.c
-@@ -0,0 +1,323 @@
+@@ -0,0 +1,325 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include <linux/net_tstamp.h>
@@ -483,7 +483,9 @@ index 000000000000..d4053c25ff87
 +	u32 req_mask = req_info->req_mask & ETH_INFO_IM_ALL;
 +	int ret;
 +
-+	req_rtnl_lock(req_info);
++	ret = ethnl_before_ops(dev, req_info->have_rtnl);
++	if (ret < 0)
++		return ret;
 +	if (req_mask & ETH_INFO_IM_DRVINFO) {
 +		ret = __ethtool_get_drvinfo(dev, &data->drvinfo);
 +		if (ret < 0)
@@ -494,7 +496,7 @@ index 000000000000..d4053c25ff87
 +		if (ret < 0)
 +			req_mask &= ~ETH_INFO_IM_TSINFO;
 +	}
-+	req_rtnl_unlock(req_info);
++	ethnl_after_ops(dev, req_info->have_rtnl);
 +
 +	data->repdata_base.info_mask = req_mask;
 +	if (req_info->req_mask & ~req_mask)
@@ -704,7 +706,7 @@ index 000000000000..d4053c25ff87
 +	.fill_reply		= fill_info,
 +};
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index a91b597073f8..90b9b1fbae73 100644
+index 4275c90d3726..0643c5f0867a 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -27,6 +27,7 @@
@@ -715,7 +717,7 @@ index a91b597073f8..90b9b1fbae73 100644
  
  /*
   * Some useful ethtool_ops methods that're device independent.
-@@ -768,45 +769,14 @@ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
+@@ -680,45 +681,14 @@ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
  						  void __user *useraddr)
  {
  	struct ethtool_drvinfo info;
@@ -766,7 +768,7 @@ index a91b597073f8..90b9b1fbae73 100644
  	return 0;
  }
  
-@@ -2122,28 +2092,12 @@ static int ethtool_get_dump_data(struct net_device *dev,
+@@ -2034,28 +2004,12 @@ static int ethtool_get_dump_data(struct net_device *dev,
  
  static int ethtool_get_ts_info(struct net_device *dev, void __user *useraddr)
  {
@@ -798,10 +800,22 @@ index a91b597073f8..90b9b1fbae73 100644
  		err = -EFAULT;
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index d20d70be04d9..c65b418f4721 100644
+index 325973a4ee36..ad072e9b82f5 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -868,6 +868,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -473,9 +473,11 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
+ /* GET request helpers */
+ 
+ extern const struct get_request_ops strset_request_ops;
++extern const struct get_request_ops info_request_ops;
+ 
+ const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
+ 	[ETHNL_CMD_GET_STRSET]		= &strset_request_ops,
++	[ETHNL_CMD_GET_INFO]		= &info_request_ops,
+ };
+ 
+ static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
+@@ -874,6 +876,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -816,7 +830,7 @@ index d20d70be04d9..c65b418f4721 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index c1d7e4fc71e8..552d17cebca8 100644
+index 2f004d02827b..dce0127190b4 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -7,14 +7,23 @@
@@ -844,7 +858,7 @@ index c1d7e4fc71e8..552d17cebca8 100644
  int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
  
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index a49624ddc8f0..4542d029e09c 100644
+index a6453fb84434..ee115107ea18 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -67,6 +67,24 @@ static const struct strset_info info_template[] = {

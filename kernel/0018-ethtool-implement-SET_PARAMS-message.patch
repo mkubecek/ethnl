@@ -1,7 +1,7 @@
-From 8634727249395ae959f310264a94c5655a1b7089 Mon Sep 17 00:00:00 2001
+From c1c149e39617519e189dc1a0b2c6390b5b827a27 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
-Subject: [PATCH 19/19] ethtool: implement SET_PARAMS message
+Subject: [PATCH 18/21] ethtool: implement SET_PARAMS message
 
 Sets the information provided by ETHTOOL_SCOALESCE, ETHTOOL_SRINGPARAM,
 ETHTOOL_SPAUSEPARAM, ETHTOOL_SCHANNELS, ETHTOOL_SEEE and ETHTOOL_SFECPARAM.
@@ -12,12 +12,12 @@ more of the legacy requests (and provide only part of the data to update).
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  71 ++-
- net/ethtool/netlink.c                        |   6 +
- net/ethtool/params.c                         | 431 +++++++++++++++++++
- 3 files changed, 501 insertions(+), 7 deletions(-)
+ net/ethtool/netlink.c                        |   5 +
+ net/ethtool/params.c                         | 434 +++++++++++++++++++
+ 3 files changed, 503 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 0792aec2998e..f75d76dddd21 100644
+index 0792aec2998e..84234a1b049d 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -126,7 +126,7 @@ List of message types
@@ -43,7 +43,7 @@ index 0792aec2998e..f75d76dddd21 100644
 +attribute. Some of the attributes provided by GET_SETPARAMS are read only and
 +cannot be set by SET_PARAMS request.
 +
-+    ETHA_PARAMS_COALESCE	(nest)		coalescing
++    ETHA_PARAMS_COALESCE	(nested)	coalescing
 +        ETHA_COALESCE_RX_USECS			(u32)
 +        ETHA_COALESCE_RX_MAXFRM			(u32)
 +        ETHA_COALESCE_RX_USECS_IRQ		(u32)
@@ -66,27 +66,27 @@ index 0792aec2998e..f75d76dddd21 100644
 +        ETHA_COALESCE_TX_USE_ADAPTIVE		(bool)
 +        ETHA_COALESCE_RATE_SAMPLE_INTERVAL	(u32)
 +        ETHA_COALESCE_STATS_BLOCK_USECS		(u32)
-+    ETHA_PARAMS_RING		(nest)		ring parameters
++    ETHA_PARAMS_RING		(nested)	ring parameters
 +        ETHA_RING_RX_PENDING			(u32)
 +        ETHA_RING_RX_MINI_PENDING		(u32)
 +        ETHA_RING_RX_JUMBO_PENDING		(u32)
 +        ETHA_RING_TX_PENDING			(u32)
-+    ETHA_PARAMS_PAUSE		(nest)		pause parameters
++    ETHA_PARAMS_PAUSE		(nested)	pause parameters
 +        ETHA_PAUSE_AUTONEG			(bool)
 +        ETHA_PAUSE_RX				(bool)
 +        ETHA_PAUSE_TX				(bool)
-+    ETHA_PARAMS_CHANNELS	(nest)		channel settings
++    ETHA_PARAMS_CHANNELS	(nested)	channel settings
 +        ETHA_CHANNELS_RX_COUNT			(u32)
 +        ETHA_CHANNELS_TX_COUNT			(u32)
 +        ETHA_CHANNELS_OTHER_COUNT		(u32)
 +        ETHA_CHANNELS_COMBINED_COUNT		(u32)
-+    ETHA_PARAMS_EEE		(nest)		EEE settings
++    ETHA_PARAMS_EEE		(nested)	EEE settings
 +        ETHA_EEE_LINK_MODES			(bitset)
 +		- change modes for which EEE is advertised
 +        ETHA_EEE_ENABLED			(bool)
 +        ETHA_EEE_TX_LPI_ENABLED			(bool)
 +        ETHA_EEE_TX_LPI_TIMER			(u32)
-+    ETHA_PARAMS_FEC		(nest)		FEC parameters
++    ETHA_PARAMS_FEC		(nested)	FEC parameters
 +        ETHA_FEC_MODES				(bitfield32)
 +		- change configured FEC encodings
 +
@@ -134,18 +134,10 @@ index 0792aec2998e..f75d76dddd21 100644
 +ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index cac129040751..ddb8f5bd5a62 100644
+index 8c8e8063d382..a28fba60a01b 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -919,6 +919,7 @@ static struct notifier_block ethnl_netdev_notifier = {
- /* genetlink setup */
- 
- int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
-+int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
- 
- static const struct genl_ops ethtool_genl_ops[] = {
- 	{
-@@ -954,6 +955,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -975,6 +975,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -158,10 +150,10 @@ index cac129040751..ddb8f5bd5a62 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 220e4961d191..786ca5b3a0d7 100644
+index 5f0ea3cfd7ef..612ccc0711fe 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -470,3 +470,434 @@ const struct get_request_ops params_request_ops = {
+@@ -472,3 +472,437 @@ const struct get_request_ops params_request_ops = {
  	.reply_size		= params_size,
  	.fill_reply		= fill_params,
  };
@@ -555,8 +547,10 @@ index 220e4961d191..786ca5b3a0d7 100644
 +	dev = ethnl_dev_get(info, tb[ETHA_PARAMS_DEV]);
 +	if (IS_ERR(dev))
 +		return PTR_ERR(dev);
-+	rtnl_lock();
 +
++	ret = ethnl_before_ops(dev, false);
++	if (ret < 0)
++		goto out_dev;
 +	ret = update_coalesce(info, dev, tb[ETHA_PARAMS_COALESCE]);
 +	if (ret < 0)
 +		goto out_unlock;
@@ -591,8 +585,9 @@ index 220e4961d191..786ca5b3a0d7 100644
 +	ret = 0;
 +out_unlock:
 +	if (req_mask)
-+		ethtool_notify(dev, NULL, ETHNL_CMD_SET_PARAMS, req_mask);
-+	rtnl_unlock();
++		ethtool_notify(dev, NULL, ETHNL_CMD_SET_PARAMS, req_mask, NULL);
++	ethnl_after_ops(dev, false);
++out_dev:
 +	dev_put(dev);
 +	return ret;
 +}

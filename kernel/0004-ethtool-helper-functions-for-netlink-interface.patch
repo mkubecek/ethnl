@@ -1,16 +1,16 @@
-From 4a2b2d74da7793b2839508e438c8014efe2dfb1a Mon Sep 17 00:00:00 2001
+From 36826c8774210559827afc979a6a0f225923f0bb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
-Subject: [PATCH 05/19] ethtool: helper functions for netlink interface
+Subject: [PATCH 04/21] ethtool: helper functions for netlink interface
 
 Misc helpers used by ethtool netlink code.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  include/uapi/linux/ethtool_netlink.h |  11 +++
- net/ethtool/netlink.c                | 108 +++++++++++++++++++++
+ net/ethtool/netlink.c                | 118 +++++++++++++++++++++++
  net/ethtool/netlink.h                | 134 +++++++++++++++++++++++++++
- 3 files changed, 253 insertions(+)
+ 3 files changed, 263 insertions(+)
 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 index d8a8d3c72c2f..01896a1ee21a 100644
@@ -35,10 +35,10 @@ index d8a8d3c72c2f..01896a1ee21a 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 54370910fcd4..cb3209cad37f 100644
+index 54370910fcd4..63525994ac94 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -1,8 +1,116 @@
+@@ -1,8 +1,126 @@
  /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
  
 +#include <net/sock.h>
@@ -77,6 +77,7 @@ index 54370910fcd4..cb3209cad37f 100644
 +			const char *nl_name = nla_data(tb[ETHA_DEV_NAME]);
 +
 +			if (strncmp(dev->name, nl_name, IFNAMSIZ)) {
++				dev_put(dev);
 +				ETHNL_SET_ERRMSG(info,
 +						 "ifindex and ifname do not match");
 +				return ERR_PTR(-ENODEV);
@@ -85,10 +86,19 @@ index 54370910fcd4..cb3209cad37f 100644
 +		return dev;
 +	} else if (tb[ETHA_DEV_NAME]) {
 +		dev = dev_get_by_name(net, nla_data(tb[ETHA_DEV_NAME]));
-+		return dev ?: ERR_PTR(-ENODEV);
++		if (!dev)
++			return ERR_PTR(-ENODEV);
++	} else {
++		ETHNL_SET_ERRMSG(info, "either ifindex or ifname required");
++		return ERR_PTR(-EINVAL);
 +	}
 +
-+	return ERR_PTR(-EINVAL);
++	if (!netif_device_present(dev)) {
++		dev_put(dev);
++		ETHNL_SET_ERRMSG(info, "device not present");
++		return ERR_PTR(-ENODEV);
++	}
++	return dev;
 +}
 +
 +int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)

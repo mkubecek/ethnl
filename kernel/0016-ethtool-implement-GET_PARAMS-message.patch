@@ -1,7 +1,7 @@
-From a19580245b70debecf1ae0e8ad2ddfbdf752f654 Mon Sep 17 00:00:00 2001
+From 704de014a7eb2e79fe36e69c04bbd9525bb0d2d7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
-Subject: [PATCH 17/19] ethtool: implement GET_PARAMS message
+Subject: [PATCH 16/21] ethtool: implement GET_PARAMS message
 
 Requests the information provide by ETHTOOL_GCOALESCE, ETHTOOL_GRINGPARAM,
 ETHTOOL_GPAUSEPARAM, ETHTOOL_GCHANNELS, ETHTOOL_GEEE and ETHTOOL_GFECPARAM.
@@ -12,9 +12,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt | 107 ++++-
  include/uapi/linux/ethtool_netlink.h         | 119 +++++
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/netlink.c                        |   7 +
- net/ethtool/params.c                         | 472 +++++++++++++++++++
- 5 files changed, 700 insertions(+), 7 deletions(-)
+ net/ethtool/netlink.c                        |   9 +
+ net/ethtool/netlink.h                        |   1 +
+ net/ethtool/params.c                         | 474 +++++++++++++++++++
+ 6 files changed, 705 insertions(+), 7 deletions(-)
  create mode 100644 net/ethtool/params.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -319,10 +320,24 @@ index cf9638e6710b..62313644ac7d 100644
 -ethtool_nl-y	:= netlink.o strset.o info.o settings.o
 +ethtool_nl-y	:= netlink.o strset.o info.o settings.o params.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 7586a9aecbe1..ac602cba7f85 100644
+index 236802ff3e28..b1b8700948b5 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -946,6 +946,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -531,11 +531,13 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
+ extern const struct get_request_ops strset_request_ops;
+ extern const struct get_request_ops info_request_ops;
+ extern const struct get_request_ops settings_request_ops;
++extern const struct get_request_ops params_request_ops;
+ 
+ const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
+ 	[ETHNL_CMD_GET_STRSET]		= &strset_request_ops,
+ 	[ETHNL_CMD_GET_INFO]		= &info_request_ops,
+ 	[ETHNL_CMD_GET_SETTINGS]	= &settings_request_ops,
++	[ETHNL_CMD_GET_PARAMS]		= &params_request_ops,
+ };
+ 
+ static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
+@@ -965,6 +967,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_settings,
  	},
@@ -336,12 +351,23 @@ index 7586a9aecbe1..ac602cba7f85 100644
  };
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
+diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
+index d93cda13e0b0..4ca4ef7c213a 100644
+--- a/net/ethtool/netlink.h
++++ b/net/ethtool/netlink.h
+@@ -276,5 +276,6 @@ struct get_request_ops {
+ /* request handlers */
+ 
+ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
++int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
+ 
+ #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
 new file mode 100644
-index 000000000000..220e4961d191
+index 000000000000..5f0ea3cfd7ef
 --- /dev/null
 +++ b/net/ethtool/params.c
-@@ -0,0 +1,472 @@
+@@ -0,0 +1,474 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
@@ -460,7 +486,9 @@ index 000000000000..220e4961d191
 +	u32 req_mask = req_info->req_mask;
 +	int ret;
 +
-+	req_rtnl_lock(req_info);
++	ret = ethnl_before_ops(dev, req_info->have_rtnl);
++	if (ret < 0)
++		return ret;
 +	if (req_mask & ETH_PARAMS_IM_COALESCE) {
 +		ret = ethnl_get_coalesce(dev, &data->coalesce);
 +		if (ret < 0)
@@ -491,7 +519,7 @@ index 000000000000..220e4961d191
 +		if (ret < 0)
 +			req_mask &= ~ETH_PARAMS_IM_FEC;
 +	}
-+	req_rtnl_unlock(req_info);
++	ethnl_after_ops(dev, req_info->have_rtnl);
 +
 +	data->repdata_base.info_mask = req_mask;
 +	if (req_info->req_mask & ~req_mask)

@@ -1,7 +1,7 @@
-From 5db14cd1f2213ed2d22e93cf7983f751a0032a09 Mon Sep 17 00:00:00 2001
+From fc10287f7476644c64038bcaba22f6ce055b0546 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 13 May 2018 02:35:53 +0200
-Subject: [PATCH 03/19] ethtool: move to its own directory
+Subject: [PATCH 02/21] ethtool: move to its own directory
 
 With ethtool netlink interface, there is going to be a lot of new files
 so that it seem more convenient to put them into a separate directory

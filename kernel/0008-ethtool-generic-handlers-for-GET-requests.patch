@@ -1,7 +1,7 @@
-From d311a083bd612d8e297711aebca053a6ffdb3477 Mon Sep 17 00:00:00 2001
+From 26eb2266d0d1373128f8158b9e7349d8c83c1e62 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 27 Aug 2018 19:51:37 +0200
-Subject: [PATCH 09/19] ethtool: generic handlers for GET requests
+Subject: [PATCH 08/21] ethtool: generic handlers for GET requests
 
 Some parts of processing GET type requests and related notifications are
 independent on a command. Provide universal functions so that only four
@@ -16,30 +16,21 @@ These callback are defined in an instance of struct get_request_ops.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/ethtool/netlink.c | 279 ++++++++++++++++++++++++++++++++++++++++++
- net/ethtool/netlink.h |  80 ++++++++++++
- 2 files changed, 359 insertions(+)
+ net/ethtool/netlink.c | 270 ++++++++++++++++++++++++++++++++++++++++++
+ net/ethtool/netlink.h |  91 ++++++++++++++
+ 2 files changed, 361 insertions(+)
 
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index e34fdd846902..c23ff0f66b53 100644
+index 91d68ec7b336..3bc9a02dc747 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -459,6 +459,42 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
+@@ -470,6 +470,33 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
  	return (!*err && mod);
  }
  
 +/* GET request helpers */
 +
-+extern const struct get_request_ops strset_request_ops;
-+extern const struct get_request_ops info_request_ops;
-+extern const struct get_request_ops settings_request_ops;
-+extern const struct get_request_ops params_request_ops;
-+
 +const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
-+	[ETHNL_CMD_GET_STRSET]		= &strset_request_ops,
-+	[ETHNL_CMD_GET_INFO]		= &info_request_ops,
-+	[ETHNL_CMD_GET_SETTINGS]	= &settings_request_ops,
-+	[ETHNL_CMD_GET_PARAMS]		= &params_request_ops,
 +};
 +
 +static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
@@ -67,7 +58,7 @@ index e34fdd846902..c23ff0f66b53 100644
  /* create skb for a reply and fill device identification
   * payload: payload length (without netlink and genetlink header)
   * dev:     device the reply is about (may be null)
-@@ -499,6 +535,249 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -510,6 +537,249 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  	return NULL;
  }
  
@@ -252,7 +243,7 @@ index e34fdd846902..c23ff0f66b53 100644
 +/* generic notification handler */
 +static void ethnl_std_notify(struct net_device *dev,
 +			     struct netlink_ext_ack *extack, unsigned int cmd,
-+			     u32 req_mask)
++			     u32 req_mask, const void *data)
 +{
 +	struct common_req_info *req_info;
 +	const struct get_request_ops *ops;
@@ -318,12 +309,12 @@ index e34fdd846902..c23ff0f66b53 100644
  
  typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 62988fd5d2ef..c1d7e4fc71e8 100644
+index d7e287fdc2dc..2f004d02827b 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -175,4 +175,84 @@ static unsigned int dev_ident_size(void)
- void ethnl_notify(struct net_device *dev, struct netlink_ext_ack *extack,
- 		  unsigned int cmd, u32 req_mask);
+@@ -172,4 +172,95 @@ static unsigned int dev_ident_size(void)
+ 			      nla_total_size(IFNAMSIZ));
+ }
  
 +/* GET request handling */
 +
@@ -359,15 +350,26 @@ index 62988fd5d2ef..c1d7e4fc71e8 100644
 +	u32				info_mask;
 +};
 +
-+static inline void req_rtnl_lock(const struct common_req_info *req_info)
++static inline int ethnl_before_ops(struct net_device *dev, bool have_rtnl)
 +{
-+	if (!req_info->have_rtnl)
++	if (!have_rtnl)
 +		rtnl_lock();
++	if (dev && dev->ethtool_ops->begin) {
++		int ret = dev->ethtool_ops->begin(dev);
++
++		if (ret < 0 && !have_rtnl)
++			rtnl_unlock();
++		return ret;
++	}
++
++	return 0;
 +}
 +
-+static inline void req_rtnl_unlock(const struct common_req_info *req_info)
++static inline void ethnl_after_ops(struct net_device *dev, bool have_rtnl)
 +{
-+	if (!req_info->have_rtnl)
++	if (dev && dev->ethtool_ops->complete)
++		dev->ethtool_ops->complete(dev);
++	if (!have_rtnl)
 +		rtnl_unlock();
 +}
 +

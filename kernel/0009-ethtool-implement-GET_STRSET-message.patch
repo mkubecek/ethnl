@@ -1,7 +1,7 @@
-From 9262f3e9327e7d8680c0aaa68d7c1829c45039a5 Mon Sep 17 00:00:00 2001
+From 58e14cb77faf18e5d1f5cf26285d68b95da8f6b5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
-Subject: [PATCH 10/19] ethtool: implement GET_STRSET message
+Subject: [PATCH 09/21] ethtool: implement GET_STRSET message
 
 Requests a contents of a string set, i.e. indexed array of strings; this
 information is provided by ETHTOOL_GSSET_INFO and ETHTOOL_GSTRINGS commands
@@ -26,9 +26,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/common.c                         |  83 ++++
  net/ethtool/common.h                         |  13 +
  net/ethtool/ioctl.c                          |  80 ----
- net/ethtool/netlink.c                        |   7 +
- net/ethtool/strset.c                         | 417 +++++++++++++++++++
- 9 files changed, 571 insertions(+), 83 deletions(-)
+ net/ethtool/netlink.c                        |  10 +
+ net/ethtool/strset.c                         | 420 +++++++++++++++++++
+ 9 files changed, 577 insertions(+), 83 deletions(-)
  create mode 100644 net/ethtool/common.c
  create mode 100644 net/ethtool/common.h
  create mode 100644 net/ethtool/strset.c
@@ -65,10 +65,10 @@ index 0e83397f2975..8b43f41a8140 100644
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		n/a
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
-index dc69391d2bba..aac7124b7def 100644
+index c8f8e2455bf3..f6fc60539af4 100644
 --- a/include/uapi/linux/ethtool.h
 +++ b/include/uapi/linux/ethtool.h
-@@ -578,6 +578,10 @@ enum ethtool_stringset {
+@@ -574,6 +574,10 @@ enum ethtool_stringset {
  	ETH_SS_TUNABLES,
  	ETH_SS_PHY_STATS,
  	ETH_SS_PHY_TUNABLES,
@@ -258,7 +258,7 @@ index 000000000000..45c6492e4aee
 +
 +#endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index c9993c6c2fd4..a91b597073f8 100644
+index 9d4e56d97080..4275c90d3726 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -55,86 +55,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
@@ -349,10 +349,21 @@ index c9993c6c2fd4..a91b597073f8 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index c23ff0f66b53..d20d70be04d9 100644
+index 3bc9a02dc747..325973a4ee36 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -861,6 +861,13 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -472,7 +472,10 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
+ 
+ /* GET request helpers */
+ 
++extern const struct get_request_ops strset_request_ops;
++
+ const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
++	[ETHNL_CMD_GET_STRSET]		= &strset_request_ops,
+ };
+ 
+ static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
+@@ -864,6 +867,13 @@ static struct notifier_block ethnl_netdev_notifier = {
  /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
@@ -368,10 +379,10 @@ index c23ff0f66b53..d20d70be04d9 100644
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
 new file mode 100644
-index 000000000000..a49624ddc8f0
+index 000000000000..a6453fb84434
 --- /dev/null
 +++ b/net/ethtool/strset.c
-@@ -0,0 +1,417 @@
+@@ -0,0 +1,420 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include <linux/ethtool.h>
@@ -626,24 +637,27 @@ index 000000000000..a49624ddc8f0
 +		}
 +	}
 +
-+	req_rtnl_lock(req_info);
++	ret = ethnl_before_ops(dev, req_info->have_rtnl);
++	if (ret < 0)
++		goto err_strset;
 +	for (i = 0; i <= ETH_SS_MAX; i++) {
 +		if (!include_set(data, i) || !data->info[i].per_dev)
 +		    continue;
 +		if (WARN_ONCE(data->info[i].type != ETH_SS_TYPE_LEGACY,
 +			      "unexpected string set type %u",
 +			      data->info[i].type))
-+			goto err_free;
++			goto err_unlock;
 +
 +		ret = prepare_one_stringset(&data->info[i], dev, i);
 +		if (ret < 0)
-+			goto err_free;
++			goto err_unlock;
 +	}
-+	req_rtnl_unlock(req_info);
++	ethnl_after_ops(dev, req_info->have_rtnl);
 +
 +	return 0;
-+err_free:
-+	req_rtnl_unlock(req_info);
++err_unlock:
++	ethnl_after_ops(dev, req_info->have_rtnl);
++err_strset:
 +	free_strset(data);
 +	return ret;
 +}

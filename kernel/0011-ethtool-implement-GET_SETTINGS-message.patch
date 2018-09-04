@@ -1,7 +1,7 @@
-From 98e9dcd9048a4727bc0906d7334ceb0d399fad5a Mon Sep 17 00:00:00 2001
+From d332eca977aed5b3b60cf677ce1ecd386ac47fb6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
-Subject: [PATCH 12/19] ethtool: implement GET_SETTINGS message
+Subject: [PATCH 11/21] ethtool: implement GET_SETTINGS message
 
 Requests the information provided by ETHTOOL_GLINKSETTINGS, ETHTOOL_GWOL
 and ETHTOOL_GMSGLVL. The info_mask header field can be used to request only
@@ -16,14 +16,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool.h                 |   2 +
  include/uapi/linux/ethtool_netlink.h         |  36 ++
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/common.c                         | 110 ++++++
- net/ethtool/common.h                         |   8 +
- net/ethtool/ioctl.c                          | 108 +-----
- net/ethtool/netlink.c                        |  66 ++++
+ net/ethtool/common.c                         |  66 ++++
+ net/ethtool/common.h                         |   6 +
+ net/ethtool/ioctl.c                          |  64 +---
+ net/ethtool/netlink.c                        |  68 ++++
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/settings.c                       | 332 +++++++++++++++++++
+ net/ethtool/settings.c                       | 334 +++++++++++++++++++
  net/ethtool/strset.c                         |   6 +
- 13 files changed, 638 insertions(+), 106 deletions(-)
+ 13 files changed, 596 insertions(+), 62 deletions(-)
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -147,10 +147,10 @@ index 2a15e64a16f3..fba8ff961887 100644
  	ETHNL_MCGRP_MONITOR,
  };
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index 3f8a70503247..ae22c5930cfa 100644
+index f19b4b6d2e38..eb8d80d4fd2c 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -3748,6 +3748,8 @@ enum {
+@@ -3774,6 +3774,8 @@ enum {
  	NETIF_MSG_PKTDATA	= 0x1000,
  	NETIF_MSG_HW		= 0x2000,
  	NETIF_MSG_WOL		= 0x4000,
@@ -160,10 +160,10 @@ index 3f8a70503247..ae22c5930cfa 100644
  
  #define netif_msg_drv(p)	((p)->msg_enable & NETIF_MSG_DRV)
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
-index 244edaff9eae..18b3e0275737 100644
+index 64bfd987510a..4ec652e6fbfe 100644
 --- a/include/uapi/linux/ethtool.h
 +++ b/include/uapi/linux/ethtool.h
-@@ -570,6 +570,7 @@ struct ethtool_pauseparam {
+@@ -566,6 +566,7 @@ struct ethtool_pauseparam {
   * @ETH_SS_TSTAMP_SOF: timestamping flag names
   * @ETH_SS_TSTAMP_TX_TYPE: timestamping Tx type names
   * @ETH_SS_TSTAMP_RX_FILTER: timestamping Rx filter names
@@ -171,7 +171,7 @@ index 244edaff9eae..18b3e0275737 100644
   */
  enum ethtool_stringset {
  	ETH_SS_TEST		= 0,
-@@ -584,6 +585,7 @@ enum ethtool_stringset {
+@@ -580,6 +581,7 @@ enum ethtool_stringset {
  	ETH_SS_TSTAMP_SOF,
  	ETH_SS_TSTAMP_TX_TYPE,
  	ETH_SS_TSTAMP_RX_FILTER,
@@ -244,10 +244,10 @@ index c910da728445..cf9638e6710b 100644
 -ethtool_nl-y	:= netlink.o strset.o info.o
 +ethtool_nl-y	:= netlink.o strset.o info.o settings.o
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index 3805e5b141a6..76eebccc881c 100644
+index 3805e5b141a6..88e787ddd9ae 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
-@@ -147,3 +147,113 @@ int __ethtool_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info)
+@@ -147,3 +147,69 @@ int __ethtool_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info)
  
  	return err;
  }
@@ -300,50 +300,6 @@ index 3805e5b141a6..76eebccc881c 100644
 +	return retval;
 +}
 +
-+/* Internal kernel helper to query a device ethtool_link_settings.
-+ *
-+ * Backward compatibility note: for compatibility with legacy drivers
-+ * that implement only the ethtool_cmd API, this has to work with both
-+ * drivers implementing get_link_ksettings API and drivers
-+ * implementing get_settings API. When drivers implement get_settings
-+ * and report ethtool_cmd deprecated fields
-+ * (transceiver/maxrxpkt/maxtxpkt), these fields are silently ignored
-+ * because the resulting struct ethtool_link_settings does not report them.
-+ */
-+int __ethtool_get_link_ksettings(struct net_device *dev,
-+				 struct ethtool_link_ksettings *link_ksettings)
-+{
-+	int err;
-+	struct ethtool_cmd cmd;
-+
-+	ASSERT_RTNL();
-+
-+	if (dev->ethtool_ops->get_link_ksettings) {
-+		memset(link_ksettings, 0, sizeof(*link_ksettings));
-+		return dev->ethtool_ops->get_link_ksettings(dev,
-+							    link_ksettings);
-+	}
-+
-+	/* driver doesn't support %ethtool_link_ksettings API. revert to
-+	 * legacy %ethtool_cmd API, unless it's not supported either.
-+	 * TODO: remove when ethtool_ops::get_settings disappears internally
-+	 */
-+	if (!dev->ethtool_ops->get_settings)
-+		return -EOPNOTSUPP;
-+
-+	memset(&cmd, 0, sizeof(cmd));
-+	cmd.cmd = ETHTOOL_GSET;
-+	err = dev->ethtool_ops->get_settings(dev, &cmd);
-+	if (err < 0)
-+		return err;
-+
-+	/* we ignore deprecated fields transceiver/maxrxpkt/maxtxpkt
-+	 */
-+	convert_legacy_settings_to_link_ksettings(link_ksettings, &cmd);
-+	return err;
-+}
-+EXPORT_SYMBOL(__ethtool_get_link_ksettings);
-+
 +int __ethtool_get_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
 +{
 +	if (!dev->ethtool_ops->get_wol)
@@ -362,16 +318,14 @@ index 3805e5b141a6..76eebccc881c 100644
 +	return netif_running(dev) && dev->ethtool_ops->get_link(dev);
 +}
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
-index 12e916fdd04a..c02bf6d3a7f0 100644
+index 12e916fdd04a..b2b935a4569a 100644
 --- a/net/ethtool/common.h
 +++ b/net/ethtool/common.h
-@@ -13,5 +13,13 @@ extern const char phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_L
+@@ -13,5 +13,11 @@ extern const char phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_L
  
  int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info);
  int __ethtool_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info);
 +int __ethtool_get_wol(struct net_device *dev, struct ethtool_wolinfo *wol);
-+int __ethtool_get_link_ksettings(struct net_device *dev,
-+				 struct ethtool_link_ksettings *link_ksettings);
 +int __ethtool_get_link(struct net_device *dev);
 +
 +bool convert_legacy_settings_to_link_ksettings(
@@ -380,7 +334,7 @@ index 12e916fdd04a..c02bf6d3a7f0 100644
  
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 90b9b1fbae73..b8f59f56e51f 100644
+index 0643c5f0867a..dcedd319c335 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -352,54 +352,6 @@ bool ethtool_convert_link_mode_to_legacy_u32(u32 *legacy_u32,
@@ -438,58 +392,7 @@ index 90b9b1fbae73..b8f59f56e51f 100644
  /* return false if ksettings link modes had higher bits
   * set. legacy_settings always updated (best effort)
   */
-@@ -460,50 +412,6 @@ struct ethtool_link_usettings {
- 	} link_modes;
- };
- 
--/* Internal kernel helper to query a device ethtool_link_settings.
-- *
-- * Backward compatibility note: for compatibility with legacy drivers
-- * that implement only the ethtool_cmd API, this has to work with both
-- * drivers implementing get_link_ksettings API and drivers
-- * implementing get_settings API. When drivers implement get_settings
-- * and report ethtool_cmd deprecated fields
-- * (transceiver/maxrxpkt/maxtxpkt), these fields are silently ignored
-- * because the resulting struct ethtool_link_settings does not report them.
-- */
--int __ethtool_get_link_ksettings(struct net_device *dev,
--				 struct ethtool_link_ksettings *link_ksettings)
--{
--	int err;
--	struct ethtool_cmd cmd;
--
--	ASSERT_RTNL();
--
--	if (dev->ethtool_ops->get_link_ksettings) {
--		memset(link_ksettings, 0, sizeof(*link_ksettings));
--		return dev->ethtool_ops->get_link_ksettings(dev,
--							    link_ksettings);
--	}
--
--	/* driver doesn't support %ethtool_link_ksettings API. revert to
--	 * legacy %ethtool_cmd API, unless it's not supported either.
--	 * TODO: remove when ethtool_ops::get_settings disappears internally
--	 */
--	if (!dev->ethtool_ops->get_settings)
--		return -EOPNOTSUPP;
--
--	memset(&cmd, 0, sizeof(cmd));
--	cmd.cmd = ETHTOOL_GSET;
--	err = dev->ethtool_ops->get_settings(dev, &cmd);
--	if (err < 0)
--		return err;
--
--	/* we ignore deprecated fields transceiver/maxrxpkt/maxtxpkt
--	 */
--	convert_legacy_settings_to_link_ksettings(link_ksettings, &cmd);
--	return err;
--}
--EXPORT_SYMBOL(__ethtool_get_link_ksettings);
--
- /* convert ethtool_link_usettings in user space to a kernel internal
-  * ethtool_link_ksettings. return 0 on success, errno on error.
-  */
-@@ -1359,11 +1267,11 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
+@@ -1271,11 +1223,11 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
  static int ethtool_get_wol(struct net_device *dev, char __user *useraddr)
  {
  	struct ethtool_wolinfo wol = { .cmd = ETHTOOL_GWOL };
@@ -505,7 +408,7 @@ index 90b9b1fbae73..b8f59f56e51f 100644
  
  	if (copy_to_user(useraddr, &wol, sizeof(wol)))
  		return -EFAULT;
-@@ -1428,12 +1336,12 @@ static int ethtool_nway_reset(struct net_device *dev)
+@@ -1340,12 +1292,12 @@ static int ethtool_nway_reset(struct net_device *dev)
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
  {
  	struct ethtool_value edata = { .cmd = ETHTOOL_GLINK };
@@ -523,7 +426,7 @@ index 90b9b1fbae73..b8f59f56e51f 100644
  		return -EFAULT;
  	return 0;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index c65b418f4721..391bcff144c0 100644
+index ad072e9b82f5..f416b91a74da 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -1,12 +1,68 @@
@@ -595,7 +498,20 @@ index c65b418f4721..391bcff144c0 100644
  static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
  	[ETHA_DEV_UNSPEC]	= { .type = NLA_UNSPEC },
  	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -875,6 +931,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -474,10 +530,12 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
+ 
+ extern const struct get_request_ops strset_request_ops;
+ extern const struct get_request_ops info_request_ops;
++extern const struct get_request_ops settings_request_ops;
+ 
+ const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
+ 	[ETHNL_CMD_GET_STRSET]		= &strset_request_ops,
+ 	[ETHNL_CMD_GET_INFO]		= &info_request_ops,
++	[ETHNL_CMD_GET_SETTINGS]	= &settings_request_ops,
+ };
+ 
+ static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
+@@ -883,6 +941,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -609,7 +525,7 @@ index c65b418f4721..391bcff144c0 100644
  };
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
-@@ -899,6 +962,9 @@ static int __init ethnl_init(void)
+@@ -907,6 +972,9 @@ static int __init ethnl_init(void)
  {
  	int ret;
  
@@ -620,7 +536,7 @@ index c65b418f4721..391bcff144c0 100644
  	if (ret < 0)
  		panic("ethtool: could not register genetlink family\n");
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 552d17cebca8..767d7370fb70 100644
+index dce0127190b4..6036ef2d5334 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -23,6 +23,7 @@ extern struct genl_family ethtool_genl_family;
@@ -633,10 +549,10 @@ index 552d17cebca8..767d7370fb70 100644
  int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
-index 000000000000..943648444f14
+index 000000000000..85a126ad6a6b
 --- /dev/null
 +++ b/net/ethtool/settings.c
-@@ -0,0 +1,332 @@
+@@ -0,0 +1,334 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
@@ -758,7 +674,9 @@ index 000000000000..943648444f14
 +	data->lpm_empty = true;
 +	data->link = -EOPNOTSUPP;
 +
-+	req_rtnl_lock(req_info);
++	ret = ethnl_before_ops(dev, req_info->have_rtnl);
++	if (ret < 0)
++		return ret;
 +	if (req_mask & (ETH_SETTINGS_IM_LINKINFO | ETH_SETTINGS_IM_LINKMODES)) {
 +		ret = ethnl_get_link_ksettings(info, dev, &data->ksettings);
 +		if (ret < 0)
@@ -789,7 +707,7 @@ index 000000000000..943648444f14
 +	}
 +	if (req_mask & ETH_SETTINGS_IM_LINK)
 +		data->link = __ethtool_get_link(dev);
-+	req_rtnl_unlock(req_info);
++	ethnl_after_ops(dev, req_info->have_rtnl);
 +
 +	data->repdata_base.info_mask = req_mask;
 +	if (req_info->req_mask & ~req_mask)
@@ -970,7 +888,7 @@ index 000000000000..943648444f14
 +	.fill_reply		= fill_settings,
 +};
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index 4542d029e09c..476c33fd8360 100644
+index ee115107ea18..a8ce1045493b 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -85,6 +85,12 @@ static const struct strset_info info_template[] = {

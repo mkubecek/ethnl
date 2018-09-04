@@ -1,7 +1,7 @@
-From 3a8442a98ad3ff628e3b1c52031116a3a08b347a Mon Sep 17 00:00:00 2001
+From 9cc125435a78195f9348e377a6aefcf8baf51620 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
-Subject: [PATCH 15/19] ethtool: implement SET_SETTINGS message
+Subject: [PATCH 14/21] ethtool: implement SET_SETTINGS message
 
 Sets the information provided by ETHTOOL_SLINKSETTINGS, ETHTOOL_SWOL and
 ETHTOOL_SMSGLVL. Unlike with ioctl(), userspace can send only some
@@ -12,9 +12,10 @@ some setting).
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  43 +-
- net/ethtool/netlink.c                        |   7 +
- net/ethtool/settings.c                       | 413 +++++++++++++++++++
- 3 files changed, 458 insertions(+), 5 deletions(-)
+ net/ethtool/netlink.c                        |   5 +
+ net/ethtool/netlink.h                        |   4 +
+ net/ethtool/settings.c                       | 415 +++++++++++++++++++
+ 4 files changed, 462 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 1fac7c22ac1c..2dff04af2e75 100644
@@ -96,19 +97,10 @@ index 1fac7c22ac1c..2dff04af2e75 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index a6bf1f983b59..7586a9aecbe1 100644
+index d76af1b51d7c..236802ff3e28 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -917,6 +917,8 @@ static struct notifier_block ethnl_netdev_notifier = {
- 
- /* genetlink setup */
- 
-+int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
-+
- static const struct genl_ops ethtool_genl_ops[] = {
- 	{
- 		.cmd	= ETHNL_CMD_GET_STRSET,
-@@ -939,6 +941,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -960,6 +960,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -120,8 +112,21 @@ index a6bf1f983b59..7586a9aecbe1 100644
  };
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
+diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
+index 6036ef2d5334..d93cda13e0b0 100644
+--- a/net/ethtool/netlink.h
++++ b/net/ethtool/netlink.h
+@@ -273,4 +273,8 @@ struct get_request_ops {
+ 			  const struct common_req_info *req_info);
+ };
+ 
++/* request handlers */
++
++int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
++
+ #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 455b55cd125d..ae46b34d7376 100644
+index b165b18acf88..16f9930e0681 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -84,6 +84,222 @@ struct settings_data {
@@ -347,7 +352,7 @@ index 455b55cd125d..ae46b34d7376 100644
  /* We want to allow ~0 as selector for backward compatibility (to just set
   * given set of modes, whatever kernel supports) so that we allow all bits
   * on validation and do our own sanity check later.
-@@ -486,3 +702,200 @@ const struct get_request_ops settings_request_ops = {
+@@ -488,3 +704,202 @@ const struct get_request_ops settings_request_ops = {
  	.reply_size		= settings_size,
  	.fill_reply		= fill_settings,
  };
@@ -411,11 +416,11 @@ index 455b55cd125d..ae46b34d7376 100644
 +
 +/* Update device settings using ->set_link_ksettings() callback */
 +static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
-+				  struct net_device *dev)
++				  struct net_device *dev, u32 *req_mask)
 +{
 +	struct ethtool_link_ksettings ksettings = {};
 +	struct ethtool_link_settings *lsettings;
-+	bool mod = false;
++	u32 mod_mask = 0;
 +	int ret;
 +
 +	ret = ethnl_get_link_ksettings(info, dev, &ksettings);
@@ -423,25 +428,24 @@ index 455b55cd125d..ae46b34d7376 100644
 +		return ret;
 +	lsettings = &ksettings.base;
 +
-+	mod = false;
 +	if (ethnl_update_u32(&lsettings->speed, tb[ETHA_SETTINGS_SPEED]))
-+		mod = true;
++		mod_mask |= ETH_SETTINGS_IM_LINKINFO;
 +	if (ethnl_update_u8(&lsettings->duplex, tb[ETHA_SETTINGS_DUPLEX]))
-+		mod = true;
++		mod_mask |= ETH_SETTINGS_IM_LINKINFO;
 +	if (ethnl_update_u8(&lsettings->port, tb[ETHA_SETTINGS_PORT]))
-+		mod = true;
++		mod_mask |= ETH_SETTINGS_IM_LINKINFO;
 +	if (ethnl_update_u8(&lsettings->phy_address, tb[ETHA_SETTINGS_PHYADDR]))
-+		mod = true;
++		mod_mask |= ETH_SETTINGS_IM_LINKINFO;
 +	if (ethnl_update_u8(&lsettings->autoneg, tb[ETHA_SETTINGS_AUTONEG]))
-+		mod = true;
++		mod_mask |= ETH_SETTINGS_IM_LINKINFO;
 +	if (ethnl_update_u8(&lsettings->eth_tp_mdix_ctrl,
 +			    tb[ETHA_SETTINGS_TP_MDIX_CTRL]))
-+		mod = true;
++		mod_mask |= ETH_SETTINGS_IM_LINKINFO;
 +	if (ethnl_update_bitset(ksettings.link_modes.advertising, NULL,
 +				__ETHTOOL_LINK_MODE_MASK_NBITS,
 +				tb[ETHA_SETTINGS_LINK_MODES],
 +				&ret, link_mode_names, info))
-+		mod = true;
++		mod_mask |= ETH_SETTINGS_IM_LINKMODES;
 +	if (ret < 0)
 +		return ret;
 +
@@ -452,16 +456,17 @@ index 455b55cd125d..ae46b34d7376 100644
 +				    __ETHTOOL_LINK_MODE_MASK_NBITS,
 +				    tb[ETHA_SETTINGS_SPEED],
 +				    tb[ETHA_SETTINGS_DUPLEX]))
-+			mod = true;
++			mod_mask |= ETH_SETTINGS_IM_LINKMODES;
 +	}
 +
-+	if (mod) {
++	if (mod_mask) {
 +		ret = ethnl_set_link_ksettings(info, dev, &ksettings);
 +		if (ret < 0)
 +			return ret;
++		*req_mask |= mod_mask;
 +	}
 +
-+	return mod ? 1 : 0;
++	return 0;
 +}
 +
 +int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
@@ -480,16 +485,18 @@ index 455b55cd125d..ae46b34d7376 100644
 +	dev = ethnl_dev_get(info, tb[ETHA_SETTINGS_DEV]);
 +	if (IS_ERR(dev))
 +		return PTR_ERR(dev);
-+	rtnl_lock();
 +
 +	/* read only attributes */
 +	ret = -EINVAL;
 +	if (tb[ETHA_SETTINGS_TP_MDIX] || tb[ETHA_SETTINGS_TRANSCEIVER] ||
 +	    tb[ETHA_SETTINGS_PEER_MODES] || tb[ETHA_SETTINGS_LINK]) {
 +		ETHNL_SET_ERRMSG(info, "attempt to set a read only attribute");
-+		goto out_unlock;
++		goto out_dev;
 +	}
 +
++	ret = ethnl_before_ops(dev, false);
++	if (ret < 0)
++		goto out_dev;
 +	if (tb[ETHA_SETTINGS_SPEED] || tb[ETHA_SETTINGS_DUPLEX] ||
 +	    tb[ETHA_SETTINGS_PORT] || tb[ETHA_SETTINGS_PHYADDR] ||
 +	    tb[ETHA_SETTINGS_AUTONEG] || tb[ETHA_SETTINGS_TP_MDIX_CTRL] ||
@@ -497,11 +504,9 @@ index 455b55cd125d..ae46b34d7376 100644
 +		ret = -EOPNOTSUPP;
 +		if (!dev->ethtool_ops->get_link_ksettings)
 +			goto out_unlock;
-+		ret = ethnl_update_ksettings(info, tb, dev);
++		ret = ethnl_update_ksettings(info, tb, dev, &req_mask);
 +		if (ret < 0)
 +			goto out_unlock;
-+		req_mask |= ETH_SETTINGS_IM_LINKINFO |
-+			    ETH_SETTINGS_IM_LINKMODES;
 +	}
 +	if (tb[ETHA_SETTINGS_WOL_MODES] || tb[ETHA_SETTINGS_SOPASS]) {
 +		ret = ethnl_get_wol(info, dev, &wolinfo);
@@ -543,8 +548,10 @@ index 455b55cd125d..ae46b34d7376 100644
 +
 +out_unlock:
 +	if (req_mask)
-+		ethtool_notify(dev, NULL, ETHNL_CMD_SET_SETTINGS, req_mask);
-+	rtnl_unlock();
++		ethtool_notify(dev, NULL, ETHNL_CMD_SET_SETTINGS, req_mask,
++			       NULL);
++	ethnl_after_ops(dev, false);
++out_dev:
 +	dev_put(dev);
 +	return ret;
 +}

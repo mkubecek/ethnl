@@ -1,7 +1,7 @@
-From 4ec2548773c2cb4f2f2c029076eaffd091addbc6 Mon Sep 17 00:00:00 2001
+From bdaafb2d20b9eebcd1d3c7934d10e5ee4374804b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
-Subject: [PATCH 06/19] ethtool: netlink bitset handling
+Subject: [PATCH 05/21] ethtool: netlink bitset handling
 
 Declare attribute type constants and add helper functions to handle
 arbitrary length bit sets.
@@ -10,9 +10,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  56 +++
  include/uapi/linux/ethtool_netlink.h         |  31 ++
- net/ethtool/netlink.c                        | 386 +++++++++++++++++++
+ net/ethtool/netlink.c                        | 387 +++++++++++++++++++
  net/ethtool/netlink.h                        |  27 ++
- 4 files changed, 500 insertions(+)
+ 4 files changed, 501 insertions(+)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 120376e0f91b..a49dfe3ef4bb 100644
@@ -124,7 +124,7 @@ index 01896a1ee21a..cfee7acfc6d8 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index cb3209cad37f..9134a8131b79 100644
+index 63525994ac94..1d13ebd37c95 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -1,5 +1,6 @@
@@ -134,7 +134,7 @@ index cb3209cad37f..9134a8131b79 100644
  #include <net/sock.h>
  #include <linux/ethtool_netlink.h>
  #include "netlink.h"
-@@ -71,6 +72,391 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
+@@ -81,6 +82,392 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
  	return ret;
  }
  
@@ -419,6 +419,7 @@ index cb3209cad37f..9134a8131b79 100644
 +	unsigned int change_bits = 0;
 +	bool mod = false;
 +
++	*err = 0;
 +	if (!attr)
 +		return false;
 +	*err = nla_parse_nested(tb, ETHA_BITSET_MAX, attr, bitset_policy,
@@ -480,13 +481,13 @@ index cb3209cad37f..9134a8131b79 100644
 +			bitmap_from_arr32(mask, nla_data(tb[ETHA_BITSET_MASK]),
 +					  change_bits);
 +		else
-+			bitmap_fill(mask, change_bits);
++			bitmap_fill(mask, nbits);
 +
 +		if (nbits < change_bits) {
 +			unsigned int idx = find_next_bit(mask, max_bits, nbits);
 +
 +			*err = -EINVAL;
-+			if (idx >= nbits)
++			if (idx < max_bits)
 +				return mod;
 +		}
 +
@@ -518,7 +519,7 @@ index cb3209cad37f..9134a8131b79 100644
 +	mod = ethnl_update_bitset(tmp, tmp_mask, nbits, attr, err, names, info);
 +	if (!*err && mod)
 +		bitmap_to_arr32(bitmap, tmp, nbits);
-+	if (bitmask)
++	if (!*err && bitmask)
 +		bitmap_to_arr32(bitmask, tmp_mask, nbits);
 +	return (!*err && mod);
 +}
