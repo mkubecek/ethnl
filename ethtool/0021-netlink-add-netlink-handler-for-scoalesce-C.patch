@@ -1,7 +1,7 @@
-From b39a707059b394e83544815567452fe6141abed0 Mon Sep 17 00:00:00 2001
+From 7e8fbe55209b6affa2f22df3634a837a985468f4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 07:27:00 +0100
-Subject: [PATCH 21/26] netlink: add netlink handler for scoalesce (-C)
+Subject: [PATCH 21/29] netlink: add netlink handler for scoalesce (-C)
 
 Implement "ethtool -C <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_PARAMS.
@@ -47,7 +47,7 @@ index 81f8b1ec572a..fd3e0ca062f4 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index c187ca0b37c5..b86922b8d215 100644
+index c187ca0b37c5..96be71b52ba3 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -328,3 +328,185 @@ int nl_gfec(struct cmd_context *ctx)
@@ -58,8 +58,8 @@ index c187ca0b37c5..b86922b8d215 100644
 +/* SET_PARAMS */
 +
 +static int nl_set_param(struct cmd_context *ctx, const char *opt,
-+			const struct param_parser *params, u16 nest_type,
-+			u16 max_type)
++			const struct param_parser *params, uint16_t nest_type,
++			uint16_t max_type)
 +{
 +	struct nl_context *nlctx = ctx->nlctx;
 +	struct nlattr *nest;

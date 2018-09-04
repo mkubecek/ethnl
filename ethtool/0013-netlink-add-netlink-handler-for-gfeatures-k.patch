@@ -1,7 +1,7 @@
-From fc8cfa9afb0579e59fc3e08602ee4358bd89e938 Mon Sep 17 00:00:00 2001
+From bce4efd6b0cba710cd5e818e8fe7b8f6783aa50e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
-Subject: [PATCH 13/26] netlink: add netlink handler for gfeatures (-k)
+Subject: [PATCH 13/29] netlink: add netlink handler for gfeatures (-k)
 
 Implement "ethtool -k <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_SETTINGS with ETH_SETTINGS_IM_FEATURES mask.
@@ -275,7 +275,7 @@ index f93b61172950..c4cb693acb61 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 7e3460b980d2..0a4b7900f2b1 100644
+index 0ead9aa6ca97..32b9e6766012 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -5,6 +5,7 @@
@@ -506,7 +506,7 @@ index 7e3460b980d2..0a4b7900f2b1 100644
  int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHA_SETTINGS_MAX + 1] = {};
-@@ -262,6 +476,15 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -263,6 +477,15 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  		printf("\tLink detected: %s\n", link ? "yes" : "no");
  		allfail = false;
  	};
@@ -522,7 +522,7 @@ index 7e3460b980d2..0a4b7900f2b1 100644
  
  	if (allfail && !nlctx->is_monitor) {
  		fputs("No data available\n", stdout);
-@@ -299,6 +522,9 @@ int nl_gset(struct cmd_context *ctx)
+@@ -300,6 +523,9 @@ int nl_gset(struct cmd_context *ctx)
  				     ETH_SETTINGS_IM_LINK);
  }
  

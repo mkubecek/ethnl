@@ -1,7 +1,7 @@
-From e92708177ce251000d4920884c4c0c37e9d1750a Mon Sep 17 00:00:00 2001
+From dda299b8475cdaf27457bf7d7f726e007bd78ebd Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
-Subject: [PATCH 12/26] netlink: add netlink handler for sset (-s)
+Subject: [PATCH 12/29] netlink: add netlink handler for sset (-s)
 
 Implement "ethtool -s <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_SETTINGS.
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  netlink/extapi.h   |   1 +
  netlink/netlink.c  |   9 ++
  netlink/netlink.h  |   1 +
- netlink/parser.c   |  34 ++++++-
- netlink/parser.h   |   4 +
+ netlink/parser.c   |  32 +++++++
+ netlink/parser.h   |   2 +
  netlink/settings.c | 218 +++++++++++++++++++++++++++++++++++++++++++++
- 7 files changed, 271 insertions(+), 5 deletions(-)
+ 7 files changed, 268 insertions(+), 4 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
 index 0d4e0abe8179..1a50958ea0d6 100644
@@ -89,7 +89,7 @@ index 7ed0cb34070b..450be9cc9d67 100644
  
  static int nlctx_init(struct nl_context *nlctx, unsigned long debug)
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index a40d93483832..b763d871c626 100644
+index ecb445d94315..a266a5bef498 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -76,6 +76,7 @@ int attr_cb(const struct nlattr *attr, void *data);
@@ -101,26 +101,17 @@ index a40d93483832..b763d871c626 100644
  
  /* put data wrappers */
 diff --git a/netlink/parser.c b/netlink/parser.c
-index 589004d1f9f9..d1536ecb1d52 100644
+index d97ac2e6eb6c..33ea59401c09 100644
 --- a/netlink/parser.c
 +++ b/netlink/parser.c
-@@ -69,7 +69,7 @@ static int parse_x32(const char *arg, u32 *result)
- 	return __parse_u32(arg, result, 0, 0xffffffff, 16);
- }
- 
--static int parse_u32(const char *arg, u32 *result)
-+int parse_u32(const char *arg, u32 *result)
- {
- 	if (!arg)
- 		return -EINVAL;
-@@ -485,6 +485,38 @@ int nl_parse_bitset(struct nl_context *nlctx, uint16_t type, const void *data)
- 		return nl_parse_bitset_list(nlctx, type, data);
+@@ -515,6 +515,38 @@ int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data)
+ 		return nl_parse_bitset_verbose(nlctx, type, data, true);
  }
  
 +int nl_parse_mac_addr(struct nl_context *nlctx, uint16_t type, const void *data)
 +{
 +	const char *arg = *nlctx->argp;
-+	u8 val[ETH_ALEN];
++	uint8_t val[ETH_ALEN];
 +	unsigned int i;
 +	const char *p;
 +
@@ -135,7 +126,7 @@ index 589004d1f9f9..d1536ecb1d52 100644
 +
 +		if ((endp - p > 2) || (*endp && *endp != ':'))
 +			goto err;
-+		val[i++] = (u8) byte;
++		val[i++] = (uint8_t) byte;
 +		p = endp + (*endp ? 1 : 0);
 +	}
 +	if (i < ETH_ALEN)
@@ -153,29 +144,20 @@ index 589004d1f9f9..d1536ecb1d52 100644
  	      unsigned int max_type)
  {
 diff --git a/netlink/parser.h b/netlink/parser.h
-index 7308da25f093..2fd9a8bb23d9 100644
+index 01a4012f89ba..cc218ce4cfb6 100644
 --- a/netlink/parser.h
 +++ b/netlink/parser.h
-@@ -28,6 +28,8 @@ struct param_parser {
- 	unsigned int		min_argc;
- };
- 
-+int parse_u32(const char *arg, u32 *result);
-+
- int nl_parse_direct_u32(struct nl_context *nlctx, uint16_t type,
- 			const void *data);
- int nl_parse_direct_u8(struct nl_context *nlctx, uint16_t type,
-@@ -38,6 +40,8 @@ int nl_parse_lookup_u8(struct nl_context *nlctx, uint16_t type,
- int nl_parse_bitfield32(struct nl_context *nlctx, uint16_t type,
+@@ -42,6 +42,8 @@ int nl_parse_bitfield32(struct nl_context *nlctx, uint16_t type,
  			const void *data);
  int nl_parse_bitset(struct nl_context *nlctx, uint16_t type, const void *data);
+ int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data);
 +int nl_parse_mac_addr(struct nl_context *nlctx, uint16_t type,
 +		      const void *data);
  
  int nl_parser(struct cmd_context *ctx, const struct param_parser *params,
  	      unsigned int max_type);
 diff --git a/netlink/settings.c b/netlink/settings.c
-index c9aca462ff82..7e3460b980d2 100644
+index d2ee443c28f8..0ead9aa6ca97 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -5,6 +5,7 @@
@@ -186,7 +168,7 @@ index c9aca462ff82..7e3460b980d2 100644
  
  /* GET_SETTINGS */
  
-@@ -299,3 +300,220 @@ int nl_gset(struct cmd_context *ctx)
+@@ -300,3 +301,220 @@ int nl_gset(struct cmd_context *ctx)
  }
  
  }
@@ -219,7 +201,7 @@ index c9aca462ff82..7e3460b980d2 100644
 +};
 +
 +static int __nl_parse_wol_modes(struct nl_context *nlctx, const char *str,
-+				u32 *result)
++				uint32_t *result)
 +{
 +	unsigned int i;
 +	const char *p;
@@ -258,7 +240,7 @@ index c9aca462ff82..7e3460b980d2 100644
 +{
 +	const char *arg = *nlctx->argp;
 +	char *mask = strchr(arg, '/');
-+	u32 value, selector;
++	uint32_t value, selector;
 +	int ret;
 +
 +	nlctx->argp++;
@@ -273,7 +255,7 @@ index c9aca462ff82..7e3460b980d2 100644
 +		return ret;
 +
 +	if (!mask) {
-+		selector = ~(u32)0;
++		selector = ~(uint32_t)0;
 +	} else {
 +		ret = __nl_parse_wol_modes(nlctx, mask, &selector);
 +		if (ret < 0)

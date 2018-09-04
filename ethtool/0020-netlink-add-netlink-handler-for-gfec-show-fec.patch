@@ -1,7 +1,7 @@
-From f1a0954a25a5fdb69b98d1c6b71d95dae40743fa Mon Sep 17 00:00:00 2001
+From 4c8347e9b15b800cc75dca019c01d86536e5cf20 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
-Subject: [PATCH 20/26] netlink: add netlink handler for gfec (--show-fec)
+Subject: [PATCH 20/29] netlink: add netlink handler for gfec (--show-fec)
 
 Implement "ethtool --show-fec <dev>" subcommand showing Forward Error
 Correction (FEC) settings using netlink interface command

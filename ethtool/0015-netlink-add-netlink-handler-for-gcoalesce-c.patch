@@ -1,7 +1,7 @@
-From 01072efb715ed030634bf5851d34e7788bdb533f Mon Sep 17 00:00:00 2001
+From 7f76c3e41df38eec48ff2a94475b157070ae9f0d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
-Subject: [PATCH 15/26] netlink: add netlink handler for gcoalesce (-c)
+Subject: [PATCH 15/29] netlink: add netlink handler for gcoalesce (-c)
 
 Implement "ethtool -c <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_COALESCE mask.

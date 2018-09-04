@@ -1,7 +1,7 @@
-From 5c6cfa6e17af85d2d754f39cd243e7ad5c612116 Mon Sep 17 00:00:00 2001
+From d12b2a304bc86a86ac8b1ccd5f68150685de82ed Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:04:49 +0100
-Subject: [PATCH 22/26] netlink: add netlink handler for sring (-G)
+Subject: [PATCH 22/29] netlink: add netlink handler for sring (-G)
 
 Implement "ethtool -G <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_PARAMS.
@@ -47,7 +47,7 @@ index fd3e0ca062f4..747731a8fe97 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index b86922b8d215..ee0d5e0c51c6 100644
+index 96be71b52ba3..179ca8aed57f 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -510,3 +510,37 @@ int nl_scoalesce(struct cmd_context *ctx)

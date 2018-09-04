@@ -1,7 +1,7 @@
-From 48f353805c5ac7f651e079cb2c6d43b3148bbb5e Mon Sep 17 00:00:00 2001
+From a4b24a444023871ac91fa4f157ddedb24f338249 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:32:39 +0100
-Subject: [PATCH 24/26] netlink: add netlink handler for schannels (-L)
+Subject: [PATCH 24/29] netlink: add netlink handler for schannels (-L)
 
 Implement "ethtool -L <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_PARAMS.
@@ -47,7 +47,7 @@ index 647cf14a2f5a..50e00fd8de5b 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index 953678a0b227..5e0f0d264187 100644
+index 72f74ab71120..e23a194165b2 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -572,3 +572,37 @@ int nl_spause(struct cmd_context *ctx)

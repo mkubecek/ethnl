@@ -1,7 +1,7 @@
-From 3e954a846b7dad286df0cf032c6ba418afa833af Mon Sep 17 00:00:00 2001
+From 92fa37a0d0f5c9c667edc382f9314326b5885b64 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:43:19 +0100
-Subject: [PATCH 25/26] netlink: add netlink handler for seee (--set-eee)
+Subject: [PATCH 25/29] netlink: add netlink handler for seee (--set-eee)
 
 Implement "ethtool --set-eee <dev>" subcommand using netlink interface
 command ETHNL_CMD_SET_PARAMS.
@@ -51,7 +51,7 @@ index 50e00fd8de5b..ccb4f5e97a47 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index 5e0f0d264187..1cc2ffbc4b27 100644
+index e23a194165b2..b83f7f758038 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -606,3 +606,37 @@ int nl_schannels(struct cmd_context *ctx)

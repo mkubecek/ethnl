@@ -1,7 +1,7 @@
-From b8c413be513ff49db89896903147a83c365b61bb Mon Sep 17 00:00:00 2001
+From 54d8d9acc631fef3891e1ad73818cf17bfda3087 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
-Subject: [PATCH 10/26] netlink: add netlink handler for gset (no option)
+Subject: [PATCH 10/29] netlink: add netlink handler for gset (no option)
 
 Implement "ethtool <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_SETTINGS.
@@ -19,8 +19,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  netlink/monitor.c  |  14 +++
  netlink/netlink.c  | 120 ++++++++++++++++++
  netlink/netlink.h  |   4 +
- netlink/settings.c | 301 +++++++++++++++++++++++++++++++++++++++++++++
- 9 files changed, 790 insertions(+), 145 deletions(-)
+ netlink/settings.c | 302 +++++++++++++++++++++++++++++++++++++++++++++
+ 9 files changed, 791 insertions(+), 145 deletions(-)
  create mode 100644 netlink/settings.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -810,7 +810,7 @@ index 958bfaa94506..7ed0cb34070b 100644
  
  int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 7ad49f996880..1228f02e531e 100644
+index 95642452f1d6..393215cec250 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -62,6 +62,10 @@ typedef void (*bitset_walk_callback)(unsigned int, const char *, bool, void *);
@@ -826,10 +826,10 @@ index 7ad49f996880..1228f02e531e 100644
  int attr_cb(const struct nlattr *attr, void *data);
 diff --git a/netlink/settings.c b/netlink/settings.c
 new file mode 100644
-index 000000000000..c9aca462ff82
+index 000000000000..d2ee443c28f8
 --- /dev/null
 +++ b/netlink/settings.c
-@@ -0,0 +1,301 @@
+@@ -0,0 +1,302 @@
 +#include <errno.h>
 +#include <string.h>
 +#include <stdio.h>
@@ -971,20 +971,20 @@ index 000000000000..c9aca462ff82
 +	}
 +	if (tb[ETHA_SETTINGS_SPEED] &&
 +	    mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
-+		u32 val = mnl_attr_get_u32(tb[ETHA_SETTINGS_SPEED]);
++		uint32_t val = mnl_attr_get_u32(tb[ETHA_SETTINGS_SPEED]);
 +
 +		if (first) {
 +			printf("Settings for %s:\n", nlctx->devname);
 +			first = false;
 +		}
-+		if (val == 0 || val == (u16)(-1) || val == (u32)(-1))
++		if (val == 0 || val == (uint16_t)(-1) || val == (uint32_t)(-1))
 +			printf("\tSpeed: Unknown!\n");
 +		else
 +			printf("\tSpeed: %uMb/s\n", val);
 +	}
 +	if (tb[ETHA_SETTINGS_DUPLEX] &&
 +	    mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
-+		u8 val = mnl_attr_get_u8(tb[ETHA_SETTINGS_DUPLEX]);
++		uint8_t val = mnl_attr_get_u8(tb[ETHA_SETTINGS_DUPLEX]);
 +
 +		if (first) {
 +			printf("Settings for %s:\n", nlctx->devname);
@@ -994,7 +994,7 @@ index 000000000000..c9aca462ff82
 +	}
 +	if (tb[ETHA_SETTINGS_PORT] &&
 +	    mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
-+		u8 val = mnl_attr_get_u8(tb[ETHA_SETTINGS_PORT]);
++		uint8_t val = mnl_attr_get_u8(tb[ETHA_SETTINGS_PORT]);
 +
 +		if (first) {
 +			printf("Settings for %s:\n", nlctx->devname);
@@ -1005,7 +1005,7 @@ index 000000000000..c9aca462ff82
 +	}
 +	if (tb[ETHA_SETTINGS_PHYADDR] &&
 +	    mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
-+		u8 val = mnl_attr_get_u8(tb[ETHA_SETTINGS_PHYADDR]);
++		uint8_t val = mnl_attr_get_u8(tb[ETHA_SETTINGS_PHYADDR]);
 +
 +		if (first) {
 +			printf("Settings for %s:\n", nlctx->devname);
@@ -1015,7 +1015,7 @@ index 000000000000..c9aca462ff82
 +	}
 +	if (tb[ETHA_SETTINGS_TRANSCEIVER] &&
 +	    mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
-+		u8 val = mnl_attr_get_u8(tb[ETHA_SETTINGS_TRANSCEIVER]);
++		uint8_t val = mnl_attr_get_u8(tb[ETHA_SETTINGS_TRANSCEIVER]);
 +
 +		if (first) {
 +			printf("Settings for %s:\n", nlctx->devname);
@@ -1026,7 +1026,7 @@ index 000000000000..c9aca462ff82
 +	}
 +	if (tb[ETHA_SETTINGS_AUTONEG] &&
 +	    mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
-+		u8 val = mnl_attr_get_u8(tb[ETHA_SETTINGS_AUTONEG]);
++		uint8_t val = mnl_attr_get_u8(tb[ETHA_SETTINGS_AUTONEG]);
 +
 +		if (first) {
 +			printf("Settings for %s:\n", nlctx->devname);
@@ -1037,8 +1037,9 @@ index 000000000000..c9aca462ff82
 +	}
 +	if (tb[ETHA_SETTINGS_TP_MDIX] && tb[ETHA_SETTINGS_TP_MDIX] &&
 +	    port == PORT_TP && mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
-+		u8 mdix = mnl_attr_get_u8(tb[ETHA_SETTINGS_TP_MDIX]);
-+		u8 mdix_ctrl = mnl_attr_get_u8(tb[ETHA_SETTINGS_TP_MDIX_CTRL]);
++		uint8_t mdix = mnl_attr_get_u8(tb[ETHA_SETTINGS_TP_MDIX]);
++		uint8_t mdix_ctrl =
++			mnl_attr_get_u8(tb[ETHA_SETTINGS_TP_MDIX_CTRL]);
 +
 +		if (first) {
 +			printf("Settings for %s:\n", nlctx->devname);
@@ -1070,7 +1071,7 @@ index 000000000000..c9aca462ff82
 +	    mask_ok(nlctx, ETH_SETTINGS_IM_MSGLEVEL)) {
 +		struct nla_bitfield32 *val =
 +			mnl_attr_get_payload(tb[ETHA_SETTINGS_MSGLVL]);
-+		u32 msglvl = val->value;
++		uint32_t msglvl = val->value;
 +
 +		if (first) {
 +			printf("Settings for %s:\n", nlctx->devname);
@@ -1084,7 +1085,7 @@ index 000000000000..c9aca462ff82
 +		allfail = false;
 +	}
 +	if (tb[ETHA_SETTINGS_LINK] && mask_ok(nlctx, ETH_SETTINGS_IM_LINK)) {
-+		u32 link = mnl_attr_get_u8(tb[ETHA_SETTINGS_LINK]);
++		uint32_t link = mnl_attr_get_u8(tb[ETHA_SETTINGS_LINK]);
 +
 +		if (first) {
 +			printf("Settings for %s:\n", nlctx->devname);

@@ -1,7 +1,7 @@
-From c74eb06bd536b7b9ad4974db75747a144157f4ec Mon Sep 17 00:00:00 2001
+From cff75b23f0fd21618911887d073d6f08386d23d4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
-Subject: [PATCH 04/26] netlink: add netlink interface
+Subject: [PATCH 04/29] netlink: add netlink interface
 
 Add basic netlink interface based on genetlink and libmnl. This commit only
 adds the generic infrastructure but does not override any ethtool command
@@ -26,13 +26,13 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  internal.h                   |  11 +
  netlink/extapi.h             |  16 +
  netlink/netlink.c            | 674 +++++++++++++++++++++++++++++++++++
- netlink/netlink.h            | 150 ++++++++
- uapi/linux/ethtool.h         |  11 +
- uapi/linux/ethtool_netlink.h | 356 ++++++++++++++++++
+ netlink/netlink.h            | 151 ++++++++
+ uapi/linux/ethtool.h         |  14 +
+ uapi/linux/ethtool_netlink.h | 395 ++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 +++++
  uapi/linux/net_tstamp.h      |  13 +
  uapi/linux/netlink.h         | 247 +++++++++++++
- 14 files changed, 1723 insertions(+), 60 deletions(-)
+ 14 files changed, 1766 insertions(+), 60 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
  create mode 100644 netlink/extapi.h
@@ -1210,10 +1210,10 @@ index 000000000000..3a40ab6eb517
 +}
 diff --git a/netlink/netlink.h b/netlink/netlink.h
 new file mode 100644
-index 000000000000..5fe0731a433b
+index 000000000000..bfb029c28684
 --- /dev/null
 +++ b/netlink/netlink.h
-@@ -0,0 +1,150 @@
+@@ -0,0 +1,151 @@
 +/*
 + * netlink.h - common interface for all netlink code
 + *
@@ -1284,15 +1284,15 @@ index 000000000000..5fe0731a433b
 +/* put data wrappers */
 +
 +static inline bool ethnla_put_u32(struct nl_context *nlctx, uint16_t type,
-+				  u32 data)
++				  uint32_t data)
 +{
-+	return ethnla_put(nlctx, type, sizeof(u32), &data);
++	return ethnla_put(nlctx, type, sizeof(uint32_t), &data);
 +}
 +
 +static inline bool ethnla_put_u8(struct nl_context *nlctx, uint16_t type,
-+				 u8 data)
++				 uint8_t data)
 +{
-+	return ethnla_put(nlctx, type, sizeof(u8), &data);
++	return ethnla_put(nlctx, type, sizeof(uint8_t), &data);
 +}
 +
 +static inline bool ethnla_put_flag(struct nl_context *nlctx, uint16_t type,
@@ -1305,7 +1305,8 @@ index 000000000000..5fe0731a433b
 +}
 +
 +static inline bool ethnla_put_bitfield32(struct nl_context *nlctx,
-+					 uint16_t type, u32 value, u32 selector)
++					 uint16_t type, uint32_t value,
++					 uint32_t selector)
 +{
 +	struct nla_bitfield32 val = {
 +		.value		= value,
@@ -1365,10 +1366,10 @@ index 000000000000..5fe0731a433b
 +
 +#endif /* ETHTOOL_NETLINK_INT_H__ */
 diff --git a/uapi/linux/ethtool.h b/uapi/linux/ethtool.h
-index 6bfbb85f9402..1f49a3d3a07a 100644
+index 822169878db2..ac46bb6671d3 100644
 --- a/uapi/linux/ethtool.h
 +++ b/uapi/linux/ethtool.h
-@@ -565,6 +565,10 @@ struct ethtool_pauseparam {
+@@ -561,6 +561,11 @@ struct ethtool_pauseparam {
   * @ETH_SS_RSS_HASH_FUNCS: RSS hush function names
   * @ETH_SS_PHY_STATS: Statistic names, for use with %ETHTOOL_GPHYSTATS
   * @ETH_SS_PHY_TUNABLES: PHY tunable names
@@ -1376,10 +1377,11 @@ index 6bfbb85f9402..1f49a3d3a07a 100644
 + * @ETH_SS_TSTAMP_TX_TYPE: timestamping Tx type names
 + * @ETH_SS_TSTAMP_RX_FILTER: timestamping Rx filter names
 + * @ETH_SS_LINK_MODES: link mode names
++ * @ETH_SS_RESET_FLAGS: components for device reset
   */
  enum ethtool_stringset {
  	ETH_SS_TEST		= 0,
-@@ -576,6 +580,13 @@ enum ethtool_stringset {
+@@ -572,6 +577,14 @@ enum ethtool_stringset {
  	ETH_SS_TUNABLES,
  	ETH_SS_PHY_STATS,
  	ETH_SS_PHY_TUNABLES,
@@ -1387,18 +1389,27 @@ index 6bfbb85f9402..1f49a3d3a07a 100644
 +	ETH_SS_TSTAMP_TX_TYPE,
 +	ETH_SS_TSTAMP_RX_FILTER,
 +	ETH_SS_LINK_MODES,
++	ETH_SS_RESET_FLAGS,
 +
 +	__ETH_SS_MAX,
 +	ETH_SS_MAX = (__ETH_SS_MAX - 1)
  };
  
  /**
+@@ -1714,6 +1727,7 @@ enum ethtool_reset_flags {
+ 	ETH_RESET_ALL		= 0xffffffff,	/* All components used by this
+ 						 * interface, even if shared */
+ };
++#define ETH_RESET_NFLAGS 9
+ #define ETH_RESET_SHARED_SHIFT	16
+ 
+ 
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..181f9338353b
+index 000000000000..665632a814b0
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,356 @@
+@@ -0,0 +1,395 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#ifndef _LINUX_ETHTOOL_NETLINK_H_
@@ -1417,6 +1428,9 @@ index 000000000000..181f9338353b
 +	ETHNL_CMD_SET_SETTINGS,
 +	ETHNL_CMD_GET_PARAMS,
 +	ETHNL_CMD_SET_PARAMS,
++	ETHNL_CMD_ACT_NWAY_RST,
++	ETHNL_CMD_ACT_PHYS_ID,
++	ETHNL_CMD_ACT_RESET,
 +
 +	__ETHNL_CMD_CNT,
 +	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
@@ -1746,6 +1760,42 @@ index 000000000000..181f9338353b
 +
 +	__ETHA_FEC_CNT,
 +	ETHA_FEC_MAX = (__ETHA_FEC_CNT - 1)
++};
++
++/* ACT_NWAY_RST */
++
++enum {
++	ETHA_NWAYRST_UNSPEC,
++	ETHA_NWAYRST_DEV,			/* nest - ETHA_DEV_* */
++
++	__ETHA_NWAYRST_CNT,
++	ETHA_NWAYRST_MAX = (__ETHA_NWAYRST_CNT - 1)
++};
++
++/* ACT_PHYS_ID */
++
++enum {
++	ETHA_PHYSID_UNSPEC,
++	ETHA_PHYSID_DEV,			/* nest - ETHA_DEV_* */
++	ETHA_PHYSID_LENGTH,			/* u32 */
++
++	__ETHA_PHYSID_CNT,
++	ETHA_PHYSID_MAX = (__ETHA_PHYSID_CNT - 1)
++};
++
++/* ACT_RESET */
++
++enum {
++	ETHA_RESET_UNSPEC,
++	ETHA_RESET_DEV,				/* nest - ETHA_DEV_* */
++	ETHA_RESET_COMPACT,			/* flag */
++	ETHA_RESET_ALL,				/* flag */
++	ETHA_RESET_ALL_DEDICATED,		/* flag */
++	ETHA_RESET_DEDICATED,			/* bitset */
++	ETHA_RESET_SHARED,			/* bitset */
++
++	__ETHA_RESET_CNT,
++	ETHA_RESET_MAX = (__ETHA_RESET_CNT - 1)
 +};
 +
 +/* generic netlink info */
