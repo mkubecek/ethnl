@@ -1,7 +1,7 @@
-From a9cb2a1b0df24916955191e3510c994351ee25d2 Mon Sep 17 00:00:00 2001
+From 1b97b8fb36206670f107feea75d0be55ab665fa2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:29:46 +0200
-Subject: [PATCH 27/29] netlink: add netlink handler for nway_rst (-r)
+Subject: [PATCH 27/31] netlink: add netlink handler for nway_rst (-r)
 
 Implement "ethtool -r <dev>" subcommand using netlink interface command
 ETHNL_CMD_ACT_NWAY_RST.

@@ -1,7 +1,7 @@
-From 0d9b169234861b466dc468a89ac1f7755f71f5aa Mon Sep 17 00:00:00 2001
+From c74526951048e537bbd5a61800fb9582fa850a35 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
-Subject: [PATCH 06/29] netlink: add notification monitor
+Subject: [PATCH 06/31] netlink: add notification monitor
 
 With 'ethtool --monitor [ --all | opt ] [dev]', let ethtool listen to
 netlink notification and display them in a format similar to output of
@@ -305,10 +305,10 @@ index 000000000000..d7ed562356f1
 +	fputs("                [ DEVNAME | * ]\n", stdout);
 +}
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 3a40ab6eb517..958bfaa94506 100644
+index 78e12db966ad..c1b232b17e98 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -542,6 +542,31 @@ err:
+@@ -541,6 +541,31 @@ err:
  
  /* get ethtool family id */
  
@@ -340,7 +340,7 @@ index 3a40ab6eb517..958bfaa94506 100644
  static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	struct nl_context *nlctx = data;
-@@ -549,9 +574,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -548,9 +573,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  
  	nlctx->ethnl_fam = 0;
  	mnl_attr_for_each(attr, nlhdr, GENL_HDRLEN) {
@@ -355,7 +355,7 @@ index 3a40ab6eb517..958bfaa94506 100644
  		}
  	}
  
-@@ -630,6 +659,7 @@ int __init_aux_nlctx(struct nl_context *nlctx)
+@@ -629,6 +658,7 @@ int __init_aux_nlctx(struct nl_context *nlctx)
  	}
  
  	aux->ethnl_fam = nlctx->ethnl_fam;
@@ -364,7 +364,7 @@ index 3a40ab6eb517..958bfaa94506 100644
  
  	return 0;
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index bfb029c28684..95642452f1d6 100644
+index 8c2f9f7c5d0c..800852d02275 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -18,6 +18,7 @@
@@ -386,7 +386,7 @@ index bfb029c28684..95642452f1d6 100644
  };
  
  struct attr_tb_info {
-@@ -136,6 +141,27 @@ static inline void show_string(const struct nlattr **tb, unsigned int idx,
+@@ -138,6 +143,27 @@ static inline void show_string(const struct nlattr **tb, unsigned int idx,
  	printf("%s: %s\n", label, tb[idx] ? mnl_attr_get_str(tb[idx]) : "");
  }
  

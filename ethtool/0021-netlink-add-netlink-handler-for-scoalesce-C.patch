@@ -1,7 +1,7 @@
-From 7e8fbe55209b6affa2f22df3634a837a985468f4 Mon Sep 17 00:00:00 2001
+From d2f7cd52a7593f501916b3bbe5123881a126537a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 07:27:00 +0100
-Subject: [PATCH 21/29] netlink: add netlink handler for scoalesce (-C)
+Subject: [PATCH 21/31] netlink: add netlink handler for scoalesce (-C)
 
 Implement "ethtool -C <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_PARAMS.

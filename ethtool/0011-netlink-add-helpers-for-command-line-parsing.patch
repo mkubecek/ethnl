@@ -1,7 +1,7 @@
-From 982f51f4aa7e7aeefd2f4d0de382b87eca124daa Mon Sep 17 00:00:00 2001
+From 3f21fd20a10d2164cd9a5cbc69136e381d986572 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:42:26 +0100
-Subject: [PATCH 11/29] netlink: add helpers for command line parsing
+Subject: [PATCH 11/31] netlink: add helpers for command line parsing
 
 Support for easier parsing of subcommand parameters and their values from
 command line. Existing parser helpers in ethtool.c are closely tied to
@@ -11,9 +11,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |   1 +
  netlink/netlink.h |   4 +
- netlink/parser.c  | 557 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/parser.c  | 556 ++++++++++++++++++++++++++++++++++++++++++++++
  netlink/parser.h  |  49 ++++
- 4 files changed, 611 insertions(+)
+ 4 files changed, 610 insertions(+)
  create mode 100644 netlink/parser.c
  create mode 100644 netlink/parser.h
 
@@ -30,7 +30,7 @@ index 4afe329db81a..9e4be2589064 100644
  		  uapi/linux/ethtool_netlink.h \
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 393215cec250..ecb445d94315 100644
+index 9cbbaa94d3c2..052a91355cf8 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -31,6 +31,10 @@ struct nl_context {
@@ -46,10 +46,10 @@ index 393215cec250..ecb445d94315 100644
  	uint8_t filter_cmd;
 diff --git a/netlink/parser.c b/netlink/parser.c
 new file mode 100644
-index 000000000000..d97ac2e6eb6c
+index 000000000000..4f8f3f02e774
 --- /dev/null
 +++ b/netlink/parser.c
-@@ -0,0 +1,557 @@
+@@ -0,0 +1,556 @@
 +#include <string.h>
 +#include <stdlib.h>
 +#include <errno.h>
@@ -421,7 +421,7 @@ index 000000000000..d97ac2e6eb6c
 +		arg += 2;
 +
 +	maskptr = strchr(arg, '/');
-+	if (maskptr && !no_mask)
++	if (maskptr && no_mask)
 +		return -EINVAL;
 +	len1 = maskptr ? ( maskptr - arg) : strlen(arg);
 +	nwords = (len1 + 7) / 8;
@@ -477,7 +477,7 @@ index 000000000000..d97ac2e6eb6c
 +}
 +
 +static int nl_parse_bitset_verbose(struct nl_context *nlctx, uint16_t type,
-+				   const void *data, bool list)
++				   bool list)
 +{
 +	struct nlmsghdr *nlhdr = nlctx->nlhdr;
 +	struct nlattr *bitset_attr;
@@ -536,18 +536,18 @@ index 000000000000..d97ac2e6eb6c
 +
 +/* parse arguments to fill a bitset nested attribute; accepts either numeric
 + * representation (number optionally followed by '/' and another number (mask))
-+ * or list of flag names followed by "on" or "off"
++ * or list of flag names followed by "on" or "off"; resulting bitset will use
++ * compact format for numeric representation and verbose for flag list
 + * @nlctx: netlink context
 + * @type: bitset attribute type to use
-+ * @data: pointer to const char * array with bit names; ignored for numeric
-+ *        representation
++ * @data: unused
 + */
 +int nl_parse_bitset(struct nl_context *nlctx, uint16_t type, const void *data)
 +{
 +	if (is_numeric_bitset(*nlctx->argp, false))
 +		return nl_parse_bitset_compact(nlctx, type, false);
 +	else
-+		return nl_parse_bitset_verbose(nlctx, type, data, false);
++		return nl_parse_bitset_verbose(nlctx, type, false);
 +}
 +
 +/* parse arguments to fill a bitset nested attribute; accepts either numeric
@@ -556,15 +556,14 @@ index 000000000000..d97ac2e6eb6c
 + * mask equal to value (for name list)
 + * @nlctx: netlink context
 + * @type: bitset attribute type to use
-+ * @data: pointer to const char * array with bit names; ignored for numeric
-+ *        representation
++ * @data: unused
 + */
 +int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data)
 +{
 +	if (is_numeric_bitset(*nlctx->argp, true))
 +		return nl_parse_bitset_compact(nlctx, type, true);
 +	else
-+		return nl_parse_bitset_verbose(nlctx, type, data, true);
++		return nl_parse_bitset_verbose(nlctx, type, true);
 +}
 +
 +int nl_parser(struct cmd_context *ctx, const struct param_parser *params,

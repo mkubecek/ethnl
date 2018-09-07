@@ -1,7 +1,7 @@
-From dda299b8475cdaf27457bf7d7f726e007bd78ebd Mon Sep 17 00:00:00 2001
+From 409eefe3f263a4d81fa9daa4d824829f999f4640 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
-Subject: [PATCH 12/29] netlink: add netlink handler for sset (-s)
+Subject: [PATCH 12/31] netlink: add netlink handler for sset (-s)
 
 Implement "ethtool -s <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_SETTINGS.
@@ -69,10 +69,10 @@ index 938e71700f97..e3b8c6949f36 100644
  
  void monitor_usage();
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 7ed0cb34070b..450be9cc9d67 100644
+index db5c26be52a9..4c089a0af6eb 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -724,6 +724,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
+@@ -723,6 +723,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
  	return (nlctx->ethnl_fam ? 0 : -EADDRNOTAVAIL);
  }
  
@@ -89,10 +89,10 @@ index 7ed0cb34070b..450be9cc9d67 100644
  
  static int nlctx_init(struct nl_context *nlctx, unsigned long debug)
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index ecb445d94315..a266a5bef498 100644
+index 052a91355cf8..7d7aad8ef8e3 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -76,6 +76,7 @@ int attr_cb(const struct nlattr *attr, void *data);
+@@ -78,6 +78,7 @@ int attr_cb(const struct nlattr *attr, void *data);
  int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
  			   uint16_t dev_attrtype);
  int ethnl_send_get_request(struct nl_context *nlctx, mnl_cb_t cb);
@@ -101,11 +101,11 @@ index ecb445d94315..a266a5bef498 100644
  
  /* put data wrappers */
 diff --git a/netlink/parser.c b/netlink/parser.c
-index d97ac2e6eb6c..33ea59401c09 100644
+index 4f8f3f02e774..0c5ffce5526c 100644
 --- a/netlink/parser.c
 +++ b/netlink/parser.c
-@@ -515,6 +515,38 @@ int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data)
- 		return nl_parse_bitset_verbose(nlctx, type, data, true);
+@@ -514,6 +514,38 @@ int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data)
+ 		return nl_parse_bitset_verbose(nlctx, type, true);
  }
  
 +int nl_parse_mac_addr(struct nl_context *nlctx, uint16_t type, const void *data)
@@ -157,7 +157,7 @@ index 01a4012f89ba..cc218ce4cfb6 100644
  int nl_parser(struct cmd_context *ctx, const struct param_parser *params,
  	      unsigned int max_type);
 diff --git a/netlink/settings.c b/netlink/settings.c
-index d2ee443c28f8..0ead9aa6ca97 100644
+index b29d699a36d1..8c68cad66b19 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -5,6 +5,7 @@

@@ -1,7 +1,7 @@
-From 49857b19e978ded2877f7a943a5180e3c5a2d5d8 Mon Sep 17 00:00:00 2001
+From b91f3928c6a718fb1233d0d54120f6968224fa0b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 14:09:19 +0200
-Subject: [PATCH 05/29] netlink: add support for string sets
+Subject: [PATCH 05/31] netlink: add support for string sets
 
 Add infrastructure for querying kernel string sets (analog to ioct commands
 ETHTOOL_GSSET_INFO and ETHTOOL_GSTRINGS).
@@ -11,10 +11,12 @@ resolve bit indices to names when processing bitsets in compact format.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Makefile.am      |   1 +
- netlink/strset.c | 265 +++++++++++++++++++++++++++++++++++++++++++++++
- netlink/strset.h |  16 +++
- 3 files changed, 282 insertions(+)
+ Makefile.am       |   1 +
+ netlink/netlink.c |   3 +-
+ netlink/netlink.h |   4 +-
+ netlink/strset.c  | 265 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/strset.h  |  16 +++
+ 5 files changed, 286 insertions(+), 3 deletions(-)
  create mode 100644 netlink/strset.c
  create mode 100644 netlink/strset.h
 
@@ -30,6 +32,49 @@ index 1c16a8253333..c7c7eeba79d1 100644
  		  uapi/linux/ethtool_netlink.h \
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
+diff --git a/netlink/netlink.c b/netlink/netlink.c
+index 3a40ab6eb517..78e12db966ad 100644
+--- a/netlink/netlink.c
++++ b/netlink/netlink.c
+@@ -162,7 +162,7 @@ err:
+ 	return true;
+ }
+ 
+-int walk_bitset(const struct nlattr *bitset, int ss_index,
++int walk_bitset(const struct nlattr *bitset, const struct stringset *labels,
+ 		bitset_walk_callback cb, void *data)
+ {
+ 	const struct nlattr *bitset_tb[ETHA_BITSET_MAX + 1] = {};
+@@ -178,7 +178,6 @@ int walk_bitset(const struct nlattr *bitset, int ss_index,
+ 	bits = bitset_tb[ETHA_BITSET_VALUE];
+ 	if (bits) {
+ 		const struct nlattr *mask = bitset_tb[ETHA_BITSET_MASK];
+-		const struct stringset *labels = global_stringset(ss_index);
+ 		unsigned int count, nwords, idx;
+ 		uint32_t *val_bm;
+ 		uint32_t *mask_bm;
+diff --git a/netlink/netlink.h b/netlink/netlink.h
+index bfb029c28684..8c2f9f7c5d0c 100644
+--- a/netlink/netlink.h
++++ b/netlink/netlink.h
+@@ -40,6 +40,8 @@ struct attr_tb_info {
+ #define DECLARE_ATTR_TB_INFO(tbl) \
+ 	struct attr_tb_info tbl ## _info = { (tbl), (MNL_ARRAY_SIZE(tbl) - 1) }
+ 
++struct stringset;
++
+ unsigned int nl_copy_payload(void *buff, unsigned int maxlen,
+ 			     const struct nlattr *attr);
+ bool ethnla_put(struct nl_context *nlctx, uint16_t type, size_t len,
+@@ -54,7 +56,7 @@ bool bitset_get_bit(const struct nlattr *bitset, bool mask, unsigned int idx,
+ 		    int *retptr);
+ bool bitset_is_empty(const struct nlattr *bitset, bool mask, int *retptr);
+ typedef void (*bitset_walk_callback)(unsigned int, const char *, bool, void *);
+-int walk_bitset(const struct nlattr *bitset, int ss_index,
++int walk_bitset(const struct nlattr *bitset, const struct stringset *label,
+ 		bitset_walk_callback cb, void *data);
+ 
+ int msg_init(struct nl_context *nlctx, int cmd, unsigned int flags);
 diff --git a/netlink/strset.c b/netlink/strset.c
 new file mode 100644
 index 000000000000..1e335f22cebb

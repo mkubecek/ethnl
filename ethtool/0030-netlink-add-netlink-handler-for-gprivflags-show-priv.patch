@@ -1,0 +1,170 @@
+From 315be24baa3abbbb1911913f2df217d8f2543957 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Fri, 7 Sep 2018 14:20:18 +0200
+Subject: [PATCH 30/31] netlink: add netlink handler for gprivflags
+ (--show-priv-flags)
+
+Implement "ethtool --show-priv-flags <dev>" subcommand using netlink
+interface command ETHNL_CMD_GET_SETTINGS with ETH_SETTINGS_IM_PRIVFLAGS
+mask. Also support corresponding notification in monitor.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ ethtool.c          |  3 ++-
+ netlink/extapi.h   |  1 +
+ netlink/monitor.c  |  5 ++++
+ netlink/settings.c | 63 +++++++++++++++++++++++++++++++++++++++++++++-
+ 4 files changed, 70 insertions(+), 2 deletions(-)
+
+diff --git a/ethtool.c b/ethtool.c
+index 029deb187268..67e8c4512639 100644
+--- a/ethtool.c
++++ b/ethtool.c
+@@ -4858,6 +4858,7 @@ static int show_usage(struct cmd_context *ctx);
+ #define nl_nway_rst	NULL
+ #define nl_phys_id	NULL
+ #define nl_reset	NULL
++#define nl_gprivflags	NULL
+ #endif
+ 
+ static const struct option {
+@@ -5017,7 +5018,7 @@ static const struct option {
+ 	  "               [ tx N ]\n"
+ 	  "               [ other N ]\n"
+ 	  "               [ combined N ]\n" },
+-	{ "--show-priv-flags", 1, do_gprivflags, NULL,
++	{ "--show-priv-flags", 1, do_gprivflags, nl_gprivflags,
+ 	  "Query private flags" },
+ 	{ "--set-priv-flags", 1, do_sprivflags, NULL,
+ 	  "Set private flags",
+diff --git a/netlink/extapi.h b/netlink/extapi.h
+index af2a5042f637..a9820609f3b8 100644
+--- a/netlink/extapi.h
++++ b/netlink/extapi.h
+@@ -35,6 +35,7 @@ int nl_sfec(struct cmd_context *ctx);
+ int nl_nway_rst(struct cmd_context *ctx);
+ int nl_phys_id(struct cmd_context *ctx);
+ int nl_reset(struct cmd_context *ctx);
++int nl_gprivflags(struct cmd_context *ctx);
+ int nl_monitor(struct cmd_context *ctx);
+ 
+ void monitor_usage();
+diff --git a/netlink/monitor.c b/netlink/monitor.c
+index d846fdd44611..60101dc2453f 100644
+--- a/netlink/monitor.c
++++ b/netlink/monitor.c
+@@ -153,6 +153,11 @@ static struct monitor_option monitor_opts[] = {
+ 		.cmd		= ETHNL_CMD_SET_SETTINGS,
+ 		.info_mask	= ETH_SETTINGS_IM_FEATURES,
+ 	},
++	{
++		.pattern	= "--show-priv-flags|--set-priv-flags",
++		.cmd		= ETHNL_CMD_SET_SETTINGS,
++		.info_mask	= ETH_SETTINGS_IM_PRIVFLAGS,
++	},
+ 	{
+ 		.pattern	= "-c|--show-coalesce|-C|--coalesce",
+ 		.cmd		= ETHNL_CMD_SET_PARAMS,
+diff --git a/netlink/settings.c b/netlink/settings.c
+index 6cf9746f18a0..632247e36bc1 100644
+--- a/netlink/settings.c
++++ b/netlink/settings.c
+@@ -248,6 +248,53 @@ out_free:
+ 	return 0;
+ }
+ 
++void priv_flags_strlen_walk_cb(unsigned int idx, const char *name, bool val,
++			       void *data)
++{
++	unsigned int *maxlen = data;
++	unsigned int len;
++
++	if (name)
++		len = strlen(name);
++	else {
++		len = 3; /* strlen("bit") */
++		for (idx = idx ?: 1; idx; idx /= 10)
++			len++; /* plus number of ditigs */
++	}
++	if (len > *maxlen)
++		*maxlen = len;
++}
++
++void dump_priv_flags_walk_cb(unsigned int idx, const char *name, bool val,
++			      void *data)
++{
++	unsigned int *maxlen = data;
++	char buff[16];
++
++	if (!name) {
++		snprintf(buff, sizeof(buff) - 1, "bit%u", idx);
++		name = buff;
++	}
++	printf("%-*s: %s\n", *maxlen, name, val ? "on" : "off");
++}
++
++int dump_priv_flags(struct nl_context *nlctx, const struct nlattr *bitset)
++{
++	const struct stringset *labels;
++	unsigned int maxlen = 0;
++	int ret;
++
++	labels = perdev_stringset(nlctx->devname, ETH_SS_PRIV_FLAGS);
++	ret = walk_bitset(bitset, labels, priv_flags_strlen_walk_cb, &maxlen);
++	if (ret < 0)
++		return ret;
++
++	if (nlctx->is_monitor || nlctx->is_dump)
++		putchar('\n');
++	printf("Private flags for %s:\n", nlctx->devname);
++	return walk_bitset(bitset, labels, dump_priv_flags_walk_cb, &maxlen);
++}
++
+ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ {
+ 	const struct nlattr *tb[ETHA_SETTINGS_MAX + 1] = {};
+@@ -486,6 +533,12 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ 		if (ret == 0)
+ 			allfail = false;
+ 	}
++	if (tb[ETHA_SETTINGS_PRIV_FLAGS] &&
++	    mask_ok(nlctx, ETH_SETTINGS_IM_PRIVFLAGS)) {
++		ret = dump_priv_flags(nlctx, tb[ETHA_SETTINGS_PRIV_FLAGS]);
++		if (ret == 0)
++			allfail = false;
++	}
+ 
+ 	if (allfail && !nlctx->is_monitor && !nlctx->is_dump) {
+ 		fputs("No data available\n", stdout);
+@@ -497,12 +550,15 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ 
+ int settings_request(struct cmd_context *ctx, uint32_t info_mask)
+ {
++	bool is_dev = ctx->devname && strcmp(ctx->devname, WILDCARD_DEVNAME);
+ 	bool compact = info_mask & ETH_SETTINGS_IM_FEATURES;
+ 	struct nl_context *nlctx = ctx->nlctx;
+ 	int ret;
+ 
+-	if (compact)
++	if (compact) {
+ 		load_global_strings(nlctx);
++		load_perdev_strings(nlctx, is_dev ? ctx->devname : NULL);
++	}
+ 
+ 	ret = ethnl_prep_get_request(ctx, ETHNL_CMD_GET_SETTINGS,
+ 				     ETHA_SETTINGS_DEV);
+@@ -528,6 +584,11 @@ int nl_gfeatures(struct cmd_context *ctx)
+ 	return settings_request(ctx, ETH_SETTINGS_IM_FEATURES);
+ }
+ 
++int nl_gprivflags(struct cmd_context *ctx)
++{
++	return settings_request(ctx, ETH_SETTINGS_IM_PRIVFLAGS);
++}
++
+ /* SET_SETTINGS */
+ 
+ enum {
+-- 
+2.18.0
+

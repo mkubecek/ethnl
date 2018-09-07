@@ -1,7 +1,7 @@
-From bce4efd6b0cba710cd5e818e8fe7b8f6783aa50e Mon Sep 17 00:00:00 2001
+From cae73ee52f1ffba523cc3df7be6f9cf80c48348d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
-Subject: [PATCH 13/29] netlink: add netlink handler for gfeatures (-k)
+Subject: [PATCH 13/31] netlink: add netlink handler for gfeatures (-k)
 
 Implement "ethtool -k <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_SETTINGS with ETH_SETTINGS_IM_FEATURES mask.
@@ -275,7 +275,7 @@ index f93b61172950..c4cb693acb61 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 0ead9aa6ca97..32b9e6766012 100644
+index 8c68cad66b19..ad42b714229c 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -5,6 +5,7 @@
@@ -520,7 +520,7 @@ index 0ead9aa6ca97..32b9e6766012 100644
 +			allfail = false;
 +	}
  
- 	if (allfail && !nlctx->is_monitor) {
+ 	if (allfail && !nlctx->is_monitor && !nlctx->is_dump) {
  		fputs("No data available\n", stdout);
 @@ -300,6 +523,9 @@ int nl_gset(struct cmd_context *ctx)
  				     ETH_SETTINGS_IM_LINK);

@@ -1,7 +1,7 @@
-From cff75b23f0fd21618911887d073d6f08386d23d4 Mon Sep 17 00:00:00 2001
+From 2e288840899971b253155840c614cd01ed1c8390 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
-Subject: [PATCH 04/29] netlink: add netlink interface
+Subject: [PATCH 04/31] netlink: add netlink interface
 
 Add basic netlink interface based on genetlink and libmnl. This commit only
 adds the generic infrastructure but does not override any ethtool command
@@ -28,11 +28,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  netlink/netlink.c            | 674 +++++++++++++++++++++++++++++++++++
  netlink/netlink.h            | 151 ++++++++
  uapi/linux/ethtool.h         |  14 +
- uapi/linux/ethtool_netlink.h | 395 ++++++++++++++++++++
+ uapi/linux/ethtool_netlink.h | 397 +++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 +++++
  uapi/linux/net_tstamp.h      |  13 +
  uapi/linux/netlink.h         | 247 +++++++++++++
- 14 files changed, 1766 insertions(+), 60 deletions(-)
+ 14 files changed, 1768 insertions(+), 60 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
  create mode 100644 netlink/extapi.h
@@ -1406,10 +1406,10 @@ index 822169878db2..ac46bb6671d3 100644
  
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..665632a814b0
+index 000000000000..dfade409e9c7
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,395 @@
+@@ -0,0 +1,397 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#ifndef _LINUX_ETHTOOL_NETLINK_H_
@@ -1619,6 +1619,7 @@ index 000000000000..665632a814b0
 +	ETHA_SETTINGS_PEER_MODES,		/* bitset */
 +	ETHA_SETTINGS_LINK,			/* u8 */
 +	ETHA_SETTINGS_FEATURES,			/* nest - ETHA_FEATURES_* */
++	ETHA_SETTINGS_PRIV_FLAGS,		/* nest - ETHA_BITSET_* */
 +
 +	__ETHA_SETTINGS_CNT,
 +	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
@@ -1630,8 +1631,9 @@ index 000000000000..665632a814b0
 +#define ETH_SETTINGS_IM_WOLINFO			0x08
 +#define ETH_SETTINGS_IM_LINK			0x10
 +#define ETH_SETTINGS_IM_FEATURES		0x20
++#define ETH_SETTINGS_IM_PRIVFLAGS		0x40
 +
-+#define ETH_SETTINGS_IM_ALL			0x3f
++#define ETH_SETTINGS_IM_ALL			0x7f
 +
 +enum {
 +	ETHA_FEATURES_UNSPEC,

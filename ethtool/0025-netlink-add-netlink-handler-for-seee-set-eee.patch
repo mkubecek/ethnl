@@ -1,7 +1,7 @@
-From 92fa37a0d0f5c9c667edc382f9314326b5885b64 Mon Sep 17 00:00:00 2001
+From b3af322a251e10c9135d23fce5ba35f2a9fbf0bd Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:43:19 +0100
-Subject: [PATCH 25/29] netlink: add netlink handler for seee (--set-eee)
+Subject: [PATCH 25/31] netlink: add netlink handler for seee (--set-eee)
 
 Implement "ethtool --set-eee <dev>" subcommand using netlink interface
 command ETHNL_CMD_SET_PARAMS.

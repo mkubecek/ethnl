@@ -1,7 +1,7 @@
-From 32073bccb97868b6b492880802b95b3b6d094511 Mon Sep 17 00:00:00 2001
+From 0c8a9246451a028d263b29baec9d3dfc9d1eead0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 08:43:44 +0200
-Subject: [PATCH 29/29] netlink: add netlink handler for reset (--reset)
+Subject: [PATCH 29/31] netlink: add netlink handler for reset (--reset)
 
 Implement "ethtool --reset <dev>" using netlink interface command
 ETHNL_CMD_ACT_RESET.
@@ -9,10 +9,10 @@ ETHNL_CMD_ACT_RESET.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c         |   3 +-
- netlink/actions.c | 241 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/actions.c | 243 ++++++++++++++++++++++++++++++++++++++++++++++
  netlink/extapi.h  |   1 +
  netlink/monitor.c |   9 ++
- 4 files changed, 253 insertions(+), 1 deletion(-)
+ 4 files changed, 255 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
 index a9c408545dab..029deb187268 100644
@@ -36,10 +36,18 @@ index a9c408545dab..029deb187268 100644
  	  "		[ flags %x ]\n"
  	  "		[ mgmt ]\n"
 diff --git a/netlink/actions.c b/netlink/actions.c
-index 160352ea8df3..53713c73921b 100644
+index 160352ea8df3..9ca69e288ff8 100644
 --- a/netlink/actions.c
 +++ b/netlink/actions.c
-@@ -130,3 +130,244 @@ int nl_phys_id(struct cmd_context *ctx)
+@@ -6,6 +6,7 @@
+ #include "../common.h"
+ #include "netlink.h"
+ #include "parser.h"
++#include "strset.h"
+ 
+ /* ACT_NWAY_RST */
+ 
+@@ -130,3 +131,245 @@ int nl_phys_id(struct cmd_context *ctx)
  
  	return ret;
  }
@@ -68,6 +76,7 @@ index 160352ea8df3..53713c73921b 100644
 +	const struct nlattr *tb[ETHA_RESET_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	struct nl_context *nlctx = data;
++	const struct stringset *labels = global_stringset(ETH_SS_RESET_FLAGS);
 +	struct reset_walk_data walk_data = {};
 +	int ret;
 +
@@ -84,8 +93,8 @@ index 160352ea8df3..53713c73921b 100644
 +	}
 +	walk_data.shared = true;
 +	if (tb[ETHA_RESET_SHARED])
-+		walk_bitset(tb[ETHA_RESET_SHARED], ETH_SS_RESET_FLAGS,
-+			    reset_walk_cb, &walk_data);
++		walk_bitset(tb[ETHA_RESET_SHARED], labels, reset_walk_cb,
++			    &walk_data);
 +
 +	if (tb[ETHA_RESET_ALL_DEDICATED]) {
 +		walk_data.flags_t |= ETH_RESET_DEDICATED;
@@ -93,8 +102,8 @@ index 160352ea8df3..53713c73921b 100644
 +	}
 +	walk_data.shared = false;
 +	if (tb[ETHA_RESET_DEDICATED])
-+		walk_bitset(tb[ETHA_RESET_DEDICATED], ETH_SS_RESET_FLAGS,
-+			    reset_walk_cb, &walk_data);
++		walk_bitset(tb[ETHA_RESET_DEDICATED], labels, reset_walk_cb,
++			    &walk_data);
 +
 +show:
 +	if (nlctx->is_monitor)

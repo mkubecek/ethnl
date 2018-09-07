@@ -1,7 +1,7 @@
-From 54d8d9acc631fef3891e1ad73818cf17bfda3087 Mon Sep 17 00:00:00 2001
+From 27f50b9f3d69fe3687d8d81237f51a5a98f69fcc Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
-Subject: [PATCH 10/29] netlink: add netlink handler for gset (no option)
+Subject: [PATCH 10/31] netlink: add netlink handler for gset (no option)
 
 Implement "ethtool <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_SETTINGS.
@@ -670,7 +670,7 @@ index ad2d8c72d437..f93b61172950 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 958bfaa94506..7ed0cb34070b 100644
+index c1b232b17e98..db5c26be52a9 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -4,8 +4,10 @@
@@ -684,7 +684,7 @@ index 958bfaa94506..7ed0cb34070b 100644
  
  /* misc helpers */
  
-@@ -495,6 +497,124 @@ const char *get_dev_name(const struct nlattr *nest)
+@@ -494,6 +496,124 @@ const char *get_dev_name(const struct nlattr *nest)
  	return mnl_attr_get_str(dev_tb[ETHA_DEV_NAME]);
  }
  
@@ -810,11 +810,11 @@ index 958bfaa94506..7ed0cb34070b 100644
  
  int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 95642452f1d6..393215cec250 100644
+index 800852d02275..9cbbaa94d3c2 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -62,6 +62,10 @@ typedef void (*bitset_walk_callback)(unsigned int, const char *, bool, void *);
- int walk_bitset(const struct nlattr *bitset, int ss_index,
+@@ -64,6 +64,10 @@ typedef void (*bitset_walk_callback)(unsigned int, const char *, bool, void *);
+ int walk_bitset(const struct nlattr *bitset, const struct stringset *label,
  		bitset_walk_callback cb, void *data);
  
 +int dump_link_modes(const struct nlattr *bitset, bool mask, unsigned class,
@@ -826,7 +826,7 @@ index 95642452f1d6..393215cec250 100644
  int attr_cb(const struct nlattr *attr, void *data);
 diff --git a/netlink/settings.c b/netlink/settings.c
 new file mode 100644
-index 000000000000..d2ee443c28f8
+index 000000000000..b29d699a36d1
 --- /dev/null
 +++ b/netlink/settings.c
 @@ -0,0 +1,302 @@
@@ -1095,7 +1095,7 @@ index 000000000000..d2ee443c28f8
 +		allfail = false;
 +	};
 +
-+	if (allfail && !nlctx->is_monitor) {
++	if (allfail && !nlctx->is_monitor && !nlctx->is_dump) {
 +		fputs("No data available\n", stdout);
 +		nlctx->exit_code = 75;
 +		return MNL_CB_ERROR;
