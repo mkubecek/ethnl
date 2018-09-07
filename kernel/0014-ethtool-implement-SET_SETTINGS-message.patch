@@ -1,7 +1,7 @@
-From 9cc125435a78195f9348e377a6aefcf8baf51620 Mon Sep 17 00:00:00 2001
+From 1b712318ca2c53080e4a96769fe16c249507a55a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
-Subject: [PATCH 14/21] ethtool: implement SET_SETTINGS message
+Subject: [PATCH 14/22] ethtool: implement SET_SETTINGS message
 
 Sets the information provided by ETHTOOL_SLINKSETTINGS, ETHTOOL_SWOL and
 ETHTOOL_SMSGLVL. Unlike with ioctl(), userspace can send only some
@@ -97,10 +97,10 @@ index 1fac7c22ac1c..2dff04af2e75 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index d76af1b51d7c..236802ff3e28 100644
+index b4a3ef3982d8..7e821572d1f3 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -960,6 +960,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -1021,6 +1021,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -113,11 +113,11 @@ index d76af1b51d7c..236802ff3e28 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 6036ef2d5334..d93cda13e0b0 100644
+index b0d74f6ac5e2..a799d4ac3e23 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -273,4 +273,8 @@ struct get_request_ops {
- 			  const struct common_req_info *req_info);
+@@ -280,4 +280,8 @@ struct get_request_ops {
+ 	void (*cleanup)(struct common_req_info *req_info);
  };
  
 +/* request handlers */
@@ -126,10 +126,10 @@ index 6036ef2d5334..d93cda13e0b0 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index b165b18acf88..16f9930e0681 100644
+index d92263abaeaf..32a259cf1c0d 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -84,6 +84,222 @@ struct settings_data {
+@@ -24,6 +24,222 @@ struct settings_data {
  	} features;
  };
  
@@ -352,7 +352,7 @@ index b165b18acf88..16f9930e0681 100644
  /* We want to allow ~0 as selector for backward compatibility (to just set
   * given set of modes, whatever kernel supports) so that we allow all bits
   * on validation and do our own sanity check later.
-@@ -488,3 +704,202 @@ const struct get_request_ops settings_request_ops = {
+@@ -453,3 +669,202 @@ const struct get_request_ops settings_request_ops = {
  	.reply_size		= settings_size,
  	.fill_reply		= fill_settings,
  };
@@ -444,7 +444,7 @@ index b165b18acf88..16f9930e0681 100644
 +	if (ethnl_update_bitset(ksettings.link_modes.advertising, NULL,
 +				__ETHTOOL_LINK_MODE_MASK_NBITS,
 +				tb[ETHA_SETTINGS_LINK_MODES],
-+				&ret, link_mode_names, info))
++				&ret, link_mode_names, false, info))
 +		mod_mask |= ETH_SETTINGS_IM_LINKMODES;
 +	if (ret < 0)
 +		return ret;

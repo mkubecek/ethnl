@@ -1,7 +1,7 @@
-From d332eca977aed5b3b60cf677ce1ecd386ac47fb6 Mon Sep 17 00:00:00 2001
+From c8aeedaa333c68a399c2ac077d7672de0bb8a6b4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
-Subject: [PATCH 11/21] ethtool: implement GET_SETTINGS message
+Subject: [PATCH 11/22] ethtool: implement GET_SETTINGS message
 
 Requests the information provided by ETHTOOL_GLINKSETTINGS, ETHTOOL_GWOL
 and ETHTOOL_GMSGLVL. The info_mask header field can be used to request only
@@ -21,9 +21,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/ioctl.c                          |  64 +---
  net/ethtool/netlink.c                        |  68 ++++
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/settings.c                       | 334 +++++++++++++++++++
+ net/ethtool/settings.c                       | 343 +++++++++++++++++++
  net/ethtool/strset.c                         |   6 +
- 13 files changed, 596 insertions(+), 62 deletions(-)
+ 13 files changed, 605 insertions(+), 62 deletions(-)
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -147,10 +147,10 @@ index 2a15e64a16f3..fba8ff961887 100644
  	ETHNL_MCGRP_MONITOR,
  };
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index f19b4b6d2e38..eb8d80d4fd2c 100644
+index 4b69baff11be..49582ae1a079 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -3774,6 +3774,8 @@ enum {
+@@ -3775,6 +3775,8 @@ enum {
  	NETIF_MSG_PKTDATA	= 0x1000,
  	NETIF_MSG_HW		= 0x2000,
  	NETIF_MSG_WOL		= 0x4000,
@@ -426,7 +426,7 @@ index 0643c5f0867a..dcedd319c335 100644
  		return -EFAULT;
  	return 0;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index ad072e9b82f5..f416b91a74da 100644
+index 2609df367cc9..008e63aea57b 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -1,12 +1,68 @@
@@ -498,7 +498,7 @@ index ad072e9b82f5..f416b91a74da 100644
  static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
  	[ETHA_DEV_UNSPEC]	= { .type = NLA_UNSPEC },
  	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -474,10 +530,12 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
+@@ -525,10 +581,12 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
  
  extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops info_request_ops;
@@ -511,7 +511,7 @@ index ad072e9b82f5..f416b91a74da 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -883,6 +941,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -944,6 +1002,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -525,7 +525,7 @@ index ad072e9b82f5..f416b91a74da 100644
  };
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
-@@ -907,6 +972,9 @@ static int __init ethnl_init(void)
+@@ -968,6 +1033,9 @@ static int __init ethnl_init(void)
  {
  	int ret;
  
@@ -536,7 +536,7 @@ index ad072e9b82f5..f416b91a74da 100644
  	if (ret < 0)
  		panic("ethtool: could not register genetlink family\n");
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index dce0127190b4..6036ef2d5334 100644
+index 2ba41451a789..b0d74f6ac5e2 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -23,6 +23,7 @@ extern struct genl_family ethtool_genl_family;
@@ -549,10 +549,10 @@ index dce0127190b4..6036ef2d5334 100644
  int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
-index 000000000000..85a126ad6a6b
+index 000000000000..2a5e2733de32
 --- /dev/null
 +++ b/net/ethtool/settings.c
-@@ -0,0 +1,334 @@
+@@ -0,0 +1,343 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
@@ -667,6 +667,7 @@ index 000000000000..85a126ad6a6b
 +	struct settings_data *data =
 +		container_of(req_info, struct settings_data, reqinfo_base);
 +	struct net_device *dev = data->repdata_base.dev;
++	const struct ethtool_ops *eops = dev->ethtool_ops;
 +	u32 req_mask = req_info->req_mask;
 +	int ret;
 +
@@ -695,8 +696,8 @@ index 000000000000..85a126ad6a6b
 +				    __ETHTOOL_LINK_MODE_MASK_NWORDS);
 +	}
 +	if (req_mask & ETH_SETTINGS_IM_MSGLEVEL) {
-+		if (dev->ethtool_ops->get_msglevel)
-+			data->msglevel = dev->ethtool_ops->get_msglevel(dev);
++		if (eops->get_msglevel)
++			data->msglevel = eops->get_msglevel(dev);
 +		else
 +			req_mask &= ~ETH_SETTINGS_IM_MSGLEVEL;
 +	}
@@ -715,6 +716,30 @@ index 000000000000..85a126ad6a6b
 +	return 0;
 +}
 +
++static int link_modes_size(const struct ethtool_link_ksettings *ksettings,
++			   bool compact)
++{
++	u32 *supported = (u32 *)ksettings->link_modes.supported;
++	u32 *advertising = (u32 *)ksettings->link_modes.advertising;
++	u32 *lp_advertising = (u32 *)ksettings->link_modes.lp_advertising;
++	int len = 0, ret;
++
++	ret = ethnl_bitset32_size(compact, __ETHTOOL_LINK_MODE_MASK_NBITS,
++				  advertising, supported, link_mode_names,
++				  false);
++	if (ret < 0)
++		return ret;
++	len += ret;
++	ret = ethnl_bitset32_size(compact, __ETHTOOL_LINK_MODE_MASK_NBITS,
++				  lp_advertising, lp_advertising,
++				  link_mode_names, false);
++	if (ret < 0)
++		return ret;
++	len += ret;
++
++	return len;
++}
++
 +/* To keep things simple, reserve space for some attributes which may not
 + * be added to the message (e.g. ETHA_SETTINGS_SOPASS); therefore the length
 + * returned may be bigger than the actual length of the message sent
@@ -723,11 +748,9 @@ index 000000000000..85a126ad6a6b
 +{
 +	struct settings_data *data =
 +		container_of(req_info, struct settings_data, reqinfo_base);
-+	struct ethtool_link_ksettings *ksettings = &data->ksettings;
 +	u32 info_mask = data->repdata_base.info_mask;
 +	bool compact = req_info->compact;
-+	size_t len = 0;
-+	int ret = 0;
++	int len = 0, ret;
 +
 +	len += dev_ident_size();
 +	if (info_mask & ETH_SETTINGS_IM_LINKINFO) {
@@ -739,22 +762,7 @@ index 000000000000..85a126ad6a6b
 +		len += nla_total_size(sizeof(struct nla_bitfield32));
 +	}
 +	if (info_mask & ETH_SETTINGS_IM_LINKMODES) {
-+		u32 *supported = (u32 *)ksettings->link_modes.supported;
-+		u32 *advertising = (u32 *)ksettings->link_modes.advertising;
-+		u32 *lp_advertising =
-+			(u32 *)ksettings->link_modes.lp_advertising;
-+
-+		ret = ethnl_bitset32_size(compact,
-+					  __ETHTOOL_LINK_MODE_MASK_NBITS,
-+					  advertising, supported,
-+					  link_mode_names);
-+		if (ret < 0)
-+			return ret;
-+		len += ret;
-+		ret = ethnl_bitset32_size(compact,
-+					  __ETHTOOL_LINK_MODE_MASK_NBITS,
-+					  lp_advertising, lp_advertising,
-+					  link_mode_names);
++		ret = link_modes_size(&data->ksettings, compact);
 +		if (ret < 0)
 +			return ret;
 +		len += ret;
@@ -805,13 +813,14 @@ index 000000000000..85a126ad6a6b
 +
 +	ret = ethnl_put_bitset32(skb, ETHA_SETTINGS_LINK_MODES, compact,
 +				 __ETHTOOL_LINK_MODE_MASK_NBITS, advertising,
-+				 supported, link_mode_names);
++				 supported, link_mode_names, false);
 +	if (ret < 0)
 +		return ret;
 +	if (!lpm_empty) {
 +		ret = ethnl_put_bitset32(skb, ETHA_SETTINGS_PEER_MODES, compact,
 +					 __ETHTOOL_LINK_MODE_MASK_NBITS,
-+					 lp_adv, lp_adv, link_mode_names);
++					 lp_adv, lp_adv, link_mode_names,
++					 false);
 +		if (ret < 0)
 +			return ret;
 +	}

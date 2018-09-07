@@ -1,7 +1,7 @@
-From f52c7b2de054d7073bc716aaeb78bdf193794064 Mon Sep 17 00:00:00 2001
+From eebe5f0f221213c346da0b449b142438c16b160e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
-Subject: [PATCH 06/21] ethtool: support for netlink notifications
+Subject: [PATCH 06/22] ethtool: support for netlink notifications
 
 Add infrastructure for ethtool netlink notifications. There is only one
 multicast group, "monitor" which userspace can use to get notifications.
@@ -38,10 +38,10 @@ index 0412adb4f42f..2a15e64a16f3 100644
  
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index 4271f6b4e419..f19b4b6d2e38 100644
+index e2b3bd750c98..4b69baff11be 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -4258,6 +4258,18 @@ struct netdev_notifier_bonding_info {
+@@ -4259,6 +4259,18 @@ struct netdev_notifier_bonding_info {
  void netdev_bonding_info_change(struct net_device *dev,
  				struct netdev_bonding_info *bonding_info);
  
@@ -72,7 +72,7 @@ index cfee7acfc6d8..011f840423be 100644
 +
  #endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 1d13ebd37c95..debc596b0849 100644
+index 3b5e32d888f0..565eb43a56ad 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -5,6 +5,8 @@
@@ -84,7 +84,7 @@ index 1d13ebd37c95..debc596b0849 100644
  static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
  	[ETHA_DEV_UNSPEC]	= { .type = NLA_UNSPEC },
  	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -508,11 +510,39 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -559,11 +561,39 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  	return NULL;
  }
  
@@ -124,7 +124,7 @@ index 1d13ebd37c95..debc596b0849 100644
  struct genl_family ethtool_genl_family = {
  	.hdrsize	= 0,
  	.name		= ETHTOOL_GENL_NAME,
-@@ -521,6 +551,8 @@ struct genl_family ethtool_genl_family = {
+@@ -572,6 +602,8 @@ struct genl_family ethtool_genl_family = {
  	.parallel_ops	= true,
  	.ops		= ethtool_genl_ops,
  	.n_ops		= ARRAY_SIZE(ethtool_genl_ops),
@@ -134,7 +134,7 @@ index 1d13ebd37c95..debc596b0849 100644
  
  /* module setup */
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 8472fc7e2f03..d7e287fdc2dc 100644
+index 340b00488466..d0e75799c522 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -11,6 +11,8 @@

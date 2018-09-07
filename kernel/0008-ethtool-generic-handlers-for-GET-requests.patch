@@ -1,7 +1,7 @@
-From 26eb2266d0d1373128f8158b9e7349d8c83c1e62 Mon Sep 17 00:00:00 2001
+From 137435d522c7a193b918e09cfc92a6676bd88c88 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 27 Aug 2018 19:51:37 +0200
-Subject: [PATCH 08/21] ethtool: generic handlers for GET requests
+Subject: [PATCH 08/22] ethtool: generic handlers for GET requests
 
 Some parts of processing GET type requests and related notifications are
 independent on a command. Provide universal functions so that only four
@@ -16,15 +16,15 @@ These callback are defined in an instance of struct get_request_ops.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/ethtool/netlink.c | 270 ++++++++++++++++++++++++++++++++++++++++++
- net/ethtool/netlink.h |  91 ++++++++++++++
- 2 files changed, 361 insertions(+)
+ net/ethtool/netlink.c | 280 ++++++++++++++++++++++++++++++++++++++++++
+ net/ethtool/netlink.h |  95 ++++++++++++++
+ 2 files changed, 375 insertions(+)
 
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 91d68ec7b336..3bc9a02dc747 100644
+index 72cb5ebdf830..135841fa365a 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -470,6 +470,33 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
+@@ -521,6 +521,41 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
  	return (!*err && mod);
  }
  
@@ -46,6 +46,14 @@ index 91d68ec7b336..3bc9a02dc747 100644
 +	return req_info;
 +}
 +
++static void free_get_data(const struct get_request_ops *ops,
++			  struct common_req_info *req_info)
++{
++	if (ops->cleanup)
++		ops->cleanup(req_info);
++	kfree(req_info);
++}
++
 +static void init_reply_data(const struct common_req_info *req_info,
 +			    const struct get_request_ops *ops,
 +			    struct net_device *dev)
@@ -58,7 +66,7 @@ index 91d68ec7b336..3bc9a02dc747 100644
  /* create skb for a reply and fill device identification
   * payload: payload length (without netlink and genetlink header)
   * dev:     device the reply is about (may be null)
-@@ -510,6 +537,249 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -561,6 +596,251 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  	return NULL;
  }
  
@@ -104,7 +112,7 @@ index 91d68ec7b336..3bc9a02dc747 100644
 +	genlmsg_end(rskb, reply_payload);
 +	if (req_info->dev)
 +		dev_put(req_info->dev);
-+	kfree(req_info);
++	free_get_data(ops, req_info);
 +	return genlmsg_reply(rskb, info);
 +
 +err:
@@ -112,7 +120,7 @@ index 91d68ec7b336..3bc9a02dc747 100644
 +		  "calculated message payload length (%d) not sufficient\n",
 +		  reply_len);
 +	nlmsg_free(rskb);
-+	kfree(req_info);
++	free_get_data(ops, req_info);
 +err_dev:
 +	if (req_info->dev)
 +		dev_put(req_info->dev);
@@ -235,7 +243,8 @@ index 91d68ec7b336..3bc9a02dc747 100644
 +/* generic ->done() handler for GET requests */
 +static int ethnl_get_done(struct netlink_callback *cb)
 +{
-+	kfree((struct common_req_info *)cb->args[1]);
++	free_get_data((const struct get_request_ops *)cb->args[0],
++		      (struct common_req_info *)cb->args[1]);
 +
 +	return 0;
 +}
@@ -293,6 +302,7 @@ index 91d68ec7b336..3bc9a02dc747 100644
 +	ret = ops->fill_reply(skb, req_info);
 +	if (ret < 0)
 +		goto err_skb;
++	free_get_data(ops, req_info);
 +	genlmsg_end(skb, reply_payload);
 +
 +	genlmsg_multicast(&ethtool_genl_family, skb, 0, ETHNL_MCGRP_MONITOR,
@@ -302,17 +312,17 @@ index 91d68ec7b336..3bc9a02dc747 100644
 +err_skb:
 +	nlmsg_free(skb);
 +err_data:
-+	kfree(req_info);
++	free_get_data(ops, req_info);
 +}
 +
  /* notifications */
  
  typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index d7e287fdc2dc..2f004d02827b 100644
+index d0e75799c522..5aada243833a 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -172,4 +172,95 @@ static unsigned int dev_ident_size(void)
+@@ -175,4 +175,99 @@ static unsigned int dev_ident_size(void)
  			      nla_total_size(IFNAMSIZ));
  }
  
@@ -388,6 +398,9 @@ index d7e287fdc2dc..2f004d02827b 100644
 + *     specification; reported size may be slightly bigger than actual reply
 + *     but must not be smaller
 + * @fill_reply: fill reply message payload
++ * @cleanup: (optional) called when data are no longer needed; use e.g. to free
++ *           any additional data allocated in prepare_data() which are not part
++ *           of the main structure
 + */
 +struct get_request_ops {
 +	u8			request_cmd;
@@ -405,6 +418,7 @@ index d7e287fdc2dc..2f004d02827b 100644
 +	int (*reply_size)(const struct common_req_info *req_info);
 +	int (*fill_reply)(struct sk_buff *skb,
 +			  const struct common_req_info *req_info);
++	void (*cleanup)(struct common_req_info *req_info);
 +};
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */

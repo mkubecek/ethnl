@@ -1,7 +1,7 @@
-From c1c149e39617519e189dc1a0b2c6390b5b827a27 Mon Sep 17 00:00:00 2001
+From 9e2eeb25c83b69864e61e3e1b6193847f6de744f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
-Subject: [PATCH 18/21] ethtool: implement SET_PARAMS message
+Subject: [PATCH 19/22] ethtool: implement SET_PARAMS message
 
 Sets the information provided by ETHTOOL_SCOALESCE, ETHTOOL_SRINGPARAM,
 ETHTOOL_SPAUSEPARAM, ETHTOOL_SCHANNELS, ETHTOOL_SEEE and ETHTOOL_SFECPARAM.
@@ -17,7 +17,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 503 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 0792aec2998e..84234a1b049d 100644
+index 7897d22e1979..f0af0317b141 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -126,7 +126,7 @@ List of message types
@@ -29,7 +29,7 @@ index 0792aec2998e..84234a1b049d 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -426,6 +426,63 @@ to them are broadcasted as notifications on change of these settings using
+@@ -434,6 +434,63 @@ to them are broadcasted as notifications on change of these settings using
  netlink or ioctl ethtool interface.
  
  
@@ -93,7 +93,7 @@ index 0792aec2998e..84234a1b049d 100644
  
  Request translation
  -------------------
-@@ -449,11 +506,11 @@ ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
+@@ -457,11 +514,11 @@ ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		ETHNL_CMD_GET_PARAMS
@@ -108,16 +108,16 @@ index 0792aec2998e..84234a1b049d 100644
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SRXCSUM			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GTXCSUM			ETHNL_CMD_GET_SETTINGS
-@@ -495,7 +552,7 @@ ETHTOOL_SRXFHINDIR		n/a
+@@ -503,7 +560,7 @@ ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
- ETHTOOL_SFEATURES		n/a
+ ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GCHANNELS		ETHNL_CMD_GET_PARAMS
 -ETHTOOL_SCHANNELS		n/a
 +ETHTOOL_SCHANNELS		ETHNL_CMD_SET_PARAMS
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
  ETHTOOL_GET_DUMP_DATA		n/a
-@@ -503,7 +560,7 @@ ETHTOOL_GET_TS_INFO		ETHNL_CMD_GET_INFO
+@@ -511,7 +568,7 @@ ETHTOOL_GET_TS_INFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
@@ -126,7 +126,7 @@ index 0792aec2998e..84234a1b049d 100644
  ETHTOOL_GRSSH			n/a
  ETHTOOL_SRSSH			n/a
  ETHTOOL_GTUNABLE		n/a
-@@ -515,5 +572,5 @@ ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
+@@ -523,5 +580,5 @@ ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		ETHNL_CMD_GET_PARAMS
@@ -134,10 +134,10 @@ index 0792aec2998e..84234a1b049d 100644
 +ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 8c8e8063d382..a28fba60a01b 100644
+index 923592dabdc8..da46acabc0e0 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -975,6 +975,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -1036,6 +1036,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -150,7 +150,7 @@ index 8c8e8063d382..a28fba60a01b 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 5f0ea3cfd7ef..612ccc0711fe 100644
+index 718522a211f3..68c8ef1be985 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -472,3 +472,437 @@ const struct get_request_ops params_request_ops = {
@@ -479,7 +479,7 @@ index 5f0ea3cfd7ef..612ccc0711fe 100644
 +
 +	if (ethnl_update_bitset32(&data.advertised, NULL, 32,
 +				  tb[ETHA_EEE_LINK_MODES], &ret,
-+				  link_mode_names, info))
++				  link_mode_names, false, info))
 +		mod = true;
 +	if (ret < 0)
 +		return ret;

@@ -1,7 +1,7 @@
-From 53e8fd6a220965c5c5236746107f6051271fc9f7 Mon Sep 17 00:00:00 2001
+From aa888eb952dcefd9398deb7e414ab835f3bfc1d4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
-Subject: [PATCH 15/21] ethtool: implement SET_SETTINGS request for features
+Subject: [PATCH 15/22] ethtool: implement SET_SETTINGS request for features
 
 Using ETHNL_SETTINGS_FEATURES attribute, userspace can modify device
 features. Actual change is subject to netdev_change_features() sanity
@@ -13,13 +13,13 @@ between old and new state of dev->features.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  30 +++-
+ Documentation/networking/ethtool-netlink.txt |  32 ++--
  include/uapi/linux/ethtool_netlink.h         |   1 +
- net/ethtool/settings.c                       | 148 +++++++++++++++++++
- 3 files changed, 171 insertions(+), 8 deletions(-)
+ net/ethtool/settings.c                       | 149 +++++++++++++++++++
+ 3 files changed, 173 insertions(+), 9 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 2dff04af2e75..4e98a8d9a746 100644
+index 2dff04af2e75..e3a7a970a86a 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -303,6 +303,9 @@ to be passed with SET_SETTINGS request:
@@ -89,6 +89,15 @@ index 2dff04af2e75..4e98a8d9a746 100644
  ETHTOOL_GRXRINGS		n/a
  ETHTOOL_GRXCLSRLCNT		n/a
  ETHTOOL_GRXCLSRULE		n/a
+@@ -384,7 +398,7 @@ ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
+ ETHTOOL_GRXFHINDIR		n/a
+ ETHTOOL_SRXFHINDIR		n/a
+ ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
+-ETHTOOL_SFEATURES		n/a
++ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
+ ETHTOOL_GCHANNELS		n/a
+ ETHTOOL_SCHANNELS		n/a
+ ETHTOOL_SET_DUMP		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 index be0548c25917..9c685830a56a 100644
 --- a/include/uapi/linux/ethtool_netlink.h
@@ -102,10 +111,10 @@ index be0548c25917..9c685830a56a 100644
  	__ETHA_FEATURES_CNT,
  	ETHA_FEATURES_MAX = (__ETHA_FEATURES_CNT - 1)
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 16f9930e0681..04db63cd4db7 100644
+index 32a259cf1c0d..8e0b7881c847 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -817,6 +817,143 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
+@@ -782,6 +782,145 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
  	return 0;
  }
  
@@ -170,8 +179,8 @@ index 16f9930e0681..04db63cd4db7 100644
 +	bitmap_copy(req_wanted, old_active, NETDEV_FEATURE_COUNT);
 +	bitmap_zero(req_mask, NETDEV_FEATURE_COUNT);
 +	mod = ethnl_update_bitset(req_wanted, req_mask, NETDEV_FEATURE_COUNT,
-+				  tb[ETHA_FEATURES_WANTED], &ret, feature_names,
-+				  info);
++				  tb[ETHA_FEATURES_WANTED], &ret,
++				  netdev_features_strings, true, info);
 +	if (ret < 0)
 +		return ret;
 +	if (features_from_bitmap(req_mask) & ~NETIF_F_ETHTOOL_BITS) {
@@ -203,12 +212,14 @@ index 16f9930e0681..04db63cd4db7 100644
 +	rskb = NULL;
 +	reply_len = 0;
 +	ret = ethnl_bitset_size(compact, NETDEV_FEATURE_COUNT, req_wanted,
-+				wanted_diff_mask, feature_names);
++				wanted_diff_mask, netdev_features_strings,
++				true);
 +	if (ret < 0)
 +		goto err;
 +	reply_len += ret;
 +	ret = ethnl_bitset_size(compact, NETDEV_FEATURE_COUNT, new_active,
-+				active_diff_mask, feature_names);
++				active_diff_mask, netdev_features_strings,
++				true);
 +	if (ret < 0)
 +		goto err;
 +	reply_len += ret;
@@ -225,12 +236,12 @@ index 16f9930e0681..04db63cd4db7 100644
 +		goto err;
 +	ret = ethnl_put_bitset(rskb, ETHA_FEATURES_WANTED, compact,
 +			       NETDEV_FEATURE_COUNT, req_wanted,
-+			       wanted_diff_mask, feature_names);
++			       wanted_diff_mask, netdev_features_strings, true);
 +	if (ret < 0)
 +		goto err;
 +	ret = ethnl_put_bitset(rskb, ETHA_FEATURES_ACTIVE, compact,
 +			       NETDEV_FEATURE_COUNT, new_active,
-+			       active_diff_mask, feature_names);
++			       active_diff_mask, netdev_features_strings, true);
 +	if (ret < 0)
 +		goto err;
 +	nla_nest_end(rskb, feat_attr);
@@ -249,17 +260,16 @@ index 16f9930e0681..04db63cd4db7 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-@@ -892,6 +1029,17 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -857,6 +996,16 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  			req_mask |= ETH_SETTINGS_IM_MSGLEVEL;
  		}
  	}
 +	if (tb[ETHA_SETTINGS_FEATURES]) {
 +		bool compact = tb[ETHA_SETTINGS_COMPACT];
-+		bool changed = false;
 +
 +		ret = update_features(info, dev, tb[ETHA_SETTINGS_FEATURES],
-+				      compact, &changed);
-+		if (changed)
++				      compact, &mod);
++		if (mod)
 +			req_mask |= ETH_SETTINGS_IM_FEATURES;
 +		if (ret < 0)
 +			goto out_unlock;

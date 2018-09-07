@@ -1,7 +1,7 @@
-From ca7603eddc2aeda836c5781579e50fa8ed2fa153 Mon Sep 17 00:00:00 2001
+From 6cb6791e6cfac0f92d76d6351d1cdabc251b1354 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
-Subject: [PATCH 12/21] ethtool: implement GET_SETTINGS request for features
+Subject: [PATCH 12/22] ethtool: implement GET_SETTINGS request for features
 
 With ETH_SETTINGS_IM_FEATURES info mask, ETHNL_CMD_GET_SETTINGS request
 gets network device feature values. This is the same information as
@@ -9,12 +9,12 @@ provided via ETHTOOL_GFEATURES ioctl request.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  33 ++--
- include/uapi/linux/ethtool_netlink.h         |  15 +-
+ Documentation/networking/ethtool-netlink.txt |  33 ++++--
+ include/uapi/linux/ethtool_netlink.h         |  15 ++-
  net/ethtool/common.h                         |   2 +
  net/ethtool/ioctl.c                          |   2 -
- net/ethtool/settings.c                       | 156 +++++++++++++++++++
- 5 files changed, 196 insertions(+), 12 deletions(-)
+ net/ethtool/settings.c                       | 112 +++++++++++++++++++
+ 5 files changed, 152 insertions(+), 12 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 520222a7f0ff..b9d8770737e1 100644
@@ -165,77 +165,10 @@ index dcedd319c335..ee1015b4bb90 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 85a126ad6a6b..b165b18acf88 100644
+index 2a5e2733de32..d92263abaeaf 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -4,6 +4,66 @@
- #include "common.h"
- #include <linux/rtnetlink.h>
- 
-+#define FEATURE_NAME_PTR(id) [id] = netdev_features_strings[id]
-+static const char *feature_names[] = {
-+	FEATURE_NAME_PTR(NETIF_F_SG_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_IP_CSUM_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_HW_CSUM_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_IPV6_CSUM_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_HIGHDMA_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_FRAGLIST_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_HW_VLAN_CTAG_TX_BIT),
-+
-+	FEATURE_NAME_PTR(NETIF_F_HW_VLAN_CTAG_RX_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_HW_VLAN_CTAG_FILTER_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_HW_VLAN_STAG_TX_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_HW_VLAN_STAG_RX_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_HW_VLAN_STAG_FILTER_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_VLAN_CHALLENGED_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_GSO_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_LLTX_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_NETNS_LOCAL_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_GRO_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_GRO_HW_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_LRO_BIT),
-+
-+	FEATURE_NAME_PTR(NETIF_F_TSO_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_GSO_ROBUST_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_TSO_ECN_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_TSO_MANGLEID_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_TSO6_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_FSO_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_GSO_GRE_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_GSO_GRE_CSUM_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_GSO_IPXIP4_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_GSO_IPXIP6_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_GSO_UDP_TUNNEL_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_GSO_UDP_TUNNEL_CSUM_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_GSO_PARTIAL_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_GSO_SCTP_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_GSO_ESP_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_GSO_UDP_L4_BIT),
-+
-+	FEATURE_NAME_PTR(NETIF_F_FCOE_CRC_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_SCTP_CRC_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_FCOE_MTU_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_NTUPLE_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_RXHASH_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_RXCSUM_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_NOCACHE_COPY_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_LOOPBACK_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_RXFCS_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_RXALL_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_HW_L2FW_DOFFLOAD_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_HW_TC_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_HW_ESP_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_HW_ESP_TX_CSUM_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_RX_UDP_TUNNEL_PORT_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_HW_TLS_RECORD_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_HW_TLS_TX_BIT),
-+	FEATURE_NAME_PTR(NETIF_F_HW_TLS_RX_BIT),
-+};
-+
- struct settings_data {
- 	struct common_req_info		reqinfo_base;
- 	bool				privileged;
-@@ -16,6 +76,12 @@ struct settings_data {
+@@ -16,6 +16,12 @@ struct settings_data {
  	int				link;
  	u32				msglevel;
  	bool				lpm_empty;
@@ -248,7 +181,7 @@ index 85a126ad6a6b..b165b18acf88 100644
  };
  
  /* We want to allow ~0 as selector for backward compatibility (to just set
-@@ -46,6 +112,7 @@ static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
+@@ -46,6 +52,7 @@ static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
  	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
  	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_NESTED },
  	[ETHA_SETTINGS_LINK]		= { .type = NLA_U8 },
@@ -256,7 +189,7 @@ index 85a126ad6a6b..b165b18acf88 100644
  };
  
  static int parse_settings(struct common_req_info *req_info,
-@@ -106,6 +173,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
+@@ -106,6 +113,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
  	return ret;
  }
  
@@ -281,7 +214,7 @@ index 85a126ad6a6b..b165b18acf88 100644
  static int prepare_settings(struct common_req_info *req_info,
  			    struct genl_info *info)
  {
-@@ -152,6 +237,8 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -153,6 +178,8 @@ static int prepare_settings(struct common_req_info *req_info,
  	}
  	if (req_mask & ETH_SETTINGS_IM_LINK)
  		data->link = __ethtool_get_link(dev);
@@ -290,35 +223,55 @@ index 85a126ad6a6b..b165b18acf88 100644
  	ethnl_after_ops(dev, req_info->have_rtnl);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -214,6 +301,35 @@ static int settings_size(const struct common_req_info *req_info)
+@@ -185,6 +212,42 @@ static int link_modes_size(const struct ethtool_link_ksettings *ksettings,
+ 	return len;
+ }
+ 
++static int features_size(const struct settings_data *data)
++{
++	bool compact = data->reqinfo_base.compact;
++	int len = 0, ret;
++
++	ret = ethnl_bitset32_size(compact, NETDEV_FEATURE_COUNT,
++				  data->features.hw, NULL,
++				  netdev_features_strings, true);
++	if (ret < 0)
++		return ret;
++	len += ret;
++	ret = ethnl_bitset32_size(compact, NETDEV_FEATURE_COUNT,
++				  data->features.wanted,
++				  data->features.wanted,
++				  netdev_features_strings, true);
++	if (ret < 0)
++		return ret;
++	len += ret;
++	ret = ethnl_bitset32_size(compact, NETDEV_FEATURE_COUNT,
++				  data->features.active,
++				  data->features.active,
++				  netdev_features_strings, true);
++	if (ret < 0)
++		return ret;
++	len += ret;
++	ret = ethnl_bitset32_size(compact, NETDEV_FEATURE_COUNT,
++				  data->features.nochange,
++				  data->features.nochange,
++				  netdev_features_strings, true);
++	if (ret < 0)
++		return ret;
++	len += ret;
++
++	return len;
++}
++
+ /* To keep things simple, reserve space for some attributes which may not
+  * be added to the message (e.g. ETHA_SETTINGS_SOPASS); therefore the length
+  * returned may be bigger than the actual length of the message sent
+@@ -222,6 +285,12 @@ static int settings_size(const struct common_req_info *req_info)
  	}
  	if (info_mask & ETH_SETTINGS_IM_LINK)
  		len += nla_total_size(sizeof(u32));
 +	if (info_mask & ETH_SETTINGS_IM_FEATURES) {
-+		ret = ethnl_bitset32_size(compact, NETDEV_FEATURE_COUNT,
-+					  data->features.hw, NULL,
-+					  feature_names);
-+		if (ret < 0)
-+			return ret;
-+		len += ret;
-+		ret = ethnl_bitset32_size(compact, NETDEV_FEATURE_COUNT,
-+					  data->features.wanted,
-+					  data->features.wanted,
-+					  feature_names);
-+		if (ret < 0)
-+			return ret;
-+		len += ret;
-+		ret = ethnl_bitset32_size(compact, NETDEV_FEATURE_COUNT,
-+					  data->features.active,
-+					  data->features.active,
-+					  feature_names);
-+		if (ret < 0)
-+			return ret;
-+		len += ret;
-+		ret = ethnl_bitset32_size(compact, NETDEV_FEATURE_COUNT,
-+					  data->features.nochange,
-+					  data->features.nochange,
-+					  feature_names);
++		ret = features_size(data);
 +		if (ret < 0)
 +			return ret;
 +		len += ret;
@@ -326,7 +279,7 @@ index 85a126ad6a6b..b165b18acf88 100644
  
  	return len;
  }
-@@ -282,6 +398,41 @@ static int fill_wolinfo(struct sk_buff *skb,
+@@ -291,6 +360,44 @@ static int fill_wolinfo(struct sk_buff *skb,
  	return 0;
  }
  
@@ -342,22 +295,25 @@ index 85a126ad6a6b..b165b18acf88 100644
 +
 +	ret = ethnl_put_bitset32(skb, ETHA_FEATURES_HW, compact,
 +				 NETDEV_FEATURE_COUNT, data->features.hw, NULL,
-+				 feature_names);
++				 netdev_features_strings, true);
 +	if (ret < 0)
 +		return ret;
 +	ret = ethnl_put_bitset32(skb, ETHA_FEATURES_WANTED, compact,
 +				 NETDEV_FEATURE_COUNT, data->features.wanted,
-+				 data->features.wanted, feature_names);
++				 data->features.wanted, netdev_features_strings,
++				 true);
 +	if (ret < 0)
 +		return ret;
 +	ret = ethnl_put_bitset32(skb, ETHA_FEATURES_ACTIVE, compact,
 +				 NETDEV_FEATURE_COUNT, data->features.active,
-+				 data->features.active, feature_names);
++				 data->features.active, netdev_features_strings,
++				 true);
 +	if (ret < 0)
 +		return ret;
 +	ret = ethnl_put_bitset32(skb, ETHA_FEATURES_NOCHANGE, compact,
 +				 NETDEV_FEATURE_COUNT, data->features.nochange,
-+				 data->features.nochange, feature_names);
++				 data->features.nochange,
++				 netdev_features_strings, true);
 +	if (ret < 0)
 +		return ret;
 +
@@ -368,7 +324,7 @@ index 85a126ad6a6b..b165b18acf88 100644
  static int fill_settings(struct sk_buff *skb,
  			 const struct common_req_info *req_info)
  {
-@@ -316,6 +467,11 @@ static int fill_settings(struct sk_buff *skb,
+@@ -325,6 +432,11 @@ static int fill_settings(struct sk_buff *skb,
  		if (nla_put_u8(skb, ETHA_SETTINGS_LINK, data->link))
  			return -EMSGSIZE;
  	}

@@ -1,7 +1,7 @@
-From 8df4a20161222e9925918cfb1dfd7fc21464f287 Mon Sep 17 00:00:00 2001
+From d3c17d0e92fff965c534b22cad7ee9104890395a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
-Subject: [PATCH 19/21] ethtool: implement ACT_NWAY_RST message
+Subject: [PATCH 20/22] ethtool: implement ACT_NWAY_RST message
 
 Requests autonegotiation restart, equivalent of ETHTOOL_NWAY_RST.
 
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/actions.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 84234a1b049d..a71476110486 100644
+index f0af0317b141..979b5ad19e05 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -127,6 +127,7 @@ List of message types
@@ -31,7 +31,7 @@ index 84234a1b049d..a71476110486 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -484,6 +485,18 @@ cannot be set by SET_PARAMS request.
+@@ -492,6 +493,18 @@ cannot be set by SET_PARAMS request.
  		- change configured FEC encodings
  
  
@@ -50,7 +50,7 @@ index 84234a1b049d..a71476110486 100644
  Request translation
  -------------------
  
-@@ -501,7 +514,7 @@ ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
+@@ -509,7 +522,7 @@ ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SWOL			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GMSGLVL			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SMSGLVL			ETHNL_CMD_SET_SETTINGS
@@ -60,7 +60,7 @@ index 84234a1b049d..a71476110486 100644
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 98c9b9b37be0..ab0fdeb264c2 100644
+index 9b8fe14a7bfe..f08062d122ce 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -16,6 +16,7 @@ enum {
@@ -71,7 +71,7 @@ index 98c9b9b37be0..ab0fdeb264c2 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -347,6 +348,16 @@ enum {
+@@ -349,6 +350,16 @@ enum {
  	ETHA_FEC_MAX = (__ETHA_FEC_CNT - 1)
  };
  
@@ -177,7 +177,7 @@ index 000000000000..45334b1d32dc
 +	return ret;
 +}
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index acad67a57c5e..b1365ad5e73a 100644
+index d56adb254d79..f303a29fa94a 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1303,10 +1303,15 @@ static int ethtool_set_eee(struct net_device *dev, char __user *useraddr)
@@ -198,10 +198,10 @@ index acad67a57c5e..b1365ad5e73a 100644
  
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index a28fba60a01b..0b6d305defe2 100644
+index da46acabc0e0..0af3f0f8679d 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -855,6 +855,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -916,6 +916,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_SETTINGS]	= ethnl_std_notify,
  	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
@@ -209,7 +209,7 @@ index a28fba60a01b..0b6d305defe2 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -980,6 +981,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -1041,6 +1042,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_params,
  	},
@@ -222,10 +222,10 @@ index a28fba60a01b..0b6d305defe2 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 4ca4ef7c213a..115d65f21dc8 100644
+index 47e7e2ee6093..e3aa027b22b1 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -277,5 +277,12 @@ struct get_request_ops {
+@@ -284,5 +284,12 @@ struct get_request_ops {
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);

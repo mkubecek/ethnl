@@ -1,7 +1,7 @@
-From 64c345e468c1bbffb906eccee609973a196937a3 Mon Sep 17 00:00:00 2001
+From 0b5777c3503fb915e854c02b5be8c56120d7d583 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
-Subject: [PATCH 20/21] ethtool: implement ACT_PHYS_ID message
+Subject: [PATCH 21/22] ethtool: implement ACT_PHYS_ID message
 
 Request physical NIC identification (by blinking a LED), equivalent of
 ETHTOOL_PHYS_ID.
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 184 insertions(+), 47 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index a71476110486..0c28ab558634 100644
+index 979b5ad19e05..db25af7ca447 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -497,6 +497,28 @@ Request contents:
+@@ -505,6 +505,28 @@ Request contents:
  If successful, a notification in the same format is sent.
  
  
@@ -53,7 +53,7 @@ index a71476110486..0c28ab558634 100644
  Request translation
  -------------------
  
-@@ -532,7 +554,7 @@ ETHTOOL_GSG			ETHNL_CMD_GET_SETTINGS
+@@ -540,7 +562,7 @@ ETHTOOL_GSG			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SSG			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_TEST			n/a
  ETHTOOL_GSTRINGS		ETHNL_CMD_GET_STRSET
@@ -63,7 +63,7 @@ index a71476110486..0c28ab558634 100644
  ETHTOOL_GTSO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_STSO			ETHNL_CMD_SET_SETTINGS
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index ab0fdeb264c2..b48ef8a7ec5b 100644
+index f08062d122ce..7ba82be19341 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -17,6 +17,7 @@ enum {
@@ -74,7 +74,7 @@ index ab0fdeb264c2..b48ef8a7ec5b 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -358,6 +359,17 @@ enum {
+@@ -360,6 +361,17 @@ enum {
  	ETHA_NWAYRST_MAX = (__ETHA_NWAYRST_CNT - 1)
  };
  
@@ -266,7 +266,7 @@ index 3c763b4d54bc..1ed29146ebc3 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index b1365ad5e73a..bf846a96a8a9 100644
+index f303a29fa94a..994fe4c72b44 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1675,60 +1675,15 @@ static int ethtool_get_strings(struct net_device *dev, void __user *useraddr)
@@ -332,10 +332,10 @@ index b1365ad5e73a..bf846a96a8a9 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 0b6d305defe2..788f6cb72dca 100644
+index 0af3f0f8679d..917537b32235 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -856,6 +856,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -917,6 +917,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_SETTINGS]	= ethnl_std_notify,
  	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
  	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,
@@ -343,7 +343,7 @@ index 0b6d305defe2..788f6cb72dca 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -986,6 +987,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -1047,6 +1048,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_act_nway_rst,
  	},
@@ -356,10 +356,10 @@ index 0b6d305defe2..788f6cb72dca 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 115d65f21dc8..a1e0a19ffb9c 100644
+index e3aa027b22b1..343f69883ac8 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -278,11 +278,14 @@ struct get_request_ops {
+@@ -285,11 +285,14 @@ struct get_request_ops {
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info);

@@ -1,7 +1,7 @@
-From 7cc4d78c3fc4e6da796f9144f6f8de0d7824dc57 Mon Sep 17 00:00:00 2001
+From 1c132e3a09a89f7a5f8cfe88c280c236fe4eefe9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:43:07 -0400
-Subject: [PATCH 17/21] ethtool: implement SET_PARAMS notification
+Subject: [PATCH 18/22] ethtool: implement SET_PARAMS notification
 
 SET_PARAMS notification message has the same format as response to
 GET_PARAMS request and is broadcasted on change of relevant fields. Info
@@ -17,7 +17,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 37 insertions(+), 6 deletions(-)
 
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 6824c737d246..acad67a57c5e 100644
+index da0c5def88d2..d56adb254d79 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1286,6 +1286,7 @@ static int ethtool_get_eee(struct net_device *dev, char __user *useraddr)
@@ -147,10 +147,10 @@ index 6824c737d246..acad67a57c5e 100644
  
  /* The main entry point in this file.  Called from net/core/dev_ioctl.c */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index b1b8700948b5..8c8e8063d382 100644
+index ed13894ea458..923592dabdc8 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -854,6 +854,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -915,6 +915,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  
  ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_SETTINGS]	= ethnl_std_notify,

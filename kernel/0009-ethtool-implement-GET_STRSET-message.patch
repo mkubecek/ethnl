@@ -1,7 +1,7 @@
-From 58e14cb77faf18e5d1f5cf26285d68b95da8f6b5 Mon Sep 17 00:00:00 2001
+From ab161fdb779907878371a429baabc914ab81ed81 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
-Subject: [PATCH 09/21] ethtool: implement GET_STRSET message
+Subject: [PATCH 09/22] ethtool: implement GET_STRSET message
 
 Requests a contents of a string set, i.e. indexed array of strings; this
 information is provided by ETHTOOL_GSSET_INFO and ETHTOOL_GSTRINGS commands
@@ -349,10 +349,10 @@ index 9d4e56d97080..4275c90d3726 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 3bc9a02dc747..325973a4ee36 100644
+index 135841fa365a..2e128bbdfa35 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -472,7 +472,10 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
+@@ -523,7 +523,10 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
  
  /* GET request helpers */
  
@@ -363,7 +363,7 @@ index 3bc9a02dc747..325973a4ee36 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -864,6 +867,13 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -925,6 +928,13 @@ static struct notifier_block ethnl_netdev_notifier = {
  /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {

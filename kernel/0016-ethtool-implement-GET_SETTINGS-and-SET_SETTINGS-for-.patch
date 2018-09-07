@@ -1,0 +1,311 @@
+From 98f95ca1537e8e9a46cba9db56a18440dffa0f7a Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Fri, 7 Sep 2018 13:23:31 +0200
+Subject: [PATCH 16/22] ethtool: implement GET_SETTINGS and SET_SETTINGS for
+ private flags
+
+With ETH_SETTINGS_IM_PRIVFLAGS in info mask, ETHNL_CMD_GET_SETTINGS request
+tets device private flags (corresponds to ETHTOOL_GPFLAGS ioctl request).
+
+ETHNL_CMD_SET_SETTINGS gets support for setting device private flags.
+Notification is sent when private flags are modified, both via netlink and
+via ioctl.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ Documentation/networking/ethtool-netlink.txt |   8 ++
+ include/uapi/linux/ethtool_netlink.h         |   4 +-
+ net/ethtool/ioctl.c                          |   3 +
+ net/ethtool/settings.c                       | 132 +++++++++++++++++++
+ 4 files changed, 146 insertions(+), 1 deletion(-)
+
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index e3a7a970a86a..418dcfe0a13a 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -234,6 +234,7 @@ Info mask bits meaning:
+     ETH_SETTINGS_IM_WOLINFO		struct ethtool_wolinfo
+     ETH_SETTINGS_IM_LINK		link state
+     ETH_SETTINGS_IM_FEATURES		features
++    ETH_SETTINGS_IM_PRIVFLAGS		device private flags
+ 
+ Response contents:
+ 
+@@ -257,6 +258,7 @@ Response contents:
+         ETHA_FEATURES_WANTED		(bitset)	dev->wanted_features
+         ETHA_FEATURES_ACTIVE		(bitset)	dev->features
+         ETHA_FEATURES_NOCHANGE		(bitset)	NETIF_F_NEVER_CHANGE
++    ETHA_SETTINGS_PRIV_FLAGS	(bitset)	device private flags
+ 
+ Most of the attributes have the same meaning (including values) as
+ corresponding members of ioctl structures. For ETHA_SETTINGS_MSGLVL, selector
+@@ -275,6 +277,11 @@ itself. ETHA_FEATURES_HW uses mask consisting of all features recognized by
+ kernel (to provide all names when using verbose bitmap format), remaining
+ three use mask equal to value (to save space).
+ 
++ETHA_SETTINGS_PRIV_FLAGS is a bitset with values of device private flags.
++These flags are defined by driver, their number and names (as well as meaning)
++are device dependent. For compact bitset format, names can be retrieved as
++ETH_SS_PRIV_FLAGS string set.
++
+ GET_SETTINGS request is allowed for unprivileged user but ETHA_SETTINGS_SOPASS
+ is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
+ requests.
+@@ -306,6 +313,7 @@ to be passed with SET_SETTINGS request:
+     ETHA_SETTINGS_FEATURES	(nested)	device features
+         ETHA_FEATURES_WANTED		(bitset)	wanted features
+         ETHA_FEATURES_WANT_DIFF		(flag)		actual diff
++    ETHA_SETTINGS_PRIV_FLAGS	(bitset)	device private flags
+ 
+ For both bitfield32 types, value and selector work the usual way, i.e. bits
+ set in selector are set to corresponding bits from value and the rest is
+diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
+index 9c685830a56a..abec3a4124a3 100644
+--- a/include/uapi/linux/ethtool_netlink.h
++++ b/include/uapi/linux/ethtool_netlink.h
+@@ -202,6 +202,7 @@ enum {
+ 	ETHA_SETTINGS_PEER_MODES,		/* bitset */
+ 	ETHA_SETTINGS_LINK,			/* u8 */
+ 	ETHA_SETTINGS_FEATURES,			/* nest - ETHA_FEATURES_* */
++	ETHA_SETTINGS_PRIV_FLAGS,		/* nest - ETHA_BITSET_* */
+ 
+ 	__ETHA_SETTINGS_CNT,
+ 	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
+@@ -213,8 +214,9 @@ enum {
+ #define ETH_SETTINGS_IM_WOLINFO			0x08
+ #define ETH_SETTINGS_IM_LINK			0x10
+ #define ETH_SETTINGS_IM_FEATURES		0x20
++#define ETH_SETTINGS_IM_PRIVFLAGS		0x40
+ 
+-#define ETH_SETTINGS_IM_ALL			0x3f
++#define ETH_SETTINGS_IM_ALL			0x7f
+ 
+ enum {
+ 	ETHA_FEATURES_UNSPEC,
+diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
+index 6824c737d246..da0c5def88d2 100644
+--- a/net/ethtool/ioctl.c
++++ b/net/ethtool/ioctl.c
+@@ -2504,6 +2504,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
+ 	case ETHTOOL_SPFLAGS:
+ 		rc = ethtool_set_value(dev, useraddr,
+ 				       dev->ethtool_ops->set_priv_flags);
++		if (rc == 0)
++			ethtool_notify(dev, NULL, ETHNL_CMD_SET_SETTINGS,
++				       ETH_SETTINGS_IM_PRIVFLAGS, NULL);
+ 		break;
+ 	case ETHTOOL_GRXFH:
+ 	case ETHTOOL_GRXRINGS:
+diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
+index 8e0b7881c847..3ac308b87e16 100644
+--- a/net/ethtool/settings.c
++++ b/net/ethtool/settings.c
+@@ -22,6 +22,9 @@ struct settings_data {
+ 		u32	active[ETHTOOL_DEV_FEATURE_WORDS];
+ 		u32	nochange[ETHTOOL_DEV_FEATURE_WORDS];
+ 	} features;
++	char				(*priv_flag_names)[ETH_GSTRING_LEN];
++	u32				priv_flags;
++	unsigned int			n_priv_flags;
+ };
+ 
+ struct link_mode_info {
+@@ -269,6 +272,7 @@ static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_NESTED },
+ 	[ETHA_SETTINGS_LINK]		= { .type = NLA_U8 },
+ 	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_NESTED },
++	[ETHA_SETTINGS_PRIV_FLAGS]	= { .type = NLA_NESTED },
+ };
+ 
+ static int parse_settings(struct common_req_info *req_info,
+@@ -347,6 +351,56 @@ static int ethnl_get_features(struct net_device *dev,
+ 	return 0;
+ }
+ 
++static int get_priv_flags_info(struct net_device *dev, unsigned int *count,
++			       void **names)
++{
++	const struct ethtool_ops *ops = dev->ethtool_ops;
++	int nflags;
++
++	if (!ops->get_priv_flags || !ops->get_sset_count || !ops->get_strings)
++		return -EOPNOTSUPP;
++	nflags = ops->get_sset_count(dev, ETH_SS_PRIV_FLAGS);
++	if (nflags < 0)
++		return nflags;
++
++	if (names) {
++		*names = kcalloc(nflags, ETH_GSTRING_LEN, GFP_KERNEL);
++		if (!*names)
++			return -ENOMEM;
++		ops->get_strings(dev, ETH_SS_PRIV_FLAGS, *names);
++	}
++
++	/* We can easily pass more than 32 private flags to userspace via
++	 * netlink but we cannot get more with ethtool_ops::get_priv_flags().
++	 * Note that we must not adjust nflags before allocating the space
++	 * for flag names as the buffer must be large enough for all flags.
++	 */
++	if (WARN_ONCE(nflags > 32,
++		      "device %s reports more than 32 private flags (%d)\n",
++		      netdev_name(dev), nflags))
++		nflags = 32;
++
++	*count = nflags;
++	return 0;
++}
++
++static int ethnl_get_priv_flags(struct genl_info *info,
++				struct settings_data *data)
++{
++	struct net_device *dev = data->repdata_base.dev;
++	const struct ethtool_ops *ops = dev->ethtool_ops;
++	unsigned int nflags;
++	void *names;
++	int ret;
++
++	ret = get_priv_flags_info(dev, &nflags, &names);
++
++	data->priv_flags = ops->get_priv_flags(dev);
++	data->priv_flag_names = names;
++	data->n_priv_flags = nflags;
++	return 0;
++}
++
+ static int prepare_settings(struct common_req_info *req_info,
+ 			    struct genl_info *info)
+ {
+@@ -396,6 +450,11 @@ static int prepare_settings(struct common_req_info *req_info,
+ 		data->link = __ethtool_get_link(dev);
+ 	if (req_mask & ETH_SETTINGS_IM_FEATURES)
+ 		ethnl_get_features(dev, data);
++	if (req_mask & ETH_SETTINGS_IM_PRIVFLAGS) {
++		ret = ethnl_get_priv_flags(info, data);
++		if (ret < 0)
++			req_mask &= ~ETH_SETTINGS_IM_PRIVFLAGS;
++	}
+ 	ethnl_after_ops(dev, req_info->have_rtnl);
+ 
+ 	data->repdata_base.info_mask = req_mask;
+@@ -507,6 +566,14 @@ static int settings_size(const struct common_req_info *req_info)
+ 			return ret;
+ 		len += ret;
+ 	}
++	if (info_mask & ETH_SETTINGS_IM_PRIVFLAGS) {
++		ret = ethnl_bitset32_size(compact, data->n_priv_flags,
++					  &data->priv_flags, NULL,
++					  data->priv_flag_names, true);
++		if (ret < 0)
++			return ret;
++		len += ret;
++	}
+ 
+ 	return len;
+ }
+@@ -614,6 +681,16 @@ static int fill_features(struct sk_buff *skb, const struct settings_data *data)
+ 	return 0;
+ }
+ 
++static int fill_priv_flags(struct sk_buff *skb,
++			   const struct settings_data *data)
++{
++	bool compact = data->reqinfo_base.compact;
++
++	return ethnl_put_bitset32(skb, ETHA_SETTINGS_PRIV_FLAGS, compact,
++				  data->n_priv_flags, &data->priv_flags, NULL,
++				  data->priv_flag_names, true);
++}
++
+ static int fill_settings(struct sk_buff *skb,
+ 			 const struct common_req_info *req_info)
+ {
+@@ -653,10 +730,23 @@ static int fill_settings(struct sk_buff *skb,
+ 		if (ret < 0)
+ 			return ret;
+ 	}
++	if (info_mask & ETH_SETTINGS_IM_PRIVFLAGS) {
++		ret = fill_priv_flags(skb, data);
++		if (ret < 0)
++			return ret;
++	}
+ 
+ 	return 0;
+ }
+ 
++static void settings_cleanup(struct common_req_info *req_info)
++{
++	const struct settings_data *data =
++		container_of(req_info, struct settings_data, reqinfo_base);
++
++	kfree(data->priv_flag_names);
++}
++
+ const struct get_request_ops settings_request_ops = {
+ 	.request_cmd		= ETHNL_CMD_GET_SETTINGS,
+ 	.reply_cmd		= ETHNL_CMD_SET_SETTINGS,
+@@ -668,6 +758,7 @@ const struct get_request_ops settings_request_ops = {
+ 	.prepare_data		= prepare_settings,
+ 	.reply_size		= settings_size,
+ 	.fill_reply		= fill_settings,
++	.cleanup		= settings_cleanup,
+ };
+ 
+ /* SET_SETTINGS */
+@@ -921,6 +1012,39 @@ static int update_features(struct genl_info *info, struct net_device *dev,
+ 	return ret;
+ }
+ 
++static int update_priv_flags(struct genl_info *info, struct net_device *dev,
++			     const struct nlattr *bitset, bool *changed)
++{
++	const struct ethtool_ops *ops = dev->ethtool_ops;
++	unsigned int nflags;
++	void *names = NULL;
++	bool compact;
++	u32 flags;
++	int ret;
++
++	if (!ops->get_priv_flags || !ops->set_priv_flags)
++		return -EOPNOTSUPP;
++	ret = ethnl_bitset_is_compact(bitset, &compact);
++	if (ret < 0)
++		return ret;
++	ret = get_priv_flags_info(dev, &nflags, compact ? NULL : &names);
++	if (ret < 0)
++		return ret;
++	flags = ops->get_priv_flags(dev);
++
++	*changed = ethnl_update_bitset32(&flags, NULL, nflags, bitset, &ret,
++					 names, true, info);
++	if (ret < 0)
++		goto out_free;
++	if (*changed)
++		ret = ops->set_priv_flags(dev, flags);
++
++out_free:
++	if (!compact)
++		kfree(names);
++	return ret;
++}
++
+ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+ {
+ 	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
+@@ -1006,6 +1130,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+ 		if (ret < 0)
+ 			goto out_unlock;
+ 	}
++	if (tb[ETHA_SETTINGS_PRIV_FLAGS]) {
++		ret = update_priv_flags(info, dev, tb[ETHA_SETTINGS_PRIV_FLAGS],
++					&mod);
++		if (mod)
++			req_mask |= ETH_SETTINGS_IM_PRIVFLAGS;
++		if (ret < 0)
++			goto out_unlock;
++	}
+ 	ret = 0;
+ 
+ out_unlock:
+-- 
+2.18.0
+

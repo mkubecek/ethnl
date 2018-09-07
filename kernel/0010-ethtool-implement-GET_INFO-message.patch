@@ -1,7 +1,7 @@
-From 4e89873e1fd70028b2b50cc4f65d7cae6fc06837 Mon Sep 17 00:00:00 2001
+From feb40c8c794bc64262801ca37fb839d5fb0cba7f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
-Subject: [PATCH 10/21] ethtool: implement GET_INFO message
+Subject: [PATCH 10/22] ethtool: implement GET_INFO message
 
 Requests the information provided by commands ETHTOOL_GDRVINFO,
 ETHTOOL_GPERMADDR and ETHTOOL_GET_TS_INFO in ioctl interface. This is
@@ -376,7 +376,7 @@ index 45c6492e4aee..12e916fdd04a 100644
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
 new file mode 100644
-index 000000000000..1a24acd9cb56
+index 000000000000..991cf210e2fb
 --- /dev/null
 +++ b/net/ethtool/info.c
 @@ -0,0 +1,325 @@
@@ -540,19 +540,19 @@ index 000000000000..1a24acd9cb56
 +
 +	ret = ethnl_bitset32_size(compact, __SOF_TIMESTAMPING_COUNT,
 +				  &tsinfo->so_timestamping, NULL,
-+				  so_timestamping_labels);
++				  so_timestamping_labels, false);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
 +	ret = ethnl_bitset32_size(compact, __HWTSTAMP_TX_COUNT,
 +				  &tsinfo->tx_types, NULL,
-+				  tstamp_tx_type_labels);
++				  tstamp_tx_type_labels, false);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
 +	ret = ethnl_bitset32_size(compact, __HWTSTAMP_FILTER_COUNT,
 +				  &tsinfo->rx_filters, NULL,
-+				  tstamp_rx_filter_labels);
++				  tstamp_rx_filter_labels, false);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
@@ -640,7 +640,7 @@ index 000000000000..1a24acd9cb56
 +	ret = ethnl_put_bitset32(skb, ETHA_TSINFO_TIMESTAMPING, compact,
 +				 __SOF_TIMESTAMPING_COUNT,
 +				 &tsinfo->so_timestamping, NULL,
-+				 so_timestamping_labels);
++				 so_timestamping_labels, false);
 +	if (ret < 0)
 +		goto err;
 +	ret = -EMSGSIZE;
@@ -650,12 +650,12 @@ index 000000000000..1a24acd9cb56
 +
 +	ret = ethnl_put_bitset32(skb, ETHA_TSINFO_TX_TYPES, compact,
 +				 __HWTSTAMP_TX_COUNT, &tsinfo->tx_types, NULL,
-+				 tstamp_tx_type_labels);
++				 tstamp_tx_type_labels, false);
 +	if (ret < 0)
 +		goto err;
 +	ret = ethnl_put_bitset32(skb, ETHA_TSINFO_RX_FILTERS, compact,
 +				 __HWTSTAMP_FILTER_COUNT, &tsinfo->rx_filters,
-+				 NULL, tstamp_rx_filter_labels);
++				 NULL, tstamp_rx_filter_labels, false);
 +	if (ret < 0)
 +		goto err;
 +
@@ -800,10 +800,10 @@ index 4275c90d3726..0643c5f0867a 100644
  		err = -EFAULT;
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 325973a4ee36..ad072e9b82f5 100644
+index 2e128bbdfa35..2609df367cc9 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -473,9 +473,11 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
+@@ -524,9 +524,11 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
  /* GET request helpers */
  
  extern const struct get_request_ops strset_request_ops;
@@ -815,7 +815,7 @@ index 325973a4ee36..ad072e9b82f5 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -874,6 +876,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -935,6 +937,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -830,7 +830,7 @@ index 325973a4ee36..ad072e9b82f5 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 2f004d02827b..dce0127190b4 100644
+index 5aada243833a..2ba41451a789 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -7,14 +7,23 @@
