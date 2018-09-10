@@ -1,7 +1,7 @@
-From 409eefe3f263a4d81fa9daa4d824829f999f4640 Mon Sep 17 00:00:00 2001
+From 89c49c170734e31ca3d54a4b8e74b4fed2be6513 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
-Subject: [PATCH 12/31] netlink: add netlink handler for sset (-s)
+Subject: [PATCH 12/32] netlink: add netlink handler for sset (-s)
 
 Implement "ethtool -s <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_SETTINGS.

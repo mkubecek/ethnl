@@ -1,7 +1,7 @@
-From 77302882593c3d803263e9222675fa7335536407 Mon Sep 17 00:00:00 2001
+From 16ec3f0ab1ad1d48435bc5ddfe983efaeb9db876 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:08:21 +0100
-Subject: [PATCH 19/31] netlink: add netlink handler for geee (--show-eee)
+Subject: [PATCH 19/32] netlink: add netlink handler for geee (--show-eee)
 
 Implement "ethtool --show-eee <dev>" subcommand using netlink interface
 command ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_EEE mask.

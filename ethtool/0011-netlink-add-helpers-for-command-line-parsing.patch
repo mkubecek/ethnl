@@ -1,7 +1,7 @@
-From 3f21fd20a10d2164cd9a5cbc69136e381d986572 Mon Sep 17 00:00:00 2001
+From 3fdd10a7be3075092d41773977020904ce1f9b1a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:42:26 +0100
-Subject: [PATCH 11/31] netlink: add helpers for command line parsing
+Subject: [PATCH 11/32] netlink: add helpers for command line parsing
 
 Support for easier parsing of subcommand parameters and their values from
 command line. Existing parser helpers in ethtool.c are closely tied to

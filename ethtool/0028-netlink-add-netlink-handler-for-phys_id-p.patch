@@ -1,7 +1,7 @@
-From 685e157b3e287e19bb2800c3203027367c8c5857 Mon Sep 17 00:00:00 2001
+From 143b1f5629cf0fd7e35d0cb11a8db2790378f32c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 16:43:40 +0200
-Subject: [PATCH 28/31] netlink: add netlink handler for phys_id (-p)
+Subject: [PATCH 28/32] netlink: add netlink handler for phys_id (-p)
 
 Implement "ethtool -p <dev>" using netlink interface command
 ETHNL_CMD_ACT_PHYS_ID.

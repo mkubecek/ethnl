@@ -1,7 +1,7 @@
-From 1ca0550be5c56cccca93e0d86888c9d6924adc17 Mon Sep 17 00:00:00 2001
+From 181f303d4827ce7f4b3b7f90dc0de7df26964b6d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:25:31 +0200
-Subject: [PATCH 14/31] netlink: add netlink handler for sfeatures (-K)
+Subject: [PATCH 14/32] netlink: add netlink handler for sfeatures (-K)
 
 Implement "ethtool -K <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_SETTINGS.

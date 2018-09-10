@@ -1,7 +1,7 @@
-From 0c8a9246451a028d263b29baec9d3dfc9d1eead0 Mon Sep 17 00:00:00 2001
+From ea689448ccd3e748432e14fac5501325551abf7e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 08:43:44 +0200
-Subject: [PATCH 29/31] netlink: add netlink handler for reset (--reset)
+Subject: [PATCH 29/32] netlink: add netlink handler for reset (--reset)
 
 Implement "ethtool --reset <dev>" using netlink interface command
 ETHNL_CMD_ACT_RESET.

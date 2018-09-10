@@ -1,7 +1,7 @@
-From 2f373e2d75cfc09b58ecf73ec156691222e3485d Mon Sep 17 00:00:00 2001
+From ca200d6ae4db5e83e1a5792c69ba53d350e08908 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:05:40 +0100
-Subject: [PATCH 18/31] netlink: add netlink handler for gchannels (-l)
+Subject: [PATCH 18/32] netlink: add netlink handler for gchannels (-l)
 
 Implement "ethtool -l <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_CHANNELS mask.

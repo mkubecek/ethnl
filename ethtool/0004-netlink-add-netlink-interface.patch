@@ -1,7 +1,7 @@
-From 2e288840899971b253155840c614cd01ed1c8390 Mon Sep 17 00:00:00 2001
+From 7c7d6f424e57eeb832ca4340c3b2326ac14b3ab8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
-Subject: [PATCH 04/31] netlink: add netlink interface
+Subject: [PATCH 04/32] netlink: add netlink interface
 
 Add basic netlink interface based on genetlink and libmnl. This commit only
 adds the generic infrastructure but does not override any ethtool command
@@ -28,11 +28,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  netlink/netlink.c            | 674 +++++++++++++++++++++++++++++++++++
  netlink/netlink.h            | 151 ++++++++
  uapi/linux/ethtool.h         |  14 +
- uapi/linux/ethtool_netlink.h | 397 +++++++++++++++++++++
+ uapi/linux/ethtool_netlink.h | 464 ++++++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 +++++
  uapi/linux/net_tstamp.h      |  13 +
  uapi/linux/netlink.h         | 247 +++++++++++++
- 14 files changed, 1768 insertions(+), 60 deletions(-)
+ 14 files changed, 1835 insertions(+), 60 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
  create mode 100644 netlink/extapi.h
@@ -1406,10 +1406,10 @@ index 822169878db2..ac46bb6671d3 100644
  
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..dfade409e9c7
+index 000000000000..fe61f99941bf
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,397 @@
+@@ -0,0 +1,464 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#ifndef _LINUX_ETHTOOL_NETLINK_H_
@@ -1431,6 +1431,8 @@ index 000000000000..dfade409e9c7
 +	ETHNL_CMD_ACT_NWAY_RST,
 +	ETHNL_CMD_ACT_PHYS_ID,
 +	ETHNL_CMD_ACT_RESET,
++	ETHNL_CMD_GET_RXFLOW,
++	ETHNL_CMD_SET_RXFLOW,		/* only for reply */
 +
 +	__ETHNL_CMD_CNT,
 +	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
@@ -1798,6 +1800,71 @@ index 000000000000..dfade409e9c7
 +
 +	__ETHA_RESET_CNT,
 +	ETHA_RESET_MAX = (__ETHA_RESET_CNT - 1)
++};
++
++/* GET_RXFLOW / SET_RXFLOW */
++
++enum {
++	ETHA_RXFLOW_UNSPEC,
++	ETHA_RXFLOW_DEV,			/* nest - ETHA_DEV_* */
++	ETHA_RXFLOW_INFOMASK,			/* u32 */
++	ETHA_RXFLOW_COMPACT,			/* flag */
++	ETHA_RXFLOW_OP,				/* u32 - ETH_RXFLOW_OP_* */
++	ETHA_RXFLOW_CONTEXT,			/* u32 */
++	ETHA_RXFLOW_NRINGS,			/* u32 */
++	ETHA_RXFLOW_HASH_FN,			/* bitset */
++	ETHA_RXFLOW_HASH_KEY,			/* binary */
++	ETHA_RXFLOW_INDTBL_SIZE,		/* u32 */
++	ETHA_RXFLOW_INDIR_TBL,			/* nest - ETHA_INDTBL_* */
++
++	__ETHA_RXFLOW_CNT,
++	ETHA_RXFLOW_MAX = (__ETHA_RXFLOW_CNT - 1)
++};
++
++#define ETH_RXFLOW_IM_INFO			0x01
++#define ETH_RXFLOW_IM_HKEY			0x02
++#define ETH_RXFLOW_IM_INDTBL			0x04
++
++#define ETH_RXFLOW_IM_ALL			0x07
++
++enum {
++	ETH_RXFLOW_OP_GET,
++	ETH_RXFLOW_OP_SET,			/* set context data */
++	ETH_RXFLOW_OP_NEW,			/* create new context */
++	ETH_RXFLOW_OP_DEL,			/* delete existing context */
++};
++
++enum {
++	ETHA_INDTBL_UNSPEC,
++	ETHA_INDTBL_BLOCK32,			/* nest - ETH_ITBLK_* */
++	ETHA_INDTBL_BLOCK16,			/* nest - ETH_ITBLK_* */
++	ETHA_INDTBL_BLOCK8,			/* nest - ETH_ITBLK_* */
++	ETHA_INDTBL_PATTERN,			/* nest - ETH_ITPAT_* */
++
++	__ETHA_INDTBL_CNT,
++	ETHA_INDTBL_MAX = (__ETHA_INDTBL_CNT - 1)
++};
++
++enum {
++	ETHA_ITBLK_UNSPEC,
++	ETHA_ITBLK_START,			/* u32 */
++	ETHA_ITBLK_LEN,				/* u32 */
++	ETHA_ITBLK_DATA,			/* binary */
++
++	__ETHA_ITBLK_CNT,
++	ETHA_ITBLK_MAX = (__ETHA_ITBLK_CNT - 1)
++};
++
++enum {
++	ETHA_ITPAT_UNSPEC,
++	ETHA_ITPAT_START,			/* u32 */
++	ETHA_ITPAT_LEN,				/* u32 */
++	ETHA_ITPAT_MIN_RING,			/* u32 */
++	ETHA_ITPAT_MAX_RING,			/* u32 */
++	ETHA_ITPAT_OFFSET,			/* u32 */
++
++	__ETHA_ITPAT_CNT,
++	ETHA_ITPAT_MAX = (__ETHA_ITPAT_CNT - 1)
 +};
 +
 +/* generic netlink info */

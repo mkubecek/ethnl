@@ -1,7 +1,7 @@
-From 5f1ec7a0d235e268115c664901aab88ea6a6e1fd Mon Sep 17 00:00:00 2001
+From edf564535b8375db40f63c290a75a12f86bf60f1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:17:41 +0100
-Subject: [PATCH 23/31] netlink: add netlink handler for spause (-A)
+Subject: [PATCH 23/32] netlink: add netlink handler for spause (-A)
 
 Implement "ethtool -A <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_PARAMS.
