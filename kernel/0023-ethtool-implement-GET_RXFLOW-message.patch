@@ -1,0 +1,517 @@
+From ffcd5afd114020f9cdca209d4e6d650c4a629682 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Mon, 10 Sep 2018 10:12:24 +0200
+Subject: [PATCH 23/23] ethtool: implement GET_RXFLOW message
+
+Request the information provided by ETHTOOL_GRSSH, ETHTOOL_GRXRINGS and
+ETHTOOL_GRXFHINDIR ioctl commands. This allows to query
+
+  - ring count
+  - hash function
+  - hash key
+  - indirection table
+
+for a device and potentially also RSS context.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ Documentation/networking/ethtool-netlink.txt |   6 +-
+ include/uapi/linux/ethtool_netlink.h         |  67 ++++
+ net/ethtool/Makefile                         |   3 +-
+ net/ethtool/netlink.c                        |   9 +
+ net/ethtool/rxflow.c                         | 323 +++++++++++++++++++
+ 5 files changed, 404 insertions(+), 4 deletions(-)
+ create mode 100644 net/ethtool/rxflow.c
+
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index ed044150e7ec..7ccd88dfbea9 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -602,7 +602,7 @@ ETHTOOL_GRXFH			n/a
+ ETHTOOL_SRXFH			n/a
+ ETHTOOL_GGRO			ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_SGRO			ETHNL_CMD_SET_SETTINGS
+-ETHTOOL_GRXRINGS		n/a
++ETHTOOL_GRXRINGS		ETHNL_CMD_GET_RXFLOW
+ ETHTOOL_GRXCLSRLCNT		n/a
+ ETHTOOL_GRXCLSRULE		n/a
+ ETHTOOL_GRXCLSRLALL		n/a
+@@ -613,7 +613,7 @@ ETHTOOL_RESET			ETHNL_CMD_ACT_RESET
+ ETHTOOL_SRXNTUPLE		n/a
+ ETHTOOL_GRXNTUPLE		n/a
+ ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
+-ETHTOOL_GRXFHINDIR		n/a
++ETHTOOL_GRXFHINDIR		ETHNL_CMD_GET_RXFLOW
+ ETHTOOL_SRXFHINDIR		n/a
+ ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
+@@ -627,7 +627,7 @@ ETHTOOL_GMODULEINFO		n/a
+ ETHTOOL_GMODULEEEPROM		n/a
+ ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
+ ETHTOOL_SEEE			ETHNL_CMD_SET_PARAMS
+-ETHTOOL_GRSSH			n/a
++ETHTOOL_GRSSH			ETHNL_CMD_GET_RXFLOW
+ ETHTOOL_SRSSH			n/a
+ ETHTOOL_GTUNABLE		n/a
+ ETHTOOL_STUNABLE		n/a
+diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
+index f29d10ac253e..dc96b7ac995f 100644
+--- a/include/uapi/linux/ethtool_netlink.h
++++ b/include/uapi/linux/ethtool_netlink.h
+@@ -19,6 +19,8 @@ enum {
+ 	ETHNL_CMD_ACT_NWAY_RST,
+ 	ETHNL_CMD_ACT_PHYS_ID,
+ 	ETHNL_CMD_ACT_RESET,
++	ETHNL_CMD_GET_RXFLOW,
++	ETHNL_CMD_SET_RXFLOW,		/* only for reply */
+ 
+ 	__ETHNL_CMD_CNT,
+ 	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
+@@ -388,6 +390,71 @@ enum {
+ 	ETHA_RESET_MAX = (__ETHA_RESET_CNT - 1)
+ };
+ 
++/* GET_RXFLOW / SET_RXFLOW */
++
++enum {
++	ETHA_RXFLOW_UNSPEC,
++	ETHA_RXFLOW_DEV,			/* nest - ETHA_DEV_* */
++	ETHA_RXFLOW_INFOMASK,			/* u32 */
++	ETHA_RXFLOW_COMPACT,			/* flag */
++	ETHA_RXFLOW_OP,				/* u32 - ETH_RXFLOW_OP_* */
++	ETHA_RXFLOW_CONTEXT,			/* u32 */
++	ETHA_RXFLOW_NRINGS,			/* u32 */
++	ETHA_RXFLOW_HASH_FN,			/* bitset */
++	ETHA_RXFLOW_HASH_KEY,			/* binary */
++	ETHA_RXFLOW_INDTBL_SIZE,		/* u32 */
++	ETHA_RXFLOW_INDIR_TBL,			/* nest - ETHA_INDTBL_* */
++
++	__ETHA_RXFLOW_CNT,
++	ETHA_RXFLOW_MAX = (__ETHA_RXFLOW_CNT - 1)
++};
++
++#define ETH_RXFLOW_IM_INFO			0x01
++#define ETH_RXFLOW_IM_HKEY			0x02
++#define ETH_RXFLOW_IM_INDTBL			0x04
++
++#define ETH_RXFLOW_IM_ALL			0x07
++
++enum {
++	ETH_RXFLOW_OP_GET,
++	ETH_RXFLOW_OP_SET,			/* set context data */
++	ETH_RXFLOW_OP_NEW,			/* create new context */
++	ETH_RXFLOW_OP_DEL,			/* delete existing context */
++};
++
++enum {
++	ETHA_INDTBL_UNSPEC,
++	ETHA_INDTBL_BLOCK32,			/* nest - ETH_ITBLK_* */
++	ETHA_INDTBL_BLOCK16,			/* nest - ETH_ITBLK_* */
++	ETHA_INDTBL_BLOCK8,			/* nest - ETH_ITBLK_* */
++	ETHA_INDTBL_PATTERN,			/* nest - ETH_ITPAT_* */
++
++	__ETHA_INDTBL_CNT,
++	ETHA_INDTBL_MAX = (__ETHA_INDTBL_CNT - 1)
++};
++
++enum {
++	ETHA_ITBLK_UNSPEC,
++	ETHA_ITBLK_START,			/* u32 */
++	ETHA_ITBLK_LEN,				/* u32 */
++	ETHA_ITBLK_DATA,			/* binary */
++
++	__ETHA_ITBLK_CNT,
++	ETHA_ITBLK_MAX = (__ETHA_ITBLK_CNT - 1)
++};
++
++enum {
++	ETHA_ITPAT_UNSPEC,
++	ETHA_ITPAT_START,			/* u32 */
++	ETHA_ITPAT_LEN,				/* u32 */
++	ETHA_ITPAT_MIN_RING,			/* u32 */
++	ETHA_ITPAT_MAX_RING,			/* u32 */
++	ETHA_ITPAT_OFFSET,			/* u32 */
++
++	__ETHA_ITPAT_CNT,
++	ETHA_ITPAT_MAX = (__ETHA_ITPAT_CNT - 1)
++};
++
+ /* generic netlink info */
+ #define ETHTOOL_GENL_NAME "ethtool"
+ #define ETHTOOL_GENL_VERSION 1
+diff --git a/net/ethtool/Makefile b/net/ethtool/Makefile
+index 0b965090bb55..a129a22824f8 100644
+--- a/net/ethtool/Makefile
++++ b/net/ethtool/Makefile
+@@ -4,4 +4,5 @@ obj-y				+= ioctl.o common.o
+ 
+ obj-$(CONFIG_ETHTOOL_NETLINK)	+= ethtool_nl.o
+ 
+-ethtool_nl-y	:= netlink.o strset.o info.o settings.o params.o actions.o
++ethtool_nl-y	:= netlink.o strset.o info.o settings.o params.o actions.o \
++		   rxflow.o
+diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
+index 43150cc5023a..163cc0a24222 100644
+--- a/net/ethtool/netlink.c
++++ b/net/ethtool/netlink.c
+@@ -583,12 +583,14 @@ extern const struct get_request_ops strset_request_ops;
+ extern const struct get_request_ops info_request_ops;
+ extern const struct get_request_ops settings_request_ops;
+ extern const struct get_request_ops params_request_ops;
++extern const struct get_request_ops rxflow_request_ops;
+ 
+ const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
+ 	[ETHNL_CMD_GET_STRSET]		= &strset_request_ops,
+ 	[ETHNL_CMD_GET_INFO]		= &info_request_ops,
+ 	[ETHNL_CMD_GET_SETTINGS]	= &settings_request_ops,
+ 	[ETHNL_CMD_GET_PARAMS]		= &params_request_ops,
++	[ETHNL_CMD_GET_RXFLOW]		= &rxflow_request_ops,
+ };
+ 
+ static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
+@@ -1059,6 +1061,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+ 		.flags	= GENL_ADMIN_PERM,
+ 		.doit	= ethnl_act_reset,
+ 	},
++	{
++		.cmd	= ETHNL_CMD_GET_RXFLOW,
++		.doit	= ethnl_get_doit,
++		.start	= ethnl_get_start,
++		.dumpit	= ethnl_get_dumpit,
++		.done	= ethnl_get_done,
++	},
+ };
+ 
+ static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
+diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
+new file mode 100644
+index 000000000000..3b0bae3c37e8
+--- /dev/null
++++ b/net/ethtool/rxflow.c
+@@ -0,0 +1,323 @@
++/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
++
++#include "netlink.h"
++#include "common.h"
++
++#define RXFLOW_ALL_HASHFNS \
++       ((1 << (ETH_RSS_HASH_FUNCS_COUNT - 1)) | \
++	((1 << (ETH_RSS_HASH_FUNCS_COUNT - 1)) - 1))
++
++static const struct nla_policy get_rxflow_policy[ETHA_RXFLOW_MAX + 1] = {
++	[ETHA_RXFLOW_UNSPEC]		= { .type = NLA_UNSPEC },
++	[ETHA_RXFLOW_DEV]		= { .type = NLA_NESTED },
++	[ETHA_RXFLOW_INFOMASK]		= { .type = NLA_U32 },
++	[ETHA_RXFLOW_COMPACT]		= { .type = NLA_FLAG },
++	[ETHA_RXFLOW_CONTEXT]		= { .type = NLA_U32 },
++};
++
++struct rxflow_data {
++	struct common_req_info		reqinfo_base;
++	u32				req_context;
++
++	/* everything below here will be reset for each device in dumps */
++	struct common_reply_data	repdata_base;
++	unsigned int			entry_size;
++	u32				indtbl_size;
++	u32				hkey_size;
++	u32				n_rings;
++	u32				*indir_tbl;
++	u8				*hkey;
++	u32				hash_fn;
++};
++
++static int parse_rxflow(struct common_req_info *req_info, struct sk_buff *skb,
++			struct genl_info *info, const struct nlmsghdr *nlhdr)
++{
++	struct rxflow_data *data =
++		container_of(req_info, struct rxflow_data, reqinfo_base);
++	struct nlattr *tb[ETHA_RXFLOW_MAX + 1];
++	int ret;
++
++	ret = genlmsg_parse(nlhdr, &ethtool_genl_family, tb, ETHA_RXFLOW_MAX,
++			    get_rxflow_policy, info ? info->extack : NULL);
++	if (ret < 0)
++		return ret;
++
++	if (tb[ETHA_RXFLOW_DEV]) {
++		req_info->dev = ethnl_dev_get(info, tb[ETHA_RXFLOW_DEV]);
++		if (IS_ERR(req_info->dev)) {
++			ret = PTR_ERR(req_info->dev);
++			req_info->dev = NULL;
++			return ret;
++		}
++	}
++	if (tb[ETHA_RXFLOW_INFOMASK])
++		req_info->req_mask = nla_get_u32(tb[ETHA_RXFLOW_INFOMASK]);
++	if (tb[ETHA_RXFLOW_COMPACT])
++		req_info->compact = true;
++	if (tb[ETHA_RXFLOW_CONTEXT])
++		data->req_context = nla_get_u32(tb[ETHA_RXFLOW_CONTEXT]);
++	if (req_info->req_mask == 0)
++		req_info->req_mask = ETH_RXFLOW_IM_ALL;
++
++	return 0;
++}
++
++static int alloc_hkey(struct rxflow_data *data)
++{
++	if (!data->hkey_size)
++		return -EOPNOTSUPP;
++	data->hkey = kzalloc(data->hkey_size, GFP_KERNEL);
++	return data->hkey ? 0 : -ENOMEM;
++}
++
++static int alloc_indtbl(struct rxflow_data *data)
++{
++	u32 max_ring;
++
++	if (!data->indtbl_size)
++		return -EOPNOTSUPP;
++
++	max_ring = data->n_rings - 1;
++	data->entry_size = (max_ring >> 16) ? 4 : ((max_ring >> 8) ? 2 : 1);
++	data->indir_tbl = kcalloc(data->indtbl_size, sizeof(u32), GFP_KERNEL);
++	return data->indir_tbl ? 0 : -ENOMEM;
++}
++
++static int prepare_rxflow(struct common_req_info *req_info,
++			  struct genl_info *info)
++{
++	struct rxflow_data *data =
++		container_of(req_info, struct rxflow_data, reqinfo_base);
++	struct ethtool_rxnfc rx_rings = { .cmd = ETHTOOL_GRXRINGS };
++	struct net_device *dev = data->repdata_base.dev;
++	const struct ethtool_ops *ops = dev->ethtool_ops;
++	u32 req_mask = req_info->req_mask;
++	u8 hash_fn = 0;
++	int ret;
++
++	if (!ops->get_rxnfc)
++		return -EOPNOTSUPP;
++	if (data->req_context && !ops->get_rxfh_context)
++		return -EOPNOTSUPP;
++	if (!data->req_context && !ops->get_rxfh)
++		return -EOPNOTSUPP;
++
++	ret = ethnl_before_ops(dev, req_info->have_rtnl);
++	if (ret < 0)
++		return ret;
++
++	ret = dev->ethtool_ops->get_rxnfc(dev, &rx_rings, NULL);
++	if (ret < 0)
++		return ret;
++	data->n_rings = rx_rings.data;
++	if (ops->get_rxfh_indir_size)
++		data->indtbl_size = ops->get_rxfh_indir_size(dev);
++	if (ops->get_rxfh_key_size)
++		data->hkey_size = ops->get_rxfh_key_size(dev);
++
++	if (req_mask & ETH_RXFLOW_IM_HKEY) {
++		ret = alloc_hkey(data);
++		if (ret < 0)
++			req_mask &= ~ETH_RXFLOW_IM_HKEY;
++	}
++	if (req_mask & ETH_RXFLOW_IM_INDTBL) {
++		ret = alloc_indtbl(data);
++		if (ret < 0)
++			req_mask &= ~ETH_RXFLOW_IM_INDTBL;
++	}
++	if (data->req_context)
++		ret = ops->get_rxfh_context(dev, data->indir_tbl, data->hkey,
++					    &hash_fn, data->req_context);
++	else
++		ret = ops->get_rxfh(dev, data->indir_tbl, data->hkey, &hash_fn);
++	if (ret == 0)
++		data->hash_fn = hash_fn;
++	ethnl_after_ops(dev, req_info->have_rtnl);
++
++	data->repdata_base.info_mask = req_mask;
++	if (ret == 0 && req_info->req_mask & ~req_mask)
++		warn_partial_info(info);
++	return ret;
++}
++
++static int indtbl_size(const struct rxflow_data *data)
++{
++	unsigned int len;
++
++	/* block data */
++	len = nla_total_size(data->indtbl_size * data->entry_size);
++	/* block nest */
++	len =  nla_total_size(2 *  nla_total_size(sizeof(u32)) + len);
++	/* ETHA_RXFLOW_INDTBL_SIZE */
++	len += nla_total_size(sizeof(u32));
++
++	return len;
++}
++
++static int rxflow_size(const struct common_req_info *req_info)
++{
++	const struct rxflow_data *data =
++		container_of(req_info, struct rxflow_data, reqinfo_base);
++	u32 info_mask = data->repdata_base.info_mask;
++	const u32 all_hashfn = RXFLOW_ALL_HASHFNS;
++	int len = 0;
++	int ret;
++
++	len += dev_ident_size();
++	if (data->req_context)
++		len += nla_total_size(sizeof(u32));
++	/* ETHA_RXFLOW_NRINGS */
++	len += nla_total_size(sizeof(u32));
++	/* ETHA_RXFLOW_HASH_FN */
++	ret = ethnl_bitset32_size(req_info->compact, ETH_RSS_HASH_FUNCS_COUNT,
++				  &data->hash_fn, &all_hashfn,
++				  rss_hash_func_strings, true);
++	if (ret < 0)
++		return ret;
++	len += ret;
++	if (info_mask & ETH_RXFLOW_IM_HKEY)
++		len += nla_total_size(data->hkey_size);
++	if (info_mask & ETH_RXFLOW_IM_INDTBL)
++		len += indtbl_size(data);
++
++	return len;
++}
++
++static int fill_rxflow_info(struct sk_buff *skb, const struct rxflow_data *data)
++{
++	bool compact = data->reqinfo_base.compact;
++	const u32 all_hashfn = RXFLOW_ALL_HASHFNS;
++	int ret;
++
++	if (data->req_context &&
++	    nla_put_u32(skb, ETHA_RXFLOW_CONTEXT, data->req_context))
++		return -EMSGSIZE;
++	if (nla_put_u32(skb, ETHA_RXFLOW_NRINGS, data->n_rings))
++		return -EMSGSIZE;
++	ret = ethnl_put_bitset32(skb, ETHA_RXFLOW_HASH_FN, compact,
++				 ETH_RSS_HASH_FUNCS_COUNT, &data->hash_fn,
++				 &all_hashfn, rss_hash_func_strings, true);
++	if (ret < 0)
++		return ret;
++
++	return 0;
++}
++
++static int fill_indir_tbl(struct sk_buff *skb, const struct rxflow_data *data)
++{
++	struct nlattr *tbl, *block, *attr;
++	u16 block_attrtype;
++	unsigned int i;
++	int ret;
++
++	if (nla_put_u32(skb, ETHA_RXFLOW_INDTBL_SIZE, data->indtbl_size))
++		return -EMSGSIZE;
++	tbl = ethnl_nest_start(skb, ETHA_RXFLOW_INDIR_TBL);
++	if (!tbl)
++		return -EMSGSIZE;
++
++	switch(data->entry_size) {
++	case 4:
++		block_attrtype = ETHA_INDTBL_BLOCK32;
++		break;
++	case 2:
++		block_attrtype = ETHA_INDTBL_BLOCK16;
++		break;
++	case 1:
++		block_attrtype = ETHA_INDTBL_BLOCK8;
++		break;
++	default:
++		WARN_ONCE(1, "invalid indir_tbl entry size %u\n",
++			  data->entry_size);
++		return -EFAULT;
++	}
++	ret = -EMSGSIZE;
++	block = ethnl_nest_start(skb, block_attrtype);
++	if (!block)
++		goto err;
++
++	if (nla_put_u32(skb, ETHA_ITBLK_START, 0) ||
++	    nla_put_u32(skb, ETHA_ITBLK_LEN, data->indtbl_size))
++		goto err;
++	switch(data->entry_size) {
++	case 4:
++		if (nla_put(skb, ETHA_ITBLK_DATA,
++			    data->indtbl_size * sizeof(u32),
++			    data->indir_tbl))
++			goto err;
++		break;
++	case 2:
++		attr = nla_reserve(skb, ETHA_ITBLK_DATA,
++				   data->indtbl_size * data->entry_size);
++		if (!attr)
++			goto err;
++		for (i = 0; i < data->indtbl_size; i++)
++			((u16 *)nla_data(attr))[i] = data->indir_tbl[i];
++		break;
++	case 1:
++		attr = nla_reserve(skb, ETHA_ITBLK_DATA,
++				   data->indtbl_size * data->entry_size);
++		if (!attr)
++			goto err;
++		for (i = 0; i < data->indtbl_size; i++)
++			((u8 *)nla_data(attr))[i] = data->indir_tbl[i];
++		break;
++	}
++
++	nla_nest_end(skb, block);
++	nla_nest_end(skb, tbl);
++	return 0;
++
++err:
++	nla_nest_cancel(skb, tbl);
++	return ret;
++}
++
++static int fill_rxflow(struct sk_buff *skb,
++		       const struct common_req_info *req_info)
++{
++	const struct rxflow_data *data =
++		container_of(req_info, struct rxflow_data, reqinfo_base);
++	u32 info_mask = data->repdata_base.info_mask;
++	int ret;
++
++	ret = fill_rxflow_info(skb, data);
++	if (ret < 0)
++		return ret;
++	if (info_mask & ETH_RXFLOW_IM_HKEY) {
++		if (nla_put(skb, ETHA_RXFLOW_HASH_KEY, data->hkey_size,
++			    data->hkey))
++			return -EMSGSIZE;
++	}
++	if (info_mask & ETH_RXFLOW_IM_INDTBL) {
++		ret = fill_indir_tbl(skb, data);
++		if (ret < 0)
++			return ret;
++	}
++
++	return 0;
++}
++
++void rxflow_cleanup(struct common_req_info *req_info)
++{
++	struct rxflow_data *data =
++		container_of(req_info, struct rxflow_data, reqinfo_base);
++
++	kfree(data->indir_tbl);
++	kfree(data->hkey);
++}
++
++const struct get_request_ops rxflow_request_ops = {
++	.request_cmd		= ETHNL_CMD_GET_RXFLOW,
++	.reply_cmd		= ETHNL_CMD_SET_RXFLOW,
++	.dev_attrtype		= ETHA_RXFLOW_DEV,
++	.data_size		= sizeof(struct rxflow_data),
++	.repdata_offset		= offsetof(struct rxflow_data, repdata_base),
++
++	.parse_request		= parse_rxflow,
++	.prepare_data		= prepare_rxflow,
++	.reply_size		= rxflow_size,
++	.fill_reply		= fill_rxflow,
++	.cleanup		= rxflow_cleanup,
++};
+-- 
+2.18.0
+

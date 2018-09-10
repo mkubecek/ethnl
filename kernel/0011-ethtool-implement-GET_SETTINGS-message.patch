@@ -1,7 +1,7 @@
-From c8aeedaa333c68a399c2ac077d7672de0bb8a6b4 Mon Sep 17 00:00:00 2001
+From e8115ff31981633cf6364d946aa4c34d847640ac Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
-Subject: [PATCH 11/22] ethtool: implement GET_SETTINGS message
+Subject: [PATCH 11/23] ethtool: implement GET_SETTINGS message
 
 Requests the information provided by ETHTOOL_GLINKSETTINGS, ETHTOOL_GWOL
 and ETHTOOL_GMSGLVL. The info_mask header field can be used to request only

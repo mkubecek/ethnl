@@ -1,7 +1,7 @@
-From 9e2eeb25c83b69864e61e3e1b6193847f6de744f Mon Sep 17 00:00:00 2001
+From adb2e26b2d184dac981073b00930f70f2689edfc Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
-Subject: [PATCH 19/22] ethtool: implement SET_PARAMS message
+Subject: [PATCH 19/23] ethtool: implement SET_PARAMS message
 
 Sets the information provided by ETHTOOL_SCOALESCE, ETHTOOL_SRINGPARAM,
 ETHTOOL_SPAUSEPARAM, ETHTOOL_SCHANNELS, ETHTOOL_SEEE and ETHTOOL_SFECPARAM.
@@ -17,7 +17,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 503 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 7897d22e1979..f0af0317b141 100644
+index 0748a266bd98..3edea10511a3 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -126,7 +126,7 @@ List of message types

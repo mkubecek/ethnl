@@ -1,7 +1,7 @@
-From 1b712318ca2c53080e4a96769fe16c249507a55a Mon Sep 17 00:00:00 2001
+From 493718d73e6c4fbdd6560170b3d45e22616afc8e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
-Subject: [PATCH 14/22] ethtool: implement SET_SETTINGS message
+Subject: [PATCH 14/23] ethtool: implement SET_SETTINGS message
 
 Sets the information provided by ETHTOOL_SLINKSETTINGS, ETHTOOL_SWOL and
 ETHTOOL_SMSGLVL. Unlike with ioctl(), userspace can send only some

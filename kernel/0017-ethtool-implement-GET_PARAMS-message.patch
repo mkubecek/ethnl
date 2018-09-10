@@ -1,7 +1,7 @@
-From 7dcc7bd3daef20a9a2ed0720f4b7c063ce15a2d0 Mon Sep 17 00:00:00 2001
+From c444e199808b379d99f2fe7b640a7fc8a7828b19 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
-Subject: [PATCH 17/22] ethtool: implement GET_PARAMS message
+Subject: [PATCH 17/23] ethtool: implement GET_PARAMS message
 
 Requests the information provide by ETHTOOL_GCOALESCE, ETHTOOL_GRINGPARAM,
 ETHTOOL_GPAUSEPARAM, ETHTOOL_GCHANNELS, ETHTOOL_GEEE and ETHTOOL_GFECPARAM.
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/params.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 418dcfe0a13a..7897d22e1979 100644
+index d58422ef68af..0748a266bd98 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -125,6 +125,8 @@ List of message types

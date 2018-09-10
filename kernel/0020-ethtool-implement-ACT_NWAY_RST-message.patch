@@ -1,7 +1,7 @@
-From d3c17d0e92fff965c534b22cad7ee9104890395a Mon Sep 17 00:00:00 2001
+From 32d49309946e55ae94d9d6c4133ade263cdf804c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
-Subject: [PATCH 20/22] ethtool: implement ACT_NWAY_RST message
+Subject: [PATCH 20/23] ethtool: implement ACT_NWAY_RST message
 
 Requests autonegotiation restart, equivalent of ETHTOOL_NWAY_RST.
 
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/actions.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index f0af0317b141..979b5ad19e05 100644
+index 3edea10511a3..9193e2aeb5e1 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -127,6 +127,7 @@ List of message types

@@ -1,7 +1,7 @@
-From 1c132e3a09a89f7a5f8cfe88c280c236fe4eefe9 Mon Sep 17 00:00:00 2001
+From d87404897c821856530e96fd3778051a69a08933 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:43:07 -0400
-Subject: [PATCH 18/22] ethtool: implement SET_PARAMS notification
+Subject: [PATCH 18/23] ethtool: implement SET_PARAMS notification
 
 SET_PARAMS notification message has the same format as response to
 GET_PARAMS request and is broadcasted on change of relevant fields. Info

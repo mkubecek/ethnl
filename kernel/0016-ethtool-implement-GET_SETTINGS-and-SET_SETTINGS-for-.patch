@@ -1,7 +1,7 @@
-From 98f95ca1537e8e9a46cba9db56a18440dffa0f7a Mon Sep 17 00:00:00 2001
+From 17a8d316527a7d63222dc3b08f2c7807ff32d70f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
-Subject: [PATCH 16/22] ethtool: implement GET_SETTINGS and SET_SETTINGS for
+Subject: [PATCH 16/23] ethtool: implement GET_SETTINGS and SET_SETTINGS for
  private flags
 
 With ETH_SETTINGS_IM_PRIVFLAGS in info mask, ETHNL_CMD_GET_SETTINGS request
@@ -13,14 +13,14 @@ via ioctl.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |   8 ++
+ Documentation/networking/ethtool-netlink.txt |  12 +-
  include/uapi/linux/ethtool_netlink.h         |   4 +-
  net/ethtool/ioctl.c                          |   3 +
  net/ethtool/settings.c                       | 132 +++++++++++++++++++
- 4 files changed, 146 insertions(+), 1 deletion(-)
+ 4 files changed, 148 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index e3a7a970a86a..418dcfe0a13a 100644
+index e3a7a970a86a..d58422ef68af 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -234,6 +234,7 @@ Info mask bits meaning:
@@ -59,6 +59,17 @@ index e3a7a970a86a..418dcfe0a13a 100644
  
  For both bitfield32 types, value and selector work the usual way, i.e. bits
  set in selector are set to corresponding bits from value and the rest is
+@@ -378,8 +386,8 @@ ETHTOOL_GGSO			ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_SGSO			ETHNL_CMD_SET_SETTINGS
+ ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_SFLAGS			ETHNL_CMD_SET_SETTINGS
+-ETHTOOL_GPFLAGS			n/a
+-ETHTOOL_SPFLAGS			n/a
++ETHTOOL_GPFLAGS			ETHNL_CMD_GET_SETTINGS
++ETHTOOL_SPFLAGS			ETHNL_CMD_SET_SETTINGS
+ ETHTOOL_GRXFH			n/a
+ ETHTOOL_SRXFH			n/a
+ ETHTOOL_GGRO			ETHNL_CMD_GET_SETTINGS
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 index 9c685830a56a..abec3a4124a3 100644
 --- a/include/uapi/linux/ethtool_netlink.h

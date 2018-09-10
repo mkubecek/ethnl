@@ -1,7 +1,7 @@
-From 137435d522c7a193b918e09cfc92a6676bd88c88 Mon Sep 17 00:00:00 2001
+From 1f29af8b709462399c1a7790cf430f0f02da2cb0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 27 Aug 2018 19:51:37 +0200
-Subject: [PATCH 08/22] ethtool: generic handlers for GET requests
+Subject: [PATCH 08/23] ethtool: generic handlers for GET requests
 
 Some parts of processing GET type requests and related notifications are
 independent on a command. Provide universal functions so that only four

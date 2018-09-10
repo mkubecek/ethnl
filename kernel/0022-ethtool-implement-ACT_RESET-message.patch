@@ -1,7 +1,7 @@
-From 59ed11e3d758386fd797b6742b31f9107f59069d Mon Sep 17 00:00:00 2001
+From 9fb6047da2e918561ab33a77c0430bd1bcf1ea4f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
-Subject: [PATCH 22/22] ethtool: implement ACT_RESET message
+Subject: [PATCH 22/23] ethtool: implement ACT_RESET message
 
 Request reset of a NIC or its part(s), equivalent of ETHTOOL_RESET.
 
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 288 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index db25af7ca447..bd1e9bc94586 100644
+index 85ad677feb7f..ed044150e7ec 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -527,6 +527,29 @@ other ACT_PHYS_ID requests for any device fail with EBUSY. The same holds for

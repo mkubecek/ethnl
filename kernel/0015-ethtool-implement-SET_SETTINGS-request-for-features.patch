@@ -1,7 +1,7 @@
-From aa888eb952dcefd9398deb7e414ab835f3bfc1d4 Mon Sep 17 00:00:00 2001
+From c52b7f5d14a423620ac8259b2b87df159627598f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
-Subject: [PATCH 15/22] ethtool: implement SET_SETTINGS request for features
+Subject: [PATCH 15/23] ethtool: implement SET_SETTINGS request for features
 
 Using ETHNL_SETTINGS_FEATURES attribute, userspace can modify device
 features. Actual change is subject to netdev_change_features() sanity

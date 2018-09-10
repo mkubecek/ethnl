@@ -1,7 +1,7 @@
-From 0b5777c3503fb915e854c02b5be8c56120d7d583 Mon Sep 17 00:00:00 2001
+From 8b5614cd5cb3fdcf989f67ab9e6867f3e5459a9c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
-Subject: [PATCH 21/22] ethtool: implement ACT_PHYS_ID message
+Subject: [PATCH 21/23] ethtool: implement ACT_PHYS_ID message
 
 Request physical NIC identification (by blinking a LED), equivalent of
 ETHTOOL_PHYS_ID.
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 184 insertions(+), 47 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 979b5ad19e05..db25af7ca447 100644
+index 9193e2aeb5e1..85ad677feb7f 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -505,6 +505,28 @@ Request contents:

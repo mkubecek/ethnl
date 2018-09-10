@@ -1,7 +1,7 @@
-From feb40c8c794bc64262801ca37fb839d5fb0cba7f Mon Sep 17 00:00:00 2001
+From 4ed56b44c45f090f9e1c9d157af83bab962d53de Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
-Subject: [PATCH 10/22] ethtool: implement GET_INFO message
+Subject: [PATCH 10/23] ethtool: implement GET_INFO message
 
 Requests the information provided by commands ETHTOOL_GDRVINFO,
 ETHTOOL_GPERMADDR and ETHTOOL_GET_TS_INFO in ioctl interface. This is

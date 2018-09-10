@@ -1,7 +1,7 @@
-From 6cb6791e6cfac0f92d76d6351d1cdabc251b1354 Mon Sep 17 00:00:00 2001
+From 0379ebf5897d38bf6c55e724c3c6ea09ae191e20 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
-Subject: [PATCH 12/22] ethtool: implement GET_SETTINGS request for features
+Subject: [PATCH 12/23] ethtool: implement GET_SETTINGS request for features
 
 With ETH_SETTINGS_IM_FEATURES info mask, ETHNL_CMD_GET_SETTINGS request
 gets network device feature values. This is the same information as

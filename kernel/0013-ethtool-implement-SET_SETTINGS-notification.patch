@@ -1,7 +1,7 @@
-From a1cb82f53c2c2b38a860b69a5bcdf1dce76086a4 Mon Sep 17 00:00:00 2001
+From 479e74f04fef10277d0c3e397ce851dd79499597 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:36:49 -0400
-Subject: [PATCH 13/22] ethtool: implement SET_SETTINGS notification
+Subject: [PATCH 13/23] ethtool: implement SET_SETTINGS notification
 
 SET_SETTINGS notification message has the same format as response to
 GET_SETTINGS request and is broadcasted on change of relevant fields. Info

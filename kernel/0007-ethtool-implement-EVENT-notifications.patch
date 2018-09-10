@@ -1,7 +1,7 @@
-From f8d2a950ece404255d133091262bb070783a604b Mon Sep 17 00:00:00 2001
+From d6d7f4ed38ea33ff4f3147d0f501485f7ace5ab5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
-Subject: [PATCH 07/22] ethtool: implement EVENT notifications
+Subject: [PATCH 07/23] ethtool: implement EVENT notifications
 
 Two types of netlink notifications are introduced: ETHA_EVENT_NEWDEV to
 notify about newly registered network devices and ETHA_EVENT_DELDEV to
