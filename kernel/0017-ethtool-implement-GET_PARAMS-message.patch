@@ -1,7 +1,7 @@
-From c444e199808b379d99f2fe7b640a7fc8a7828b19 Mon Sep 17 00:00:00 2001
+From f4b3c64e30d43eecc14b5625347050ab938cb124 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
-Subject: [PATCH 17/23] ethtool: implement GET_PARAMS message
+Subject: [PATCH 17/25] ethtool: implement GET_PARAMS message
 
 Requests the information provide by ETHTOOL_GCOALESCE, ETHTOOL_GRINGPARAM,
 ETHTOOL_GPAUSEPARAM, ETHTOOL_GCHANNELS, ETHTOOL_GEEE and ETHTOOL_GFECPARAM.
@@ -9,12 +9,12 @@ Flags in info_mask allow selecting only some (or on) of these categories.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 107 ++++-
- include/uapi/linux/ethtool_netlink.h         | 119 +++++
+ Documentation/networking/ethtool-netlink.txt | 107 +++++-
+ include/uapi/linux/ethtool_netlink.h         | 119 +++++++
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/netlink.c                        |   9 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/params.c                         | 474 +++++++++++++++++++
+ net/ethtool/params.c                         | 474 +++++++++++++++++++++++++++
  6 files changed, 705 insertions(+), 7 deletions(-)
  create mode 100644 net/ethtool/params.c
 
@@ -320,7 +320,7 @@ index cf9638e6710b..62313644ac7d 100644
 -ethtool_nl-y	:= netlink.o strset.o info.o settings.o
 +ethtool_nl-y	:= netlink.o strset.o info.o settings.o params.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 7e821572d1f3..ed13894ea458 100644
+index e8122da18e32..eb120e7081ce 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -582,11 +582,13 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
@@ -843,5 +843,5 @@ index 000000000000..718522a211f3
 +	.fill_reply		= fill_params,
 +};
 -- 
-2.18.0
+2.16.4
 

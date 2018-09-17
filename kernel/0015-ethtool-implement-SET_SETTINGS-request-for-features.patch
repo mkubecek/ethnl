@@ -1,7 +1,7 @@
-From c52b7f5d14a423620ac8259b2b87df159627598f Mon Sep 17 00:00:00 2001
+From 180f4c719e74ffa47932e7f0dee5a14e95cd3417 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
-Subject: [PATCH 15/23] ethtool: implement SET_SETTINGS request for features
+Subject: [PATCH 15/25] ethtool: implement SET_SETTINGS request for features
 
 Using ETHNL_SETTINGS_FEATURES attribute, userspace can modify device
 features. Actual change is subject to netdev_change_features() sanity
@@ -13,9 +13,9 @@ between old and new state of dev->features.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  32 ++--
+ Documentation/networking/ethtool-netlink.txt |  32 ++++--
  include/uapi/linux/ethtool_netlink.h         |   1 +
- net/ethtool/settings.c                       | 149 +++++++++++++++++++
+ net/ethtool/settings.c                       | 149 +++++++++++++++++++++++++++
  3 files changed, 173 insertions(+), 9 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -278,5 +278,5 @@ index 32a259cf1c0d..8e0b7881c847 100644
  
  out_unlock:
 -- 
-2.18.0
+2.16.4
 

@@ -1,7 +1,7 @@
-From 1f29af8b709462399c1a7790cf430f0f02da2cb0 Mon Sep 17 00:00:00 2001
+From 6d42c9878fb46863646faf3693565a6a23cd7929 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 27 Aug 2018 19:51:37 +0200
-Subject: [PATCH 08/23] ethtool: generic handlers for GET requests
+Subject: [PATCH 08/25] ethtool: generic handlers for GET requests
 
 Some parts of processing GET type requests and related notifications are
 independent on a command. Provide universal functions so that only four
@@ -16,12 +16,12 @@ These callback are defined in an instance of struct get_request_ops.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/ethtool/netlink.c | 280 ++++++++++++++++++++++++++++++++++++++++++
- net/ethtool/netlink.h |  95 ++++++++++++++
+ net/ethtool/netlink.c | 280 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ net/ethtool/netlink.h |  95 +++++++++++++++++
  2 files changed, 375 insertions(+)
 
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 72cb5ebdf830..135841fa365a 100644
+index b9b438a984a4..5fe0effef597 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -521,6 +521,41 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
@@ -423,5 +423,5 @@ index d0e75799c522..5aada243833a 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
-2.18.0
+2.16.4
 

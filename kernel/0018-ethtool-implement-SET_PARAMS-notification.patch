@@ -1,7 +1,7 @@
-From d87404897c821856530e96fd3778051a69a08933 Mon Sep 17 00:00:00 2001
+From c2366a3ee66bd730bc7edb635b0888abcd34e0ae Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:43:07 -0400
-Subject: [PATCH 18/23] ethtool: implement SET_PARAMS notification
+Subject: [PATCH 18/25] ethtool: implement SET_PARAMS notification
 
 SET_PARAMS notification message has the same format as response to
 GET_PARAMS request and is broadcasted on change of relevant fields. Info
@@ -147,7 +147,7 @@ index da0c5def88d2..d56adb254d79 100644
  
  /* The main entry point in this file.  Called from net/core/dev_ioctl.c */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index ed13894ea458..923592dabdc8 100644
+index eb120e7081ce..198c178a184c 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -915,6 +915,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
@@ -159,5 +159,5 @@ index ed13894ea458..923592dabdc8 100644
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
 -- 
-2.18.0
+2.16.4
 

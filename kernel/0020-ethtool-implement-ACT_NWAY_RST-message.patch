@@ -1,7 +1,7 @@
-From 32d49309946e55ae94d9d6c4133ade263cdf804c Mon Sep 17 00:00:00 2001
+From 8f0eeec3a9e1a3f481e2f213b1fb07089f164fc0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
-Subject: [PATCH 20/23] ethtool: implement ACT_NWAY_RST message
+Subject: [PATCH 20/25] ethtool: implement ACT_NWAY_RST message
 
 Requests autonegotiation restart, equivalent of ETHTOOL_NWAY_RST.
 
@@ -9,13 +9,13 @@ If successful, send a notification in the same format.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 15 +++-
- include/uapi/linux/ethtool_netlink.h         | 11 +++
+ Documentation/networking/ethtool-netlink.txt | 15 +++++-
+ include/uapi/linux/ethtool_netlink.h         | 11 +++++
  net/ethtool/Makefile                         |  2 +-
- net/ethtool/actions.c                        | 72 ++++++++++++++++++++
- net/ethtool/ioctl.c                          |  7 +-
- net/ethtool/netlink.c                        |  6 ++
- net/ethtool/netlink.h                        |  7 ++
+ net/ethtool/actions.c                        | 72 ++++++++++++++++++++++++++++
+ net/ethtool/ioctl.c                          |  7 ++-
+ net/ethtool/netlink.c                        |  6 +++
+ net/ethtool/netlink.h                        |  7 +++
  7 files changed, 117 insertions(+), 3 deletions(-)
  create mode 100644 net/ethtool/actions.c
 
@@ -198,7 +198,7 @@ index d56adb254d79..f303a29fa94a 100644
  
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index da46acabc0e0..0af3f0f8679d 100644
+index fa93ccc39ed2..003aeb5223ed 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -916,6 +916,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
@@ -239,5 +239,5 @@ index 47e7e2ee6093..e3aa027b22b1 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
-2.18.0
+2.16.4
 

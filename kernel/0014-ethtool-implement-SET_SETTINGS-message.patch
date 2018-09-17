@@ -1,7 +1,7 @@
-From 493718d73e6c4fbdd6560170b3d45e22616afc8e Mon Sep 17 00:00:00 2001
+From 0d6c7098f31c5f0d76ff739ff6c62e51aa929f55 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
-Subject: [PATCH 14/23] ethtool: implement SET_SETTINGS message
+Subject: [PATCH 14/25] ethtool: implement SET_SETTINGS message
 
 Sets the information provided by ETHTOOL_SLINKSETTINGS, ETHTOOL_SWOL and
 ETHTOOL_SMSGLVL. Unlike with ioctl(), userspace can send only some
@@ -11,10 +11,10 @@ some setting).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  43 +-
+ Documentation/networking/ethtool-netlink.txt |  43 ++-
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   4 +
- net/ethtool/settings.c                       | 415 +++++++++++++++++++
+ net/ethtool/settings.c                       | 415 +++++++++++++++++++++++++++
  4 files changed, 462 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -97,7 +97,7 @@ index 1fac7c22ac1c..2dff04af2e75 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index b4a3ef3982d8..7e821572d1f3 100644
+index 13976e091e93..e8122da18e32 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -1021,6 +1021,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
@@ -556,5 +556,5 @@ index d92263abaeaf..32a259cf1c0d 100644
 +	return ret;
 +}
 -- 
-2.18.0
+2.16.4
 

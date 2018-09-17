@@ -1,7 +1,7 @@
-From 8641a2efffe257e7f4913509fecc4df94cc8fe7d Mon Sep 17 00:00:00 2001
+From bf340c5fec9f215203f7a08f73d01e69a8322695 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 13 May 2018 02:35:53 +0200
-Subject: [PATCH 02/23] ethtool: move to its own directory
+Subject: [PATCH 02/25] ethtool: move to its own directory
 
 With ethtool netlink interface, there is going to be a lot of new files
 so that it seem more convenient to put them into a separate directory
@@ -58,5 +58,5 @@ similarity index 100%
 rename from net/core/ethtool.c
 rename to net/ethtool/ioctl.c
 -- 
-2.18.0
+2.16.4
 

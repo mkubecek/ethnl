@@ -1,7 +1,7 @@
-From adb2e26b2d184dac981073b00930f70f2689edfc Mon Sep 17 00:00:00 2001
+From e4773ea2cf53d251b11b57d6e630e24f6d3e8e8c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
-Subject: [PATCH 19/23] ethtool: implement SET_PARAMS message
+Subject: [PATCH 19/25] ethtool: implement SET_PARAMS message
 
 Sets the information provided by ETHTOOL_SCOALESCE, ETHTOOL_SRINGPARAM,
 ETHTOOL_SPAUSEPARAM, ETHTOOL_SCHANNELS, ETHTOOL_SEEE and ETHTOOL_SFECPARAM.
@@ -11,9 +11,9 @@ more of the legacy requests (and provide only part of the data to update).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  71 ++-
+ Documentation/networking/ethtool-netlink.txt |  71 ++++-
  net/ethtool/netlink.c                        |   5 +
- net/ethtool/params.c                         | 434 +++++++++++++++++++
+ net/ethtool/params.c                         | 434 +++++++++++++++++++++++++++
  3 files changed, 503 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -134,7 +134,7 @@ index 0748a266bd98..3edea10511a3 100644
 +ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 923592dabdc8..da46acabc0e0 100644
+index 198c178a184c..fa93ccc39ed2 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -1036,6 +1036,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
@@ -592,5 +592,5 @@ index 718522a211f3..68c8ef1be985 100644
 +	return ret;
 +}
 -- 
-2.18.0
+2.16.4
 

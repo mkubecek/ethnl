@@ -1,7 +1,7 @@
-From 9fb6047da2e918561ab33a77c0430bd1bcf1ea4f Mon Sep 17 00:00:00 2001
+From c89ac9fe97b091f4b321de81a39e0f7d4d30fcd5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
-Subject: [PATCH 22/23] ethtool: implement ACT_RESET message
+Subject: [PATCH 22/25] ethtool: implement ACT_RESET message
 
 Request reset of a NIC or its part(s), equivalent of ETHTOOL_RESET.
 
@@ -12,7 +12,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  25 ++-
  include/uapi/linux/ethtool.h                 |   3 +
  include/uapi/linux/ethtool_netlink.h         |  16 ++
- net/ethtool/actions.c                        | 224 +++++++++++++++++++
+ net/ethtool/actions.c                        | 224 +++++++++++++++++++++++++++
  net/ethtool/ioctl.c                          |   5 +
  net/ethtool/netlink.c                        |   6 +
  net/ethtool/netlink.h                        |   4 +
@@ -383,7 +383,7 @@ index 994fe4c72b44..54f8da415e48 100644
  	if (copy_to_user(useraddr, &reset, sizeof(reset)))
  		return -EFAULT;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 917537b32235..43150cc5023a 100644
+index 66392ecbabe4..58ce10b7898c 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -918,6 +918,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
@@ -452,5 +452,5 @@ index a8ce1045493b..1dc47dc7b249 100644
  
  struct strset_data {
 -- 
-2.18.0
+2.16.4
 

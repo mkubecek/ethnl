@@ -1,7 +1,7 @@
-From 4ed56b44c45f090f9e1c9d157af83bab962d53de Mon Sep 17 00:00:00 2001
+From 1748838d85d4d199b912a8b37aa038a67987c34c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
-Subject: [PATCH 10/23] ethtool: implement GET_INFO message
+Subject: [PATCH 10/25] ethtool: implement GET_INFO message
 
 Requests the information provided by commands ETHTOOL_GDRVINFO,
 ETHTOOL_GPERMADDR and ETHTOOL_GET_TS_INFO in ioctl interface. This is
@@ -10,18 +10,18 @@ kernel replies.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  61 +++-
+ Documentation/networking/ethtool-netlink.txt |  61 ++++-
  include/uapi/linux/ethtool.h                 |   7 +-
- include/uapi/linux/ethtool_netlink.h         |  54 +++
- include/uapi/linux/net_tstamp.h              |  13 +
+ include/uapi/linux/ethtool_netlink.h         |  54 +++++
+ include/uapi/linux/net_tstamp.h              |  13 ++
  net/ethtool/Makefile                         |   4 +-
- net/ethtool/common.c                         |  66 ++++
+ net/ethtool/common.c                         |  66 ++++++
  net/ethtool/common.h                         |   4 +
- net/ethtool/info.c                           | 325 +++++++++++++++++++
- net/ethtool/ioctl.c                          |  62 +---
+ net/ethtool/info.c                           | 325 +++++++++++++++++++++++++++
+ net/ethtool/ioctl.c                          |  62 +----
  net/ethtool/netlink.c                        |   9 +
  net/ethtool/netlink.h                        |   9 +
- net/ethtool/strset.c                         |  18 +
+ net/ethtool/strset.c                         |  18 ++
  12 files changed, 572 insertions(+), 60 deletions(-)
  create mode 100644 net/ethtool/info.c
 
@@ -800,7 +800,7 @@ index 4275c90d3726..0643c5f0867a 100644
  		err = -EFAULT;
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 2e128bbdfa35..2609df367cc9 100644
+index c350896a1932..a3f56ac0e473 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -524,9 +524,11 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
@@ -887,5 +887,5 @@ index a6453fb84434..ee115107ea18 100644
  
  struct strset_data {
 -- 
-2.18.0
+2.16.4
 

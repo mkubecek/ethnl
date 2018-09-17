@@ -1,7 +1,7 @@
-From 479e74f04fef10277d0c3e397ce851dd79499597 Mon Sep 17 00:00:00 2001
+From 76fe3465041c54b09c5f12ce0a0325bcdc50a343 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:36:49 -0400
-Subject: [PATCH 13/23] ethtool: implement SET_SETTINGS notification
+Subject: [PATCH 13/25] ethtool: implement SET_SETTINGS notification
 
 SET_SETTINGS notification message has the same format as response to
 GET_SETTINGS request and is broadcasted on change of relevant fields. Info
@@ -13,8 +13,8 @@ ioctl interface.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  3 ++-
- net/ethtool/ioctl.c                          | 26 +++++++++++++++++---
- net/ethtool/netlink.c                        | 12 +++++++++
+ net/ethtool/ioctl.c                          | 26 +++++++++++++++++++++++---
+ net/ethtool/netlink.c                        | 12 ++++++++++++
  3 files changed, 37 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -111,7 +111,7 @@ index ee1015b4bb90..6824c737d246 100644
  	case ETHTOOL_GEEE:
  		rc = ethtool_get_eee(dev, useraddr);
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 008e63aea57b..b4a3ef3982d8 100644
+index b1ae3145b6c5..13976e091e93 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -912,6 +912,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
@@ -148,5 +148,5 @@ index 008e63aea57b..b4a3ef3982d8 100644
  
  	return NOTIFY_DONE;
 -- 
-2.18.0
+2.16.4
 

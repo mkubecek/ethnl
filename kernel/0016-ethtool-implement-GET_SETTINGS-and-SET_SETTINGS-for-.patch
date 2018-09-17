@@ -1,7 +1,7 @@
-From 17a8d316527a7d63222dc3b08f2c7807ff32d70f Mon Sep 17 00:00:00 2001
+From 0d4173a465a5736b18e3365e4b39a61e91e6159d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
-Subject: [PATCH 16/23] ethtool: implement GET_SETTINGS and SET_SETTINGS for
+Subject: [PATCH 16/25] ethtool: implement GET_SETTINGS and SET_SETTINGS for
  private flags
 
 With ETH_SETTINGS_IM_PRIVFLAGS in info mask, ETHNL_CMD_GET_SETTINGS request
@@ -13,10 +13,10 @@ via ioctl.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  12 +-
+ Documentation/networking/ethtool-netlink.txt |  12 ++-
  include/uapi/linux/ethtool_netlink.h         |   4 +-
  net/ethtool/ioctl.c                          |   3 +
- net/ethtool/settings.c                       | 132 +++++++++++++++++++
+ net/ethtool/settings.c                       | 132 +++++++++++++++++++++++++++
  4 files changed, 148 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -318,5 +318,5 @@ index 8e0b7881c847..3ac308b87e16 100644
  
  out_unlock:
 -- 
-2.18.0
+2.16.4
 

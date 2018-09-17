@@ -1,7 +1,7 @@
-From ffcd5afd114020f9cdca209d4e6d650c4a629682 Mon Sep 17 00:00:00 2001
+From 83569b18c45785b0e2e9904fb372b19a1624bdba Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
-Subject: [PATCH 23/23] ethtool: implement GET_RXFLOW message
+Subject: [PATCH 23/25] ethtool: implement GET_RXFLOW message
 
 Request the information provided by ETHTOOL_GRSSH, ETHTOOL_GRXRINGS and
 ETHTOOL_GRXFHINDIR ioctl commands. This allows to query
@@ -16,11 +16,11 @@ for a device and potentially also RSS context.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |   6 +-
- include/uapi/linux/ethtool_netlink.h         |  67 ++++
+ include/uapi/linux/ethtool_netlink.h         |  76 +++++++
  net/ethtool/Makefile                         |   3 +-
  net/ethtool/netlink.c                        |   9 +
- net/ethtool/rxflow.c                         | 323 +++++++++++++++++++
- 5 files changed, 404 insertions(+), 4 deletions(-)
+ net/ethtool/rxflow.c                         | 328 +++++++++++++++++++++++++++
+ 5 files changed, 418 insertions(+), 4 deletions(-)
  create mode 100644 net/ethtool/rxflow.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -55,7 +55,7 @@ index ed044150e7ec..7ccd88dfbea9 100644
  ETHTOOL_GTUNABLE		n/a
  ETHTOOL_STUNABLE		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index f29d10ac253e..dc96b7ac995f 100644
+index f29d10ac253e..b3ae9a4502d4 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -19,6 +19,8 @@ enum {
@@ -67,7 +67,7 @@ index f29d10ac253e..dc96b7ac995f 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -388,6 +390,71 @@ enum {
+@@ -388,6 +390,80 @@ enum {
  	ETHA_RESET_MAX = (__ETHA_RESET_CNT - 1)
  };
  
@@ -78,7 +78,7 @@ index f29d10ac253e..dc96b7ac995f 100644
 +	ETHA_RXFLOW_DEV,			/* nest - ETHA_DEV_* */
 +	ETHA_RXFLOW_INFOMASK,			/* u32 */
 +	ETHA_RXFLOW_COMPACT,			/* flag */
-+	ETHA_RXFLOW_OP,				/* u32 - ETH_RXFLOW_OP_* */
++	ETHA_RXFLOW_CTXOP,			/* u32 - ETH_RXFLOW_CTXOP_* */
 +	ETHA_RXFLOW_CONTEXT,			/* u32 */
 +	ETHA_RXFLOW_NRINGS,			/* u32 */
 +	ETHA_RXFLOW_HASH_FN,			/* bitset */
@@ -90,17 +90,16 @@ index f29d10ac253e..dc96b7ac995f 100644
 +	ETHA_RXFLOW_MAX = (__ETHA_RXFLOW_CNT - 1)
 +};
 +
-+#define ETH_RXFLOW_IM_INFO			0x01
++#define ETH_RXFLOW_IM_HASHFN			0x01
 +#define ETH_RXFLOW_IM_HKEY			0x02
 +#define ETH_RXFLOW_IM_INDTBL			0x04
 +
 +#define ETH_RXFLOW_IM_ALL			0x07
 +
 +enum {
-+	ETH_RXFLOW_OP_GET,
-+	ETH_RXFLOW_OP_SET,			/* set context data */
-+	ETH_RXFLOW_OP_NEW,			/* create new context */
-+	ETH_RXFLOW_OP_DEL,			/* delete existing context */
++	ETH_RXFLOW_CTXOP_SET,			/* set context data */
++	ETH_RXFLOW_CTXOP_NEW,			/* create new context */
++	ETH_RXFLOW_CTXOP_DEL,			/* delete existing context */
 +};
 +
 +enum {
@@ -109,6 +108,7 @@ index f29d10ac253e..dc96b7ac995f 100644
 +	ETHA_INDTBL_BLOCK16,			/* nest - ETH_ITBLK_* */
 +	ETHA_INDTBL_BLOCK8,			/* nest - ETH_ITBLK_* */
 +	ETHA_INDTBL_PATTERN,			/* nest - ETH_ITPAT_* */
++	ETHA_INDTBL_WEIGHTS,			/* nest - ETH_ITWGHT_* */
 +
 +	__ETHA_INDTBL_CNT,
 +	ETHA_INDTBL_MAX = (__ETHA_INDTBL_CNT - 1)
@@ -136,6 +136,15 @@ index f29d10ac253e..dc96b7ac995f 100644
 +	ETHA_ITPAT_MAX = (__ETHA_ITPAT_CNT - 1)
 +};
 +
++enum {
++	ETHA_ITWGHT_UNSPEC,
++	ETHA_ITWGHT_VALUES,			/* binary */
++	ETHA_ITWGHT_WEIGHTS,			/* binary */
++
++	__ETHA_ITWGHT_CNT,
++	ETHA_ITWGHT_MAX = (__ETHA_ITWGHT_CNT - 1)
++};
++
  /* generic netlink info */
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
@@ -151,7 +160,7 @@ index 0b965090bb55..a129a22824f8 100644
 +ethtool_nl-y	:= netlink.o strset.o info.o settings.o params.o actions.o \
 +		   rxflow.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 43150cc5023a..163cc0a24222 100644
+index 58ce10b7898c..6f0f9da605e7 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -583,12 +583,14 @@ extern const struct get_request_ops strset_request_ops;
@@ -185,10 +194,10 @@ index 43150cc5023a..163cc0a24222 100644
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
 new file mode 100644
-index 000000000000..3b0bae3c37e8
+index 000000000000..d49d342ab7a3
 --- /dev/null
 +++ b/net/ethtool/rxflow.c
-@@ -0,0 +1,323 @@
+@@ -0,0 +1,328 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
@@ -360,13 +369,15 @@ index 000000000000..3b0bae3c37e8
 +		len += nla_total_size(sizeof(u32));
 +	/* ETHA_RXFLOW_NRINGS */
 +	len += nla_total_size(sizeof(u32));
-+	/* ETHA_RXFLOW_HASH_FN */
-+	ret = ethnl_bitset32_size(req_info->compact, ETH_RSS_HASH_FUNCS_COUNT,
-+				  &data->hash_fn, &all_hashfn,
-+				  rss_hash_func_strings, true);
-+	if (ret < 0)
-+		return ret;
-+	len += ret;
++	if (info_mask & ETH_RXFLOW_IM_HASHFN) {
++		ret = ethnl_bitset32_size(req_info->compact,
++					  ETH_RSS_HASH_FUNCS_COUNT,
++					  &data->hash_fn, &all_hashfn,
++					  rss_hash_func_strings, true);
++		if (ret < 0)
++			return ret;
++		len += ret;
++	}
 +	if (info_mask & ETH_RXFLOW_IM_HKEY)
 +		len += nla_total_size(data->hkey_size);
 +	if (info_mask & ETH_RXFLOW_IM_INDTBL)
@@ -375,17 +386,13 @@ index 000000000000..3b0bae3c37e8
 +	return len;
 +}
 +
-+static int fill_rxflow_info(struct sk_buff *skb, const struct rxflow_data *data)
++static int fill_rxflow_hashfn(struct sk_buff *skb,
++			      const struct rxflow_data *data)
 +{
 +	bool compact = data->reqinfo_base.compact;
 +	const u32 all_hashfn = RXFLOW_ALL_HASHFNS;
 +	int ret;
 +
-+	if (data->req_context &&
-+	    nla_put_u32(skb, ETHA_RXFLOW_CONTEXT, data->req_context))
-+		return -EMSGSIZE;
-+	if (nla_put_u32(skb, ETHA_RXFLOW_NRINGS, data->n_rings))
-+		return -EMSGSIZE;
 +	ret = ethnl_put_bitset32(skb, ETHA_RXFLOW_HASH_FN, compact,
 +				 ETH_RSS_HASH_FUNCS_COUNT, &data->hash_fn,
 +				 &all_hashfn, rss_hash_func_strings, true);
@@ -473,9 +480,16 @@ index 000000000000..3b0bae3c37e8
 +	u32 info_mask = data->repdata_base.info_mask;
 +	int ret;
 +
-+	ret = fill_rxflow_info(skb, data);
-+	if (ret < 0)
-+		return ret;
++	if (data->req_context &&
++	    nla_put_u32(skb, ETHA_RXFLOW_CONTEXT, data->req_context))
++		return -EMSGSIZE;
++	if (nla_put_u32(skb, ETHA_RXFLOW_NRINGS, data->n_rings))
++		return -EMSGSIZE;
++	if (info_mask & ETH_RXFLOW_IM_HASHFN) {
++		ret = fill_rxflow_hashfn(skb, data);
++		if (ret < 0)
++			return ret;
++	}
 +	if (info_mask & ETH_RXFLOW_IM_HKEY) {
 +		if (nla_put(skb, ETHA_RXFLOW_HASH_KEY, data->hkey_size,
 +			    data->hkey))
@@ -513,5 +527,5 @@ index 000000000000..3b0bae3c37e8
 +	.cleanup		= rxflow_cleanup,
 +};
 -- 
-2.18.0
+2.16.4
 

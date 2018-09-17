@@ -1,7 +1,7 @@
-From 0379ebf5897d38bf6c55e724c3c6ea09ae191e20 Mon Sep 17 00:00:00 2001
+From 3f93026d958a07dd0a8548466d5da3d17f4b68b4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
-Subject: [PATCH 12/23] ethtool: implement GET_SETTINGS request for features
+Subject: [PATCH 12/25] ethtool: implement GET_SETTINGS request for features
 
 With ETH_SETTINGS_IM_FEATURES info mask, ETHNL_CMD_GET_SETTINGS request
 gets network device feature values. This is the same information as
@@ -9,11 +9,11 @@ provided via ETHTOOL_GFEATURES ioctl request.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  33 ++++--
- include/uapi/linux/ethtool_netlink.h         |  15 ++-
+ Documentation/networking/ethtool-netlink.txt |  33 +++++---
+ include/uapi/linux/ethtool_netlink.h         |  15 +++-
  net/ethtool/common.h                         |   2 +
  net/ethtool/ioctl.c                          |   2 -
- net/ethtool/settings.c                       | 112 +++++++++++++++++++
+ net/ethtool/settings.c                       | 112 +++++++++++++++++++++++++++
  5 files changed, 152 insertions(+), 12 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -337,5 +337,5 @@ index 2a5e2733de32..d92263abaeaf 100644
  	return 0;
  }
 -- 
-2.18.0
+2.16.4
 

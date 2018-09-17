@@ -1,7 +1,7 @@
-From c1b8b54be1e75eda3a0e2045d76e64a0a990ff3e Mon Sep 17 00:00:00 2001
+From 1b5cb22c5bf744baeaab30473a4cb8eda762fb8d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
-Subject: [PATCH 06/23] ethtool: support for netlink notifications
+Subject: [PATCH 06/25] ethtool: support for netlink notifications
 
 Add infrastructure for ethtool netlink notifications. There is only one
 multicast group, "monitor" which userspace can use to get notifications.
@@ -16,9 +16,9 @@ RTNL (and, obviously, allow sleeping).
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  include/linux/ethtool_netlink.h      |  5 +++++
- include/linux/netdevice.h            | 12 +++++++++++
+ include/linux/netdevice.h            | 12 ++++++++++++
  include/uapi/linux/ethtool_netlink.h |  2 ++
- net/ethtool/netlink.c                | 32 ++++++++++++++++++++++++++++
+ net/ethtool/netlink.c                | 32 ++++++++++++++++++++++++++++++++
  net/ethtool/netlink.h                |  2 ++
  5 files changed, 53 insertions(+)
 
@@ -38,10 +38,10 @@ index 0412adb4f42f..2a15e64a16f3 100644
  
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index e2b3bd750c98..4b69baff11be 100644
+index baed5d5088c5..6f94a8323a6f 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -4259,6 +4259,18 @@ struct netdev_notifier_bonding_info {
+@@ -4265,6 +4265,18 @@ struct netdev_notifier_bonding_info {
  void netdev_bonding_info_change(struct net_device *dev,
  				struct netdev_bonding_info *bonding_info);
  
@@ -72,7 +72,7 @@ index cfee7acfc6d8..011f840423be 100644
 +
  #endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 3b5e32d888f0..565eb43a56ad 100644
+index f2fee7a18265..880539ddc456 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -5,6 +5,8 @@
@@ -107,7 +107,7 @@ index 3b5e32d888f0..565eb43a56ad 100644
 +		   ethnl_notify_handlers[cmd]))
 +		ethnl_notify_handlers[cmd](dev, extack, cmd, req_mask, data);
 +	else
-+		WARN_ONCE(1, "notification %u not implemented (dev=%s, req_mask=0x%x\n",
++		WARN_ONCE(1, "notification %u not implemented (dev=%s, req_mask=0x%x)\n",
 +			  cmd, netdev_name(dev), req_mask);
 +}
 +EXPORT_SYMBOL(ethtool_notify);
@@ -147,5 +147,5 @@ index 340b00488466..d0e75799c522 100644
  
  struct net_device *ethnl_dev_get(struct genl_info *info, struct nlattr *nest);
 -- 
-2.18.0
+2.16.4
 

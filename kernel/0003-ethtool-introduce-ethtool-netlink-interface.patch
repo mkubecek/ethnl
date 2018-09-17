@@ -1,19 +1,19 @@
-From 52d3d29adceaa5c2d50fb47d060dae88452aa33e Mon Sep 17 00:00:00 2001
+From 632e428ccbaf0b951ce1ff8284f48b8d50178a4e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
-Subject: [PATCH 03/23] ethtool: introduce ethtool netlink interface
+Subject: [PATCH 03/25] ethtool: introduce ethtool netlink interface
 
 No function implemented yet, only genetlink and init infrastructure.
 Register/unregister genetlink family "ethtool".
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 168 +++++++++++++++++++
- include/linux/ethtool_netlink.h              |   9 +
+ Documentation/networking/ethtool-netlink.txt | 168 +++++++++++++++++++++++++++
+ include/linux/ethtool_netlink.h              |   9 ++
  include/uapi/linux/ethtool_netlink.h         |  19 +++
- net/Kconfig                                  |   7 +
+ net/Kconfig                                  |   7 ++
  net/ethtool/Makefile                         |   6 +-
- net/ethtool/netlink.c                        |  34 ++++
+ net/ethtool/netlink.c                        |  34 ++++++
  net/ethtool/netlink.h                        |  12 ++
  7 files changed, 254 insertions(+), 1 deletion(-)
  create mode 100644 Documentation/networking/ethtool-netlink.txt
@@ -326,5 +326,5 @@ index 000000000000..63063b582ca2
 +
 +#endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
-2.18.0
+2.16.4
 
