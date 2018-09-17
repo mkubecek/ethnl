@@ -1,7 +1,7 @@
-From 300ba32073f26814f1980ab59612dfd5865cf27f Mon Sep 17 00:00:00 2001
+From 0f9e85db63d0290c8bcacfbb73a7455ab412f2cf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 07:27:00 +0100
-Subject: [PATCH 21/32] netlink: add netlink handler for scoalesce (-C)
+Subject: [PATCH 21/33] netlink: add netlink handler for scoalesce (-C)
 
 Implement "ethtool -C <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_PARAMS.
@@ -10,8 +10,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c        |   3 +-
  netlink/extapi.h |   1 +
- netlink/params.c | 182 +++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 185 insertions(+), 1 deletion(-)
+ netlink/params.c | 180 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 183 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
 index b3ac546b08f6..d5979d58341c 100644
@@ -47,10 +47,10 @@ index 81f8b1ec572a..fd3e0ca062f4 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index c187ca0b37c5..96be71b52ba3 100644
+index c187ca0b37c5..a5fe473676e4 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
-@@ -328,3 +328,185 @@ int nl_gfec(struct cmd_context *ctx)
+@@ -328,3 +328,183 @@ int nl_gfec(struct cmd_context *ctx)
  {
  	return params_request(ctx, ETH_PARAMS_IM_FEC);
  }
@@ -58,8 +58,7 @@ index c187ca0b37c5..96be71b52ba3 100644
 +/* SET_PARAMS */
 +
 +static int nl_set_param(struct cmd_context *ctx, const char *opt,
-+			const struct param_parser *params, uint16_t nest_type,
-+			uint16_t max_type)
++			const struct param_parser *params, uint16_t nest_type)
 +{
 +	struct nl_context *nlctx = ctx->nlctx;
 +	struct nlattr *nest;
@@ -81,7 +80,7 @@ index c187ca0b37c5..96be71b52ba3 100644
 +		return 76;
 +	}
 +
-+	ret = nl_parser(ctx, params, max_type);
++	ret = nl_parser(nlctx, params, NULL);
 +	if (ret < 0)
 +		return 2;
 +	mnl_attr_nest_end(nlctx->nlhdr, nest);
@@ -99,13 +98,13 @@ index c187ca0b37c5..96be71b52ba3 100644
 +	{
 +		.arg		= "adaptive-rx",
 +		.type		= ETHA_COALESCE_RX_USE_ADAPTIVE,
-+		.handler	= nl_parse_bool,
++		.handler	= nl_parse_u8bool,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "adaptive-tx",
 +		.type		= ETHA_COALESCE_TX_USE_ADAPTIVE,
-+		.handler	= nl_parse_bool,
++		.handler	= nl_parse_u8bool,
 +		.min_argc	= 1,
 +	},
 +	{
@@ -233,9 +232,8 @@ index c187ca0b37c5..96be71b52ba3 100644
 +
 +int nl_scoalesce(struct cmd_context *ctx)
 +{
-+	return nl_set_param(ctx, "-C", scoalesce_params, ETHA_PARAMS_COALESCE,
-+			    ETHA_COALESCE_MAX);
++	return nl_set_param(ctx, "-C", scoalesce_params, ETHA_PARAMS_COALESCE);
 +}
 -- 
-2.18.0
+2.16.4
 

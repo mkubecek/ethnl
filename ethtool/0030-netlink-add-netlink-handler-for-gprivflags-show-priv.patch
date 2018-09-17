@@ -1,7 +1,7 @@
-From 610db648a6f4ae6ceaeb48f01085e6152efc4cde Mon Sep 17 00:00:00 2001
+From 8cb58b7339a8465a0fa33bae17a22f8317e8001a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:20:18 +0200
-Subject: [PATCH 30/32] netlink: add netlink handler for gprivflags
+Subject: [PATCH 30/33] netlink: add netlink handler for gprivflags
  (--show-priv-flags)
 
 Implement "ethtool --show-priv-flags <dev>" subcommand using netlink
@@ -12,8 +12,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c          |  3 ++-
  netlink/extapi.h   |  1 +
- netlink/monitor.c  |  5 ++++
- netlink/settings.c | 63 +++++++++++++++++++++++++++++++++++++++++++++-
+ netlink/monitor.c  |  5 +++++
+ netlink/settings.c | 63 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
  4 files changed, 70 insertions(+), 2 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
@@ -50,7 +50,7 @@ index af2a5042f637..a9820609f3b8 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index d846fdd44611..60101dc2453f 100644
+index 522ad654ad72..442c2c1057e5 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -153,6 +153,11 @@ static struct monitor_option monitor_opts[] = {
@@ -66,7 +66,7 @@ index d846fdd44611..60101dc2453f 100644
  		.pattern	= "-c|--show-coalesce|-C|--coalesce",
  		.cmd		= ETHNL_CMD_SET_PARAMS,
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 6cf9746f18a0..632247e36bc1 100644
+index cd5ad768b4f9..8c1e60a47085 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -248,6 +248,53 @@ out_free:
@@ -166,5 +166,5 @@ index 6cf9746f18a0..632247e36bc1 100644
  
  enum {
 -- 
-2.18.0
+2.16.4
 

@@ -1,7 +1,7 @@
-From 19e1bdcfc15437a644de775288d1a6c0870fd228 Mon Sep 17 00:00:00 2001
+From 7c6cf845c3566c9b52d24b97107b397f0717ecba Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:43:19 +0100
-Subject: [PATCH 25/32] netlink: add netlink handler for seee (--set-eee)
+Subject: [PATCH 25/33] netlink: add netlink handler for seee (--set-eee)
 
 Implement "ethtool --set-eee <dev>" subcommand using netlink interface
 command ETHNL_CMD_SET_PARAMS.
@@ -10,8 +10,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c        |  5 +++--
  netlink/extapi.h |  1 +
- netlink/params.c | 34 ++++++++++++++++++++++++++++++++++
- 3 files changed, 38 insertions(+), 2 deletions(-)
+ netlink/params.c | 33 +++++++++++++++++++++++++++++++++
+ 3 files changed, 37 insertions(+), 2 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
 index 290d5a8633c0..020a161e24a3 100644
@@ -51,12 +51,12 @@ index 50e00fd8de5b..ccb4f5e97a47 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index e23a194165b2..b83f7f758038 100644
+index b2d92bb8a938..913a5417e679 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
-@@ -606,3 +606,37 @@ int nl_schannels(struct cmd_context *ctx)
- 	return nl_set_param(ctx, "-L", schannels_params, ETHA_PARAMS_CHANNELS,
- 			    ETHA_CHANNELS_MAX);
+@@ -601,3 +601,36 @@ int nl_schannels(struct cmd_context *ctx)
+ {
+ 	return nl_set_param(ctx, "-L", schannels_params, ETHA_PARAMS_CHANNELS);
  }
 +
 +static const struct param_parser seee_params[] = {
@@ -69,7 +69,7 @@ index e23a194165b2..b83f7f758038 100644
 +	{
 +		.arg		= "tx-lpi",
 +		.type		= ETHA_EEE_TX_LPI_ENABLED,
-+		.handler	= nl_parse_bool,
++		.handler	= nl_parse_u8bool,
 +		.min_argc	= 1,
 +	},
 +	{
@@ -81,7 +81,7 @@ index e23a194165b2..b83f7f758038 100644
 +	{
 +		.arg		= "eee",
 +		.type		= ETHA_EEE_ENABLED,
-+		.handler	= nl_parse_bool,
++		.handler	= nl_parse_u8bool,
 +		.min_argc	= 1,
 +	},
 +	{}
@@ -89,9 +89,8 @@ index e23a194165b2..b83f7f758038 100644
 +
 +int nl_seee(struct cmd_context *ctx)
 +{
-+	return nl_set_param(ctx, "--set-eee", seee_params, ETHA_PARAMS_EEE,
-+			    ETHA_EEE_MAX);
++	return nl_set_param(ctx, "--set-eee", seee_params, ETHA_PARAMS_EEE);
 +}
 -- 
-2.18.0
+2.16.4
 

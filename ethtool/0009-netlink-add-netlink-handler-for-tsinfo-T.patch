@@ -1,18 +1,18 @@
-From 8929d6d5e7a180a573bc46edb2f07925ffb8915e Mon Sep 17 00:00:00 2001
+From 0fa6158dee38311759887920e8f84a4af318a189 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Aug 2018 23:26:42 +0200
-Subject: [PATCH 09/32] netlink: add netlink handler for tsinfo (-T)
+Subject: [PATCH 09/33] netlink: add netlink handler for tsinfo (-T)
 
 Implement "-T" subcommand using netlink interface command
 ETHNL_CMD_GET_INFO.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- common.c         |  35 ++++++++++++++++
+ common.c         |  35 +++++++++++++++++++
  common.h         |   7 ++++
- ethtool.c        |  44 +--------------------
+ ethtool.c        |  44 ++----------------------
  netlink/extapi.h |   1 +
- netlink/info.c   | 101 +++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/info.c   | 101 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
  5 files changed, 146 insertions(+), 42 deletions(-)
 
 diff --git a/common.c b/common.c
@@ -285,5 +285,5 @@ index fda8b6a76bf4..0631809194be 100644
 +	return info_request(ctx, ETH_INFO_IM_TSINFO);
 +}
 -- 
-2.18.0
+2.16.4
 

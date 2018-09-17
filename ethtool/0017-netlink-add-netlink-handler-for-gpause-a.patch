@@ -1,7 +1,7 @@
-From bc8945e891064e8e63703e4b5953c890f3b0ae75 Mon Sep 17 00:00:00 2001
+From ebd073a40115d2b69f918173ae100996dcb5c32e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:04:09 +0100
-Subject: [PATCH 17/32] netlink: add netlink handler for gpause (-a)
+Subject: [PATCH 17/33] netlink: add netlink handler for gpause (-a)
 
 Implement "ethtool -a <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_PAUSE mask.
@@ -48,7 +48,7 @@ index 9c84a80d223c..1f7de2a7992c 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 72c9f1057b4b..0f35a17cdc7d 100644
+index 0f65d21c9377..b6912c556780 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -148,6 +148,11 @@ static struct monitor_option monitor_opts[] = {
@@ -122,5 +122,5 @@ index 6782d98a6956..b45aac166dcd 100644
 +	return params_request(ctx, ETH_PARAMS_IM_PAUSE);
 +}
 -- 
-2.18.0
+2.16.4
 

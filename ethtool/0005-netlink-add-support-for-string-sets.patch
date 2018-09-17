@@ -1,7 +1,7 @@
-From 3e740504e7c00c523079b941694af22f3d529f08 Mon Sep 17 00:00:00 2001
+From d26c222a6b80710f92636add200a39734cbd1ace Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 14:09:19 +0200
-Subject: [PATCH 05/32] netlink: add support for string sets
+Subject: [PATCH 05/33] netlink: add support for string sets
 
 Add infrastructure for querying kernel string sets (analog to ioct commands
 ETHTOOL_GSSET_INFO and ETHTOOL_GSTRINGS).
@@ -14,8 +14,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Makefile.am       |   1 +
  netlink/netlink.c |   3 +-
  netlink/netlink.h |   4 +-
- netlink/strset.c  | 265 ++++++++++++++++++++++++++++++++++++++++++++++
- netlink/strset.h  |  16 +++
+ netlink/strset.c  | 265 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/strset.h  |  16 ++++
  5 files changed, 286 insertions(+), 3 deletions(-)
  create mode 100644 netlink/strset.c
  create mode 100644 netlink/strset.h
@@ -369,5 +369,5 @@ index 000000000000..81ddf33a5d15
 +
 +#endif /* ETHTOOL_NETLINK_STRSET_H__ */
 -- 
-2.18.0
+2.16.4
 

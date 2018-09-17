@@ -1,7 +1,7 @@
-From f6d224be357ecaf00e0d74d725d4f3b44512df2c Mon Sep 17 00:00:00 2001
+From 3411e8592a9a168df25966ec759ce166b3c6bb09 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:23:10 +0200
-Subject: [PATCH 31/32] netlink: add netlink handler for sprivflags
+Subject: [PATCH 31/33] netlink: add netlink handler for sprivflags
  (--set-priv-flags)
 
 Implement "ethtool --set-priv-flags <dev>" subcommand using netlink
@@ -48,10 +48,10 @@ index a9820609f3b8..cfef7baf923f 100644
  
  void monitor_usage();
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 632247e36bc1..7a742bc29fe9 100644
+index 8c1e60a47085..185c54294387 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -1097,3 +1097,36 @@ int nl_sfeatures(struct cmd_context *ctx)
+@@ -1098,3 +1098,36 @@ int nl_sfeatures(struct cmd_context *ctx)
  		return 0;
  	return nlctx->exit_code ?: 92;
  }
@@ -75,7 +75,7 @@ index 632247e36bc1..7a742bc29fe9 100644
 +	if (ethnla_put_dev(nlctx, ETHA_SETTINGS_DEV, ctx->devname))
 +		return -EMSGSIZE;
 +
-+	ret = nl_parse_bitset(nlctx, ETHA_SETTINGS_PRIV_FLAGS, NULL);
++	ret = nl_parse_bitset(nlctx, ETHA_SETTINGS_PRIV_FLAGS, NULL, NULL);
 +	if (ret < 0)
 +		return -EINVAL;
 +
@@ -89,5 +89,5 @@ index 632247e36bc1..7a742bc29fe9 100644
 +		return nlctx->exit_code ?: 1;
 +}
 -- 
-2.18.0
+2.16.4
 

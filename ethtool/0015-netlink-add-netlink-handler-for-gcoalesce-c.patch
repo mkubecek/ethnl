@@ -1,7 +1,7 @@
-From 2f3fa9f3aa1329cf444f3cbb071f05762173c612 Mon Sep 17 00:00:00 2001
+From 829f9f542eb6cb59810fdd1513e634bb97972097 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
-Subject: [PATCH 15/32] netlink: add netlink handler for gcoalesce (-c)
+Subject: [PATCH 15/33] netlink: add netlink handler for gcoalesce (-c)
 
 Implement "ethtool -c <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_COALESCE mask.
@@ -11,8 +11,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Makefile.am       |   2 +-
  ethtool.c         |   3 +-
  netlink/extapi.h  |   1 +
- netlink/monitor.c |  10 +++++
- netlink/params.c  | 101 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/monitor.c |  10 ++++++
+ netlink/params.c  | 101 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
  5 files changed, 115 insertions(+), 2 deletions(-)
  create mode 100644 netlink/params.c
 
@@ -63,7 +63,7 @@ index ed526cf60142..bc0ca8f59686 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index c4cb693acb61..6f04e569abf1 100644
+index 38d669ef58a6..af6c1bbd4981 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -68,6 +68,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -205,5 +205,5 @@ index 000000000000..30aee5758c42
 +	return params_request(ctx, ETH_PARAMS_IM_COALESCE);
 +}
 -- 
-2.18.0
+2.16.4
 

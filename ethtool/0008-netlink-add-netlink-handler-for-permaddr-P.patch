@@ -1,7 +1,7 @@
-From 1eb7a6f289b92c54719e01caccdf33c3c2e4135d Mon Sep 17 00:00:00 2001
+From cccc6327ea08959fbfd70f28053b2fc36a3c53ff Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Aug 2018 23:24:37 +0200
-Subject: [PATCH 08/32] netlink: add netlink handler for permaddr (-P)
+Subject: [PATCH 08/33] netlink: add netlink handler for permaddr (-P)
 
 Implement "-P" subcommand using netlink interface command
 ETHNL_CMD_GET_INFO.
@@ -10,7 +10,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c        |  3 ++-
  netlink/extapi.h |  1 +
- netlink/info.c   | 66 ++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/info.c   | 66 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  3 files changed, 69 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
@@ -140,5 +140,5 @@ index 8fa0c3e36088..fda8b6a76bf4 100644
 +	return info_request(ctx, ETH_INFO_IM_PERMADDR);
 +}
 -- 
-2.18.0
+2.16.4
 

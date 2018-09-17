@@ -1,7 +1,7 @@
-From 16ec3f0ab1ad1d48435bc5ddfe983efaeb9db876 Mon Sep 17 00:00:00 2001
+From 0c6abbe2061b19b9261a038db4d0bad20bea41bb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:08:21 +0100
-Subject: [PATCH 19/32] netlink: add netlink handler for geee (--show-eee)
+Subject: [PATCH 19/33] netlink: add netlink handler for geee (--show-eee)
 
 Implement "ethtool --show-eee <dev>" subcommand using netlink interface
 command ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_EEE mask.
@@ -10,8 +10,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c         |  3 ++-
  netlink/extapi.h  |  1 +
- netlink/monitor.c |  5 ++++
- netlink/params.c  | 66 +++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/monitor.c |  5 +++++
+ netlink/params.c  | 66 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
  4 files changed, 74 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
@@ -48,7 +48,7 @@ index 4c33b3d0ee6a..23949cb632ec 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 8ba94d36474e..658f658c83af 100644
+index cd13374e5470..8de683359586 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -158,6 +158,11 @@ static struct monitor_option monitor_opts[] = {
@@ -152,5 +152,5 @@ index 81547492532f..55138b6fdc83 100644
 +	return params_request(ctx, ETH_PARAMS_IM_EEE);
 +}
 -- 
-2.18.0
+2.16.4
 

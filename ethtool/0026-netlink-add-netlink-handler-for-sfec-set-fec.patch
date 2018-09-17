@@ -1,7 +1,7 @@
-From 918a58b837dd9588e28dcbb884b5a49252a10d2e Mon Sep 17 00:00:00 2001
+From 8525795bf255c987f94b79b9aaafa77151db779f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:51:36 +0100
-Subject: [PATCH 26/32] netlink: add netlink handler for sfec (--set-fec)
+Subject: [PATCH 26/33] netlink: add netlink handler for sfec (--set-fec)
 
 Implement "ethtool --set-fec <dev>" subcommand using netlink interface
 command ETHNL_CMD_SET_PARAMS.
@@ -10,8 +10,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c        |  3 ++-
  netlink/extapi.h |  1 +
- netlink/params.c | 17 +++++++++++++++++
- 3 files changed, 20 insertions(+), 1 deletion(-)
+ netlink/params.c | 16 ++++++++++++++++
+ 3 files changed, 19 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
 index 020a161e24a3..364834f1f69c 100644
@@ -47,12 +47,12 @@ index ccb4f5e97a47..206f20029cff 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index b83f7f758038..3ccc1c0ea1e6 100644
+index 913a5417e679..4ff2f296170d 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
-@@ -640,3 +640,20 @@ int nl_seee(struct cmd_context *ctx)
- 	return nl_set_param(ctx, "--set-eee", seee_params, ETHA_PARAMS_EEE,
- 			    ETHA_EEE_MAX);
+@@ -634,3 +634,19 @@ int nl_seee(struct cmd_context *ctx)
+ {
+ 	return nl_set_param(ctx, "--set-eee", seee_params, ETHA_PARAMS_EEE);
  }
 +
 +static const struct param_parser sfec_params[] = {
@@ -68,9 +68,8 @@ index b83f7f758038..3ccc1c0ea1e6 100644
 +
 +int nl_sfec(struct cmd_context *ctx)
 +{
-+	return nl_set_param(ctx, "--set-fec", sfec_params, ETHA_PARAMS_FEC,
-+			    ETHA_FEC_MAX);
++	return nl_set_param(ctx, "--set-fec", sfec_params, ETHA_PARAMS_FEC);
 +}
 -- 
-2.18.0
+2.16.4
 

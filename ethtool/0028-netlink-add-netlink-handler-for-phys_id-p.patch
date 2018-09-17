@@ -1,17 +1,17 @@
-From 143b1f5629cf0fd7e35d0cb11a8db2790378f32c Mon Sep 17 00:00:00 2001
+From 42a0ec69e87712df58499c206af5e339ce86bbe3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 16:43:40 +0200
-Subject: [PATCH 28/32] netlink: add netlink handler for phys_id (-p)
+Subject: [PATCH 28/33] netlink: add netlink handler for phys_id (-p)
 
 Implement "ethtool -p <dev>" using netlink interface command
 ETHNL_CMD_ACT_PHYS_ID.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- ethtool.c         |  3 +-
- netlink/actions.c | 78 +++++++++++++++++++++++++++++++++++++++++++++++
+ ethtool.c         |  3 ++-
+ netlink/actions.c | 78 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
  netlink/extapi.h  |  1 +
- netlink/monitor.c |  9 ++++++
+ netlink/monitor.c |  9 +++++++
  4 files changed, 90 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
@@ -134,7 +134,7 @@ index bb6ae9205642..87ac57955bab 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index a3c6eebe455d..530b2407a5db 100644
+index 2ae374cdaeb3..281aa1f5da16 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -70,6 +70,7 @@ int info_reply_cb(const struct nlmsghdr *nlhdr, void *data);
@@ -168,5 +168,5 @@ index a3c6eebe455d..530b2407a5db 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 -- 
-2.18.0
+2.16.4
 

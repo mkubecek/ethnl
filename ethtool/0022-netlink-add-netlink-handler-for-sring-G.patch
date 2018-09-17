@@ -1,7 +1,7 @@
-From 92e5dfeb9febcc50d5f9b653c14aeeccda4483e5 Mon Sep 17 00:00:00 2001
+From 234ceb60b2d14ff889363f4a46e6dc2466abe29c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:04:49 +0100
-Subject: [PATCH 22/32] netlink: add netlink handler for sring (-G)
+Subject: [PATCH 22/33] netlink: add netlink handler for sring (-G)
 
 Implement "ethtool -G <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_PARAMS.
@@ -10,8 +10,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c        |  3 ++-
  netlink/extapi.h |  1 +
- netlink/params.c | 34 ++++++++++++++++++++++++++++++++++
- 3 files changed, 37 insertions(+), 1 deletion(-)
+ netlink/params.c | 33 +++++++++++++++++++++++++++++++++
+ 3 files changed, 36 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
 index d5979d58341c..54c700087b22 100644
@@ -47,12 +47,12 @@ index fd3e0ca062f4..747731a8fe97 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index 96be71b52ba3..179ca8aed57f 100644
+index a5fe473676e4..f73ea7e072f5 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
-@@ -510,3 +510,37 @@ int nl_scoalesce(struct cmd_context *ctx)
- 	return nl_set_param(ctx, "-C", scoalesce_params, ETHA_PARAMS_COALESCE,
- 			    ETHA_COALESCE_MAX);
+@@ -508,3 +508,36 @@ int nl_scoalesce(struct cmd_context *ctx)
+ {
+ 	return nl_set_param(ctx, "-C", scoalesce_params, ETHA_PARAMS_COALESCE);
  }
 +
 +static const struct param_parser sring_params[] = {
@@ -85,9 +85,8 @@ index 96be71b52ba3..179ca8aed57f 100644
 +
 +int nl_sring(struct cmd_context *ctx)
 +{
-+	return nl_set_param(ctx, "-G", sring_params, ETHA_PARAMS_RING,
-+			    ETHA_RING_MAX);
++	return nl_set_param(ctx, "-G", sring_params, ETHA_PARAMS_RING);
 +}
 -- 
-2.18.0
+2.16.4
 

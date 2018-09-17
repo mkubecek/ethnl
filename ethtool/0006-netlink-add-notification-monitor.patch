@@ -1,7 +1,7 @@
-From e5a7b48d69a019f7672ef144740d6de59d9957bd Mon Sep 17 00:00:00 2001
+From f18a82f641bc0c96bd903d6a5ed7eb12d7bdea8f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
-Subject: [PATCH 06/32] netlink: add notification monitor
+Subject: [PATCH 06/33] netlink: add notification monitor
 
 With 'ethtool --monitor [ --all | opt ] [dev]', let ethtool listen to
 netlink notification and display them in a format similar to output of
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Makefile.am       |   2 +-
  ethtool.c         |  16 ++++
  netlink/extapi.h  |   4 +
- netlink/monitor.c | 218 ++++++++++++++++++++++++++++++++++++++++++++++
- netlink/netlink.c |  32 ++++++-
- netlink/netlink.h |  26 ++++++
- 6 files changed, 296 insertions(+), 2 deletions(-)
+ netlink/monitor.c | 216 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/netlink.c |  32 +++++++-
+ netlink/netlink.h |  26 +++++++
+ 6 files changed, 294 insertions(+), 2 deletions(-)
  create mode 100644 netlink/monitor.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -82,10 +82,10 @@ index 05ab083d9b9c..827e3732888a 100644
  #endif /* ETHTOOL_EXTAPI_H__ */
 diff --git a/netlink/monitor.c b/netlink/monitor.c
 new file mode 100644
-index 000000000000..d7ed562356f1
+index 000000000000..51f64e6ad839
 --- /dev/null
 +++ b/netlink/monitor.c
-@@ -0,0 +1,218 @@
+@@ -0,0 +1,216 @@
 +#include <errno.h>
 +
 +#include "../internal.h"
@@ -188,7 +188,7 @@ index 000000000000..d7ed562356f1
 +
 +static struct monitor_option monitor_opts[] = {
 +	{
-+		.pattern	= "--all",
++		.pattern	= "|--all",
 +		.cmd		= 0,
 +	},
 +};
@@ -290,11 +290,9 @@ index 000000000000..d7ed562356f1
 +
 +	fputs("        ethtool --monitor               Show kernel notifications\n",
 +	      stdout);
-+	for (i = 0; i < MNL_ARRAY_SIZE(monitor_opts); i++) {
-+		if (i > 0)
-+			fputs("\n                  | ", stdout);
-+		else
-+			fputs("                ( ", stdout);
++	fputs("                ( [ --all ]", stdout);
++	for (i = 1; i < MNL_ARRAY_SIZE(monitor_opts); i++) {
++		fputs("\n                  | ", stdout);
 +		for (p = monitor_opts[i].pattern; *p; p++)
 +			if (*p == '|')
 +				fputs(" | ", stdout);
@@ -415,5 +413,5 @@ index 8c2f9f7c5d0c..800852d02275 100644
  
  static inline bool debug_on(unsigned long debug, unsigned int bit)
 -- 
-2.18.0
+2.16.4
 

@@ -1,7 +1,7 @@
-From 0afb56466c130676e881f69c93a0c1c4a703ebc4 Mon Sep 17 00:00:00 2001
+From 0fbfdf593bce8abb44bfbb5054bdaeffa776520a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:29:46 +0200
-Subject: [PATCH 27/32] netlink: add netlink handler for nway_rst (-r)
+Subject: [PATCH 27/33] netlink: add netlink handler for nway_rst (-r)
 
 Implement "ethtool -r <dev>" subcommand using netlink interface command
 ETHNL_CMD_ACT_NWAY_RST.
@@ -10,9 +10,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |  1 +
  ethtool.c         |  3 ++-
- netlink/actions.c | 54 +++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/actions.c | 54 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
  netlink/extapi.h  |  1 +
- netlink/monitor.c |  9 ++++++++
+ netlink/monitor.c |  9 +++++++++
  5 files changed, 67 insertions(+), 1 deletion(-)
  create mode 100644 netlink/actions.c
 
@@ -122,7 +122,7 @@ index 206f20029cff..bb6ae9205642 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 0883063d6af3..a3c6eebe455d 100644
+index 234f254cff12..2ae374cdaeb3 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -69,6 +69,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -156,5 +156,5 @@ index 0883063d6af3..a3c6eebe455d 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 -- 
-2.18.0
+2.16.4
 

@@ -1,7 +1,7 @@
-From 056b7ba11c6bf5c01330c79ba24ee807506e9045 Mon Sep 17 00:00:00 2001
+From 1b024d9bf812c6d9a5ae18d992c74c7719baad4c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:32:39 +0100
-Subject: [PATCH 24/32] netlink: add netlink handler for schannels (-L)
+Subject: [PATCH 24/33] netlink: add netlink handler for schannels (-L)
 
 Implement "ethtool -L <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_PARAMS.
@@ -10,8 +10,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c        |  3 ++-
  netlink/extapi.h |  1 +
- netlink/params.c | 34 ++++++++++++++++++++++++++++++++++
- 3 files changed, 37 insertions(+), 1 deletion(-)
+ netlink/params.c | 33 +++++++++++++++++++++++++++++++++
+ 3 files changed, 36 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
 index 60c283a6cf28..290d5a8633c0 100644
@@ -47,12 +47,12 @@ index 647cf14a2f5a..50e00fd8de5b 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index 72f74ab71120..e23a194165b2 100644
+index 73d6f78b21be..b2d92bb8a938 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
-@@ -572,3 +572,37 @@ int nl_spause(struct cmd_context *ctx)
- 	return nl_set_param(ctx, "-A", spause_params, ETHA_PARAMS_PAUSE,
- 			    ETHA_PAUSE_MAX);
+@@ -568,3 +568,36 @@ int nl_spause(struct cmd_context *ctx)
+ {
+ 	return nl_set_param(ctx, "-A", spause_params, ETHA_PARAMS_PAUSE);
  }
 +
 +static const struct param_parser schannels_params[] = {
@@ -85,9 +85,8 @@ index 72f74ab71120..e23a194165b2 100644
 +
 +int nl_schannels(struct cmd_context *ctx)
 +{
-+	return nl_set_param(ctx, "-L", schannels_params, ETHA_PARAMS_CHANNELS,
-+			    ETHA_CHANNELS_MAX);
++	return nl_set_param(ctx, "-L", schannels_params, ETHA_PARAMS_CHANNELS);
 +}
 -- 
-2.18.0
+2.16.4
 

@@ -1,7 +1,7 @@
-From 5d0a3b2db37ec138acf399dc22bf022b010d6669 Mon Sep 17 00:00:00 2001
+From 01b77128dfd114bf0ad55c6851474f1ef6e5743f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
-Subject: [PATCH 10/32] netlink: add netlink handler for gset (no option)
+Subject: [PATCH 10/33] netlink: add netlink handler for gset (no option)
 
 Implement "ethtool <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_SETTINGS.
@@ -12,14 +12,14 @@ into new file common.c.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am        |   2 +-
- common.c           | 285 ++++++++++++++++++++++++++++++++++++++++++
- common.h           |  56 +++++++++
- ethtool.c          | 152 ++---------------------
+ common.c           | 285 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ common.h           |  56 ++++++++++
+ ethtool.c          | 152 ++-------------------------
  netlink/extapi.h   |   1 +
  netlink/monitor.c  |  14 +++
- netlink/netlink.c  | 120 ++++++++++++++++++
+ netlink/netlink.c  | 120 +++++++++++++++++++++
  netlink/netlink.h  |   4 +
- netlink/settings.c | 302 +++++++++++++++++++++++++++++++++++++++++++++
+ netlink/settings.c | 302 +++++++++++++++++++++++++++++++++++++++++++++++++++++
  9 files changed, 791 insertions(+), 145 deletions(-)
  create mode 100644 netlink/settings.c
 
@@ -631,7 +631,7 @@ index 0de6cbd653cc..938e71700f97 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index ad2d8c72d437..f93b61172950 100644
+index c6817b4883ff..5d4f984be7c3 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -67,6 +67,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -658,7 +658,7 @@ index ad2d8c72d437..f93b61172950 100644
  		.cmd		= ETHNL_CMD_SET_INFO,
  	},
 +	{
-+		.pattern	= "|-s|--change",
++		.pattern	= "-s|--change",
 +		.cmd		= ETHNL_CMD_SET_SETTINGS,
 +		.info_mask	= ETH_SETTINGS_IM_LINKINFO |
 +				  ETH_SETTINGS_IM_LINKMODES |
@@ -1133,5 +1133,5 @@ index 000000000000..b29d699a36d1
 +
 +}
 -- 
-2.18.0
+2.16.4
 

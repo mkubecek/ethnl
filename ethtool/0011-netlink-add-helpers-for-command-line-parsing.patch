@@ -1,7 +1,7 @@
-From 3fdd10a7be3075092d41773977020904ce1f9b1a Mon Sep 17 00:00:00 2001
+From e5b3e8550d786e5b891060aa600639ce684ff93d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:42:26 +0100
-Subject: [PATCH 11/32] netlink: add helpers for command line parsing
+Subject: [PATCH 11/33] netlink: add helpers for command line parsing
 
 Support for easier parsing of subcommand parameters and their values from
 command line. Existing parser helpers in ethtool.c are closely tied to
@@ -11,9 +11,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |   1 +
  netlink/netlink.h |   4 +
- netlink/parser.c  | 556 ++++++++++++++++++++++++++++++++++++++++++++++
- netlink/parser.h  |  49 ++++
- 4 files changed, 610 insertions(+)
+ netlink/parser.c  | 717 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/parser.h  |  73 ++++++
+ 4 files changed, 795 insertions(+)
  create mode 100644 netlink/parser.c
  create mode 100644 netlink/parser.h
 
@@ -46,10 +46,10 @@ index 9cbbaa94d3c2..052a91355cf8 100644
  	uint8_t filter_cmd;
 diff --git a/netlink/parser.c b/netlink/parser.c
 new file mode 100644
-index 000000000000..4f8f3f02e774
+index 000000000000..07c2bc0d9cb2
 --- /dev/null
 +++ b/netlink/parser.c
-@@ -0,0 +1,556 @@
+@@ -0,0 +1,717 @@
 +#include <string.h>
 +#include <stdlib.h>
 +#include <errno.h>
@@ -162,8 +162,32 @@ index 000000000000..4f8f3f02e774
 +	return -EINVAL;
 +}
 +
++/* Parser handler for a flag. Generates NLA_FLAG attribute or fills a bool. */
++int nl_parse_flag(struct nl_context *nlctx, uint16_t type, const void *data,
++		  void *dest)
++{
++	if (dest)
++		*(bool *)dest = true;
++	return ethnla_put_flag(nlctx, type, true) ? -EMSGSIZE : 0;
++}
++
++/* Just pick next argument and generate NLA_STRING (or fill const char *). */
++int nl_parse_string(struct nl_context *nlctx, uint16_t type, const void *data,
++		    void *dest)
++{
++	const char *arg = *nlctx->argp;
++
++	nlctx->argp++;
++	nlctx->argc--;
++
++	if (dest)
++		*(const char **)dest = arg;
++	return ethnla_put_strz(nlctx, type, arg) ? -EMSGSIZE : 0;
++}
++
++/* parser handler for unsigned 32-bit integer */
 +int nl_parse_direct_u32(struct nl_context *nlctx, uint16_t type,
-+			const void *data)
++			const void *data, void *dest)
 +{
 +	const char *arg = *nlctx->argp;
 +	uint32_t val;
@@ -177,11 +201,14 @@ index 000000000000..4f8f3f02e774
 +		return ret;
 +	}
 +
-+	return ethnla_put_u32(nlctx, type, val) ? -EMSGSIZE : 0;
++	if (dest)
++		*(uint32_t *)dest = val;
++	return (type && ethnla_put_u32(nlctx, type, val)) ? -EMSGSIZE : 0;
 +}
 +
++/* parser handler for unsigned 8-bit integer */
 +int nl_parse_direct_u8(struct nl_context *nlctx, uint16_t type,
-+		       const void *data)
++		       const void *data, void *dest)
 +{
 +	const char *arg = *nlctx->argp;
 +	uint8_t val;
@@ -195,21 +222,31 @@ index 000000000000..4f8f3f02e774
 +		return ret;
 +	}
 +
-+	return ethnla_put_u8(nlctx, type, val) ? -EMSGSIZE : 0;
++	if (dest)
++		*(uint8_t *)dest = val;
++	return (type && ethnla_put_u8(nlctx, type, val)) ? -EMSGSIZE : 0;
 +}
 +
-+int nl_parse_bool(struct nl_context *nlctx, uint16_t type, const void *data)
++/* parser handler for bool represented by NLA_U8; this allows three states:
++ * on, of and unspecified/unknown
++ */
++int nl_parse_u8bool(struct nl_context *nlctx, uint16_t type, const void *data,
++		    void *dest)
 +{
 +	const char *arg = *nlctx->argp;
 +	int ret;
 +
 +	nlctx->argp++;
 +	nlctx->argc--;
-+	if (!strcmp(arg, "on"))
-+		ret = ethnla_put_u8(nlctx, type, 1);
-+	else if (!strcmp(arg, "off"))
-+		ret = ethnla_put_u8(nlctx, type, 0);
-+	else {
++	if (!strcmp(arg, "on")) {
++		if (dest)
++			*(uint8_t *)dest = 1;
++		ret = type ? ethnla_put_u8(nlctx, type, 1) : 0;
++	} else if (!strcmp(arg, "off")) {
++		if (dest)
++			*(uint8_t *)dest = 0;
++		ret = type ? ethnla_put_u8(nlctx, type, 0) : 0;
++	} else {
 +		parser_err_invalid_value(nlctx, arg);
 +		return -EINVAL;
 +	}
@@ -217,8 +254,11 @@ index 000000000000..4f8f3f02e774
 +	return ret ? -EMSGSIZE : 0;
 +}
 +
++/* parser handler for 8-bit unsigned integer passed as a string to look up in
++ * a table
++ */
 +int nl_parse_lookup_u8(struct nl_context *nlctx, uint16_t type,
-+		       const void *data)
++		       const void *data, void *dest)
 +{
 +	const char *arg = *nlctx->argp;
 +	uint8_t val;
@@ -232,11 +272,18 @@ index 000000000000..4f8f3f02e774
 +		return ret;
 +	}
 +
-+	return ethnla_put_u8(nlctx, type, val) ? -EMSGSIZE : 0;
++	if (dest)
++		*(uint8_t *)dest = val;
++	return (type && ethnla_put_u8(nlctx, type, val)) ? -EMSGSIZE : 0;
 +}
 +
++/* Parser handler for a simple bitmap consisting of 32-bit value and 32-bit
++ * mask. Passed either as a numeric value optionally followed by '/' and
++ * a mask or as a series of "name on/off" pairs. Parsing stops at the end
++ * of command line or at "--" marker.
++ */
 +int nl_parse_bitfield32(struct nl_context *nlctx, uint16_t type,
-+			const void *data)
++			const void *data, void *dest)
 +{
 +	const char *arg = *nlctx->argp;
 +	const struct flag_info *flags = data;
@@ -300,7 +347,13 @@ index 000000000000..4f8f3f02e774
 +		}
 +	}
 +
-+	return ethnla_put_bitfield32(nlctx, type, value, selector);
++	if (dest) {
++		struct nla_bitfield32 *d = dest;
++
++		d->value = value;
++		d->selector = selector;
++	}
++	return type ? ethnla_put_bitfield32(nlctx, type, value, selector) : 0;
 +}
 +
 +static bool is_hex(char c)
@@ -537,12 +590,15 @@ index 000000000000..4f8f3f02e774
 +/* parse arguments to fill a bitset nested attribute; accepts either numeric
 + * representation (number optionally followed by '/' and another number (mask))
 + * or list of flag names followed by "on" or "off"; resulting bitset will use
-+ * compact format for numeric representation and verbose for flag list
++ * compact format for numeric representation and verbose for flag list; this
++ * handler can only put bitset representation into a message, dest is ignored
 + * @nlctx: netlink context
 + * @type: bitset attribute type to use
 + * @data: unused
++ * @dest: unused
 + */
-+int nl_parse_bitset(struct nl_context *nlctx, uint16_t type, const void *data)
++int nl_parse_bitset(struct nl_context *nlctx, uint16_t type, const void *data,
++		    void *dest)
 +{
 +	if (is_numeric_bitset(*nlctx->argp, false))
 +		return nl_parse_bitset_compact(nlctx, type, false);
@@ -553,12 +609,15 @@ index 000000000000..4f8f3f02e774
 +/* parse arguments to fill a bitset nested attribute; accepts either numeric
 + * representation or a simple list of flag names; resulting bitset will be
 + * either in compact form with no mask (for numeric) or in verbose form with
-+ * mask equal to value (for name list)
++ * mask equal to value (for name list); this handler can only put bitset
++ * representation into a message, dest is ignored
 + * @nlctx: netlink context
 + * @type: bitset attribute type to use
 + * @data: unused
++ * @dest: unused
 + */
-+int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data)
++int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data,
++		     void *dest)
 +{
 +	if (is_numeric_bitset(*nlctx->argp, true))
 +		return nl_parse_bitset_compact(nlctx, type, true);
@@ -566,31 +625,131 @@ index 000000000000..4f8f3f02e774
 +		return nl_parse_bitset_verbose(nlctx, type, true);
 +}
 +
-+int nl_parser(struct cmd_context *ctx, const struct param_parser *params,
-+	      unsigned int max_type)
++static bool bytestr_delim(const char *p, char delim)
 +{
-+	struct nl_context *nlctx = ctx->nlctx;
-+	bool attr_set[max_type];
++	return !*p || (delim ? (*p == delim) : !is_hex(*p));
++}
++
++unsigned int hex_val(char c)
++{
++	if (c >= '0' && c <= '9')
++		return c - '0';
++	if (c >= 'a' && c <= 'f')
++		return c - 'a' + 0xa;
++	if (c >= 'A' && c <= 'F')
++		return c - 'A' + 0xa;
++	return 0;
++}
++
++/* Parser handler for generic byte string in MAC-like format. If @dest is not
++ * null, it is interpreted as a pointer to struct byte_str_value to be filled
++ * with with byte string length and pointer to its contents. In such case,
++ * caller is responsible to free the data pointer allocated by this function
++ */
++int nl_parse_byte_str(struct nl_context *nlctx, uint16_t type, const void *data,
++		      void *dest)
++{
++	const struct byte_str_params *params = data;
++	struct byte_str_value *dest_value = dest;
++	const char *arg = *nlctx->argp;
++	uint8_t *val = NULL;
++	unsigned int len, i;
++	const char *p;
 +	int ret;
 +
-+	memset(attr_set, '\0', max_type * sizeof(attr_set[0]));
++	nlctx->argp++;
++	nlctx->argc--;
++
++	len = 0;
++	p = arg;
++	if (!*p)
++		goto err;
++	while (true) {
++		len++;
++		if (!bytestr_delim(p, params->delim))
++			p++;
++		if (!bytestr_delim(p, params->delim))
++			p++;
++		if (!bytestr_delim(p, params->delim))
++			goto err;
++		if (!*p)
++			break;
++		p++;
++		if (*p && bytestr_delim(p, params->delim))
++			goto err;
++	}
++	if (len < params->min_len || (params->max_len && len > params->max_len))
++		goto err;
++	val = malloc(len);
++	if (!val)
++		return -ENOMEM;
++
++	p = arg;
++	for (i = 0; i < len; i++) {
++		uint8_t byte = 0;
++
++		if (!is_hex(*p))
++			goto err;
++		while (is_hex(*p))
++			byte = 16 * byte + hex_val(*p++);
++		if (!bytestr_delim(p, params->delim))
++			goto err;
++		val[i] = byte;
++		if (*p)
++			p++;
++	}
++	ret = type ? ethnla_put(nlctx, type, len, val) : 0;
++	if (dest) {
++		dest_value->len = len;
++		dest_value->data = val;
++	} else {
++		free(val);
++	}
++	return ret;
++
++err:
++	free(val);
++	fprintf(stderr, "ethtool (%s): invalid value '%s' of parameter '%s'\n",
++		nlctx->cmd, arg, nlctx->param);
++	return -EINVAL;
++}
++
++/* Main entry point of parser implementation.
++ * @nlctx: netlink context
++ * @params: array of struct param_parser describing expected arguments and
++ *          their handlers; the array must be terminated by null element {}
++ * @dest: optional destination to copy parsed data to (at param_parser::offset)
++ */
++int nl_parser(struct nl_context *nlctx, const struct param_parser *params,
++	      void *dest)
++{
++	const struct param_parser *parser;
++	unsigned int n_params;
++	uint64_t attrs_set = 0;
++	int ret;
++
++	n_params = 0;
++	for (parser = params; parser->arg; parser++)
++		n_params++;
++	if (n_params > 64) {
++		/* if we hit this, longer bitmap attrs_set is needed */
++		fprintf(stderr, "bug: too many parser arguments, update %s\n",
++			__func__);
++		return -EFAULT;
++	}
 +
 +	while (nlctx->argc > 0) {
-+		const struct param_parser *parser = params;
-+
 +		nlctx->param = *nlctx->argp;
-+		while (parser->arg) {
++		for (parser = params; parser->arg; parser++)
 +			if (!strcmp(nlctx->param, parser->arg))
 +				break;
-+			parser++;
-+		}
 +		if (!parser->arg) {
 +			parser_err_unknown_param(nlctx);
 +			return -EINVAL;
 +		}
 +		nlctx->argp++;
 +		nlctx->argc--;
-+		if (attr_set[parser - params]) {
++		if (attrs_set & (1ULL << (parser - params))) {
 +			parser_err_dup_param(nlctx);
 +			return -EINVAL;
 +		}
@@ -599,21 +758,25 @@ index 000000000000..4f8f3f02e774
 +			return -EINVAL;
 +		}
 +
-+		ret = parser->handler(nlctx, parser->type, parser->handler_data);
++		ret = parser->handler(nlctx, parser->type, parser->handler_data,
++				      dest ? dest + parser->dest_offset : NULL);
 +		if (ret < 0)
 +			return ret;
++		attrs_set |= (1ULL << (parser - params));
 +	}
 +
 +	return 0;
 +}
 diff --git a/netlink/parser.h b/netlink/parser.h
 new file mode 100644
-index 000000000000..01a4012f89ba
+index 000000000000..fa2c103dc8e7
 --- /dev/null
 +++ b/netlink/parser.h
-@@ -0,0 +1,49 @@
+@@ -0,0 +1,73 @@
 +#ifndef ETHTOOL_NETLINK_PARSER_H__
 +#define ETHTOOL_NETLINK_PARSER_H__
++
++#include <stddef.h>
 +
 +#include "netlink.h"
 +
@@ -627,12 +790,24 @@ index 000000000000..01a4012f89ba
 +	uint16_t	val;
 +};
 +
-+struct lookup_entry_u8{
++struct lookup_entry_u8 {
 +	const char	*arg;
 +	uint8_t		val;
 +};
 +
-+typedef int (*param_parser_cb_t)(struct nl_context *, uint16_t, const void *);
++struct byte_str_params {
++	unsigned int	min_len;
++	unsigned int	max_len;
++	char		delim;
++};
++
++struct byte_str_value {
++	unsigned int	len;
++	u8		*data;
++};
++
++typedef int (*param_parser_cb_t)(struct nl_context *, uint16_t, const void *,
++				 void *);
 +
 +struct param_parser {
 +	const char		*arg;
@@ -640,27 +815,37 @@ index 000000000000..01a4012f89ba
 +	param_parser_cb_t	handler;
 +	const void		*handler_data;
 +	unsigned int		min_argc;
++	unsigned int		dest_offset;
 +};
 +
 +unsigned int nsb(uint32_t x);
 +int parse_u32(const char *arg, uint32_t *result);
 +
++int nl_parse_flag(struct nl_context *nlctx, uint16_t type, const void *data,
++		  void *dest);
++int nl_parse_string(struct nl_context *nlctx, uint16_t type, const void *data,
++		    void *dest);
 +int nl_parse_direct_u32(struct nl_context *nlctx, uint16_t type,
-+			const void *data);
++			const void *data, void *dest);
 +int nl_parse_direct_u8(struct nl_context *nlctx, uint16_t type,
-+		       const void *data);
-+int nl_parse_bool(struct nl_context *nlctx, uint16_t type, const void *data);
++		       const void *data, void *dest);
++int nl_parse_u8bool(struct nl_context *nlctx, uint16_t type, const void *data,
++		    void *dest);
 +int nl_parse_lookup_u8(struct nl_context *nlctx, uint16_t type,
-+		       const void *data);
++		       const void *data, void *dest);
 +int nl_parse_bitfield32(struct nl_context *nlctx, uint16_t type,
-+			const void *data);
-+int nl_parse_bitset(struct nl_context *nlctx, uint16_t type, const void *data);
-+int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data);
++			const void *data, void *dest);
++int nl_parse_bitset(struct nl_context *nlctx, uint16_t type, const void *data,
++		    void *dest);
++int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data,
++		     void *dest);
++int nl_parse_byte_str(struct nl_context *nlctx, uint16_t type,
++		      const void *data, void *dest);
 +
-+int nl_parser(struct cmd_context *ctx, const struct param_parser *params,
-+	      unsigned int max_type);
++int nl_parser(struct nl_context *nlctx, const struct param_parser *params,
++	      void *dest);
 +
 +#endif /* ETHTOOL_NETLINK_PARSER_H__ */
 -- 
-2.18.0
+2.16.4
 

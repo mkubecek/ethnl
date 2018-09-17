@@ -1,7 +1,7 @@
-From ca200d6ae4db5e83e1a5792c69ba53d350e08908 Mon Sep 17 00:00:00 2001
+From 24a27d46c57034378b055c2a9610ffc848a51cc1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:05:40 +0100
-Subject: [PATCH 18/32] netlink: add netlink handler for gchannels (-l)
+Subject: [PATCH 18/33] netlink: add netlink handler for gchannels (-l)
 
 Implement "ethtool -l <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_CHANNELS mask.
@@ -48,7 +48,7 @@ index 1f7de2a7992c..4c33b3d0ee6a 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 0f35a17cdc7d..8ba94d36474e 100644
+index b6912c556780..cd13374e5470 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -153,6 +153,11 @@ static struct monitor_option monitor_opts[] = {
@@ -128,5 +128,5 @@ index b45aac166dcd..81547492532f 100644
 +	return params_request(ctx, ETH_PARAMS_IM_CHANNELS);
 +}
 -- 
-2.18.0
+2.16.4
 

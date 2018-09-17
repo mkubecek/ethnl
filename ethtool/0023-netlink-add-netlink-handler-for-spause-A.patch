@@ -1,7 +1,7 @@
-From edf564535b8375db40f63c290a75a12f86bf60f1 Mon Sep 17 00:00:00 2001
+From 7fbf9aa07c8ad075c6787fb4f82fb05eab5e03d0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:17:41 +0100
-Subject: [PATCH 23/32] netlink: add netlink handler for spause (-A)
+Subject: [PATCH 23/33] netlink: add netlink handler for spause (-A)
 
 Implement "ethtool -A <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_PARAMS.
@@ -10,8 +10,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c        |  3 ++-
  netlink/extapi.h |  1 +
- netlink/params.c | 28 ++++++++++++++++++++++++++++
- 3 files changed, 31 insertions(+), 1 deletion(-)
+ netlink/params.c | 27 +++++++++++++++++++++++++++
+ 3 files changed, 30 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
 index 54c700087b22..60c283a6cf28 100644
@@ -47,31 +47,31 @@ index 747731a8fe97..647cf14a2f5a 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index 179ca8aed57f..72f74ab71120 100644
+index f73ea7e072f5..73d6f78b21be 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
-@@ -544,3 +544,31 @@ int nl_sring(struct cmd_context *ctx)
- 	return nl_set_param(ctx, "-G", sring_params, ETHA_PARAMS_RING,
- 			    ETHA_RING_MAX);
+@@ -541,3 +541,30 @@ int nl_sring(struct cmd_context *ctx)
+ {
+ 	return nl_set_param(ctx, "-G", sring_params, ETHA_PARAMS_RING);
  }
 +
 +static const struct param_parser spause_params[] = {
 +	{
 +		.arg		= "autoneg",
 +		.type		= ETHA_PAUSE_AUTONEG,
-+		.handler	= nl_parse_bool,
++		.handler	= nl_parse_u8bool,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "rx",
 +		.type		= ETHA_PAUSE_RX,
-+		.handler	= nl_parse_bool,
++		.handler	= nl_parse_u8bool,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "tx",
 +		.type		= ETHA_PAUSE_TX,
-+		.handler	= nl_parse_bool,
++		.handler	= nl_parse_u8bool,
 +		.min_argc	= 1,
 +	},
 +	{}
@@ -79,9 +79,8 @@ index 179ca8aed57f..72f74ab71120 100644
 +
 +int nl_spause(struct cmd_context *ctx)
 +{
-+	return nl_set_param(ctx, "-A", spause_params, ETHA_PARAMS_PAUSE,
-+			    ETHA_PAUSE_MAX);
++	return nl_set_param(ctx, "-A", spause_params, ETHA_PARAMS_PAUSE);
 +}
 -- 
-2.18.0
+2.16.4
 

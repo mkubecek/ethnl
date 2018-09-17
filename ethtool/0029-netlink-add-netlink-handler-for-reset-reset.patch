@@ -1,7 +1,7 @@
-From ea689448ccd3e748432e14fac5501325551abf7e Mon Sep 17 00:00:00 2001
+From badbaa25d4395a507fd1b50af7648b228ba11666 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 08:43:44 +0200
-Subject: [PATCH 29/32] netlink: add netlink handler for reset (--reset)
+Subject: [PATCH 29/33] netlink: add netlink handler for reset (--reset)
 
 Implement "ethtool --reset <dev>" using netlink interface command
 ETHNL_CMD_ACT_RESET.
@@ -9,7 +9,7 @@ ETHNL_CMD_ACT_RESET.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c         |   3 +-
- netlink/actions.c | 243 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/actions.c | 243 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
  netlink/extapi.h  |   1 +
  netlink/monitor.c |   9 ++
  4 files changed, 255 insertions(+), 1 deletion(-)
@@ -306,7 +306,7 @@ index 87ac57955bab..af2a5042f637 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 530b2407a5db..d846fdd44611 100644
+index 281aa1f5da16..522ad654ad72 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -71,6 +71,7 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);
@@ -340,5 +340,5 @@ index 530b2407a5db..d846fdd44611 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 -- 
-2.18.0
+2.16.4
 

@@ -1,7 +1,7 @@
-From b17e7d082a7d617b13ee4db99cfb891d8bd00900 Mon Sep 17 00:00:00 2001
+From a21ec993525393cb8b85114bbd66873b3be5ec48 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
-Subject: [PATCH 13/32] netlink: add netlink handler for gfeatures (-k)
+Subject: [PATCH 13/33] netlink: add netlink handler for gfeatures (-k)
 
 Implement "ethtool -k <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_SETTINGS with ETH_SETTINGS_IM_FEATURES mask.
@@ -13,12 +13,12 @@ slightly different from mapping used by kernel ioctl code.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- common.c           |  30 ++++++
- common.h           |  19 ++++
- ethtool.c          |  68 +++-----------
+ common.c           |  30 +++++++
+ common.h           |  19 +++++
+ ethtool.c          |  68 +++-------------
  netlink/extapi.h   |   1 +
  netlink/monitor.c  |   6 ++
- netlink/settings.c | 226 +++++++++++++++++++++++++++++++++++++++++++++
+ netlink/settings.c | 226 +++++++++++++++++++++++++++++++++++++++++++++++++++++
  6 files changed, 294 insertions(+), 56 deletions(-)
 
 diff --git a/common.c b/common.c
@@ -258,7 +258,7 @@ index e3b8c6949f36..d955966da72d 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index f93b61172950..c4cb693acb61 100644
+index 5d4f984be7c3..38d669ef58a6 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -127,6 +127,12 @@ static struct monitor_option monitor_opts[] = {
@@ -266,8 +266,8 @@ index f93b61172950..c4cb693acb61 100644
  				  ETH_SETTINGS_IM_LINK,
  	},
 +	{
-+		.pattern	= "-k|--show-features|--show-offload"
-+				  "|-K|--features|--offload",
++		.pattern	= "-k|--show-features|--show-offload|"
++				  "-K|--features|--offload",
 +		.cmd		= ETHNL_CMD_SET_SETTINGS,
 +		.info_mask	= ETH_SETTINGS_IM_FEATURES,
 +	},
@@ -275,7 +275,7 @@ index f93b61172950..c4cb693acb61 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 8c68cad66b19..ad42b714229c 100644
+index 04a49ff92a81..dcda1d63c1a7 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -5,6 +5,7 @@
@@ -533,5 +533,5 @@ index 8c68cad66b19..ad42b714229c 100644
  
  /* SET_SETTINGS */
 -- 
-2.18.0
+2.16.4
 
