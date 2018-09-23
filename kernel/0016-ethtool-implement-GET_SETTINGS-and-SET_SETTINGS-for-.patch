@@ -1,4 +1,4 @@
-From 0d4173a465a5736b18e3365e4b39a61e91e6159d Mon Sep 17 00:00:00 2001
+From f7fa75ad4a1f8e3e30eda6363e2159155f0105af Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 16/25] ethtool: implement GET_SETTINGS and SET_SETTINGS for
@@ -13,10 +13,10 @@ via ioctl.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  12 ++-
+ Documentation/networking/ethtool-netlink.txt |  12 +-
  include/uapi/linux/ethtool_netlink.h         |   4 +-
  net/ethtool/ioctl.c                          |   3 +
- net/ethtool/settings.c                       | 132 +++++++++++++++++++++++++++
+ net/ethtool/settings.c                       | 132 +++++++++++++++++++
  4 files changed, 148 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -108,7 +108,7 @@ index 6824c737d246..da0c5def88d2 100644
  	case ETHTOOL_GRXFH:
  	case ETHTOOL_GRXRINGS:
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 8e0b7881c847..3ac308b87e16 100644
+index f52a40eeb40f..e0960059d2b9 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -22,6 +22,9 @@ struct settings_data {
@@ -262,8 +262,8 @@ index 8e0b7881c847..3ac308b87e16 100644
  };
  
  /* SET_SETTINGS */
-@@ -921,6 +1012,39 @@ static int update_features(struct genl_info *info, struct net_device *dev,
- 	return ret;
+@@ -923,6 +1014,39 @@ static int update_features(struct genl_info *info, struct net_device *dev,
+ 	return 0;
  }
  
 +static int update_priv_flags(struct genl_info *info, struct net_device *dev,
@@ -302,7 +302,7 @@ index 8e0b7881c847..3ac308b87e16 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-@@ -1006,6 +1130,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -1008,6 +1132,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret < 0)
  			goto out_unlock;
  	}
@@ -318,5 +318,5 @@ index 8e0b7881c847..3ac308b87e16 100644
  
  out_unlock:
 -- 
-2.16.4
+2.19.0
 

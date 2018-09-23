@@ -1,4 +1,4 @@
-From 71dd7b6e3e462065a07ee29d7ab36d41890ba721 Mon Sep 17 00:00:00 2001
+From 7e94643c541e710e833cd26ef309392dc5779b6a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 04/25] ethtool: helper functions for netlink interface
@@ -8,8 +8,8 @@ Misc helpers used by ethtool netlink code.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  include/uapi/linux/ethtool_netlink.h |  11 +++
- net/ethtool/netlink.c                | 118 ++++++++++++++++++++++++++++++
- net/ethtool/netlink.h                | 134 +++++++++++++++++++++++++++++++++++
+ net/ethtool/netlink.c                | 118 +++++++++++++++++++++++
+ net/ethtool/netlink.h                | 134 +++++++++++++++++++++++++++
  3 files changed, 263 insertions(+)
 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
@@ -312,5 +312,5 @@ index 63063b582ca2..ebee561e227d 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
-2.16.4
+2.19.0
 

@@ -1,4 +1,4 @@
-From c2366a3ee66bd730bc7edb635b0888abcd34e0ae Mon Sep 17 00:00:00 2001
+From 531ed7a3933d31bf42648106a7e05d1a3d750c13 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:43:07 -0400
 Subject: [PATCH 18/25] ethtool: implement SET_PARAMS notification
@@ -159,5 +159,5 @@ index eb120e7081ce..198c178a184c 100644
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
 -- 
-2.16.4
+2.19.0
 

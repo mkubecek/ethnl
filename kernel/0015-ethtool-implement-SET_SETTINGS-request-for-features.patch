@@ -1,4 +1,4 @@
-From 180f4c719e74ffa47932e7f0dee5a14e95cd3417 Mon Sep 17 00:00:00 2001
+From 4ba20e1a0353fbca10fbe6fc716fe95a029eeedf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 15/25] ethtool: implement SET_SETTINGS request for features
@@ -13,10 +13,10 @@ between old and new state of dev->features.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  32 ++++--
+ Documentation/networking/ethtool-netlink.txt |  32 ++--
  include/uapi/linux/ethtool_netlink.h         |   1 +
- net/ethtool/settings.c                       | 149 +++++++++++++++++++++++++++
- 3 files changed, 173 insertions(+), 9 deletions(-)
+ net/ethtool/settings.c                       | 151 +++++++++++++++++++
+ 3 files changed, 175 insertions(+), 9 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 2dff04af2e75..e3a7a970a86a 100644
@@ -111,10 +111,10 @@ index be0548c25917..9c685830a56a 100644
  	__ETHA_FEATURES_CNT,
  	ETHA_FEATURES_MAX = (__ETHA_FEATURES_CNT - 1)
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 32a259cf1c0d..8e0b7881c847 100644
+index 32a259cf1c0d..f52a40eeb40f 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -782,6 +782,145 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
+@@ -782,6 +782,147 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
  	return 0;
  }
  
@@ -254,13 +254,15 @@ index 32a259cf1c0d..8e0b7881c847 100644
 +		  reply_len);
 +	if (rskb)
 +		nlmsg_free(rskb);
-+	return ret;
++	if (ret < 0)
++		ETHNL_SET_ERRMSG(info, "failed to send reply message");
++	return 0;
 +}
 +
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-@@ -857,6 +996,16 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -857,6 +998,16 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  			req_mask |= ETH_SETTINGS_IM_MSGLEVEL;
  		}
  	}
@@ -278,5 +280,5 @@ index 32a259cf1c0d..8e0b7881c847 100644
  
  out_unlock:
 -- 
-2.16.4
+2.19.0
 

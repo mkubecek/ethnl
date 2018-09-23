@@ -1,4 +1,4 @@
-From c89ac9fe97b091f4b321de81a39e0f7d4d30fcd5 Mon Sep 17 00:00:00 2001
+From 46da39e6d4193f3cff37b9b67e99b78f099b6aff Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 22/25] ethtool: implement ACT_RESET message
@@ -9,18 +9,18 @@ If successful and at least one component was reset, send a notification.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  25 ++-
+ Documentation/networking/ethtool-netlink.txt |  25 +-
  include/uapi/linux/ethtool.h                 |   3 +
  include/uapi/linux/ethtool_netlink.h         |  16 ++
- net/ethtool/actions.c                        | 224 +++++++++++++++++++++++++++
+ net/ethtool/actions.c                        | 229 +++++++++++++++++++
  net/ethtool/ioctl.c                          |   5 +
  net/ethtool/netlink.c                        |   6 +
  net/ethtool/netlink.h                        |   4 +
  net/ethtool/strset.c                         |   6 +
- 8 files changed, 288 insertions(+), 1 deletion(-)
+ 8 files changed, 293 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 85ad677feb7f..ed044150e7ec 100644
+index 85ad677feb7f..c867965f3f8c 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -527,6 +527,29 @@ other ACT_PHYS_ID requests for any device fail with EBUSY. The same holds for
@@ -45,7 +45,7 @@ index 85ad677feb7f..ed044150e7ec 100644
 +present, it overrides ETHA_RESET_DEDICATED. When ETHA_RESET_ALL flag is
 +present, it overrides both ETHA_RESET_DEDICATED and ETHA_RESET_SHARED.
 +
-+Ifi the request is successful, a message in the same format is returned,
++If the request is successful, a message in the same format is returned,
 +indicating which components _were_ actually reset (this is different from
 +ioctl interface). The same message is also broadcasted as a notification.
 +
@@ -125,10 +125,10 @@ index 7ba82be19341..f29d10ac253e 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
-index 5b0b078a1eb2..ffd03472c10c 100644
+index 5b0b078a1eb2..d090b7c08846 100644
 --- a/net/ethtool/actions.c
 +++ b/net/ethtool/actions.c
-@@ -143,3 +143,227 @@ int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info)
+@@ -143,3 +143,232 @@ int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info)
  	dev_put(dev);
  	return ret;
  }
@@ -298,6 +298,7 @@ index 5b0b078a1eb2..ffd03472c10c 100644
 +	struct net_device *dev;
 +	u32 orig_flags, flags;
 +	void *reply_payload;
++	int reply_ret = 0;
 +	int reply_len;
 +	bool compact;
 +	int ret;
@@ -314,16 +315,16 @@ index 5b0b078a1eb2..ffd03472c10c 100644
 +	compact = (tb[ETHA_RESET_COMPACT] != NULL);
 +	ret = parse_reset(tb, &flags, info);
 +	if (ret < 0)
-+		goto out;
++		goto out_dev;
 +
 +	orig_flags = flags;
 +	ret = ethnl_before_ops(dev, false);
 +	if (ret < 0)
-+		goto out;
++		goto out_dev;
 +	ret = dev->ethtool_ops->reset(dev, &flags);
 +	ethnl_after_ops(dev, false);
 +	if (ret < 0)
-+		goto out;
++		goto out_dev;
 +
 +	flags = orig_flags & ~flags;
 +	if (flags)
@@ -331,20 +332,21 @@ index 5b0b078a1eb2..ffd03472c10c 100644
 +
 +	/* compose reply message */
 +	reply_len = reset_size(flags, orig_flags, compact);
-+	ret = -EFAULT;
++	reply_ret = -EFAULT;
 +	if (reply_len < 0)
 +		goto out;
-+	ret = -ENOMEM;
++	reply_ret = -ENOMEM;
 +	rskb = ethnl_reply_init(reply_len, dev, ETHNL_CMD_ACT_RESET,
 +				ETHA_RESET_DEV, info, &reply_payload);
 +	if (!rskb)
 +		goto err_rskb;
-+	ret = fill_reset(rskb, flags, orig_flags, compact);
-+	if (ret < 0)
++	reply_ret = fill_reset(rskb, flags, orig_flags, compact);
++	if (reply_ret < 0)
 +		goto err_rskb;
 +	dev_put(dev);
 +	genlmsg_end(rskb, reply_payload);
-+	return genlmsg_reply(rskb, info);
++	reply_ret = genlmsg_reply(rskb, info);
++	goto out;
 +
 +err_rskb:
 +	WARN_ONCE(ret == -EMSGSIZE,
@@ -352,8 +354,11 @@ index 5b0b078a1eb2..ffd03472c10c 100644
 +		  reply_len);
 +	if (rskb)
 +		nlmsg_free(rskb);
-+out:
++out_dev:
 +	dev_put(dev);
++out:
++	if (reply_ret < 0)
++		ETHNL_SET_ERRMSG(info, "failed to send reply message");
 +	return ret;
 +}
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
@@ -452,5 +457,5 @@ index a8ce1045493b..1dc47dc7b249 100644
  
  struct strset_data {
 -- 
-2.16.4
+2.19.0
 

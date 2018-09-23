@@ -1,4 +1,4 @@
-From 4959d1d9c2e5375dd183a391cb2ee831d93fdb74 Mon Sep 17 00:00:00 2001
+From ee2c31ad6744920dca219e83d4b4f560860d98a9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 09/25] ethtool: implement GET_STRSET message
@@ -21,13 +21,13 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |   6 +-
  include/uapi/linux/ethtool.h                 |   4 +
- include/uapi/linux/ethtool_netlink.h         |  42 +++
+ include/uapi/linux/ethtool_netlink.h         |  42 ++
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/common.c                         |  83 ++++++
+ net/ethtool/common.c                         |  83 ++++
  net/ethtool/common.h                         |  13 +
- net/ethtool/ioctl.c                          |  80 -----
+ net/ethtool/ioctl.c                          |  80 ----
  net/ethtool/netlink.c                        |  10 +
- net/ethtool/strset.c                         | 420 +++++++++++++++++++++++++++
+ net/ethtool/strset.c                         | 420 +++++++++++++++++++
  9 files changed, 577 insertions(+), 83 deletions(-)
  create mode 100644 net/ethtool/common.c
  create mode 100644 net/ethtool/common.h
@@ -804,5 +804,5 @@ index 000000000000..a6453fb84434
 +	.fill_reply		= fill_strset,
 +};
 -- 
-2.16.4
+2.19.0
 

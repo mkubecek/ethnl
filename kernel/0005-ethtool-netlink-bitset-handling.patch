@@ -1,4 +1,4 @@
-From 7ca13877acc5968a070f77bb9082cec383396ba0 Mon Sep 17 00:00:00 2001
+From 91c5593a77b678ed2736f1d0f6923947400e4918 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 05/25] ethtool: netlink bitset handling
@@ -8,9 +8,9 @@ arbitrary length bit sets.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  56 ++++
+ Documentation/networking/ethtool-netlink.txt |  56 +++
  include/uapi/linux/ethtool_netlink.h         |  31 ++
- net/ethtool/netlink.c                        | 438 +++++++++++++++++++++++++++
+ net/ethtool/netlink.c                        | 438 +++++++++++++++++++
  net/ethtool/netlink.h                        |  30 ++
  4 files changed, 555 insertions(+)
 
@@ -620,5 +620,5 @@ index ebee561e227d..340b00488466 100644
  {
  	return nla_total_size(strlen(s) + 1);
 -- 
-2.16.4
+2.19.0
 

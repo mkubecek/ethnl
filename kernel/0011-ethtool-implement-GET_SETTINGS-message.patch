@@ -1,4 +1,4 @@
-From 9f45ad02b6a817bc076de33e091e308e19ee9047 Mon Sep 17 00:00:00 2001
+From bafa018f7f649b7620cc801cdb08bd42e085d7be Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
 Subject: [PATCH 11/25] ethtool: implement GET_SETTINGS message
@@ -10,18 +10,18 @@ between flag-by-flag list and compact bitmaps for link modes in the reply.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  68 +++++-
+ Documentation/networking/ethtool-netlink.txt |  68 +++-
  include/linux/ethtool_netlink.h              |   3 +
  include/linux/netdevice.h                    |   2 +
  include/uapi/linux/ethtool.h                 |   2 +
- include/uapi/linux/ethtool_netlink.h         |  36 +++
+ include/uapi/linux/ethtool_netlink.h         |  36 ++
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/common.c                         |  66 ++++++
+ net/ethtool/common.c                         |  66 ++++
  net/ethtool/common.h                         |   6 +
- net/ethtool/ioctl.c                          |  64 +----
- net/ethtool/netlink.c                        |  68 ++++++
+ net/ethtool/ioctl.c                          |  64 +---
+ net/ethtool/netlink.c                        |  68 ++++
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/settings.c                       | 343 +++++++++++++++++++++++++++
+ net/ethtool/settings.c                       | 343 +++++++++++++++++++
  net/ethtool/strset.c                         |   6 +
  13 files changed, 605 insertions(+), 62 deletions(-)
  create mode 100644 net/ethtool/settings.c
@@ -147,10 +147,10 @@ index 2a15e64a16f3..fba8ff961887 100644
  	ETHNL_MCGRP_MONITOR,
  };
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index 6f94a8323a6f..083b1ba7656c 100644
+index ec164379e27a..b7f87e8317bf 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -3781,6 +3781,8 @@ enum {
+@@ -3780,6 +3780,8 @@ enum {
  	NETIF_MSG_PKTDATA	= 0x1000,
  	NETIF_MSG_HW		= 0x2000,
  	NETIF_MSG_WOL		= 0x4000,
@@ -914,5 +914,5 @@ index ee115107ea18..a8ce1045493b 100644
  
  struct strset_data {
 -- 
-2.16.4
+2.19.0
 

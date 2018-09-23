@@ -1,4 +1,4 @@
-From e4773ea2cf53d251b11b57d6e630e24f6d3e8e8c Mon Sep 17 00:00:00 2001
+From 81ad044f0bf95cf6b8273b49b0260574143776bf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 19/25] ethtool: implement SET_PARAMS message
@@ -11,9 +11,9 @@ more of the legacy requests (and provide only part of the data to update).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  71 ++++-
+ Documentation/networking/ethtool-netlink.txt |  71 ++-
  net/ethtool/netlink.c                        |   5 +
- net/ethtool/params.c                         | 434 +++++++++++++++++++++++++++
+ net/ethtool/params.c                         | 434 +++++++++++++++++++
  3 files changed, 503 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -592,5 +592,5 @@ index 718522a211f3..68c8ef1be985 100644
 +	return ret;
 +}
 -- 
-2.16.4
+2.19.0
 

@@ -1,4 +1,4 @@
-From 76fe3465041c54b09c5f12ce0a0325bcdc50a343 Mon Sep 17 00:00:00 2001
+From fbd6e4d8da0e01d041718dc4dffc0669f49a054c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:36:49 -0400
 Subject: [PATCH 13/25] ethtool: implement SET_SETTINGS notification
@@ -13,8 +13,8 @@ ioctl interface.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  3 ++-
- net/ethtool/ioctl.c                          | 26 +++++++++++++++++++++++---
- net/ethtool/netlink.c                        | 12 ++++++++++++
+ net/ethtool/ioctl.c                          | 26 +++++++++++++++++---
+ net/ethtool/netlink.c                        | 12 +++++++++
  3 files changed, 37 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -148,5 +148,5 @@ index b1ae3145b6c5..13976e091e93 100644
  
  	return NOTIFY_DONE;
 -- 
-2.16.4
+2.19.0
 

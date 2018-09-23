@@ -1,4 +1,4 @@
-From 82ff0020cd0f7970218b49cdeefe0797c94eb143 Mon Sep 17 00:00:00 2001
+From b6631b160362be7385e526cc080d2e9e244fa3a5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 21/25] ethtool: implement ACT_PHYS_ID message
@@ -10,14 +10,14 @@ Send one notification when blinking starts and one when it ends.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 24 ++++++++-
- include/uapi/linux/ethtool_netlink.h         | 12 +++++
- net/ethtool/actions.c                        | 73 ++++++++++++++++++++++++++++
- net/ethtool/common.c                         | 65 +++++++++++++++++++++++++
+ Documentation/networking/ethtool-netlink.txt | 24 ++++++-
+ include/uapi/linux/ethtool_netlink.h         | 12 ++++
+ net/ethtool/actions.c                        | 73 ++++++++++++++++++++
+ net/ethtool/common.c                         | 65 +++++++++++++++++
  net/ethtool/common.h                         |  1 +
- net/ethtool/ioctl.c                          | 47 +-----------------
- net/ethtool/netlink.c                        |  6 +++
- net/ethtool/netlink.h                        |  3 ++
+ net/ethtool/ioctl.c                          | 47 +------------
+ net/ethtool/netlink.c                        |  6 ++
+ net/ethtool/netlink.h                        |  3 +
  8 files changed, 184 insertions(+), 47 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -375,5 +375,5 @@ index e3aa027b22b1..343f69883ac8 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
-2.16.4
+2.19.0
 

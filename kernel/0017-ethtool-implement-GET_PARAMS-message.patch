@@ -1,4 +1,4 @@
-From f4b3c64e30d43eecc14b5625347050ab938cb124 Mon Sep 17 00:00:00 2001
+From 797c984c4ddb937b5c4c1f56ff8a8606bc51f49c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
 Subject: [PATCH 17/25] ethtool: implement GET_PARAMS message
@@ -9,12 +9,12 @@ Flags in info_mask allow selecting only some (or on) of these categories.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 107 +++++-
- include/uapi/linux/ethtool_netlink.h         | 119 +++++++
+ Documentation/networking/ethtool-netlink.txt | 107 ++++-
+ include/uapi/linux/ethtool_netlink.h         | 119 +++++
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/netlink.c                        |   9 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/params.c                         | 474 +++++++++++++++++++++++++++
+ net/ethtool/params.c                         | 474 +++++++++++++++++++
  6 files changed, 705 insertions(+), 7 deletions(-)
  create mode 100644 net/ethtool/params.c
 
@@ -843,5 +843,5 @@ index 000000000000..718522a211f3
 +	.fill_reply		= fill_params,
 +};
 -- 
-2.16.4
+2.19.0
 

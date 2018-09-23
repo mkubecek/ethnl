@@ -1,4 +1,4 @@
-From 1b5cb22c5bf744baeaab30473a4cb8eda762fb8d Mon Sep 17 00:00:00 2001
+From 068ed82e32e4372b869aa110bae2e249df9b8f29 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
 Subject: [PATCH 06/25] ethtool: support for netlink notifications
@@ -16,9 +16,9 @@ RTNL (and, obviously, allow sleeping).
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  include/linux/ethtool_netlink.h      |  5 +++++
- include/linux/netdevice.h            | 12 ++++++++++++
+ include/linux/netdevice.h            | 12 +++++++++++
  include/uapi/linux/ethtool_netlink.h |  2 ++
- net/ethtool/netlink.c                | 32 ++++++++++++++++++++++++++++++++
+ net/ethtool/netlink.c                | 32 ++++++++++++++++++++++++++++
  net/ethtool/netlink.h                |  2 ++
  5 files changed, 53 insertions(+)
 
@@ -38,10 +38,10 @@ index 0412adb4f42f..2a15e64a16f3 100644
  
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index baed5d5088c5..6f94a8323a6f 100644
+index 1cbbf77a685f..ec164379e27a 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -4265,6 +4265,18 @@ struct netdev_notifier_bonding_info {
+@@ -4264,6 +4264,18 @@ struct netdev_notifier_bonding_info {
  void netdev_bonding_info_change(struct net_device *dev,
  				struct netdev_bonding_info *bonding_info);
  
@@ -147,5 +147,5 @@ index 340b00488466..d0e75799c522 100644
  
  struct net_device *ethnl_dev_get(struct genl_info *info, struct nlattr *nest);
 -- 
-2.16.4
+2.19.0
 
