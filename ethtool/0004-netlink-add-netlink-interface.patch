@@ -1,4 +1,4 @@
-From b3bfc4e4683375010e17b22a8561e74467f00214 Mon Sep 17 00:00:00 2001
+From aae3de99a9acd62ee161a5802cda9b3e4b8083f4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 04/33] netlink: add netlink interface
@@ -22,17 +22,17 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  common.c                     |   2 +
  common.h                     |   6 +
  configure.ac                 |  14 +-
- ethtool.c                    | 181 ++++++++----
+ ethtool.c                    | 181 +++++++---
  internal.h                   |  11 +
  netlink/extapi.h             |  16 +
- netlink/netlink.c            | 674 +++++++++++++++++++++++++++++++++++++++++++
- netlink/netlink.h            | 151 ++++++++++
+ netlink/netlink.c            | 679 +++++++++++++++++++++++++++++++++++
+ netlink/netlink.h            | 151 ++++++++
  uapi/linux/ethtool.h         |  14 +
- uapi/linux/ethtool_netlink.h | 473 ++++++++++++++++++++++++++++++
- uapi/linux/genetlink.h       |  89 ++++++
+ uapi/linux/ethtool_netlink.h | 473 ++++++++++++++++++++++++
+ uapi/linux/genetlink.h       |  89 +++++
  uapi/linux/net_tstamp.h      |  13 +
- uapi/linux/netlink.h         | 247 ++++++++++++++++
- 14 files changed, 1844 insertions(+), 60 deletions(-)
+ uapi/linux/netlink.h         | 247 +++++++++++++
+ 14 files changed, 1849 insertions(+), 60 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
  create mode 100644 netlink/extapi.h
@@ -530,10 +530,10 @@ index 000000000000..05ab083d9b9c
 +#endif /* ETHTOOL_EXTAPI_H__ */
 diff --git a/netlink/netlink.c b/netlink/netlink.c
 new file mode 100644
-index 000000000000..3a40ab6eb517
+index 000000000000..5bd5c0cba699
 --- /dev/null
 +++ b/netlink/netlink.c
-@@ -0,0 +1,674 @@
+@@ -0,0 +1,679 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -870,6 +870,11 @@ index 000000000000..3a40ab6eb517
 +	[ETHNL_CMD_SET_SETTINGS]	= "SET_SETTINGS",
 +	[ETHNL_CMD_GET_PARAMS]		= "GET_PARAMS",
 +	[ETHNL_CMD_SET_PARAMS]		= "SET_PARAMS",
++	[ETHNL_CMD_ACT_NWAY_RST]	= "ACT_NWAY_RST",
++	[ETHNL_CMD_ACT_PHYS_ID]		= "ACT_PHYS_ID",
++	[ETHNL_CMD_ACT_RESET]		= "ACT_RESET",
++	[ETHNL_CMD_GET_RXFLOW]		= "GET_RXFLOW",
++	[ETHNL_CMD_SET_RXFLOW]		= "SET_RXFLOW",
 +};
 +
 +static const char *type_str(unsigned int type, unsigned int ethnl_fam)
@@ -2270,5 +2275,5 @@ index 000000000000..0b2c29bd081f
 +
 +#endif /* __LINUX_NETLINK_H */
 -- 
-2.16.4
+2.19.0
 

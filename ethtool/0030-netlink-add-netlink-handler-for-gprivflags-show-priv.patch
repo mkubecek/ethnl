@@ -1,4 +1,4 @@
-From 8cb58b7339a8465a0fa33bae17a22f8317e8001a Mon Sep 17 00:00:00 2001
+From be0357118023325c261cc70cbba7fdec6808b034 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:20:18 +0200
 Subject: [PATCH 30/33] netlink: add netlink handler for gprivflags
@@ -12,8 +12,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c          |  3 ++-
  netlink/extapi.h   |  1 +
- netlink/monitor.c  |  5 +++++
- netlink/settings.c | 63 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ netlink/monitor.c  |  5 ++++
+ netlink/settings.c | 63 +++++++++++++++++++++++++++++++++++++++++++++-
  4 files changed, 70 insertions(+), 2 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
@@ -166,5 +166,5 @@ index cd5ad768b4f9..8c1e60a47085 100644
  
  enum {
 -- 
-2.16.4
+2.19.0
 

@@ -1,4 +1,4 @@
-From bfde8029dc1b10fba44622eab91348e31f4a4a3d Mon Sep 17 00:00:00 2001
+From cf45b8140e2a958cc23f3f4c254ad3931abf3d0d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:24:40 +0200
 Subject: [PATCH 33/33] netlink: add netlink handler for srxfh (-X)
@@ -11,7 +11,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.c         |   3 +-
  netlink/extapi.h  |   1 +
  netlink/monitor.c |  10 ++
- netlink/rxflow.c  | 328 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/rxflow.c  | 328 ++++++++++++++++++++++++++++++++++++++++++++++
  4 files changed, 341 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
@@ -419,5 +419,5 @@ index f21db08c11cc..4a71bdfc5587 100644
 +}
 +
 -- 
-2.16.4
+2.19.0
 

@@ -1,4 +1,4 @@
-From 8525795bf255c987f94b79b9aaafa77151db779f Mon Sep 17 00:00:00 2001
+From 371ba939a3fa38995679d9a8bbe8d71ce1c2ec80 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:51:36 +0100
 Subject: [PATCH 26/33] netlink: add netlink handler for sfec (--set-fec)
@@ -71,5 +71,5 @@ index 913a5417e679..4ff2f296170d 100644
 +	return nl_set_param(ctx, "--set-fec", sfec_params, ETHA_PARAMS_FEC);
 +}
 -- 
-2.16.4
+2.19.0
 

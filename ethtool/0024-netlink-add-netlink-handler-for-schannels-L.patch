@@ -1,4 +1,4 @@
-From 1b024d9bf812c6d9a5ae18d992c74c7719baad4c Mon Sep 17 00:00:00 2001
+From 37dcea5fa1904629c823b9a701bf7b86b3ed1cc0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:32:39 +0100
 Subject: [PATCH 24/33] netlink: add netlink handler for schannels (-L)
@@ -88,5 +88,5 @@ index 73d6f78b21be..b2d92bb8a938 100644
 +	return nl_set_param(ctx, "-L", schannels_params, ETHA_PARAMS_CHANNELS);
 +}
 -- 
-2.16.4
+2.19.0
 

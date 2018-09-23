@@ -1,4 +1,4 @@
-From ebd073a40115d2b69f918173ae100996dcb5c32e Mon Sep 17 00:00:00 2001
+From cc1d8c298be87fe00dbc681a797d1c8e5e186663 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:04:09 +0100
 Subject: [PATCH 17/33] netlink: add netlink handler for gpause (-a)
@@ -122,5 +122,5 @@ index 6782d98a6956..b45aac166dcd 100644
 +	return params_request(ctx, ETH_PARAMS_IM_PAUSE);
 +}
 -- 
-2.16.4
+2.19.0
 

@@ -1,4 +1,4 @@
-From a9945f55a9e946efe93fbcf8c661291a1839b6b1 Mon Sep 17 00:00:00 2001
+From 3506d2aeab47b44386577c6fcd53431ece059cb5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:59:50 +0100
 Subject: [PATCH 16/33] netlink: add netlink handler for gring (-g)
@@ -128,5 +128,5 @@ index 30aee5758c42..6782d98a6956 100644
 +	return params_request(ctx, ETH_PARAMS_IM_RING);
 +}
 -- 
-2.16.4
+2.19.0
 

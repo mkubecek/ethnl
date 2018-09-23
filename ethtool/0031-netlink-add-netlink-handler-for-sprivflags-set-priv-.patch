@@ -1,4 +1,4 @@
-From 3411e8592a9a168df25966ec759ce166b3c6bb09 Mon Sep 17 00:00:00 2001
+From 3379a462d3b741b7133d2d6e11d56c28f3465717 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:23:10 +0200
 Subject: [PATCH 31/33] netlink: add netlink handler for sprivflags
@@ -89,5 +89,5 @@ index 8c1e60a47085..185c54294387 100644
 +		return nlctx->exit_code ?: 1;
 +}
 -- 
-2.16.4
+2.19.0
 

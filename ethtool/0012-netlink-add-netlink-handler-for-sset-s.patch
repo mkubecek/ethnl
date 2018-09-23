@@ -1,4 +1,4 @@
-From 71621c64ec74b610cd15b6dc8c3a4f7239098f5c Mon Sep 17 00:00:00 2001
+From 812c0577f808f7f7d33b9b56102a333941e280a5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 12/33] netlink: add netlink handler for sset (-s)
@@ -11,13 +11,13 @@ password here).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- ethtool.c          |   9 ++-
+ ethtool.c          |   9 +-
  netlink/extapi.h   |   1 +
- netlink/netlink.c  |   9 +++
+ netlink/netlink.c  |   9 ++
  netlink/netlink.h  |   1 +
- netlink/parser.c   |  36 +++++++++
+ netlink/parser.c   |  36 ++++++++
  netlink/parser.h   |   2 +
- netlink/settings.c | 219 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/settings.c | 219 +++++++++++++++++++++++++++++++++++++++++++++
  7 files changed, 273 insertions(+), 4 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
@@ -69,10 +69,10 @@ index 938e71700f97..e3b8c6949f36 100644
  
  void monitor_usage();
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index db5c26be52a9..4c089a0af6eb 100644
+index 874927ab8f2b..e1e06f403fe3 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -723,6 +723,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
+@@ -728,6 +728,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
  	return (nlctx->ethnl_fam ? 0 : -EADDRNOTAVAIL);
  }
  
@@ -395,5 +395,5 @@ index b29d699a36d1..04a49ff92a81 100644
 +	return nlctx->exit_code ?: 75;
 +}
 -- 
-2.16.4
+2.19.0
 

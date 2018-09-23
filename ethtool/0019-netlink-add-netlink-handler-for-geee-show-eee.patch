@@ -1,4 +1,4 @@
-From 0c6abbe2061b19b9261a038db4d0bad20bea41bb Mon Sep 17 00:00:00 2001
+From 4c04e9e5f8c1cd58f33915adedb3ade3937dc440 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:08:21 +0100
 Subject: [PATCH 19/33] netlink: add netlink handler for geee (--show-eee)
@@ -10,8 +10,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c         |  3 ++-
  netlink/extapi.h  |  1 +
- netlink/monitor.c |  5 +++++
- netlink/params.c  | 66 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/monitor.c |  5 ++++
+ netlink/params.c  | 66 +++++++++++++++++++++++++++++++++++++++++++++++
  4 files changed, 74 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
@@ -152,5 +152,5 @@ index 81547492532f..55138b6fdc83 100644
 +	return params_request(ctx, ETH_PARAMS_IM_EEE);
 +}
 -- 
-2.16.4
+2.19.0
 

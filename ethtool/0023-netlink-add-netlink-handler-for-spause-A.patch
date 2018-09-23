@@ -1,4 +1,4 @@
-From 7fbf9aa07c8ad075c6787fb4f82fb05eab5e03d0 Mon Sep 17 00:00:00 2001
+From d88536eefb09c400b971c877beaf4fbb2723c45d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:17:41 +0100
 Subject: [PATCH 23/33] netlink: add netlink handler for spause (-A)
@@ -82,5 +82,5 @@ index f73ea7e072f5..73d6f78b21be 100644
 +	return nl_set_param(ctx, "-A", spause_params, ETHA_PARAMS_PAUSE);
 +}
 -- 
-2.16.4
+2.19.0
 

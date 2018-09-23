@@ -1,4 +1,4 @@
-From 7c6cf845c3566c9b52d24b97107b397f0717ecba Mon Sep 17 00:00:00 2001
+From fb87a9c394aab07b8c0159fa881e0cee58dfbab2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:43:19 +0100
 Subject: [PATCH 25/33] netlink: add netlink handler for seee (--set-eee)
@@ -92,5 +92,5 @@ index b2d92bb8a938..913a5417e679 100644
 +	return nl_set_param(ctx, "--set-eee", seee_params, ETHA_PARAMS_EEE);
 +}
 -- 
-2.16.4
+2.19.0
 

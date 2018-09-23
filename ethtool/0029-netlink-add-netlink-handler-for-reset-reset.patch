@@ -1,4 +1,4 @@
-From badbaa25d4395a507fd1b50af7648b228ba11666 Mon Sep 17 00:00:00 2001
+From 3e1a1056782ff9c69b5b2424e2501c56d66b48a2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 08:43:44 +0200
 Subject: [PATCH 29/33] netlink: add netlink handler for reset (--reset)
@@ -9,7 +9,7 @@ ETHNL_CMD_ACT_RESET.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c         |   3 +-
- netlink/actions.c | 243 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/actions.c | 243 ++++++++++++++++++++++++++++++++++++++++++++++
  netlink/extapi.h  |   1 +
  netlink/monitor.c |   9 ++
  4 files changed, 255 insertions(+), 1 deletion(-)
@@ -340,5 +340,5 @@ index 281aa1f5da16..522ad654ad72 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 -- 
-2.16.4
+2.19.0
 

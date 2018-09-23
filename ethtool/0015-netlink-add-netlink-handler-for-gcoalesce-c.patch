@@ -1,4 +1,4 @@
-From 829f9f542eb6cb59810fdd1513e634bb97972097 Mon Sep 17 00:00:00 2001
+From 6b37b6c8e71e902ea895e31724f10143db76feac Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
 Subject: [PATCH 15/33] netlink: add netlink handler for gcoalesce (-c)
@@ -11,8 +11,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Makefile.am       |   2 +-
  ethtool.c         |   3 +-
  netlink/extapi.h  |   1 +
- netlink/monitor.c |  10 ++++++
- netlink/params.c  | 101 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/monitor.c |  10 +++++
+ netlink/params.c  | 101 ++++++++++++++++++++++++++++++++++++++++++++++
  5 files changed, 115 insertions(+), 2 deletions(-)
  create mode 100644 netlink/params.c
 
@@ -205,5 +205,5 @@ index 000000000000..30aee5758c42
 +	return params_request(ctx, ETH_PARAMS_IM_COALESCE);
 +}
 -- 
-2.16.4
+2.19.0
 

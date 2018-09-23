@@ -1,4 +1,4 @@
-From 30ab5dcabf74043dc698197ccc934f4ab91b906e Mon Sep 17 00:00:00 2001
+From cf3b757ac78399004d0f8e9946ae64fcfc9568b0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
 Subject: [PATCH 20/33] netlink: add netlink handler for gfec (--show-fec)
@@ -166,5 +166,5 @@ index 55138b6fdc83..c187ca0b37c5 100644
 +	return params_request(ctx, ETH_PARAMS_IM_FEC);
 +}
 -- 
-2.16.4
+2.19.0
 

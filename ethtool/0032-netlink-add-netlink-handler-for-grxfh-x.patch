@@ -1,4 +1,4 @@
-From 85a33d30146b0567b9a594ef961ce72baa9f5014 Mon Sep 17 00:00:00 2001
+From 9cfd0343de8ab7c5930cc5a0ce3022bb91373ff5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:46:58 +0200
 Subject: [PATCH 32/33] netlink: add netlink handler for grxfh (-x)
@@ -11,7 +11,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Makefile.am      |   2 +-
  ethtool.c        |   3 +-
  netlink/extapi.h |   1 +
- netlink/rxflow.c | 279 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/rxflow.c | 279 +++++++++++++++++++++++++++++++++++++++++++++++
  4 files changed, 283 insertions(+), 2 deletions(-)
  create mode 100644 netlink/rxflow.c
 
@@ -347,5 +347,5 @@ index 000000000000..f21db08c11cc
 +}
 +
 -- 
-2.16.4
+2.19.0
 

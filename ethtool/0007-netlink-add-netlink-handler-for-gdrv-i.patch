@@ -1,4 +1,4 @@
-From 0f959ada2daa6e7654eb8d525769c563e4151e81 Mon Sep 17 00:00:00 2001
+From e0768c6985376a0300ef72c27a614cdccfb960ef Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
 Subject: [PATCH 07/33] netlink: add netlink handler for gdrv (-i)
@@ -9,10 +9,10 @@ ETHNL_CMD_GET_INFO.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |  1 +
- ethtool.c         |  3 ++-
+ ethtool.c         |  3 +-
  netlink/extapi.h  |  1 +
- netlink/info.c    | 70 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- netlink/monitor.c | 10 ++++++++
+ netlink/info.c    | 70 +++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/monitor.c | 10 +++++++
  5 files changed, 84 insertions(+), 1 deletion(-)
  create mode 100644 netlink/info.c
 
@@ -173,5 +173,5 @@ index 51f64e6ad839..c6817b4883ff 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 -- 
-2.16.4
+2.19.0
 

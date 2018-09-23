@@ -1,4 +1,4 @@
-From 0f9e85db63d0290c8bcacfbb73a7455ab412f2cf Mon Sep 17 00:00:00 2001
+From 7b37c4472021d1260c17d6c38310307992ac2929 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 07:27:00 +0100
 Subject: [PATCH 21/33] netlink: add netlink handler for scoalesce (-C)
@@ -10,7 +10,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c        |   3 +-
  netlink/extapi.h |   1 +
- netlink/params.c | 180 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/params.c | 180 +++++++++++++++++++++++++++++++++++++++++++++++
  3 files changed, 183 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
@@ -235,5 +235,5 @@ index c187ca0b37c5..a5fe473676e4 100644
 +	return nl_set_param(ctx, "-C", scoalesce_params, ETHA_PARAMS_COALESCE);
 +}
 -- 
-2.16.4
+2.19.0
 

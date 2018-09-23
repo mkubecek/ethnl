@@ -1,4 +1,4 @@
-From 24a27d46c57034378b055c2a9610ffc848a51cc1 Mon Sep 17 00:00:00 2001
+From f8117e179270d29a5064bfd654a62b2763e586ae Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:05:40 +0100
 Subject: [PATCH 18/33] netlink: add netlink handler for gchannels (-l)
@@ -128,5 +128,5 @@ index b45aac166dcd..81547492532f 100644
 +	return params_request(ctx, ETH_PARAMS_IM_CHANNELS);
 +}
 -- 
-2.16.4
+2.19.0
 

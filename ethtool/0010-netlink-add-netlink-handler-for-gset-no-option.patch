@@ -1,4 +1,4 @@
-From 01b77128dfd114bf0ad55c6851474f1ef6e5743f Mon Sep 17 00:00:00 2001
+From 058a62299d129fdfcfba54135f234487ec42e442 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 10/33] netlink: add netlink handler for gset (no option)
@@ -12,14 +12,14 @@ into new file common.c.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am        |   2 +-
- common.c           | 285 ++++++++++++++++++++++++++++++++++++++++++++++++++
- common.h           |  56 ++++++++++
- ethtool.c          | 152 ++-------------------------
+ common.c           | 285 ++++++++++++++++++++++++++++++++++++++++++
+ common.h           |  56 +++++++++
+ ethtool.c          | 152 ++---------------------
  netlink/extapi.h   |   1 +
  netlink/monitor.c  |  14 +++
- netlink/netlink.c  | 120 +++++++++++++++++++++
+ netlink/netlink.c  | 120 ++++++++++++++++++
  netlink/netlink.h  |   4 +
- netlink/settings.c | 302 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/settings.c | 302 +++++++++++++++++++++++++++++++++++++++++++++
  9 files changed, 791 insertions(+), 145 deletions(-)
  create mode 100644 netlink/settings.c
 
@@ -670,7 +670,7 @@ index c6817b4883ff..5d4f984be7c3 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index c1b232b17e98..db5c26be52a9 100644
+index a5b7d7d1cdda..874927ab8f2b 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -4,8 +4,10 @@
@@ -684,7 +684,7 @@ index c1b232b17e98..db5c26be52a9 100644
  
  /* misc helpers */
  
-@@ -494,6 +496,124 @@ const char *get_dev_name(const struct nlattr *nest)
+@@ -499,6 +501,124 @@ const char *get_dev_name(const struct nlattr *nest)
  	return mnl_attr_get_str(dev_tb[ETHA_DEV_NAME]);
  }
  
@@ -1133,5 +1133,5 @@ index 000000000000..b29d699a36d1
 +
 +}
 -- 
-2.16.4
+2.19.0
 

@@ -1,4 +1,4 @@
-From 234ceb60b2d14ff889363f4a46e6dc2466abe29c Mon Sep 17 00:00:00 2001
+From 567e27a1284e651ff2b4ab617c58fdb2db17af78 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:04:49 +0100
 Subject: [PATCH 22/33] netlink: add netlink handler for sring (-G)
@@ -88,5 +88,5 @@ index a5fe473676e4..f73ea7e072f5 100644
 +	return nl_set_param(ctx, "-G", sring_params, ETHA_PARAMS_RING);
 +}
 -- 
-2.16.4
+2.19.0
 

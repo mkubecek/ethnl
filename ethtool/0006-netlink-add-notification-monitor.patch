@@ -1,4 +1,4 @@
-From f18a82f641bc0c96bd903d6a5ed7eb12d7bdea8f Mon Sep 17 00:00:00 2001
+From 3d8184ad1cce5ffc4a97f42d9e3aa18e857524fb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
 Subject: [PATCH 06/33] netlink: add notification monitor
@@ -14,9 +14,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Makefile.am       |   2 +-
  ethtool.c         |  16 ++++
  netlink/extapi.h  |   4 +
- netlink/monitor.c | 216 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- netlink/netlink.c |  32 +++++++-
- netlink/netlink.h |  26 +++++++
+ netlink/monitor.c | 216 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/netlink.c |  32 ++++++-
+ netlink/netlink.h |  26 ++++++
  6 files changed, 294 insertions(+), 2 deletions(-)
  create mode 100644 netlink/monitor.c
 
@@ -303,10 +303,10 @@ index 000000000000..51f64e6ad839
 +	fputs("                [ DEVNAME | * ]\n", stdout);
 +}
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 78e12db966ad..c1b232b17e98 100644
+index 39de443fe382..a5b7d7d1cdda 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -541,6 +541,31 @@ err:
+@@ -546,6 +546,31 @@ err:
  
  /* get ethtool family id */
  
@@ -338,7 +338,7 @@ index 78e12db966ad..c1b232b17e98 100644
  static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	struct nl_context *nlctx = data;
-@@ -548,9 +573,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -553,9 +578,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  
  	nlctx->ethnl_fam = 0;
  	mnl_attr_for_each(attr, nlhdr, GENL_HDRLEN) {
@@ -353,7 +353,7 @@ index 78e12db966ad..c1b232b17e98 100644
  		}
  	}
  
-@@ -629,6 +658,7 @@ int __init_aux_nlctx(struct nl_context *nlctx)
+@@ -634,6 +663,7 @@ int __init_aux_nlctx(struct nl_context *nlctx)
  	}
  
  	aux->ethnl_fam = nlctx->ethnl_fam;
@@ -413,5 +413,5 @@ index 8c2f9f7c5d0c..800852d02275 100644
  
  static inline bool debug_on(unsigned long debug, unsigned int bit)
 -- 
-2.16.4
+2.19.0
 

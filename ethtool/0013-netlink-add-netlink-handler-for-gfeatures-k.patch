@@ -1,4 +1,4 @@
-From a21ec993525393cb8b85114bbd66873b3be5ec48 Mon Sep 17 00:00:00 2001
+From 548416141bd1e746a64cfd36c9e1c48ea6563b50 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
 Subject: [PATCH 13/33] netlink: add netlink handler for gfeatures (-k)
@@ -13,12 +13,12 @@ slightly different from mapping used by kernel ioctl code.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- common.c           |  30 +++++++
- common.h           |  19 +++++
- ethtool.c          |  68 +++-------------
+ common.c           |  30 ++++++
+ common.h           |  19 ++++
+ ethtool.c          |  68 +++-----------
  netlink/extapi.h   |   1 +
  netlink/monitor.c  |   6 ++
- netlink/settings.c | 226 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/settings.c | 226 +++++++++++++++++++++++++++++++++++++++++++++
  6 files changed, 294 insertions(+), 56 deletions(-)
 
 diff --git a/common.c b/common.c
@@ -533,5 +533,5 @@ index 04a49ff92a81..dcda1d63c1a7 100644
  
  /* SET_SETTINGS */
 -- 
-2.16.4
+2.19.0
 
