@@ -1,4 +1,4 @@
-From 7f6b89ab0390f360da14bcb21eb21f7a9fc9e308 Mon Sep 17 00:00:00 2001
+From cbe5730d71679d91eb299df7cc5d1861fd6e9296 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
 Subject: [PATCH 24/25] ethtool: implement SET_RXFLOW notification
@@ -14,36 +14,62 @@ set to
     ETHA_RXFLOW_DEV) are omitted
 
 The notification is also sent if related data is modified using the ioctl
-interface (ETHTOOL_SRSSH or ETHTOOL_SRXFHINDIR command).
+interface (ETHTOOL_SRSSH, ETHTOOL_SRXFH or ETHTOOL_SRXFHINDIR command).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- include/linux/ethtool_netlink.h |  5 +++
- net/ethtool/ioctl.c             | 25 +++++++++++-
+ include/linux/ethtool_netlink.h |  6 +++
+ net/ethtool/ioctl.c             | 32 ++++++++++++++-
  net/ethtool/netlink.c           |  1 +
  net/ethtool/netlink.h           |  2 +
- net/ethtool/rxflow.c            | 68 +++++++++++++++++++++++++++++++++
- 5 files changed, 100 insertions(+), 1 deletion(-)
+ net/ethtool/rxflow.c            | 72 +++++++++++++++++++++++++++++++++
+ 5 files changed, 112 insertions(+), 1 deletion(-)
 
 diff --git a/include/linux/ethtool_netlink.h b/include/linux/ethtool_netlink.h
-index fba8ff961887..5d4205750723 100644
+index fba8ff961887..6e3aeb630367 100644
 --- a/include/linux/ethtool_netlink.h
 +++ b/include/linux/ethtool_netlink.h
-@@ -14,4 +14,9 @@ enum ethtool_multicast_groups {
+@@ -14,4 +14,10 @@ enum ethtool_multicast_groups {
  	ETHNL_MCGRP_MONITOR,
  };
  
 +struct ethtool_rxflow_notification_info {
 +	u32	ctx_op;
 +	u32	context;
++	u32	flow_type;
 +};
 +
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 54f8da415e48..31456984ecca 100644
+index e78571fb5953..ff71f423ec48 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -967,6 +967,8 @@ static noinline_for_stack int ethtool_set_rxfh_indir(struct net_device *dev,
+@@ -713,6 +713,7 @@ static noinline_for_stack int ethtool_get_sset_info(struct net_device *dev,
+ static noinline_for_stack int ethtool_set_rxnfc(struct net_device *dev,
+ 						u32 cmd, void __user *useraddr)
+ {
++	struct ethtool_rxflow_notification_info notify_info = {};
+ 	struct ethtool_rxnfc info;
+ 	size_t info_size = sizeof(info);
+ 	int rc;
+@@ -731,10 +732,16 @@ static noinline_for_stack int ethtool_set_rxnfc(struct net_device *dev,
+ 	if (copy_from_user(&info, useraddr, info_size))
+ 		return -EFAULT;
+ 
++	if ((cmd != ETHTOOL_SRXFH) && (info.flow_type & FLOW_RSS))
++		notify_info.context = info.rss_context;
++	notify_info.flow_type = info.flow_type;
+ 	rc = dev->ethtool_ops->set_rxnfc(dev, &info);
+ 	if (rc)
+ 		return rc;
+ 
++	if (cmd == ETHTOOL_SRXFH)
++		ethtool_notify(dev, NULL, ETHNL_CMD_SET_RXFLOW,
++			       ETH_RXFLOW_IM_HASHOPTS, &notify_info);
+ 	if (cmd == ETHTOOL_SRXCLSRLINS &&
+ 	    copy_to_user(useraddr, &info, info_size))
+ 		return -EFAULT;
+@@ -967,6 +974,8 @@ static noinline_for_stack int ethtool_set_rxfh_indir(struct net_device *dev,
  	ret = ops->set_rxfh(dev, indir, NULL, ETH_RSS_HASH_NO_CHANGE);
  	if (ret)
  		goto out;
@@ -52,7 +78,7 @@ index 54f8da415e48..31456984ecca 100644
  
  	/* indicate whether rxfh was set to default */
  	if (user_size == 0)
-@@ -1062,6 +1064,9 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+@@ -1062,6 +1071,9 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
  					       void __user *useraddr)
  {
  	int ret;
@@ -62,7 +88,7 @@ index 54f8da415e48..31456984ecca 100644
  	const struct ethtool_ops *ops = dev->ethtool_ops;
  	struct ethtool_rxnfc rx_rings;
  	struct ethtool_rxfh rxfh;
-@@ -1071,6 +1076,7 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+@@ -1071,6 +1083,7 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
  	u8 *rss_config;
  	u32 rss_cfg_offset = offsetof(struct ethtool_rxfh, rss_config[0]);
  	bool delete = false;
@@ -70,7 +96,7 @@ index 54f8da415e48..31456984ecca 100644
  
  	if (!ops->get_rxnfc || !ops->set_rxfh)
  		return -EOPNOTSUPP;
-@@ -1101,8 +1107,18 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+@@ -1101,8 +1114,18 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
  	     rxfh.key_size == 0 && rxfh.hfunc == ETH_RSS_HASH_NO_CHANGE))
  		return -EINVAL;
  
@@ -90,7 +116,7 @@ index 54f8da415e48..31456984ecca 100644
  
  	rss_config = kzalloc(indir_bytes + rxfh.key_size, GFP_USER);
  	if (!rss_config)
-@@ -1132,6 +1148,7 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+@@ -1132,6 +1155,7 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
  			for (i = 0; i < dev_indir_size; i++)
  				indir[i] = ethtool_rxfh_indir_default(i, rx_rings.data);
  		} else {
@@ -98,7 +124,7 @@ index 54f8da415e48..31456984ecca 100644
  			delete = true;
  		}
  	}
-@@ -1153,6 +1170,12 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+@@ -1153,6 +1177,12 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
  		ret = ops->set_rxfh(dev, indir, hkey, rxfh.hfunc);
  	if (ret)
  		goto out;
@@ -112,10 +138,10 @@ index 54f8da415e48..31456984ecca 100644
  	if (copy_to_user(useraddr + offsetof(struct ethtool_rxfh, rss_context),
  			 &rxfh.rss_context, sizeof(rxfh.rss_context)))
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 6f0f9da605e7..3b5983555af4 100644
+index 9b62edf04d57..2616f235e72b 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -921,6 +921,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -930,6 +930,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,
  	[ETHNL_CMD_ACT_PHYS_ID]		= ethnl_physid_notify,
  	[ETHNL_CMD_ACT_RESET]		= ethnl_reset_notify,
@@ -136,7 +162,7 @@ index ee1f8498353b..21fec8e03207 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index d49d342ab7a3..8a426a532ba1 100644
+index 6e60d6fc7b0d..c24de3f6b891 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
 @@ -1,5 +1,6 @@
@@ -146,7 +172,7 @@ index d49d342ab7a3..8a426a532ba1 100644
  #include "netlink.h"
  #include "common.h"
  
-@@ -326,3 +327,70 @@ const struct get_request_ops rxflow_request_ops = {
+@@ -454,3 +455,74 @@ const struct get_request_ops rxflow_request_ops = {
  	.fill_reply		= fill_rxflow,
  	.cleanup		= rxflow_cleanup,
  };
@@ -170,6 +196,10 @@ index d49d342ab7a3..8a426a532ba1 100644
 +	req_info->compact = true;
 +	req_info->have_rtnl = true;
 +	data.repdata_base.dev = dev;
++	if (ninfo) {
++		data.req_context = ninfo->context;
++		data.req_flow_type = ninfo->flow_type;
++	}
 +
 +	ret = prepare_rxflow(req_info, NULL);
 +	if (ret < 0)
@@ -191,9 +221,9 @@ index d49d342ab7a3..8a426a532ba1 100644
 +		goto err_skb;
 +	if (ninfo) {
 +		ret = -EMSGSIZE;
-+		if (nla_put_u32(skb, ETHA_RXFLOW_CTXOP, ninfo->ctx_op))
++		if (ninfo->ctx_op &&
++		    nla_put_u32(skb, ETHA_RXFLOW_CTXOP, ninfo->ctx_op))
 +			goto err_skb;
-+		data.req_context = ninfo->context;
 +	}
 +
 +	if (ninfo && ninfo->ctx_op == ETH_RXFLOW_CTXOP_DEL) {
@@ -218,5 +248,5 @@ index d49d342ab7a3..8a426a532ba1 100644
 +	rxflow_cleanup(req_info);
 +}
 -- 
-2.19.0
+2.19.1
 

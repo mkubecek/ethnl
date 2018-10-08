@@ -1,4 +1,4 @@
-From f000bb34ec4aa93a6cf4b65730c8e5c79f73827a Mon Sep 17 00:00:00 2001
+From 984194c8798ae43f63fe8df4c02e1cf62a0f3f63 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 27 Aug 2018 19:51:37 +0200
 Subject: [PATCH 08/25] ethtool: generic handlers for GET requests
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 375 insertions(+)
 
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index b9b438a984a4..5fe0effef597 100644
+index 29dd09f79526..97728770bc7d 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -521,6 +521,41 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
+@@ -530,6 +530,41 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
  	return (!*err && mod);
  }
  
@@ -66,7 +66,7 @@ index b9b438a984a4..5fe0effef597 100644
  /* create skb for a reply and fill device identification
   * payload: payload length (without netlink and genetlink header)
   * dev:     device the reply is about (may be null)
-@@ -561,6 +596,251 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -570,6 +605,251 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  	return NULL;
  }
  
@@ -423,5 +423,5 @@ index d0e75799c522..5aada243833a 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
-2.19.0
+2.19.1
 

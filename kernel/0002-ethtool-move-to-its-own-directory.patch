@@ -1,4 +1,4 @@
-From d919c44cabe8c60507c4cf079a2e236e61bbd915 Mon Sep 17 00:00:00 2001
+From f1bd9340a72f85fb56e5c34cb64abe33a8e0db7e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 13 May 2018 02:35:53 +0200
 Subject: [PATCH 02/25] ethtool: move to its own directory
@@ -58,5 +58,5 @@ similarity index 100%
 rename from net/core/ethtool.c
 rename to net/ethtool/ioctl.c
 -- 
-2.19.0
+2.19.1
 

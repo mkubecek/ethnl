@@ -1,4 +1,4 @@
-From f7fa75ad4a1f8e3e30eda6363e2159155f0105af Mon Sep 17 00:00:00 2001
+From 0036b7bf23a90a0df78608f0b78d0ab968a2e57d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 16/25] ethtool: implement GET_SETTINGS and SET_SETTINGS for
@@ -20,10 +20,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 148 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index e3a7a970a86a..d58422ef68af 100644
+index 06fb77183b17..c326e915dbaf 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -234,6 +234,7 @@ Info mask bits meaning:
+@@ -240,6 +240,7 @@ Info mask bits meaning:
      ETH_SETTINGS_IM_WOLINFO		struct ethtool_wolinfo
      ETH_SETTINGS_IM_LINK		link state
      ETH_SETTINGS_IM_FEATURES		features
@@ -31,7 +31,7 @@ index e3a7a970a86a..d58422ef68af 100644
  
  Response contents:
  
-@@ -257,6 +258,7 @@ Response contents:
+@@ -263,6 +264,7 @@ Response contents:
          ETHA_FEATURES_WANTED		(bitset)	dev->wanted_features
          ETHA_FEATURES_ACTIVE		(bitset)	dev->features
          ETHA_FEATURES_NOCHANGE		(bitset)	NETIF_F_NEVER_CHANGE
@@ -39,7 +39,7 @@ index e3a7a970a86a..d58422ef68af 100644
  
  Most of the attributes have the same meaning (including values) as
  corresponding members of ioctl structures. For ETHA_SETTINGS_MSGLVL, selector
-@@ -275,6 +277,11 @@ itself. ETHA_FEATURES_HW uses mask consisting of all features recognized by
+@@ -281,6 +283,11 @@ itself. ETHA_FEATURES_HW uses mask consisting of all features recognized by
  kernel (to provide all names when using verbose bitmap format), remaining
  three use mask equal to value (to save space).
  
@@ -51,7 +51,7 @@ index e3a7a970a86a..d58422ef68af 100644
  GET_SETTINGS request is allowed for unprivileged user but ETHA_SETTINGS_SOPASS
  is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
  requests.
-@@ -306,6 +313,7 @@ to be passed with SET_SETTINGS request:
+@@ -312,6 +319,7 @@ to be passed with SET_SETTINGS request:
      ETHA_SETTINGS_FEATURES	(nested)	device features
          ETHA_FEATURES_WANTED		(bitset)	wanted features
          ETHA_FEATURES_WANT_DIFF		(flag)		actual diff
@@ -59,7 +59,7 @@ index e3a7a970a86a..d58422ef68af 100644
  
  For both bitfield32 types, value and selector work the usual way, i.e. bits
  set in selector are set to corresponding bits from value and the rest is
-@@ -378,8 +386,8 @@ ETHTOOL_GGSO			ETHNL_CMD_GET_SETTINGS
+@@ -384,8 +392,8 @@ ETHTOOL_GGSO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SGSO			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFLAGS			ETHNL_CMD_SET_SETTINGS
@@ -71,10 +71,10 @@ index e3a7a970a86a..d58422ef68af 100644
  ETHTOOL_SRXFH			n/a
  ETHTOOL_GGRO			ETHNL_CMD_GET_SETTINGS
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 9c685830a56a..abec3a4124a3 100644
+index 1c2447f4a456..ee639573d8a7 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -202,6 +202,7 @@ enum {
+@@ -203,6 +203,7 @@ enum {
  	ETHA_SETTINGS_PEER_MODES,		/* bitset */
  	ETHA_SETTINGS_LINK,			/* u8 */
  	ETHA_SETTINGS_FEATURES,			/* nest - ETHA_FEATURES_* */
@@ -82,7 +82,7 @@ index 9c685830a56a..abec3a4124a3 100644
  
  	__ETHA_SETTINGS_CNT,
  	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
-@@ -213,8 +214,9 @@ enum {
+@@ -214,8 +215,9 @@ enum {
  #define ETH_SETTINGS_IM_WOLINFO			0x08
  #define ETH_SETTINGS_IM_LINK			0x10
  #define ETH_SETTINGS_IM_FEATURES		0x20
@@ -94,10 +94,10 @@ index 9c685830a56a..abec3a4124a3 100644
  enum {
  	ETHA_FEATURES_UNSPEC,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 6824c737d246..da0c5def88d2 100644
+index ab92335c7489..1bf0869dcaf3 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -2504,6 +2504,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
+@@ -2509,6 +2509,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
  	case ETHTOOL_SPFLAGS:
  		rc = ethtool_set_value(dev, useraddr,
  				       dev->ethtool_ops->set_priv_flags);
@@ -318,5 +318,5 @@ index f52a40eeb40f..e0960059d2b9 100644
  
  out_unlock:
 -- 
-2.19.0
+2.19.1
 

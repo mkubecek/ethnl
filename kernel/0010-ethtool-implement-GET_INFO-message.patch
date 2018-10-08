@@ -1,4 +1,4 @@
-From ca21844ddf145124f57098250349783d05994231 Mon Sep 17 00:00:00 2001
+From bd3c3ce9665d29d991c9a412638aa5af22b922e5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
 Subject: [PATCH 10/25] ethtool: implement GET_INFO message
@@ -26,10 +26,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/info.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 8b43f41a8140..a4c0258eb42d 100644
+index b0b4eda00904..ca33fa8528f8 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -121,6 +121,8 @@ List of message types
+@@ -127,6 +127,8 @@ List of message types
      ETHNL_CMD_EVENT			notification only
      ETHNL_CMD_GET_STRSET
      ETHNL_CMD_SET_STRSET		response only
@@ -38,7 +38,7 @@ index 8b43f41a8140..a4c0258eb42d 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -156,6 +158,59 @@ and also multiple events of the same type (e.g. two or more newly registered
+@@ -162,6 +164,59 @@ and also multiple events of the same type (e.g. two or more newly registered
  devices).
  
  
@@ -98,7 +98,7 @@ index 8b43f41a8140..a4c0258eb42d 100644
  Request translation
  -------------------
  
-@@ -167,7 +222,7 @@ ioctl command			netlink command
+@@ -173,7 +228,7 @@ ioctl command			netlink command
  ---------------------------------------------------------------------
  ETHTOOL_GSET			n/a
  ETHTOOL_SSET			n/a
@@ -107,7 +107,7 @@ index 8b43f41a8140..a4c0258eb42d 100644
  ETHTOOL_GREGS			n/a
  ETHTOOL_GWOL			n/a
  ETHTOOL_SWOL			n/a
-@@ -195,7 +250,7 @@ ETHTOOL_PHYS_ID			n/a
+@@ -201,7 +256,7 @@ ETHTOOL_PHYS_ID			n/a
  ETHTOOL_GSTATS			n/a
  ETHTOOL_GTSO			n/a
  ETHTOOL_STSO			n/a
@@ -116,7 +116,7 @@ index 8b43f41a8140..a4c0258eb42d 100644
  ETHTOOL_GUFO			n/a
  ETHTOOL_SUFO			n/a
  ETHTOOL_GGSO			n/a
-@@ -228,7 +283,7 @@ ETHTOOL_SCHANNELS		n/a
+@@ -234,7 +289,7 @@ ETHTOOL_SCHANNELS		n/a
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
  ETHTOOL_GET_DUMP_DATA		n/a
@@ -151,7 +151,7 @@ index f6fc60539af4..64bfd987510a 100644
  	__ETH_SS_MAX,
  	ETH_SS_MAX = (__ETH_SS_MAX - 1)
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 2b07635c5274..84d8cfbeb6c8 100644
+index 6d63822a0e4e..e3571dc883d2 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -10,6 +10,8 @@ enum {
@@ -163,7 +163,7 @@ index 2b07635c5274..84d8cfbeb6c8 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -124,6 +126,58 @@ enum {
+@@ -125,6 +127,58 @@ enum {
  	ETHA_STRSET_MAX = (__ETHA_STRSET_CNT - 1)
  };
  
@@ -706,7 +706,7 @@ index 000000000000..991cf210e2fb
 +	.fill_reply		= fill_info,
 +};
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 4275c90d3726..0643c5f0867a 100644
+index 25f8dfe5753d..8c0c523a838c 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -27,6 +27,7 @@
@@ -768,7 +768,7 @@ index 4275c90d3726..0643c5f0867a 100644
  	return 0;
  }
  
-@@ -2034,28 +2004,12 @@ static int ethtool_get_dump_data(struct net_device *dev,
+@@ -2041,28 +2011,12 @@ static int ethtool_get_dump_data(struct net_device *dev,
  
  static int ethtool_get_ts_info(struct net_device *dev, void __user *useraddr)
  {
@@ -800,10 +800,10 @@ index 4275c90d3726..0643c5f0867a 100644
  		err = -EFAULT;
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index c350896a1932..a3f56ac0e473 100644
+index b1797f1a6527..3382eeed5723 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -524,9 +524,11 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
+@@ -533,9 +533,11 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
  /* GET request helpers */
  
  extern const struct get_request_ops strset_request_ops;
@@ -815,7 +815,7 @@ index c350896a1932..a3f56ac0e473 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -935,6 +937,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -944,6 +946,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -887,5 +887,5 @@ index a6453fb84434..ee115107ea18 100644
  
  struct strset_data {
 -- 
-2.19.0
+2.19.1
 

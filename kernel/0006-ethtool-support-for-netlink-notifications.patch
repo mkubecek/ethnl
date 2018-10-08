@@ -1,4 +1,4 @@
-From 068ed82e32e4372b869aa110bae2e249df9b8f29 Mon Sep 17 00:00:00 2001
+From 1e507a05abda7887e13cd9abd71d147b4eea9799 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
 Subject: [PATCH 06/25] ethtool: support for netlink notifications
@@ -38,10 +38,10 @@ index 0412adb4f42f..2a15e64a16f3 100644
  
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index 1cbbf77a685f..ec164379e27a 100644
+index f5f1f145018d..5a8551350ad9 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -4264,6 +4264,18 @@ struct netdev_notifier_bonding_info {
+@@ -4267,6 +4267,18 @@ struct netdev_notifier_bonding_info {
  void netdev_bonding_info_change(struct net_device *dev,
  				struct netdev_bonding_info *bonding_info);
  
@@ -61,10 +61,10 @@ index 1cbbf77a685f..ec164379e27a 100644
  struct sk_buff *skb_gso_segment(struct sk_buff *skb, netdev_features_t features)
  {
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index cfee7acfc6d8..011f840423be 100644
+index 7f3d401977b4..b662d75a0636 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -58,4 +58,6 @@ enum {
+@@ -59,4 +59,6 @@ enum {
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
  
@@ -72,7 +72,7 @@ index cfee7acfc6d8..011f840423be 100644
 +
  #endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index f2fee7a18265..880539ddc456 100644
+index cbea58abd7ef..be391d924463 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -5,6 +5,8 @@
@@ -84,7 +84,7 @@ index f2fee7a18265..880539ddc456 100644
  static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
  	[ETHA_DEV_UNSPEC]	= { .type = NLA_UNSPEC },
  	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -559,11 +561,39 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -568,11 +570,39 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  	return NULL;
  }
  
@@ -124,7 +124,7 @@ index f2fee7a18265..880539ddc456 100644
  struct genl_family ethtool_genl_family = {
  	.hdrsize	= 0,
  	.name		= ETHTOOL_GENL_NAME,
-@@ -572,6 +602,8 @@ struct genl_family ethtool_genl_family = {
+@@ -581,6 +611,8 @@ struct genl_family ethtool_genl_family = {
  	.parallel_ops	= true,
  	.ops		= ethtool_genl_ops,
  	.n_ops		= ARRAY_SIZE(ethtool_genl_ops),
@@ -147,5 +147,5 @@ index 340b00488466..d0e75799c522 100644
  
  struct net_device *ethnl_dev_get(struct genl_info *info, struct nlattr *nest);
 -- 
-2.19.0
+2.19.1
 
