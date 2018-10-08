@@ -1,7 +1,7 @@
-From 3379a462d3b741b7133d2d6e11d56c28f3465717 Mon Sep 17 00:00:00 2001
+From 0a1fcb568776b4b27f0fc8c2464ce0f960639e62 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:23:10 +0200
-Subject: [PATCH 31/33] netlink: add netlink handler for sprivflags
+Subject: [PATCH 31/34] netlink: add netlink handler for sprivflags
  (--set-priv-flags)
 
 Implement "ethtool --set-priv-flags <dev>" subcommand using netlink
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 36 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 67e8c4512639..a9e91efd9bd0 100644
+index a4253f4b2be6..6a6b50a21f81 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4859,6 +4859,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4858,6 +4858,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_phys_id	NULL
  #define nl_reset	NULL
  #define nl_gprivflags	NULL
@@ -26,7 +26,7 @@ index 67e8c4512639..a9e91efd9bd0 100644
  #endif
  
  static const struct option {
-@@ -5020,7 +5021,7 @@ static const struct option {
+@@ -5019,7 +5020,7 @@ static const struct option {
  	  "               [ combined N ]\n" },
  	{ "--show-priv-flags", 1, do_gprivflags, nl_gprivflags,
  	  "Query private flags" },
@@ -89,5 +89,5 @@ index 8c1e60a47085..185c54294387 100644
 +		return nlctx->exit_code ?: 1;
 +}
 -- 
-2.19.0
+2.19.1
 

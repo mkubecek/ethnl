@@ -1,7 +1,7 @@
-From cc1d8c298be87fe00dbc681a797d1c8e5e186663 Mon Sep 17 00:00:00 2001
+From 64f07c3fe7f6df1cd2e671e30c8e911add517384 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:04:09 +0100
-Subject: [PATCH 17/33] netlink: add netlink handler for gpause (-a)
+Subject: [PATCH 17/34] netlink: add netlink handler for gpause (-a)
 
 Implement "ethtool -a <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_PAUSE mask.
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 44 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 342f5554d442..74b81be85e48 100644
+index 187ffff7af87..86f264bac6e4 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4845,6 +4845,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4844,6 +4844,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sfeatures	NULL
  #define nl_gcoalesce	NULL
  #define nl_gring	NULL
@@ -26,7 +26,7 @@ index 342f5554d442..74b81be85e48 100644
  #endif
  
  static const struct option {
-@@ -4868,7 +4869,7 @@ static const struct option {
+@@ -4867,7 +4868,7 @@ static const struct option {
  	  "		[ wol %d[/%d] |  p|u|m|b|a|g|s|f|d...[/p|u|m|b|a|g|s|f|d...] ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
  	  "		[ msglvl %d[/%d] | type on|off ... [--] ]\n" },
@@ -122,5 +122,5 @@ index 6782d98a6956..b45aac166dcd 100644
 +	return params_request(ctx, ETH_PARAMS_IM_PAUSE);
 +}
 -- 
-2.19.0
+2.19.1
 

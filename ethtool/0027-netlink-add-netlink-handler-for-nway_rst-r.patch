@@ -1,7 +1,7 @@
-From 7c7511d2f6aad78621b1af2500893db71e1d6343 Mon Sep 17 00:00:00 2001
+From 6eda4e265e44b6d4ee00247b795bbf1fab6c7182 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:29:46 +0200
-Subject: [PATCH 27/33] netlink: add netlink handler for nway_rst (-r)
+Subject: [PATCH 27/34] netlink: add netlink handler for nway_rst (-r)
 
 Implement "ethtool -r <dev>" subcommand using netlink interface command
 ETHNL_CMD_ACT_NWAY_RST.
@@ -29,10 +29,10 @@ index 5be2c23f4a3e..4c8783e592d6 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 364834f1f69c..f77c8375a25c 100644
+index 4b0052a33339..820c5d9decbf 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4855,6 +4855,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4854,6 +4854,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_schannels	NULL
  #define nl_seee		NULL
  #define nl_sfec		NULL
@@ -40,7 +40,7 @@ index 364834f1f69c..f77c8375a25c 100644
  #endif
  
  static const struct option {
-@@ -4941,7 +4942,7 @@ static const struct option {
+@@ -4940,7 +4941,7 @@ static const struct option {
  	  "		[ offset N ]\n"
  	  "		[ length N ]\n"
  	  "		[ value N ]\n" },
@@ -156,5 +156,5 @@ index 234f254cff12..2ae374cdaeb3 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 -- 
-2.19.0
+2.19.1
 

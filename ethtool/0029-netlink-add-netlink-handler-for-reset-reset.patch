@@ -1,7 +1,7 @@
-From 3e1a1056782ff9c69b5b2424e2501c56d66b48a2 Mon Sep 17 00:00:00 2001
+From 73f8e1d8c11d69759e210f9b13f03b4fce8246f7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 08:43:44 +0200
-Subject: [PATCH 29/33] netlink: add netlink handler for reset (--reset)
+Subject: [PATCH 29/34] netlink: add netlink handler for reset (--reset)
 
 Implement "ethtool --reset <dev>" using netlink interface command
 ETHNL_CMD_ACT_RESET.
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 255 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index a9c408545dab..029deb187268 100644
+index 6dea8cb0fa86..2f7d2a3a4d53 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4857,6 +4857,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4856,6 +4856,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sfec		NULL
  #define nl_nway_rst	NULL
  #define nl_phys_id	NULL
@@ -26,7 +26,7 @@ index a9c408545dab..029deb187268 100644
  #endif
  
  static const struct option {
-@@ -5041,7 +5042,7 @@ static const struct option {
+@@ -5040,7 +5041,7 @@ static const struct option {
  	{ "--get-phy-tunable", 1, do_get_phy_tunable, NULL,
  	  "Get PHY tunable",
  	  "		[ downshift ]\n"},
@@ -36,7 +36,7 @@ index a9c408545dab..029deb187268 100644
  	  "		[ flags %x ]\n"
  	  "		[ mgmt ]\n"
 diff --git a/netlink/actions.c b/netlink/actions.c
-index 160352ea8df3..9ca69e288ff8 100644
+index 160352ea8df3..316004a8d786 100644
 --- a/netlink/actions.c
 +++ b/netlink/actions.c
 @@ -6,6 +6,7 @@
@@ -206,6 +206,8 @@ index 160352ea8df3..9ca69e288ff8 100644
 +			bitset = ethnla_nest_start(nlctx, ETHA_RESET_DEDICATED);
 +			if (!bitset)
 +				return -EMSGSIZE;
++			if (ethnla_put_flag(nlctx, ETHA_BITSET_LIST, true))
++				return -EMSGSIZE;
 +			bits = ethnla_nest_start(nlctx, ETHA_BITSET_BITS);
 +			if (!bits)
 +				return -EMSGSIZE;
@@ -215,8 +217,6 @@ index 160352ea8df3..9ca69e288ff8 100644
 +		if (!bit)
 +			return -EMSGSIZE;
 +		if (ethnla_put_strz(nlctx, ETHA_BIT_NAME, arg))
-+			return -EMSGSIZE;
-+		if (ethnla_put_flag(nlctx, ETHA_BIT_VALUE, true))
 +			return -EMSGSIZE;
 +		mnl_attr_nest_end(nlhdr, bit);
 +	}
@@ -241,6 +241,8 @@ index 160352ea8df3..9ca69e288ff8 100644
 +			bitset = ethnla_nest_start(nlctx, ETHA_RESET_SHARED);
 +			if (!bitset)
 +				return -EMSGSIZE;
++			if (ethnla_put_flag(nlctx, ETHA_BITSET_LIST, true))
++				return -EMSGSIZE;
 +			bits = ethnla_nest_start(nlctx, ETHA_BITSET_BITS);
 +			if (!bits)
 +				return -EMSGSIZE;
@@ -253,8 +255,6 @@ index 160352ea8df3..9ca69e288ff8 100644
 +		if (ethnla_put(nlctx, ETHA_BIT_NAME, len + 1, arg))
 +			return -EMSGSIZE;
 +		tail[MNL_ATTR_HDRLEN + len] = '\0';
-+		if (ethnla_put_flag(nlctx, ETHA_BIT_VALUE, true))
-+			return -EMSGSIZE;
 +		mnl_attr_nest_end(nlhdr, bit);
 +	}
 +	if (bitset) {
@@ -340,5 +340,5 @@ index 281aa1f5da16..522ad654ad72 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 -- 
-2.19.0
+2.19.1
 

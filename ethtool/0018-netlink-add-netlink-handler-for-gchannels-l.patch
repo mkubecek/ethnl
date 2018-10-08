@@ -1,7 +1,7 @@
-From f8117e179270d29a5064bfd654a62b2763e586ae Mon Sep 17 00:00:00 2001
+From 6ffe63936324ffd2ce47a0eb4cfc94ff48bc0623 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:05:40 +0100
-Subject: [PATCH 18/33] netlink: add netlink handler for gchannels (-l)
+Subject: [PATCH 18/34] netlink: add netlink handler for gchannels (-l)
 
 Implement "ethtool -l <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_CHANNELS mask.
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 50 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 74b81be85e48..72201e3c7308 100644
+index 86f264bac6e4..4296202194e5 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4846,6 +4846,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4845,6 +4845,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gcoalesce	NULL
  #define nl_gring	NULL
  #define nl_gpause	NULL
@@ -26,7 +26,7 @@ index 74b81be85e48..72201e3c7308 100644
  #endif
  
  static const struct option {
-@@ -4997,7 +4998,7 @@ static const struct option {
+@@ -4996,7 +4997,7 @@ static const struct option {
  	{ "-W|--set-dump", 1, do_setfwdump, NULL,
  	  "Set dump flag of the device",
  	  "		N\n"},
@@ -128,5 +128,5 @@ index b45aac166dcd..81547492532f 100644
 +	return params_request(ctx, ETH_PARAMS_IM_CHANNELS);
 +}
 -- 
-2.19.0
+2.19.1
 

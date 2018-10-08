@@ -1,7 +1,7 @@
-From 3d8184ad1cce5ffc4a97f42d9e3aa18e857524fb Mon Sep 17 00:00:00 2001
+From a7a9597864529098dead0e2a848aa6055a552e97 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
-Subject: [PATCH 06/33] netlink: add notification monitor
+Subject: [PATCH 06/34] netlink: add notification monitor
 
 With 'ethtool --monitor [ --all | opt ] [dev]', let ethtool listen to
 netlink notification and display them in a format similar to output of
@@ -34,10 +34,10 @@ index c7c7eeba79d1..188364c0c837 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index e689019e35d2..6943834f4142 100644
+index 57d685d02c77..d0866a583959 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -5298,6 +5298,9 @@ static int show_usage(struct cmd_context *ctx)
+@@ -5297,6 +5297,9 @@ static int show_usage(struct cmd_context *ctx)
  		if (args[i].opthelp)
  			fputs(args[i].opthelp, stdout);
  	}
@@ -47,7 +47,7 @@ index e689019e35d2..6943834f4142 100644
  
  	return 0;
  }
-@@ -5352,6 +5355,19 @@ int main(int argc, char **argp)
+@@ -5351,6 +5354,19 @@ int main(int argc, char **argp)
  		argp += 2;
  		argc -= 2;
  	}
@@ -413,5 +413,5 @@ index 8c2f9f7c5d0c..800852d02275 100644
  
  static inline bool debug_on(unsigned long debug, unsigned int bit)
 -- 
-2.19.0
+2.19.1
 

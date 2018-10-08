@@ -1,7 +1,7 @@
-From cf3b757ac78399004d0f8e9946ae64fcfc9568b0 Mon Sep 17 00:00:00 2001
+From 5d7bfb79650d56329ddfffc4d456c26b12403a50 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
-Subject: [PATCH 20/33] netlink: add netlink handler for gfec (--show-fec)
+Subject: [PATCH 20/34] netlink: add netlink handler for gfec (--show-fec)
 
 Implement "ethtool --show-fec <dev>" subcommand showing Forward Error
 Correction (FEC) settings using netlink interface command
@@ -52,10 +52,10 @@ index 749bf389e9e1..6c238701783f 100644
  
  enum link_mode_class {
 diff --git a/ethtool.c b/ethtool.c
-index 6fecdf01eed6..b3ac546b08f6 100644
+index 717fd9fa35a9..5784e01ce4f5 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4848,6 +4848,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4847,6 +4847,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gpause	NULL
  #define nl_gchannels	NULL
  #define nl_geee		NULL
@@ -63,7 +63,7 @@ index 6fecdf01eed6..b3ac546b08f6 100644
  #endif
  
  static const struct option {
-@@ -5055,7 +5056,7 @@ static const struct option {
+@@ -5054,7 +5055,7 @@ static const struct option {
  	  "		[ ap-shared ]\n"
  	  "		[ dedicated ]\n"
  	  "		[ all ]\n"},
@@ -101,7 +101,7 @@ index 8de683359586..234f254cff12 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index 55138b6fdc83..c187ca0b37c5 100644
+index 55138b6fdc83..51c3960d6d5d 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -185,6 +185,35 @@ static int show_eee(struct nl_context *nlctx, const struct nlattr *nest)
@@ -125,11 +125,11 @@ index 55138b6fdc83..c187ca0b37c5 100644
 +		const struct nla_bitfield32 *fec_encs =
 +			mnl_attr_get_payload(tb[ETHA_FEC_MODES]);
 +
-+		printf("Active FEC encodings:\t");
-+		print_flags(flags_fecenc, n_flags_fecenc, fec_encs->value);
-+		putchar('\n');
 +		printf("Configured FEC encodings:\t");
 +		print_flags(flags_fecenc, n_flags_fecenc, fec_encs->selector);
++		putchar('\n');
++		printf("Active FEC encoding:\t");
++		print_flags(flags_fecenc, n_flags_fecenc, fec_encs->value);
 +		putchar('\n');
 +	}
 +	putchar('\n');
@@ -166,5 +166,5 @@ index 55138b6fdc83..c187ca0b37c5 100644
 +	return params_request(ctx, ETH_PARAMS_IM_FEC);
 +}
 -- 
-2.19.0
+2.19.1
 

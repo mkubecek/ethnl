@@ -1,7 +1,7 @@
-From aae3de99a9acd62ee161a5802cda9b3e4b8083f4 Mon Sep 17 00:00:00 2001
+From c943502224c9fdb6da45bd3bf63e1dc9eaff3dea Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
-Subject: [PATCH 04/33] netlink: add netlink interface
+Subject: [PATCH 04/34] netlink: add netlink interface
 
 Add basic netlink interface based on genetlink and libmnl. This commit only
 adds the generic infrastructure but does not override any ethtool command
@@ -28,11 +28,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  netlink/netlink.c            | 679 +++++++++++++++++++++++++++++++++++
  netlink/netlink.h            | 151 ++++++++
  uapi/linux/ethtool.h         |  14 +
- uapi/linux/ethtool_netlink.h | 473 ++++++++++++++++++++++++
+ uapi/linux/ethtool_netlink.h | 495 +++++++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 +++++
  uapi/linux/net_tstamp.h      |  13 +
  uapi/linux/netlink.h         | 247 +++++++++++++
- 14 files changed, 1849 insertions(+), 60 deletions(-)
+ 14 files changed, 1871 insertions(+), 60 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
  create mode 100644 netlink/extapi.h
@@ -125,7 +125,7 @@ index cf6f3ce0aa0b..72721a35137f 100644
  AC_CONFIG_FILES([Makefile ethtool.spec ethtool.8])
  AC_OUTPUT
 diff --git a/ethtool.c b/ethtool.c
-index 2ef3bc271d6d..e689019e35d2 100644
+index f6068a8e6814..57d685d02c77 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -30,6 +30,7 @@
@@ -156,7 +156,7 @@ index 2ef3bc271d6d..e689019e35d2 100644
  static void exit_bad_args(void) __attribute__((noreturn));
  
  static void exit_bad_args(void)
-@@ -5053,14 +5056,22 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
+@@ -5052,14 +5055,22 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
  
  static int show_usage(struct cmd_context *ctx);
  
@@ -180,7 +180,7 @@ index 2ef3bc271d6d..e689019e35d2 100644
  	  "		[ speed %d ]\n"
  	  "		[ duplex half|full ]\n"
  	  "		[ port tp|aui|bnc|mii|fibre ]\n"
-@@ -5072,13 +5083,17 @@ static const struct option {
+@@ -5071,13 +5082,17 @@ static const struct option {
  	  "		[ wol p|u|m|b|a|g|s|f|d... ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
  	  "		[ msglvl %d | msglvl type on|off ... ]\n" },
@@ -202,7 +202,7 @@ index 2ef3bc271d6d..e689019e35d2 100644
  	  "		[adaptive-rx on|off]\n"
  	  "		[adaptive-tx on|off]\n"
  	  "		[rx-usecs N]\n"
-@@ -5101,46 +5116,54 @@ static const struct option {
+@@ -5100,46 +5115,54 @@ static const struct option {
  	  "		[tx-usecs-high N]\n"
  	  "		[tx-frames-high N]\n"
  	  "		[sample-interval N]\n" },
@@ -272,7 +272,7 @@ index 2ef3bc271d6d..e689019e35d2 100644
  	  "Configure Rx network flow classification options or rules",
  	  "		rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 m|v|t|s|d|f|n|r... [context %d] |\n"
-@@ -5165,55 +5188,64 @@ static const struct option {
+@@ -5164,55 +5187,64 @@ static const struct option {
  	  "			[ context %d ]\n"
  	  "			[ loc %d]] |\n"
  	  "		delete %d\n" },
@@ -354,7 +354,7 @@ index 2ef3bc271d6d..e689019e35d2 100644
  	  "		[ flags %x ]\n"
  	  "		[ mgmt ]\n"
  	  "		[ mgmt-shared ]\n"
-@@ -5235,11 +5267,15 @@ static const struct option {
+@@ -5234,11 +5266,15 @@ static const struct option {
  	  "		[ ap-shared ]\n"
  	  "		[ dedicated ]\n"
  	  "		[ all ]\n"},
@@ -364,7 +364,7 @@ index 2ef3bc271d6d..e689019e35d2 100644
 +	  "Show FEC settings"},
 +	{ "--set-fec", 1, do_sfec, NULL,
 +	  "Set FEC settings",
- 	  "		[ encoding auto|off|rs|baser ]\n"},
+ 	  "		[ encoding auto|off|rs|baser [...]]\n"},
 -	{ "-h|--help", 0, show_usage, "Show this help" },
 -	{ "--version", 0, do_version, "Show version number" },
 +	{ "-h|--help", 0, show_usage, NULL,
@@ -374,7 +374,7 @@ index 2ef3bc271d6d..e689019e35d2 100644
  	{}
  };
  
-@@ -5266,11 +5302,35 @@ static int show_usage(struct cmd_context *ctx)
+@@ -5265,11 +5301,35 @@ static int show_usage(struct cmd_context *ctx)
  	return 0;
  }
  
@@ -410,7 +410,7 @@ index 2ef3bc271d6d..e689019e35d2 100644
  	int k;
  
  	init_global_link_mode_masks();
-@@ -5310,6 +5370,7 @@ int main(int argc, char **argp)
+@@ -5309,6 +5369,7 @@ int main(int argc, char **argp)
  				argp++;
  				argc--;
  				func = args[k].func;
@@ -418,7 +418,7 @@ index 2ef3bc271d6d..e689019e35d2 100644
  				want_device = args[k].want_device;
  				goto opt_found;
  			}
-@@ -5324,6 +5385,15 @@ int main(int argc, char **argp)
+@@ -5323,6 +5384,15 @@ int main(int argc, char **argp)
  	want_device = 1;
  
  opt_found:
@@ -434,7 +434,7 @@ index 2ef3bc271d6d..e689019e35d2 100644
  	if (want_device) {
  		ctx.devname = *argp++;
  		argc--;
-@@ -5332,25 +5402,20 @@ opt_found:
+@@ -5331,25 +5401,20 @@ opt_found:
  			exit_bad_args();
  		if (strlen(ctx.devname) >= IFNAMSIZ)
  			exit_bad_args();
@@ -1411,10 +1411,10 @@ index 822169878db2..ac46bb6671d3 100644
  
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..822f1903f408
+index 000000000000..1b9a9d68fba9
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,473 @@
+@@ -0,0 +1,495 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#ifndef _LINUX_ETHTOOL_NETLINK_H_
@@ -1476,6 +1476,7 @@ index 000000000000..822f1903f408
 +
 +enum {
 +	ETHA_BITSET_UNSPEC,
++	ETHA_BITSET_LIST,			/* flag */
 +	ETHA_BITSET_SIZE,			/* u32 */
 +	ETHA_BITSET_BITS,			/* nest - ETHA_BITS_* */
 +	ETHA_BITSET_VALUE,			/* binary */
@@ -1819,6 +1820,7 @@ index 000000000000..822f1903f408
 +	ETHA_RXFLOW_NRINGS,			/* u32 */
 +	ETHA_RXFLOW_HASH_FN,			/* bitset */
 +	ETHA_RXFLOW_HASH_KEY,			/* binary */
++	ETHA_RXFLOW_HASH_OPTS,			/* nest - ETHA_RXHASHOPTS_* */
 +	ETHA_RXFLOW_INDTBL_SIZE,		/* u32 */
 +	ETHA_RXFLOW_INDIR_TBL,			/* nest - ETHA_INDTBL_* */
 +
@@ -1826,16 +1828,36 @@ index 000000000000..822f1903f408
 +	ETHA_RXFLOW_MAX = (__ETHA_RXFLOW_CNT - 1)
 +};
 +
-+#define ETH_RXFLOW_IM_HASHFN			0x01
-+#define ETH_RXFLOW_IM_HKEY			0x02
-+#define ETH_RXFLOW_IM_INDTBL			0x04
++#define ETH_RXFLOW_IM_INFO			0x01
++#define ETH_RXFLOW_IM_HASHFN			0x02
++#define ETH_RXFLOW_IM_HKEY			0x04
++#define ETH_RXFLOW_IM_HASHOPTS			0x08
++#define ETH_RXFLOW_IM_INDTBL			0x10
 +
-+#define ETH_RXFLOW_IM_ALL			0x07
++#define ETH_RXFLOW_IM_ALL			0x1f
 +
 +enum {
 +	ETH_RXFLOW_CTXOP_SET,			/* set context data */
 +	ETH_RXFLOW_CTXOP_NEW,			/* create new context */
 +	ETH_RXFLOW_CTXOP_DEL,			/* delete existing context */
++};
++
++enum {
++	ETHA_RXHASHOPTS_UNSPEC,
++	ETHA_RXHASHOPTS_OPT,			/* nest - ETH_RXHASHOPT_* */
++
++	__ETHA_RXHASHOPTS_CNT,
++	ETHA_RXHASHOPTS_MAX = (__ETHA_RXHASHOPTS_CNT - 1)
++};
++
++enum {
++	ETHA_RXHASHOPT_UNSPEC,
++	ETHA_RXHASHOPT_FLOWTYPE,		/* u32 */
++	ETHA_RXHASHOPT_FIELDS,			/* bitfield32 */
++	ETHA_RXHASHOPT_DISCARD,			/* flag */
++
++	__ETHA_RXHASHOPT_CNT,
++	ETHA_RXHASHOPT_MAX = (__ETHA_RXHASHOPT_CNT - 1)
 +};
 +
 +enum {
@@ -2275,5 +2297,5 @@ index 000000000000..0b2c29bd081f
 +
 +#endif /* __LINUX_NETLINK_H */
 -- 
-2.19.0
+2.19.1
 

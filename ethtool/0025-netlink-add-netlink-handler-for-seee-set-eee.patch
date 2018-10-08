@@ -1,7 +1,7 @@
-From fb87a9c394aab07b8c0159fa881e0cee58dfbab2 Mon Sep 17 00:00:00 2001
+From c64870153e11397871ad0b4110e0fdf357319670 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:43:19 +0100
-Subject: [PATCH 25/33] netlink: add netlink handler for seee (--set-eee)
+Subject: [PATCH 25/34] netlink: add netlink handler for seee (--set-eee)
 
 Implement "ethtool --set-eee <dev>" subcommand using netlink interface
 command ETHNL_CMD_SET_PARAMS.
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 37 insertions(+), 2 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 290d5a8633c0..020a161e24a3 100644
+index 17ae562ae269..377a7a2cfde2 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4853,6 +4853,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4852,6 +4852,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sring	NULL
  #define nl_spause	NULL
  #define nl_schannels	NULL
@@ -25,7 +25,7 @@ index 290d5a8633c0..020a161e24a3 100644
  #endif
  
  static const struct option {
-@@ -5025,10 +5026,10 @@ static const struct option {
+@@ -5024,10 +5025,10 @@ static const struct option {
  	  "		[ length N ]\n" },
  	{ "--show-eee", 1, do_geee, nl_geee,
  	  "Show EEE settings"},
@@ -51,7 +51,7 @@ index 50e00fd8de5b..ccb4f5e97a47 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index b2d92bb8a938..913a5417e679 100644
+index c52c818f453c..c4ebee11372c 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -601,3 +601,36 @@ int nl_schannels(struct cmd_context *ctx)
@@ -92,5 +92,5 @@ index b2d92bb8a938..913a5417e679 100644
 +	return nl_set_param(ctx, "--set-eee", seee_params, ETHA_PARAMS_EEE);
 +}
 -- 
-2.19.0
+2.19.1
 

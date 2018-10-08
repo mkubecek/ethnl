@@ -1,7 +1,7 @@
-From 0a69c6f1544ea2d5c77a2ca437a86160ea4b554e Mon Sep 17 00:00:00 2001
+From d600899ef4e495463b6d526ee49661f3858c13e3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 16:43:40 +0200
-Subject: [PATCH 28/33] netlink: add netlink handler for phys_id (-p)
+Subject: [PATCH 28/34] netlink: add netlink handler for phys_id (-p)
 
 Implement "ethtool -p <dev>" using netlink interface command
 ETHNL_CMD_ACT_PHYS_ID.
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 90 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index f77c8375a25c..a9c408545dab 100644
+index 820c5d9decbf..6dea8cb0fa86 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4856,6 +4856,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4855,6 +4855,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_seee		NULL
  #define nl_sfec		NULL
  #define nl_nway_rst	NULL
@@ -26,7 +26,7 @@ index f77c8375a25c..a9c408545dab 100644
  #endif
  
  static const struct option {
-@@ -4944,7 +4945,7 @@ static const struct option {
+@@ -4943,7 +4944,7 @@ static const struct option {
  	  "		[ value N ]\n" },
  	{ "-r|--negotiate", 1, do_nway_rst, nl_nway_rst,
  	  "Restart N-WAY negotiation" },
@@ -168,5 +168,5 @@ index 2ae374cdaeb3..281aa1f5da16 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 -- 
-2.19.0
+2.19.1
 

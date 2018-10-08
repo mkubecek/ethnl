@@ -1,7 +1,7 @@
-From a34e033ed9e82dba102b0bfb284c5a1a88ddd039 Mon Sep 17 00:00:00 2001
+From fbdedb685681104eef7df79d111a1b4bda2581af Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Aug 2018 23:24:37 +0200
-Subject: [PATCH 08/33] netlink: add netlink handler for permaddr (-P)
+Subject: [PATCH 08/34] netlink: add netlink handler for permaddr (-P)
 
 Implement "-P" subcommand using netlink interface command
 ETHNL_CMD_GET_INFO.
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 69 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 4ed41d08057a..376b350e7196 100644
+index 7e799bc1de53..4d5f743f306e 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -5061,6 +5061,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5060,6 +5060,7 @@ static int show_usage(struct cmd_context *ctx);
   * support so that we do not get unresolved symbols in args array below
   */
  #define nl_gdrv		NULL
@@ -25,7 +25,7 @@ index 4ed41d08057a..376b350e7196 100644
  #endif
  
  static const struct option {
-@@ -5204,7 +5205,7 @@ static const struct option {
+@@ -5203,7 +5204,7 @@ static const struct option {
  	{ "-f|--flash", 1, do_flash, NULL,
  	  "Flash firmware image from the specified file to a region on the device",
  	  "               FILENAME [ REGION-NUMBER-TO-FLASH ]\n" },
@@ -140,5 +140,5 @@ index 8fa0c3e36088..fda8b6a76bf4 100644
 +	return info_request(ctx, ETH_INFO_IM_PERMADDR);
 +}
 -- 
-2.19.0
+2.19.1
 

@@ -1,7 +1,7 @@
-From 9cfd0343de8ab7c5930cc5a0ce3022bb91373ff5 Mon Sep 17 00:00:00 2001
+From 904d66140510345853264afc1aeae3fa48a0ef01 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:46:58 +0200
-Subject: [PATCH 32/33] netlink: add netlink handler for grxfh (-x)
+Subject: [PATCH 32/34] netlink: add netlink handler for grxfh (-x)
 
 Implement "ethtool -x <dev>" subcommand using netlink interface comand
 ETHNL_CMD_GET_RXFLOW.
@@ -11,8 +11,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Makefile.am      |   2 +-
  ethtool.c        |   3 +-
  netlink/extapi.h |   1 +
- netlink/rxflow.c | 279 +++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 283 insertions(+), 2 deletions(-)
+ netlink/rxflow.c | 285 +++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 289 insertions(+), 2 deletions(-)
  create mode 100644 netlink/rxflow.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -29,10 +29,10 @@ index 4c8783e592d6..e8ea40188a9c 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index a9e91efd9bd0..5ad0d14c9461 100644
+index 6a6b50a21f81..530584a1d3a7 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4860,6 +4860,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4859,6 +4859,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_reset	NULL
  #define nl_gprivflags	NULL
  #define nl_sprivflags	NULL
@@ -40,7 +40,7 @@ index a9e91efd9bd0..5ad0d14c9461 100644
  #endif
  
  static const struct option {
-@@ -4990,7 +4991,7 @@ static const struct option {
+@@ -4989,7 +4990,7 @@ static const struct option {
  	  "		delete %d\n" },
  	{ "-T|--show-time-stamping", 1, do_tsinfo, nl_tsinfo,
  	  "Show time stamping capabilities" },
@@ -63,10 +63,10 @@ index cfef7baf923f..eba1a7f9800d 100644
  void monitor_usage();
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
 new file mode 100644
-index 000000000000..f21db08c11cc
+index 000000000000..55e8c650e4fd
 --- /dev/null
 +++ b/netlink/rxflow.c
-@@ -0,0 +1,279 @@
+@@ -0,0 +1,285 @@
 +#include <errno.h>
 +#include <string.h>
 +#include <stdio.h>
@@ -298,14 +298,17 @@ index 000000000000..f21db08c11cc
 +		if (ret < 0)
 +			printf("Operation not supported\n");
 +	}
-+	if (nlctx->is_monitor && !tb[ETHA_RXFLOW_HASH_FN])
-+		return MNL_CB_OK;
-+	printf("RSS hash function:\n");
-+	if (!tb[ETHA_RXFLOW_HASH_FN])
-+		printf("    Operation not supported\n");
-+	walk_bitset(tb[ETHA_RXFLOW_HASH_FN],
-+		    global_stringset(ETH_SS_RSS_HASH_FUNCS),
-+		    dump_hashfn_walk_cb, NULL);
++	if (mask_ok(nlctx, ETH_RXFLOW_IM_HASHFN)) {
++		if (tb[ETHA_RXFLOW_HASH_FN]) {
++			printf("RSS hash function:\n");
++			walk_bitset(tb[ETHA_RXFLOW_HASH_FN],
++				    global_stringset(ETH_SS_RSS_HASH_FUNCS),
++				    dump_hashfn_walk_cb, NULL);
++		} else if (!nlctx->is_monitor) {
++			printf("RSS hash function:\n");
++			printf("    Operation not supported\n");
++		}
++	}
 +
 +	return MNL_CB_OK;
 +}
@@ -320,6 +323,8 @@ index 000000000000..f21db08c11cc
 +	{}
 +};
 +
++#define GRXFH_REQ_MASK ETH_RXFLOW_IM_HASHFN | ETH_RXFLOW_IM_HKEY | \
++		       ETH_RXFLOW_IM_INDTBL
 +int nl_grxfh(struct cmd_context *ctx)
 +{
 +	struct nl_context *nlctx = ctx->nlctx;
@@ -329,12 +334,13 @@ index 000000000000..f21db08c11cc
 +	nlctx->cmd = "-x";
 +	nlctx->argp = ctx->argp;
 +	nlctx->argc = ctx->argc;
++	nlctx->filter_mask = GRXFH_REQ_MASK;
 +
 +	ret = ethnl_prep_get_request(ctx, ETHNL_CMD_GET_RXFLOW,
 +				     ETHA_RXFLOW_DEV);
 +	if (ret < 0)
 +		return ret;
-+	if (ethnla_put_u32(nlctx, ETHA_RXFLOW_INFOMASK, ETH_RXFLOW_IM_ALL))
++	if (ethnla_put_u32(nlctx, ETHA_RXFLOW_INFOMASK, GRXFH_REQ_MASK))
 +		return -EMSGSIZE;
 +	/* ETHA_RXFLOW_COMPACT = false */
 +	ret = nl_parser(nlctx, grxfh_params, NULL);
@@ -347,5 +353,5 @@ index 000000000000..f21db08c11cc
 +}
 +
 -- 
-2.19.0
+2.19.1
 

@@ -1,7 +1,7 @@
-From cfa5806ac1a8c9a4a1d78bbba8714b1989f206d8 Mon Sep 17 00:00:00 2001
+From d842bca539c0786a0fcd49dc984645e27bdc6528 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Aug 2018 23:26:42 +0200
-Subject: [PATCH 09/33] netlink: add netlink handler for tsinfo (-T)
+Subject: [PATCH 09/34] netlink: add netlink handler for tsinfo (-T)
 
 Implement "-T" subcommand using netlink interface command
 ETHNL_CMD_GET_INFO.
@@ -74,7 +74,7 @@ index 286c2055f2d7..7c08ec2d7c2f 100644
 +
  #endif /* ETHTOOL_COMMON_H__ */
 diff --git a/ethtool.c b/ethtool.c
-index 376b350e7196..1fcd23244822 100644
+index 4d5f743f306e..ece53186da85 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -1609,47 +1609,6 @@ static void dump_fec(u32 fec)
@@ -125,7 +125,7 @@ index 376b350e7196..1fcd23244822 100644
  static int dump_tsinfo(const struct ethtool_ts_info *info)
  {
  	int i;
-@@ -5062,6 +5021,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5061,6 +5020,7 @@ static int show_usage(struct cmd_context *ctx);
   */
  #define nl_gdrv		NULL
  #define nl_permaddr	NULL
@@ -133,7 +133,7 @@ index 376b350e7196..1fcd23244822 100644
  #endif
  
  static const struct option {
-@@ -5190,7 +5150,7 @@ static const struct option {
+@@ -5189,7 +5149,7 @@ static const struct option {
  	  "			[ context %d ]\n"
  	  "			[ loc %d]] |\n"
  	  "		delete %d\n" },
@@ -285,5 +285,5 @@ index fda8b6a76bf4..0631809194be 100644
 +	return info_request(ctx, ETH_INFO_IM_TSINFO);
 +}
 -- 
-2.19.0
+2.19.1
 

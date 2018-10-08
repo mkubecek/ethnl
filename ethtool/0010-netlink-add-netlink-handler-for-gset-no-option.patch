@@ -1,7 +1,7 @@
-From 058a62299d129fdfcfba54135f234487ec42e442 Mon Sep 17 00:00:00 2001
+From 0a81448f2bc41d3a35d24117d31e32385ae8e4cd Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
-Subject: [PATCH 10/33] netlink: add netlink handler for gset (no option)
+Subject: [PATCH 10/34] netlink: add netlink handler for gset (no option)
 
 Implement "ethtool <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_SETTINGS.
@@ -395,7 +395,7 @@ index 7c08ec2d7c2f..37edac765e65 100644
 +
  #endif /* ETHTOOL_COMMON_H__ */
 diff --git a/ethtool.c b/ethtool.c
-index 1fcd23244822..0d4e0abe8179 100644
+index ece53186da85..d3e52989e83a 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -57,26 +57,6 @@
@@ -602,7 +602,7 @@ index 1fcd23244822..0d4e0abe8179 100644
  		flag_to_cmdline_info(flags_msglvl[i].name,
  				     flags_msglvl[i].value,
  				     &msglvl_wanted, &msglvl_mask,
-@@ -5022,6 +4884,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5021,6 +4883,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gdrv		NULL
  #define nl_permaddr	NULL
  #define nl_tsinfo	NULL
@@ -610,7 +610,7 @@ index 1fcd23244822..0d4e0abe8179 100644
  #endif
  
  static const struct option {
-@@ -5359,6 +5222,7 @@ int main(int argc, char **argp)
+@@ -5358,6 +5221,7 @@ int main(int argc, char **argp)
  	}
  	if ((*argp)[0] == '-')
  		exit_bad_args();
@@ -1133,5 +1133,5 @@ index 000000000000..b29d699a36d1
 +
 +}
 -- 
-2.19.0
+2.19.1
 

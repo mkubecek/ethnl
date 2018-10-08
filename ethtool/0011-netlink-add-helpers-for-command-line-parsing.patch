@@ -1,7 +1,7 @@
-From 021115b4ccbedcb7b8157eee46093bcc7a249c60 Mon Sep 17 00:00:00 2001
+From 70a696bd2907687e177e6b3e347cb3043aceef90 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:42:26 +0100
-Subject: [PATCH 11/33] netlink: add helpers for command line parsing
+Subject: [PATCH 11/34] netlink: add helpers for command line parsing
 
 Support for easier parsing of subcommand parameters and their values from
 command line. Existing parser helpers in ethtool.c are closely tied to
@@ -11,9 +11,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |   1 +
  netlink/netlink.h |   4 +
- netlink/parser.c  | 717 ++++++++++++++++++++++++++++++++++++++++++++++
- netlink/parser.h  |  73 +++++
- 4 files changed, 795 insertions(+)
+ netlink/parser.c  | 758 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/parser.h  |  75 +++++
+ 4 files changed, 838 insertions(+)
  create mode 100644 netlink/parser.c
  create mode 100644 netlink/parser.h
 
@@ -46,10 +46,10 @@ index 9cbbaa94d3c2..052a91355cf8 100644
  	uint8_t filter_cmd;
 diff --git a/netlink/parser.c b/netlink/parser.c
 new file mode 100644
-index 000000000000..07c2bc0d9cb2
+index 000000000000..06e9a0e0b2ef
 --- /dev/null
 +++ b/netlink/parser.c
-@@ -0,0 +1,717 @@
+@@ -0,0 +1,758 @@
 +#include <string.h>
 +#include <stdlib.h>
 +#include <errno.h>
@@ -144,6 +144,22 @@ index 000000000000..07c2bc0d9cb2
 +
 +	*result = (uint8_t)val;
 +	return 0;
++}
++
++static int lookup_u32(const char *arg, uint32_t *result,
++		      const struct lookup_entry_u32 *tbl)
++{
++	if (!arg)
++		return -EINVAL;
++	while (tbl->arg) {
++		if (!strcmp(tbl->arg, arg)) {
++			*result = tbl->val;
++			return 0;
++		}
++		tbl++;
++	}
++
++	return -EINVAL;
 +}
 +
 +static int lookup_u8(const char *arg, uint8_t *result,
@@ -252,6 +268,29 @@ index 000000000000..07c2bc0d9cb2
 +	}
 +
 +	return ret ? -EMSGSIZE : 0;
++}
++
++/* parser handler for 32-bit unsigned integer passed as a string to look up in
++ * a table
++ */
++int nl_parse_lookup_u32(struct nl_context *nlctx, uint16_t type,
++			const void *data, void *dest)
++{
++	const char *arg = *nlctx->argp;
++	uint32_t val;
++	int ret;
++
++	nlctx->argp++;
++	nlctx->argc--;
++	ret = lookup_u32(arg, &val, data);
++	if (ret < 0) {
++		parser_err_invalid_value(nlctx, arg);
++		return ret;
++	}
++
++	if (dest)
++		*(uint32_t *)dest = val;
++	return (type && ethnla_put_u32(nlctx, type, val)) ? -EMSGSIZE : 0;
 +}
 +
 +/* parser handler for 8-bit unsigned integer passed as a string to look up in
@@ -511,7 +550,8 @@ index 000000000000..07c2bc0d9cb2
 +
 +	ret = -EMSGSIZE;
 +	if (!(nest = ethnla_nest_start(nlctx, type)) ||
-+	    ethnla_put_u32(nlctx, ETHA_BITSET_SIZE, nbits) ||
++	    ethnla_put_flag(nlctx, ETHA_BITSET_LIST, true) ||
++	    (no_mask && ethnla_put_u32(nlctx, ETHA_BITSET_SIZE, nbits)) ||
 +	    ethnla_put(nlctx, ETHA_BITSET_VALUE, nwords * sizeof(uint32_t),
 +		       value) ||
 +	    (mask &&
@@ -538,10 +578,12 @@ index 000000000000..07c2bc0d9cb2
 +	struct nlattr *bit_attr;
 +	int ret;
 +
-+	ret = -EMSGSIZE;
 +	bitset_attr = ethnla_nest_start(nlctx, type);
 +	if (!bitset_attr)
-+		return ret;
++		return -EMSGSIZE;
++	ret = -EMSGSIZE;
++	if (list && ethnla_put_flag(nlctx, ETHA_BITSET_LIST, true))
++		goto err;
 +	bits_attr = ethnla_nest_start(nlctx, ETHA_BITSET_BITS);
 +	if (!bits_attr)
 +		goto err;
@@ -571,7 +613,7 @@ index 000000000000..07c2bc0d9cb2
 +			goto err;
 +		if (ethnla_put_strz(nlctx, ETHA_BIT_NAME, nlctx->argp[0]))
 +			goto err;
-+		if (ethnla_put_flag(nlctx, ETHA_BIT_VALUE, bit_val))
++		if (!list && ethnla_put_flag(nlctx, ETHA_BIT_VALUE, bit_val))
 +			goto err;
 +		mnl_attr_nest_end(nlhdr, bit_attr);
 +
@@ -607,9 +649,8 @@ index 000000000000..07c2bc0d9cb2
 +}
 +
 +/* parse arguments to fill a bitset nested attribute; accepts either numeric
-+ * representation or a simple list of flag names; resulting bitset will be
-+ * either in compact form with no mask (for numeric) or in verbose form with
-+ * mask equal to value (for name list); this handler can only put bitset
++ * representation or a simple list of flag names; resulting bitset will have
++ * ETHA_BITSET_LIST flag and no mask; this handler can only put bitset
 + * representation into a message, dest is ignored
 + * @nlctx: netlink context
 + * @type: bitset attribute type to use
@@ -769,10 +810,10 @@ index 000000000000..07c2bc0d9cb2
 +}
 diff --git a/netlink/parser.h b/netlink/parser.h
 new file mode 100644
-index 000000000000..fa2c103dc8e7
+index 000000000000..62878cedab9c
 --- /dev/null
 +++ b/netlink/parser.h
-@@ -0,0 +1,73 @@
+@@ -0,0 +1,75 @@
 +#ifndef ETHTOOL_NETLINK_PARSER_H__
 +#define ETHTOOL_NETLINK_PARSER_H__
 +
@@ -831,6 +872,8 @@ index 000000000000..fa2c103dc8e7
 +		       const void *data, void *dest);
 +int nl_parse_u8bool(struct nl_context *nlctx, uint16_t type, const void *data,
 +		    void *dest);
++int nl_parse_lookup_u32(struct nl_context *nlctx, uint16_t type,
++			const void *data, void *dest);
 +int nl_parse_lookup_u8(struct nl_context *nlctx, uint16_t type,
 +		       const void *data, void *dest);
 +int nl_parse_bitfield32(struct nl_context *nlctx, uint16_t type,
@@ -847,5 +890,5 @@ index 000000000000..fa2c103dc8e7
 +
 +#endif /* ETHTOOL_NETLINK_PARSER_H__ */
 -- 
-2.19.0
+2.19.1
 

@@ -1,7 +1,7 @@
-From e0768c6985376a0300ef72c27a614cdccfb960ef Mon Sep 17 00:00:00 2001
+From da2b68bb7f81a9b2e2b87fe9efc263b9a0e32c09 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
-Subject: [PATCH 07/33] netlink: add netlink handler for gdrv (-i)
+Subject: [PATCH 07/34] netlink: add netlink handler for gdrv (-i)
 
 Implement "-i" subcommand using netlink interface command
 ETHNL_CMD_GET_INFO.
@@ -29,10 +29,10 @@ index 188364c0c837..4006e7da5074 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 6943834f4142..4ed41d08057a 100644
+index d0866a583959..7e799bc1de53 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -5060,6 +5060,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5059,6 +5059,7 @@ static int show_usage(struct cmd_context *ctx);
  /* Just define all netlink handlers as null when building without netlink
   * support so that we do not get unresolved symbols in args array below
   */
@@ -40,7 +40,7 @@ index 6943834f4142..4ed41d08057a 100644
  #endif
  
  static const struct option {
-@@ -5129,7 +5130,7 @@ static const struct option {
+@@ -5128,7 +5129,7 @@ static const struct option {
  	{ "-K|--features|--offload", 1, do_sfeatures, NULL,
  	  "Set protocol offload and other features",
  	  "		FEATURE on|off ...\n" },
@@ -173,5 +173,5 @@ index 51f64e6ad839..c6817b4883ff 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 -- 
-2.19.0
+2.19.1
 

@@ -1,7 +1,7 @@
-From 812c0577f808f7f7d33b9b56102a333941e280a5 Mon Sep 17 00:00:00 2001
+From f7e4c17660d697e56bf28bfa03b3ec882a1d7263 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
-Subject: [PATCH 12/33] netlink: add netlink handler for sset (-s)
+Subject: [PATCH 12/34] netlink: add netlink handler for sset (-s)
 
 Implement "ethtool -s <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_SETTINGS.
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  7 files changed, 273 insertions(+), 4 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 0d4e0abe8179..1a50958ea0d6 100644
+index d3e52989e83a..330a174277ce 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4885,6 +4885,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4884,6 +4884,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_permaddr	NULL
  #define nl_tsinfo	NULL
  #define nl_gset		NULL
@@ -32,7 +32,7 @@ index 0d4e0abe8179..1a50958ea0d6 100644
  #endif
  
  static const struct option {
-@@ -4895,19 +4896,19 @@ static const struct option {
+@@ -4894,19 +4895,19 @@ static const struct option {
  	char *help;
  	char *opthelp;
  } args[] = {
@@ -101,10 +101,10 @@ index 052a91355cf8..7d7aad8ef8e3 100644
  
  /* put data wrappers */
 diff --git a/netlink/parser.c b/netlink/parser.c
-index 07c2bc0d9cb2..acbb5c355959 100644
+index 06e9a0e0b2ef..8ebceed0f8f6 100644
 --- a/netlink/parser.c
 +++ b/netlink/parser.c
-@@ -662,6 +662,42 @@ err:
+@@ -703,6 +703,42 @@ err:
  	return -EINVAL;
  }
  
@@ -148,10 +148,10 @@ index 07c2bc0d9cb2..acbb5c355959 100644
   * @nlctx: netlink context
   * @params: array of struct param_parser describing expected arguments and
 diff --git a/netlink/parser.h b/netlink/parser.h
-index fa2c103dc8e7..c7daa8b81d03 100644
+index 62878cedab9c..9934bbc0b9db 100644
 --- a/netlink/parser.h
 +++ b/netlink/parser.h
-@@ -66,6 +66,8 @@ int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data,
+@@ -68,6 +68,8 @@ int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data,
  		     void *dest);
  int nl_parse_byte_str(struct nl_context *nlctx, uint16_t type,
  		      const void *data, void *dest);
@@ -395,5 +395,5 @@ index b29d699a36d1..04a49ff92a81 100644
 +	return nlctx->exit_code ?: 75;
 +}
 -- 
-2.19.0
+2.19.1
 
