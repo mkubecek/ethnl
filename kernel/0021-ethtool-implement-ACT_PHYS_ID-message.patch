@@ -1,4 +1,4 @@
-From a41abb5e8c1c241ad70022635614a1067fee300a Mon Sep 17 00:00:00 2001
+From 5d020e6fa431f7a51347ca414cbfbac447af6811 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 21/25] ethtool: implement ACT_PHYS_ID message
@@ -93,7 +93,7 @@ index 4347fad536d8..c195fe99e57d 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
-index 45334b1d32dc..5b0b078a1eb2 100644
+index 6e88408f88cc..8755ba4ff403 100644
 --- a/net/ethtool/actions.c
 +++ b/net/ethtool/actions.c
 @@ -70,3 +70,76 @@ int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info)
@@ -104,7 +104,7 @@ index 45334b1d32dc..5b0b078a1eb2 100644
 +/* ACT_PHYS_ID */
 +
 +static const struct nla_policy physid_policy[ETHA_PHYSID_MAX + 1] = {
-+	[ETHA_PHYSID_UNSPEC]		= { .type = NLA_UNSPEC },
++	[ETHA_PHYSID_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHA_PHYSID_DEV]		= { .type = NLA_NESTED },
 +	[ETHA_PHYSID_LENGTH]		= { .type = NLA_U32 },
 +};
@@ -266,10 +266,10 @@ index 3c763b4d54bc..1ed29146ebc3 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 9e6b691798f7..860c57257b47 100644
+index e9f466e940b4..abf624f261b3 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -1679,60 +1679,15 @@ static int ethtool_get_strings(struct net_device *dev, void __user *useraddr)
+@@ -1693,60 +1693,15 @@ static int ethtool_get_strings(struct net_device *dev, void __user *useraddr)
  static int ethtool_phys_id(struct net_device *dev, void __user *useraddr)
  {
  	struct ethtool_value id;
@@ -332,7 +332,7 @@ index 9e6b691798f7..860c57257b47 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index df58ee6d803b..0cb21a42ce75 100644
+index e11d5fe8a23a..cdfc79a17b67 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -926,6 +926,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {

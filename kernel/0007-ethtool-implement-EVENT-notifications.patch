@@ -1,4 +1,4 @@
-From e220bfc2f86c0f91953d35ed8371d25496cb3ffc Mon Sep 17 00:00:00 2001
+From fa069e126b5645909fb037b3b1f659b8f44709af Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 07/25] ethtool: implement EVENT notifications
@@ -109,7 +109,7 @@ index b662d75a0636..34721d3b5e40 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index be391d924463..29dd09f79526 100644
+index 6ac12878e519..cefb9416a8ff 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -594,6 +594,63 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,

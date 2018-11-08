@@ -1,4 +1,4 @@
-From ac066c46b0df5481448e5361f014d6629ba19ced Mon Sep 17 00:00:00 2001
+From 868e1f5ffdea2eac3a77ac7d420f641cf10b7039 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 22/25] ethtool: implement ACT_RESET message
@@ -125,7 +125,7 @@ index c195fe99e57d..74087a556a0d 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
-index 5b0b078a1eb2..d090b7c08846 100644
+index 8755ba4ff403..9ca592466825 100644
 --- a/net/ethtool/actions.c
 +++ b/net/ethtool/actions.c
 @@ -143,3 +143,232 @@ int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info)
@@ -148,7 +148,7 @@ index 5b0b078a1eb2..d090b7c08846 100644
 +};
 +
 +static const struct nla_policy reset_policy[ETHA_RESET_MAX + 1] = {
-+	[ETHA_RESET_UNSPEC]		= { .type = NLA_UNSPEC },
++	[ETHA_RESET_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHA_RESET_DEV]		= { .type = NLA_NESTED },
 +	[ETHA_RESET_COMPACT]		= { .type = NLA_FLAG },
 +	[ETHA_RESET_ALL]		= { .type = NLA_FLAG },
@@ -362,10 +362,10 @@ index 5b0b078a1eb2..d090b7c08846 100644
 +	return ret;
 +}
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 860c57257b47..e78571fb5953 100644
+index abf624f261b3..dd921aac7887 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -1213,6 +1213,7 @@ static int ethtool_get_regs(struct net_device *dev, char __user *useraddr)
+@@ -1217,6 +1217,7 @@ static int ethtool_get_regs(struct net_device *dev, char __user *useraddr)
  static int ethtool_reset(struct net_device *dev, char __user *useraddr)
  {
  	struct ethtool_value reset;
@@ -373,7 +373,7 @@ index 860c57257b47..e78571fb5953 100644
  	int ret;
  
  	if (!dev->ethtool_ops->reset)
-@@ -1221,9 +1222,13 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
+@@ -1225,9 +1226,13 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
  	if (copy_from_user(&reset, useraddr, sizeof(reset)))
  		return -EFAULT;
  
@@ -388,7 +388,7 @@ index 860c57257b47..e78571fb5953 100644
  	if (copy_to_user(useraddr, &reset, sizeof(reset)))
  		return -EFAULT;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 0cb21a42ce75..e65bc61aed79 100644
+index cdfc79a17b67..766c72c69fa2 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -927,6 +927,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
@@ -440,7 +440,7 @@ index 343f69883ac8..ee1f8498353b 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index a8ce1045493b..1dc47dc7b249 100644
+index 5155e7972969..14faa98488c0 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -91,6 +91,12 @@ static const struct strset_info info_template[] = {

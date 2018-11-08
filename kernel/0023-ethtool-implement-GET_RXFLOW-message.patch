@@ -1,4 +1,4 @@
-From f40db3ae8de335c05ab54d8979129b632fcf464f Mon Sep 17 00:00:00 2001
+From 2d629bd155a0808f28b964f5857cd2e2e53b64b9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 23/25] ethtool: implement GET_RXFLOW message
@@ -20,8 +20,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool_netlink.h         |  97 ++++
  net/ethtool/Makefile                         |   3 +-
  net/ethtool/netlink.c                        |   9 +
- net/ethtool/rxflow.c                         | 456 +++++++++++++++++++
- 5 files changed, 682 insertions(+), 5 deletions(-)
+ net/ethtool/rxflow.c                         | 457 +++++++++++++++++++
+ 5 files changed, 683 insertions(+), 5 deletions(-)
  create mode 100644 net/ethtool/rxflow.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -315,7 +315,7 @@ index 0b965090bb55..a129a22824f8 100644
 +ethtool_nl-y	:= netlink.o strset.o info.o settings.o params.o actions.o \
 +		   rxflow.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index e65bc61aed79..9b62edf04d57 100644
+index 766c72c69fa2..8e2bdb0490d5 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -592,12 +592,14 @@ extern const struct get_request_ops strset_request_ops;
@@ -349,10 +349,10 @@ index e65bc61aed79..9b62edf04d57 100644
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
 new file mode 100644
-index 000000000000..6e60d6fc7b0d
+index 000000000000..10837aecae4b
 --- /dev/null
 +++ b/net/ethtool/rxflow.c
-@@ -0,0 +1,456 @@
+@@ -0,0 +1,457 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
@@ -377,10 +377,11 @@ index 000000000000..6e60d6fc7b0d
 +	 BIT(ESP_V6_FLOW) | \
 +	 BIT(IPV4_FLOW) | \
 +	 BIT(IPV6_FLOW))
-+#define RXH_ALL 0x7e
++#define RXH_ALL 0xfe
++#define RXH_COUNT 8
 +
 +static const struct nla_policy get_rxflow_policy[ETHA_RXFLOW_MAX + 1] = {
-+	[ETHA_RXFLOW_UNSPEC]		= { .type = NLA_UNSPEC },
++	[ETHA_RXFLOW_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHA_RXFLOW_DEV]		= { .type = NLA_NESTED },
 +	[ETHA_RXFLOW_INFOMASK]		= { .type = NLA_U32 },
 +	[ETHA_RXFLOW_COMPACT]		= { .type = NLA_FLAG },

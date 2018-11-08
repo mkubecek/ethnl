@@ -1,4 +1,4 @@
-From f7e5be6af4fab7b44497ac80f2d059421c9f5177 Mon Sep 17 00:00:00 2001
+From ec5006d80139415ec76fb4155841408751dcdfde Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 15/25] ethtool: implement SET_SETTINGS request for features
@@ -15,8 +15,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  32 ++--
  include/uapi/linux/ethtool_netlink.h         |   1 +
- net/ethtool/settings.c                       | 151 +++++++++++++++++++
- 3 files changed, 175 insertions(+), 9 deletions(-)
+ net/ethtool/settings.c                       | 152 +++++++++++++++++++
+ 3 files changed, 176 insertions(+), 9 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index acff74e25506..06fb77183b17 100644
@@ -111,15 +111,23 @@ index 6a611dd3b1b7..1c2447f4a456 100644
  	__ETHA_FEATURES_CNT,
  	ETHA_FEATURES_MAX = (__ETHA_FEATURES_CNT - 1)
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 32a259cf1c0d..f52a40eeb40f 100644
+index f99a95a12496..07e332425ef8 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -782,6 +782,147 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
+@@ -691,6 +691,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
+ 	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_REJECT },
+ 	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_NESTED },
+ };
+ 
+ static int ethnl_set_link_ksettings(struct genl_info *info,
+@@ -803,6 +804,147 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
  	return 0;
  }
  
 +static const struct nla_policy features_policy[ETHA_FEATURES_MAX + 1] = {
-+	[ETHA_FEATURES_UNSPEC]		= { .type = NLA_UNSPEC },
++	[ETHA_FEATURES_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHA_FEATURES_HW]		= { .type = NLA_NESTED },
 +	[ETHA_FEATURES_WANTED]		= { .type = NLA_NESTED },
 +	[ETHA_FEATURES_ACTIVE]		= { .type = NLA_NESTED },
@@ -262,7 +270,7 @@ index 32a259cf1c0d..f52a40eeb40f 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-@@ -857,6 +998,16 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -871,6 +1013,16 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  			req_mask |= ETH_SETTINGS_IM_MSGLEVEL;
  		}
  	}

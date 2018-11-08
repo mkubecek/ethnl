@@ -1,4 +1,4 @@
-From 0036b7bf23a90a0df78608f0b78d0ab968a2e57d Mon Sep 17 00:00:00 2001
+From 0b05d04e3df5745513140e59ebd4b573a05e1a43 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 16/25] ethtool: implement GET_SETTINGS and SET_SETTINGS for
@@ -16,8 +16,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  12 +-
  include/uapi/linux/ethtool_netlink.h         |   4 +-
  net/ethtool/ioctl.c                          |   3 +
- net/ethtool/settings.c                       | 132 +++++++++++++++++++
- 4 files changed, 148 insertions(+), 3 deletions(-)
+ net/ethtool/settings.c                       | 133 +++++++++++++++++++
+ 4 files changed, 149 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 06fb77183b17..c326e915dbaf 100644
@@ -94,10 +94,10 @@ index 1c2447f4a456..ee639573d8a7 100644
  enum {
  	ETHA_FEATURES_UNSPEC,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index ab92335c7489..1bf0869dcaf3 100644
+index bafbe5c20251..cb4f5745656f 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -2509,6 +2509,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
+@@ -2527,6 +2527,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
  	case ETHTOOL_SPFLAGS:
  		rc = ethtool_set_value(dev, useraddr,
  				       dev->ethtool_ops->set_priv_flags);
@@ -108,7 +108,7 @@ index ab92335c7489..1bf0869dcaf3 100644
  	case ETHTOOL_GRXFH:
  	case ETHTOOL_GRXRINGS:
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index f52a40eeb40f..e0960059d2b9 100644
+index 07e332425ef8..f2987ba955b9 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -22,6 +22,9 @@ struct settings_data {
@@ -121,15 +121,15 @@ index f52a40eeb40f..e0960059d2b9 100644
  };
  
  struct link_mode_info {
-@@ -269,6 +272,7 @@ static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
- 	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_NESTED },
- 	[ETHA_SETTINGS_LINK]		= { .type = NLA_U8 },
- 	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_NESTED },
-+	[ETHA_SETTINGS_PRIV_FLAGS]	= { .type = NLA_NESTED },
+@@ -266,6 +269,7 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_REJECT },
+ 	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
+ 	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_PRIV_FLAGS]	= { .type = NLA_REJECT },
  };
  
  static int parse_settings(struct common_req_info *req_info,
-@@ -347,6 +351,56 @@ static int ethnl_get_features(struct net_device *dev,
+@@ -344,6 +348,56 @@ static int ethnl_get_features(struct net_device *dev,
  	return 0;
  }
  
@@ -186,7 +186,7 @@ index f52a40eeb40f..e0960059d2b9 100644
  static int prepare_settings(struct common_req_info *req_info,
  			    struct genl_info *info)
  {
-@@ -396,6 +450,11 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -393,6 +447,11 @@ static int prepare_settings(struct common_req_info *req_info,
  		data->link = __ethtool_get_link(dev);
  	if (req_mask & ETH_SETTINGS_IM_FEATURES)
  		ethnl_get_features(dev, data);
@@ -198,7 +198,7 @@ index f52a40eeb40f..e0960059d2b9 100644
  	ethnl_after_ops(dev, req_info->have_rtnl);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -507,6 +566,14 @@ static int settings_size(const struct common_req_info *req_info)
+@@ -504,6 +563,14 @@ static int settings_size(const struct common_req_info *req_info)
  			return ret;
  		len += ret;
  	}
@@ -213,7 +213,7 @@ index f52a40eeb40f..e0960059d2b9 100644
  
  	return len;
  }
-@@ -614,6 +681,16 @@ static int fill_features(struct sk_buff *skb, const struct settings_data *data)
+@@ -611,6 +678,16 @@ static int fill_features(struct sk_buff *skb, const struct settings_data *data)
  	return 0;
  }
  
@@ -230,7 +230,7 @@ index f52a40eeb40f..e0960059d2b9 100644
  static int fill_settings(struct sk_buff *skb,
  			 const struct common_req_info *req_info)
  {
-@@ -653,10 +730,23 @@ static int fill_settings(struct sk_buff *skb,
+@@ -650,10 +727,23 @@ static int fill_settings(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -254,7 +254,7 @@ index f52a40eeb40f..e0960059d2b9 100644
  const struct get_request_ops settings_request_ops = {
  	.request_cmd		= ETHNL_CMD_GET_SETTINGS,
  	.reply_cmd		= ETHNL_CMD_SET_SETTINGS,
-@@ -668,6 +758,7 @@ const struct get_request_ops settings_request_ops = {
+@@ -665,6 +755,7 @@ const struct get_request_ops settings_request_ops = {
  	.prepare_data		= prepare_settings,
  	.reply_size		= settings_size,
  	.fill_reply		= fill_settings,
@@ -262,7 +262,15 @@ index f52a40eeb40f..e0960059d2b9 100644
  };
  
  /* SET_SETTINGS */
-@@ -923,6 +1014,39 @@ static int update_features(struct genl_info *info, struct net_device *dev,
+@@ -692,6 +783,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_REJECT },
+ 	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
+ 	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_NESTED },
++	[ETHA_SETTINGS_PRIV_FLAGS]	= { .type = NLA_NESTED },
+ };
+ 
+ static int ethnl_set_link_ksettings(struct genl_info *info,
+@@ -945,6 +1037,39 @@ static int update_features(struct genl_info *info, struct net_device *dev,
  	return 0;
  }
  
@@ -302,7 +310,7 @@ index f52a40eeb40f..e0960059d2b9 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-@@ -1008,6 +1132,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -1023,6 +1148,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret < 0)
  			goto out_unlock;
  	}

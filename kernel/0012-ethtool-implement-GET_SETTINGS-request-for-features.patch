@@ -1,4 +1,4 @@
-From edb8fead4929b0c97667b0219d5eb7ff894af647 Mon Sep 17 00:00:00 2001
+From 79b995fb62d54eb43a191f59a3145bf10e2b3e36 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 12/25] ethtool: implement GET_SETTINGS request for features
@@ -152,10 +152,10 @@ index b2b935a4569a..3c763b4d54bc 100644
  extern const char rss_hash_func_strings[ETH_RSS_HASH_FUNCS_COUNT][ETH_GSTRING_LEN];
  extern const char tunable_strings[__ETHTOOL_TUNABLE_COUNT][ETH_GSTRING_LEN];
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 14c94e32ee66..3baf0d907b19 100644
+index b07eba65bf20..7a139cfb3815 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -54,8 +54,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
+@@ -55,8 +55,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
  
  /* Handlers for each ethtool command */
  
@@ -165,7 +165,7 @@ index 14c94e32ee66..3baf0d907b19 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 2a5e2733de32..d92263abaeaf 100644
+index c1ed91faa9cc..f027a1362ba4 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -16,6 +16,12 @@ struct settings_data {
@@ -181,15 +181,15 @@ index 2a5e2733de32..d92263abaeaf 100644
  };
  
  /* We want to allow ~0 as selector for backward compatibility (to just set
-@@ -46,6 +52,7 @@ static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
- 	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
- 	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_NESTED },
- 	[ETHA_SETTINGS_LINK]		= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_NESTED },
+@@ -43,6 +49,7 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_REJECT },
+ 	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_REJECT },
+ 	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_REJECT },
  };
  
  static int parse_settings(struct common_req_info *req_info,
-@@ -106,6 +113,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
+@@ -103,6 +110,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
  	return ret;
  }
  
@@ -214,7 +214,7 @@ index 2a5e2733de32..d92263abaeaf 100644
  static int prepare_settings(struct common_req_info *req_info,
  			    struct genl_info *info)
  {
-@@ -153,6 +178,8 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -150,6 +175,8 @@ static int prepare_settings(struct common_req_info *req_info,
  	}
  	if (req_mask & ETH_SETTINGS_IM_LINK)
  		data->link = __ethtool_get_link(dev);
@@ -223,7 +223,7 @@ index 2a5e2733de32..d92263abaeaf 100644
  	ethnl_after_ops(dev, req_info->have_rtnl);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -185,6 +212,42 @@ static int link_modes_size(const struct ethtool_link_ksettings *ksettings,
+@@ -182,6 +209,42 @@ static int link_modes_size(const struct ethtool_link_ksettings *ksettings,
  	return len;
  }
  
@@ -266,7 +266,7 @@ index 2a5e2733de32..d92263abaeaf 100644
  /* To keep things simple, reserve space for some attributes which may not
   * be added to the message (e.g. ETHA_SETTINGS_SOPASS); therefore the length
   * returned may be bigger than the actual length of the message sent
-@@ -222,6 +285,12 @@ static int settings_size(const struct common_req_info *req_info)
+@@ -219,6 +282,12 @@ static int settings_size(const struct common_req_info *req_info)
  	}
  	if (info_mask & ETH_SETTINGS_IM_LINK)
  		len += nla_total_size(sizeof(u32));
@@ -279,7 +279,7 @@ index 2a5e2733de32..d92263abaeaf 100644
  
  	return len;
  }
-@@ -291,6 +360,44 @@ static int fill_wolinfo(struct sk_buff *skb,
+@@ -288,6 +357,44 @@ static int fill_wolinfo(struct sk_buff *skb,
  	return 0;
  }
  
@@ -324,7 +324,7 @@ index 2a5e2733de32..d92263abaeaf 100644
  static int fill_settings(struct sk_buff *skb,
  			 const struct common_req_info *req_info)
  {
-@@ -325,6 +432,11 @@ static int fill_settings(struct sk_buff *skb,
+@@ -322,6 +429,11 @@ static int fill_settings(struct sk_buff *skb,
  		if (nla_put_u8(skb, ETHA_SETTINGS_LINK, data->link))
  			return -EMSGSIZE;
  	}

@@ -1,4 +1,4 @@
-From bd3c3ce9665d29d991c9a412638aa5af22b922e5 Mon Sep 17 00:00:00 2001
+From 2ab33b34e16c9b96cb31c678421c015171b1f095 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
 Subject: [PATCH 10/25] ethtool: implement GET_INFO message
@@ -17,12 +17,12 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/Makefile                         |   4 +-
  net/ethtool/common.c                         |  66 ++++
  net/ethtool/common.h                         |   4 +
- net/ethtool/info.c                           | 325 +++++++++++++++++++
+ net/ethtool/info.c                           | 329 +++++++++++++++++++
  net/ethtool/ioctl.c                          |  62 +---
  net/ethtool/netlink.c                        |   9 +
  net/ethtool/netlink.h                        |   9 +
  net/ethtool/strset.c                         |  18 +
- 12 files changed, 572 insertions(+), 60 deletions(-)
+ 12 files changed, 576 insertions(+), 60 deletions(-)
  create mode 100644 net/ethtool/info.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -376,10 +376,10 @@ index 45c6492e4aee..12e916fdd04a 100644
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
 new file mode 100644
-index 000000000000..991cf210e2fb
+index 000000000000..913a81b60469
 --- /dev/null
 +++ b/net/ethtool/info.c
-@@ -0,0 +1,325 @@
+@@ -0,0 +1,329 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include <linux/net_tstamp.h>
@@ -440,9 +440,13 @@ index 000000000000..991cf210e2fb
 +};
 +
 +static const struct nla_policy get_info_policy[ETHA_INFO_MAX + 1] = {
++	[ETHA_INFO_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHA_INFO_DEV]			= { .type = NLA_NESTED },
 +	[ETHA_INFO_INFOMASK]		= { .type = NLA_U32 },
 +	[ETHA_INFO_COMPACT]		= { .type = NLA_FLAG },
++	[ETHA_INFO_DRVINFO]		= { .type = NLA_REJECT },
++	[ETHA_INFO_PERMADDR]		= { .type = NLA_REJECT },
++	[ETHA_INFO_TSINFO]		= { .type = NLA_REJECT },
 +};
 +
 +static int parse_info(struct common_req_info *req_info, struct sk_buff *skb,
@@ -706,18 +710,18 @@ index 000000000000..991cf210e2fb
 +	.fill_reply		= fill_info,
 +};
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 25f8dfe5753d..8c0c523a838c 100644
+index 8386d0c0618d..e5d930c79b96 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -27,6 +27,7 @@
- #include <linux/rtnetlink.h>
+@@ -28,6 +28,7 @@
  #include <linux/sched/signal.h>
  #include <linux/net.h>
+ #include <net/xdp_sock.h>
 +#include "common.h"
  
  /*
   * Some useful ethtool_ops methods that're device independent.
-@@ -680,45 +681,14 @@ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
+@@ -681,45 +682,14 @@ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
  						  void __user *useraddr)
  {
  	struct ethtool_drvinfo info;
@@ -768,7 +772,7 @@ index 25f8dfe5753d..8c0c523a838c 100644
  	return 0;
  }
  
-@@ -2041,28 +2011,12 @@ static int ethtool_get_dump_data(struct net_device *dev,
+@@ -2055,28 +2025,12 @@ static int ethtool_get_dump_data(struct net_device *dev,
  
  static int ethtool_get_ts_info(struct net_device *dev, void __user *useraddr)
  {
@@ -800,7 +804,7 @@ index 25f8dfe5753d..8c0c523a838c 100644
  		err = -EFAULT;
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index b1797f1a6527..3382eeed5723 100644
+index c16ecd97ac69..aeb369ec110e 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -533,9 +533,11 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
@@ -858,7 +862,7 @@ index 5aada243833a..2ba41451a789 100644
  int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
  
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index a6453fb84434..ee115107ea18 100644
+index bcc3d6243576..6d9648636aa4 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -67,6 +67,24 @@ static const struct strset_info info_template[] = {

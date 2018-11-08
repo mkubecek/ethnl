@@ -1,4 +1,4 @@
-From cee77bdfbc53091c6c3db1fa17b65bee6c47b709 Mon Sep 17 00:00:00 2001
+From 2a03207d7409f15f7dc7c28f6aa20e6ab797ec09 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 04/25] ethtool: helper functions for netlink interface
@@ -35,7 +35,7 @@ index d8a8d3c72c2f..01896a1ee21a 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 54370910fcd4..d3a951f1987b 100644
+index 54370910fcd4..ca116b882171 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -1,8 +1,126 @@
@@ -46,7 +46,7 @@ index 54370910fcd4..d3a951f1987b 100644
  #include "netlink.h"
  
 +static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
-+	[ETHA_DEV_UNSPEC]	= { .type = NLA_UNSPEC },
++	[ETHA_DEV_UNSPEC]	= { .type = NLA_REJECT },
 +	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
 +	[ETHA_DEV_NAME]		= { .type = NLA_NUL_STRING, .len = IFNAMSIZ - 1 },
 +};

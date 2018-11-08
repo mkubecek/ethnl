@@ -1,4 +1,4 @@
-From 802ebf122ebf7cd896dce16f788eef22e105992a Mon Sep 17 00:00:00 2001
+From 0b62cbc09c1fd6ecc303808f66c2a38881372f26 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 09/25] ethtool: implement GET_STRSET message
@@ -27,8 +27,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/common.h                         |  13 +
  net/ethtool/ioctl.c                          |  80 ----
  net/ethtool/netlink.c                        |  10 +
- net/ethtool/strset.c                         | 420 +++++++++++++++++++
- 9 files changed, 577 insertions(+), 83 deletions(-)
+ net/ethtool/strset.c                         | 422 +++++++++++++++++++
+ 9 files changed, 579 insertions(+), 83 deletions(-)
  create mode 100644 net/ethtool/common.c
  create mode 100644 net/ethtool/common.h
  create mode 100644 net/ethtool/strset.c
@@ -258,10 +258,10 @@ index 000000000000..45c6492e4aee
 +
 +#endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 3144ef2bf136..25f8dfe5753d 100644
+index d05402868575..8386d0c0618d 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -55,86 +55,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
+@@ -56,86 +56,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
  
  #define ETHTOOL_DEV_FEATURE_WORDS	((NETDEV_FEATURE_COUNT + 31) / 32)
  
@@ -349,7 +349,7 @@ index 3144ef2bf136..25f8dfe5753d 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 97728770bc7d..b1797f1a6527 100644
+index 7e2cde40f1f0..c16ecd97ac69 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -532,7 +532,10 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
@@ -379,10 +379,10 @@ index 97728770bc7d..b1797f1a6527 100644
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
 new file mode 100644
-index 000000000000..a6453fb84434
+index 000000000000..bcc3d6243576
 --- /dev/null
 +++ b/net/ethtool/strset.c
-@@ -0,0 +1,420 @@
+@@ -0,0 +1,422 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include <linux/ethtool.h>
@@ -464,14 +464,16 @@ index 000000000000..a6453fb84434
 +};
 +
 +static const struct nla_policy get_strset_policy[ETHA_STRSET_MAX + 1] = {
++	[ETHA_STRSET_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHA_STRSET_DEV]		= { .type = NLA_NESTED },
-+        [ETHA_STRSET_STRINGSET]		= { .type = NLA_NESTED },
++	[ETHA_STRSET_STRINGSET]		= { .type = NLA_NESTED },
 +};
 +
 +static const struct nla_policy stringset_policy[ETHA_STRINGSET_MAX + 1] = {
++	[ETHA_STRINGSET_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHA_STRINGSET_ID]		= { .type = NLA_U32 },
-+	[ETHA_STRINGSET_COUNT]		= { .type = NLA_U32 },
-+	[ETHA_STRINGSET_STRINGS]	= { .type = NLA_NESTED },
++	[ETHA_STRINGSET_COUNT]		= { .type = NLA_REJECT },
++	[ETHA_STRINGSET_STRINGS]	= { .type = NLA_REJECT },
 +};
 +
 +static bool id_requested(const struct strset_data *data, u32 id)

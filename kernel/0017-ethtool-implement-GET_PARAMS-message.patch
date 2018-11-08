@@ -1,4 +1,4 @@
-From 9405e3bb4290ceef5bce8be64d1fed18e2bcfe5f Mon Sep 17 00:00:00 2001
+From 49ba77448c67f96d6104b0663aa54b414b7daaf0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
 Subject: [PATCH 17/25] ethtool: implement GET_PARAMS message
@@ -320,7 +320,7 @@ index cf9638e6710b..62313644ac7d 100644
 -ethtool_nl-y	:= netlink.o strset.o info.o settings.o
 +ethtool_nl-y	:= netlink.o strset.o info.o settings.o params.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 9ab61e6f5c45..151786b929fe 100644
+index c6ebc56ae0e8..fda18b37b04d 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -591,11 +591,13 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
@@ -364,7 +364,7 @@ index a799d4ac3e23..47e7e2ee6093 100644
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
 new file mode 100644
-index 000000000000..718522a211f3
+index 000000000000..ba6a2b2c9b18
 --- /dev/null
 +++ b/net/ethtool/params.c
 @@ -0,0 +1,474 @@
@@ -373,17 +373,17 @@ index 000000000000..718522a211f3
 +#include "netlink.h"
 +#include "common.h"
 +
-+static const struct nla_policy params_policy[ETHA_PARAMS_MAX + 1] = {
-+	[ETHA_PARAMS_UNSPEC]		= { .type = NLA_UNSPEC },
++static const struct nla_policy get_params_policy[ETHA_PARAMS_MAX + 1] = {
++	[ETHA_PARAMS_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHA_PARAMS_DEV]		= { .type = NLA_NESTED },
 +	[ETHA_PARAMS_INFOMASK]		= { .type = NLA_U32 },
 +	[ETHA_PARAMS_COMPACT]		= { .type = NLA_FLAG },
-+	[ETHA_PARAMS_COALESCE]		= { .type = NLA_NESTED },
-+	[ETHA_PARAMS_RING]		= { .type = NLA_NESTED },
-+	[ETHA_PARAMS_PAUSE]		= { .type = NLA_NESTED },
-+	[ETHA_PARAMS_CHANNELS]		= { .type = NLA_NESTED },
-+	[ETHA_PARAMS_EEE]		= { .type = NLA_NESTED },
-+	[ETHA_PARAMS_FEC]		= { .type = NLA_NESTED },
++	[ETHA_PARAMS_COALESCE]		= { .type = NLA_REJECT },
++	[ETHA_PARAMS_RING]		= { .type = NLA_REJECT },
++	[ETHA_PARAMS_PAUSE]		= { .type = NLA_REJECT },
++	[ETHA_PARAMS_CHANNELS]		= { .type = NLA_REJECT },
++	[ETHA_PARAMS_EEE]		= { .type = NLA_REJECT },
++	[ETHA_PARAMS_FEC]		= { .type = NLA_REJECT },
 +};
 +
 +struct params_data {
@@ -406,7 +406,7 @@ index 000000000000..718522a211f3
 +	int ret;
 +
 +	ret = genlmsg_parse(nlhdr, &ethtool_genl_family, tb, ETHA_PARAMS_MAX,
-+			    params_policy, info ? info->extack : NULL);
++			    get_params_policy, info ? info->extack : NULL);
 +	if (ret < 0)
 +		return ret;
 +

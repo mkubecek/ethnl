@@ -1,4 +1,4 @@
-From 349542fb286ed2eff0cc3559ea484ad667e8cf0e Mon Sep 17 00:00:00 2001
+From 8ed91630c26b7daff7854689bf59aff9e54a48f1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
 Subject: [PATCH 11/25] ethtool: implement GET_SETTINGS message
@@ -21,9 +21,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/ioctl.c                          |  64 +---
  net/ethtool/netlink.c                        |  68 ++++
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/settings.c                       | 343 +++++++++++++++++++
+ net/ethtool/settings.c                       | 340 +++++++++++++++++++
  net/ethtool/strset.c                         |   6 +
- 13 files changed, 605 insertions(+), 62 deletions(-)
+ 13 files changed, 602 insertions(+), 62 deletions(-)
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -147,10 +147,10 @@ index 2a15e64a16f3..fba8ff961887 100644
  	ETHNL_MCGRP_MONITOR,
  };
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index 5a8551350ad9..d5d6b58f7a66 100644
+index 0a1ac30cb67b..aef0c1c5f376 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -3783,6 +3783,8 @@ enum {
+@@ -3817,6 +3817,8 @@ enum {
  	NETIF_MSG_PKTDATA	= 0x1000,
  	NETIF_MSG_HW		= 0x2000,
  	NETIF_MSG_WOL		= 0x4000,
@@ -334,10 +334,10 @@ index 12e916fdd04a..b2b935a4569a 100644
  
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 8c0c523a838c..14c94e32ee66 100644
+index e5d930c79b96..b07eba65bf20 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -352,54 +352,6 @@ bool ethtool_convert_link_mode_to_legacy_u32(u32 *legacy_u32,
+@@ -353,54 +353,6 @@ bool ethtool_convert_link_mode_to_legacy_u32(u32 *legacy_u32,
  }
  EXPORT_SYMBOL(ethtool_convert_link_mode_to_legacy_u32);
  
@@ -392,7 +392,7 @@ index 8c0c523a838c..14c94e32ee66 100644
  /* return false if ksettings link modes had higher bits
   * set. legacy_settings always updated (best effort)
   */
-@@ -1271,11 +1223,11 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
+@@ -1275,11 +1227,11 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
  static int ethtool_get_wol(struct net_device *dev, char __user *useraddr)
  {
  	struct ethtool_wolinfo wol = { .cmd = ETHTOOL_GWOL };
@@ -408,7 +408,7 @@ index 8c0c523a838c..14c94e32ee66 100644
  
  	if (copy_to_user(useraddr, &wol, sizeof(wol)))
  		return -EFAULT;
-@@ -1347,12 +1299,12 @@ static int ethtool_nway_reset(struct net_device *dev)
+@@ -1351,12 +1303,12 @@ static int ethtool_nway_reset(struct net_device *dev)
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
  {
  	struct ethtool_value edata = { .cmd = ETHTOOL_GLINK };
@@ -426,7 +426,7 @@ index 8c0c523a838c..14c94e32ee66 100644
  		return -EFAULT;
  	return 0;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 3382eeed5723..199fe3069b69 100644
+index aeb369ec110e..adcf11ccad6d 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -1,12 +1,68 @@
@@ -496,7 +496,7 @@ index 3382eeed5723..199fe3069b69 100644
 +};
 +
  static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
- 	[ETHA_DEV_UNSPEC]	= { .type = NLA_UNSPEC },
+ 	[ETHA_DEV_UNSPEC]	= { .type = NLA_REJECT },
  	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
 @@ -534,10 +590,12 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
  
@@ -549,10 +549,10 @@ index 2ba41451a789..b0d74f6ac5e2 100644
  int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
-index 000000000000..2a5e2733de32
+index 000000000000..c1ed91faa9cc
 --- /dev/null
 +++ b/net/ethtool/settings.c
-@@ -0,0 +1,343 @@
+@@ -0,0 +1,340 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
@@ -579,28 +579,25 @@ index 000000000000..2a5e2733de32
 + */
 +static u32 all_bits = ~(u32)0;
 +
-+static const struct nla_policy settings_policy[ETHA_SETTINGS_MAX + 1] = {
-+	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_UNSPEC },
++static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
++	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHA_SETTINGS_DEV]		= { .type = NLA_NESTED },
 +	[ETHA_SETTINGS_INFOMASK]	= { .type = NLA_U32 },
 +	[ETHA_SETTINGS_COMPACT]		= { .type = NLA_FLAG },
 +	[ETHA_SETTINGS_SPEED]		= { .type = NLA_U32 },
-+	[ETHA_SETTINGS_DUPLEX]		= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_PORT]		= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_PHYADDR]		= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_AUTONEG]		= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_TP_MDIX]		= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_TP_MDIX_CTRL]	= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_TRANSCEIVER]	= { .type = NLA_U8 },
-+	[ETHA_SETTINGS_WOL_MODES]	= { .type = NLA_BITFIELD32,
-+					    .validation_data = &all_bits },
-+	[ETHA_SETTINGS_SOPASS]		= { .type = NLA_BINARY,
-+					    .len = SOPASS_MAX },
-+	[ETHA_SETTINGS_MSGLVL]		= { .type = NLA_BITFIELD32,
-+					    .validation_data = &all_bits },
-+	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
-+	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_NESTED },
-+	[ETHA_SETTINGS_LINK]		= { .type = NLA_U8 },
++	[ETHA_SETTINGS_DUPLEX]		= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_PORT]		= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_PHYADDR]		= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_AUTONEG]		= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_TP_MDIX]		= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_TP_MDIX_CTRL]	= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_TRANSCEIVER]	= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_WOL_MODES]	= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_SOPASS]		= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_MSGLVL]		= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
 +};
 +
 +static int parse_settings(struct common_req_info *req_info,
@@ -615,7 +612,7 @@ index 000000000000..2a5e2733de32
 +	data->privileged = ethnl_is_privileged(skb);
 +
 +	ret = genlmsg_parse(nlhdr, &ethtool_genl_family, tb,
-+			    ETHA_SETTINGS_MAX, settings_policy,
++			    ETHA_SETTINGS_MAX, get_settings_policy,
 +			    info ? info->extack : NULL);
 +	if (ret < 0)
 +		return ret;
@@ -897,7 +894,7 @@ index 000000000000..2a5e2733de32
 +	.fill_reply		= fill_settings,
 +};
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index ee115107ea18..a8ce1045493b 100644
+index 6d9648636aa4..5155e7972969 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -85,6 +85,12 @@ static const struct strset_info info_template[] = {

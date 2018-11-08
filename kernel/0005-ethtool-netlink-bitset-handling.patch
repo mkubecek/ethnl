@@ -1,4 +1,4 @@
-From 19bb72b60320d8d5a4fdc0fe0f6011d72c839f12 Mon Sep 17 00:00:00 2001
+From 56bc2cac18cd548a8609e66b61d29076b0d70d9c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 05/25] ethtool: netlink bitset handling
@@ -131,7 +131,7 @@ index 01896a1ee21a..7f3d401977b4 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index d3a951f1987b..cbea58abd7ef 100644
+index ca116b882171..5745bcdf7259 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -1,5 +1,6 @@
@@ -347,7 +347,7 @@ index d3a951f1987b..cbea58abd7ef 100644
 +}
 +
 +static const struct nla_policy bitset_policy[ETHA_BITSET_MAX + 1] = {
-+	[ETHA_BITSET_UNSPEC]		= { .type = NLA_UNSPEC },
++	[ETHA_BITSET_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHA_BITSET_LIST]		= { .type = NLA_FLAG },
 +	[ETHA_BITSET_SIZE]		= { .type = NLA_U32 },
 +	[ETHA_BITSET_BITS]		= { .type = NLA_NESTED },
@@ -356,7 +356,7 @@ index d3a951f1987b..cbea58abd7ef 100644
 +};
 +
 +static const struct nla_policy bit_policy[ETHA_BIT_MAX + 1] = {
-+	[ETHA_BIT_UNSPEC]		= { .type = NLA_UNSPEC },
++	[ETHA_BIT_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHA_BIT_INDEX]		= { .type = NLA_U32 },
 +	[ETHA_BIT_NAME]			= { .type = NLA_NUL_STRING },
 +	[ETHA_BIT_VALUE]		= { .type = NLA_FLAG },

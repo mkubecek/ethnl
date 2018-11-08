@@ -1,4 +1,4 @@
-From 1e507a05abda7887e13cd9abd71d147b4eea9799 Mon Sep 17 00:00:00 2001
+From 60f492905cf96c4fb9d79321e9571d4e276d80a4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
 Subject: [PATCH 06/25] ethtool: support for netlink notifications
@@ -38,10 +38,10 @@ index 0412adb4f42f..2a15e64a16f3 100644
  
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index f5f1f145018d..5a8551350ad9 100644
+index 857f8abf7b91..0a1ac30cb67b 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -4267,6 +4267,18 @@ struct netdev_notifier_bonding_info {
+@@ -4301,6 +4301,18 @@ struct netdev_notifier_bonding_info {
  void netdev_bonding_info_change(struct net_device *dev,
  				struct netdev_bonding_info *bonding_info);
  
@@ -72,7 +72,7 @@ index 7f3d401977b4..b662d75a0636 100644
 +
  #endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index cbea58abd7ef..be391d924463 100644
+index 5745bcdf7259..6ac12878e519 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -5,6 +5,8 @@
@@ -82,7 +82,7 @@ index cbea58abd7ef..be391d924463 100644
 +u32 ethnl_bcast_seq;
 +
  static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
- 	[ETHA_DEV_UNSPEC]	= { .type = NLA_UNSPEC },
+ 	[ETHA_DEV_UNSPEC]	= { .type = NLA_REJECT },
  	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
 @@ -568,11 +570,39 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  	return NULL;

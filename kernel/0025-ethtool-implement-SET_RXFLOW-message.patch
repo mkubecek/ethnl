@@ -1,13 +1,14 @@
-From 10d2c5af502fac429a1111fdffdfaedb2c050693 Mon Sep 17 00:00:00 2001
+From bae33ecdb69a0616c898f3e2b57f17977657aa1b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 25/25] ethtool: implement SET_RXFLOW message
 
-Request to set data updated by ETHTOOL_SRSSH and ETHTOOL_SRXFHINDIR ioctl
-commands. This allows to set
+Request to set data updated by ETHTOOL_SRSSH, ETHTOOL_SRXFH and
+ETHTOOL_SRXFHINDIR ioctl commands. This allows to set
 
   - set hash function
   - set hash key
+  - set hash fields for flow types
   - set indirection table
   - create a new RSS context
   - delete an RSS context
@@ -20,8 +21,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool_netlink.h         |   2 +-
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/rxflow.c                         | 517 +++++++++++++++++++
- 5 files changed, 564 insertions(+), 4 deletions(-)
+ net/ethtool/rxflow.c                         | 610 +++++++++++++++++++
+ 5 files changed, 657 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 128816de17c9..e65b8c819c69 100644
@@ -112,7 +113,7 @@ index 7fb413ca353b..7760c205a80b 100644
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 2616f235e72b..c68b0533adca 100644
+index 7a2ead079b97..ce4d5c594cd4 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -1078,6 +1078,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
@@ -140,10 +141,10 @@ index 21fec8e03207..71104bebbdb7 100644
  int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_reset(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index c24de3f6b891..c8b0fb7169a5 100644
+index 8e297b9ab43b..1f30f2227fa7 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
-@@ -526,3 +526,520 @@ void ethnl_rxflow_notify(struct net_device *dev,
+@@ -527,3 +527,613 @@ void ethnl_rxflow_notify(struct net_device *dev,
  err_data:
  	rxflow_cleanup(req_info);
  }
@@ -151,10 +152,10 @@ index c24de3f6b891..c8b0fb7169a5 100644
 +/* SET_RXFLOW */
 +
 +static const struct nla_policy set_rxflow_policy[ETHA_RXFLOW_MAX + 1] = {
-+	[ETHA_RXFLOW_UNSPEC]		= { .type = NLA_UNSPEC },
++	[ETHA_RXFLOW_UNSPEC]		= { .type = NLA_REJECT },
++	[ETHA_RXFLOW_DEV]		= { .type = NLA_NESTED },
 +	[ETHA_RXFLOW_INFOMASK]		= { .type = NLA_REJECT },
 +	[ETHA_RXFLOW_COMPACT]		= { .type = NLA_FLAG },
-+	[ETHA_RXFLOW_DEV]		= { .type = NLA_NESTED },
 +	[ETHA_RXFLOW_CTXOP]		= { .type = NLA_U32 },
 +	[ETHA_RXFLOW_CONTEXT]		= { .type = NLA_U32 },
 +	[ETHA_RXFLOW_NRINGS]		= { .type = NLA_REJECT },
@@ -177,6 +178,11 @@ index c24de3f6b891..c8b0fb7169a5 100644
 +					 "cannot set context id for new context");
 +			return -EINVAL;
 +		}
++		if (tb[ETHA_RXFLOW_HASH_OPTS]) {
++			ETHNL_SET_ERRMSG(info,
++					 "hash options not allowed with new context");
++			return -EINVAL;
++		}
 +		break;
 +	case ETH_RXFLOW_CTXOP_DEL:
 +		if (!context) {
@@ -185,15 +191,88 @@ index c24de3f6b891..c8b0fb7169a5 100644
 +			return -EINVAL;
 +		}
 +		if (tb[ETHA_RXFLOW_HASH_FN] || tb[ETHA_RXFLOW_HASH_KEY] ||
-+		    tb[ETHA_RXFLOW_INDIR_TBL]) {
++		    tb[ETHA_RXFLOW_HASH_OPTS] || tb[ETHA_RXFLOW_INDIR_TBL]) {
 +			ETHNL_SET_ERRMSG(info,
-+					 "data [passed when deleting context");
++					 "data passed when deleting context");
 +			return -EINVAL;
 +		}
 +		break;
 +	default:
 +		ETHNL_SET_ERRMSG(info, "unknown context operation");
 +		return -EOPNOTSUPP;
++	}
++
++	return 0;
++}
++
++static const u32 all_bits = ~(u32)0;
++
++const struct nla_policy rxhashopt_policy[] = {
++	[ETHA_RXHASHOPT_UNSPEC]		= { .type = NLA_REJECT },
++	[ETHA_RXHASHOPT_FLOWTYPE]	= { .type = NLA_U32 },
++	[ETHA_RXHASHOPT_FIELDS]		= { .type = NLA_BITFIELD32,
++					    .validation_data = &all_bits },
++	[ETHA_RXHASHOPT_DISCARD]	= { .type = NLA_FLAG },
++};
++
++static int set_rxflow_hash_opts(struct net_device *dev, unsigned int context,
++				const struct nlattr *opts_attr,
++				struct genl_info *info)
++{
++	const struct ethtool_ops *ops = dev->ethtool_ops;
++	struct nlattr *tb[ETHA_RXHASHOPT_MAX + 1];
++	const struct nlattr *opt_attr;
++	int ret, rem;
++
++	if (!ops->get_rxnfc || !ops->set_rxnfc)
++		return -EOPNOTSUPP;
++
++	nla_for_each_nested(opt_attr, opts_attr, rem) {
++		struct ethtool_rxnfc rxnfc = {
++			.cmd		= ETHTOOL_SRXFH,
++			.rss_context	= context,
++		};
++		struct ethtool_rxflow_notification_info ninfo = {
++			.context	= context,
++		};
++
++		if (nla_type(opt_attr) != ETHA_RXHASHOPTS_OPT)
++			return -EOPNOTSUPP;
++		ret = nla_parse_nested(tb, ETHA_RXHASHOPT_MAX, opt_attr,
++				       rxhashopt_policy, info->extack);
++		if (ret < 0)
++			return ret;
++		if (tb[ETHA_RXHASHOPT_DISCARD] && tb[ETHA_RXHASHOPT_FIELDS])
++			return -EINVAL;
++		if (!tb[ETHA_RXHASHOPT_FLOWTYPE] ||
++		    (!tb[ETHA_RXHASHOPT_DISCARD] && !tb[ETHA_RXHASHOPT_FIELDS]))
++			return -EINVAL;
++
++		ninfo.flow_type = nla_get_u32(tb[ETHA_RXHASHOPT_FLOWTYPE]);
++		rxnfc.flow_type = ninfo.flow_type | (context ? FLOW_RSS : 0);
++		if (tb[ETHA_RXHASHOPT_DISCARD]) {
++			rxnfc.data = RXH_DISCARD;
++		} else {
++			struct ethtool_rxnfc grxnfc = rxnfc;
++			struct nla_bitdield32;
++			u32 fields;
++
++			grxnfc.cmd = ETHTOOL_GRXFH;
++			ret = ops->get_rxnfc(dev, &grxnfc, NULL);
++			if (ret < 0)
++				return ret;
++			fields = (grxnfc.data & RXH_DISCARD) ? 0 : grxnfc.data;
++			if (!ethnl_update_bitfield32(&fields,
++						     tb[ETHA_RXHASHOPT_FIELDS]))
++				continue;
++			rxnfc.data = fields;
++		}
++
++		ret = ops->set_rxnfc(dev, &rxnfc);
++		if (ret < 0)
++			return ret;
++		ethnl_rxflow_notify(dev, info->extack, ETHNL_CMD_SET_RXFLOW,
++				    ETH_RXFLOW_IM_HASHOPTS, &ninfo);
 +	}
 +
 +	return 0;
@@ -253,7 +332,7 @@ index c24de3f6b891..c8b0fb7169a5 100644
 +}
 +
 +static const struct nla_policy indtbl_block_policy[ETHA_ITBLK_MAX + 1] = {
-+	[ETHA_ITBLK_UNSPEC]	= { .type = NLA_UNSPEC },
++	[ETHA_ITBLK_UNSPEC]	= { .type = NLA_REJECT },
 +	[ETHA_ITBLK_START]	= { .type = NLA_U32 },
 +	[ETHA_ITBLK_LEN]	= { .type = NLA_U32 },
 +	[ETHA_ITBLK_DATA]	= { .type = NLA_BINARY },
@@ -323,7 +402,7 @@ index c24de3f6b891..c8b0fb7169a5 100644
 +}
 +
 +static const struct nla_policy indtbl_pattern_policy[ETHA_ITPAT_MAX + 1] = {
-+	[ETHA_ITPAT_UNSPEC]	= { .type = NLA_UNSPEC },
++	[ETHA_ITPAT_UNSPEC]	= { .type = NLA_REJECT },
 +	[ETHA_ITPAT_START]	= { .type = NLA_U32 },
 +	[ETHA_ITPAT_LEN]	= { .type = NLA_U32 },
 +	[ETHA_ITPAT_MIN_RING]	= { .type = NLA_U32 },
@@ -382,7 +461,7 @@ index c24de3f6b891..c8b0fb7169a5 100644
 +}
 +
 +static const struct nla_policy indtbl_weights_policy[ETHA_ITWGHT_MAX + 1] = {
-+	[ETHA_ITWGHT_UNSPEC]	= { .type = NLA_UNSPEC },
++	[ETHA_ITWGHT_UNSPEC]	= { .type = NLA_REJECT },
 +	[ETHA_ITWGHT_VALUES]	= { .type = NLA_BINARY },
 +	[ETHA_ITWGHT_WEIGHTS]	= { .type = NLA_BINARY },
 +};
@@ -518,7 +597,8 @@ index c24de3f6b891..c8b0fb7169a5 100644
 +	return 0;
 +}
 +
-+static int set_rxflow_del_context(struct net_device *dev, u32 context)
++static int set_rxflow_del_context(struct net_device *dev, u32 context,
++				  struct genl_info *info)
 +{
 +	const struct ethtool_ops *ops = dev->ethtool_ops;
 +	int ret;
@@ -531,7 +611,8 @@ index c24de3f6b891..c8b0fb7169a5 100644
 +			.context	= context,
 +		};
 +
-+		ethnl_rxflow_notify(dev, NULL, ETHNL_CMD_SET_RXFLOW, 0, &ninfo);
++		ethnl_rxflow_notify(dev, info->extack, ETHNL_CMD_SET_RXFLOW, 0,
++				    &ninfo);
 +	}
 +	return ret;
 +}
@@ -580,6 +661,7 @@ index c24de3f6b891..c8b0fb7169a5 100644
 +	bool reset_indtbl;
 +	u32 info_mask = 0;
 +	u32 context = 0;
++	bool do_rxfh;
 +	u8 hash_fn;
 +	u8 *hkey;
 +	int ret;
@@ -595,11 +677,23 @@ index c24de3f6b891..c8b0fb7169a5 100644
 +	ret = set_rxflow_sanity_checks(tb, info, ctxop, context);
 +	if (ret < 0)
 +		return ret;
++	do_rxfh = tb[ETHA_RXFLOW_HASH_FN] || tb[ETHA_RXFLOW_HASH_KEY] ||
++		  tb[ETHA_RXFLOW_INDIR_TBL];
 +
 +	dev = ethnl_dev_get(info, tb[ETHA_RXFLOW_DEV]);
 +	if (IS_ERR(dev))
 +		return PTR_ERR(dev);
 +	ops = dev->ethtool_ops;
++
++	if (tb[ETHA_RXFLOW_HASH_OPTS]) {
++		ret = set_rxflow_hash_opts(dev, context,
++					   tb[ETHA_RXFLOW_HASH_OPTS], info);
++		if (ret < 0)
++			goto out_dev;
++	}
++	if (!do_rxfh)
++		goto out_unlock;
++
 +	ret = -EOPNOTSUPP;
 +	if (context && (!ops->get_rxfh_context || !ops->set_rxfh_context))
 +		goto out_dev;
@@ -610,7 +704,7 @@ index c24de3f6b891..c8b0fb7169a5 100644
 +	if (ret < 0)
 +		goto out_dev;
 +	if (ctxop == ETH_RXFLOW_CTXOP_DEL) {
-+		ret = set_rxflow_del_context(dev, context);
++		ret = set_rxflow_del_context(dev, context, info);
 +		goto out_unlock;
 +	}
 +	if (ctxop == ETH_RXFLOW_CTXOP_NEW)
@@ -656,8 +750,8 @@ index c24de3f6b891..c8b0fb7169a5 100644
 +			.context	= context,
 +		};
 +
-+		ethtool_notify(dev, NULL, ETHNL_CMD_SET_RXFLOW, info_mask,
-+			       &ninfo);
++		ethnl_rxflow_notify(dev, info->extack, ETHNL_CMD_SET_RXFLOW,
++				    info_mask, &ninfo);
 +	}
 +	ethnl_after_ops(dev, false);
 +out_dev:
