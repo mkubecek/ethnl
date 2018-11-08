@@ -1,4 +1,4 @@
-From 0b05d04e3df5745513140e59ebd4b573a05e1a43 Mon Sep 17 00:00:00 2001
+From 841de93fb11ff1106bdf081a3312158ff1cb0e6a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 16/25] ethtool: implement GET_SETTINGS and SET_SETTINGS for
@@ -108,7 +108,7 @@ index bafbe5c20251..cb4f5745656f 100644
  	case ETHTOOL_GRXFH:
  	case ETHTOOL_GRXRINGS:
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 07e332425ef8..f2987ba955b9 100644
+index 630d97b18632..8573452709ea 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -22,6 +22,9 @@ struct settings_data {

@@ -1,4 +1,4 @@
-From ec5006d80139415ec76fb4155841408751dcdfde Mon Sep 17 00:00:00 2001
+From bc59968bbb63bdbc71f121d0b8c4d6f0686f0991 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 15/25] ethtool: implement SET_SETTINGS request for features
@@ -111,7 +111,7 @@ index 6a611dd3b1b7..1c2447f4a456 100644
  	__ETHA_FEATURES_CNT,
  	ETHA_FEATURES_MAX = (__ETHA_FEATURES_CNT - 1)
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index f99a95a12496..07e332425ef8 100644
+index 098494e68d25..630d97b18632 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -691,6 +691,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {

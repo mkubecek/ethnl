@@ -1,4 +1,4 @@
-From 932de8bf8ae42d56d1322eade287bfa0940a3ab8 Mon Sep 17 00:00:00 2001
+From 2d4cef01e312b4f7876094c52a9df9479e35a9ee Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 19/25] ethtool: implement SET_PARAMS message
@@ -12,9 +12,12 @@ more of the legacy requests (and provide only part of the data to update).
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  71 ++-
+ net/ethtool/common.c                         |  65 +++
+ net/ethtool/common.h                         |   3 +
+ net/ethtool/ioctl.c                          |  59 +--
  net/ethtool/netlink.c                        |   5 +
- net/ethtool/params.c                         | 447 +++++++++++++++++++
- 3 files changed, 516 insertions(+), 7 deletions(-)
+ net/ethtool/params.c                         | 444 +++++++++++++++++++
+ 6 files changed, 582 insertions(+), 65 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index ef70ac4b1cb0..f3c77f39f1fe 100644
@@ -133,6 +136,191 @@ index ef70ac4b1cb0..f3c77f39f1fe 100644
 -ETHTOOL_SFECPARAM		n/a
 +ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
  
+diff --git a/net/ethtool/common.c b/net/ethtool/common.c
+index 88e787ddd9ae..df8a90e01921 100644
+--- a/net/ethtool/common.c
++++ b/net/ethtool/common.c
+@@ -3,6 +3,7 @@
+ #include <linux/rtnetlink.h>
+ #include <linux/phy.h>
+ #include <linux/net_tstamp.h>
++#include <net/xdp_sock.h>
+ #include "common.h"
+ 
+ const char netdev_features_strings[NETDEV_FEATURE_COUNT][ETH_GSTRING_LEN] = {
+@@ -213,3 +214,67 @@ int __ethtool_get_link(struct net_device *dev)
+ 
+ 	return netif_running(dev) && dev->ethtool_ops->get_link(dev);
+ }
++
++static int ethtool_get_max_rxfh_channel(struct net_device *dev, u32 *max)
++{
++	u32 dev_size, current_max = 0;
++	u32 *indir;
++	int ret;
++
++	if (!dev->ethtool_ops->get_rxfh_indir_size ||
++	    !dev->ethtool_ops->get_rxfh)
++		return -EOPNOTSUPP;
++	dev_size = dev->ethtool_ops->get_rxfh_indir_size(dev);
++	if (dev_size == 0)
++		return -EOPNOTSUPP;
++
++	indir = kcalloc(dev_size, sizeof(indir[0]), GFP_USER);
++	if (!indir)
++		return -ENOMEM;
++
++	ret = dev->ethtool_ops->get_rxfh(dev, indir, NULL, NULL);
++	if (ret)
++		goto out;
++
++	while (dev_size--)
++		current_max = max(current_max, indir[dev_size]);
++
++	*max = current_max;
++
++out:
++	kfree(indir);
++	return ret;
++}
++
++int __ethtool_set_channels(struct net_device *dev,
++			   struct ethtool_channels *channels,
++			   const struct ethtool_channels *curr)
++{
++	u16 from_channel, to_channel;
++	u32 max_rx_in_use = 0;
++	unsigned int i;
++
++	/* ensure new counts are within the maximums */
++	if (channels->rx_count > curr->max_rx ||
++	    channels->tx_count > curr->max_tx ||
++	    channels->combined_count > curr->max_combined ||
++	    channels->other_count > curr->max_other)
++		return -EINVAL;
++
++	/* ensure the new Rx count fits within the configured Rx flow
++	 * indirection table settings */
++	if (netif_is_rxfh_configured(dev) &&
++	    !ethtool_get_max_rxfh_channel(dev, &max_rx_in_use) &&
++	    (channels->combined_count + channels->rx_count) <= max_rx_in_use)
++	    return -EINVAL;
++
++	/* Disabling channels, query zero-copy AF_XDP sockets */
++	from_channel = channels->combined_count +
++		min(channels->rx_count, channels->tx_count);
++	to_channel = curr->combined_count + max(curr->rx_count, curr->tx_count);
++	for (i = from_channel; i < to_channel; i++)
++		if (xdp_get_umem_from_qid(dev, i))
++			return -EINVAL;
++
++	return dev->ethtool_ops->set_channels(dev, channels);
++}
+diff --git a/net/ethtool/common.h b/net/ethtool/common.h
+index 3c763b4d54bc..35503f1b7849 100644
+--- a/net/ethtool/common.h
++++ b/net/ethtool/common.h
+@@ -17,6 +17,9 @@ int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info);
+ int __ethtool_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info);
+ int __ethtool_get_wol(struct net_device *dev, struct ethtool_wolinfo *wol);
+ int __ethtool_get_link(struct net_device *dev);
++int __ethtool_set_channels(struct net_device *dev,
++			   struct ethtool_channels *channels,
++			   const struct ethtool_channels *curr);
+ 
+ bool convert_legacy_settings_to_link_ksettings(
+ 	struct ethtool_link_ksettings *link_ksettings,
+diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
+index eed26794f0fc..86a16b31a77e 100644
+--- a/net/ethtool/ioctl.c
++++ b/net/ethtool/ioctl.c
+@@ -27,7 +27,6 @@
+ #include <linux/rtnetlink.h>
+ #include <linux/sched/signal.h>
+ #include <linux/net.h>
+-#include <net/xdp_sock.h>
+ #include <linux/ethtool_netlink.h>
+ #include "common.h"
+ 
+@@ -842,37 +841,6 @@ void netdev_rss_key_fill(void *buffer, size_t len)
+ }
+ EXPORT_SYMBOL(netdev_rss_key_fill);
+ 
+-static int ethtool_get_max_rxfh_channel(struct net_device *dev, u32 *max)
+-{
+-	u32 dev_size, current_max = 0;
+-	u32 *indir;
+-	int ret;
+-
+-	if (!dev->ethtool_ops->get_rxfh_indir_size ||
+-	    !dev->ethtool_ops->get_rxfh)
+-		return -EOPNOTSUPP;
+-	dev_size = dev->ethtool_ops->get_rxfh_indir_size(dev);
+-	if (dev_size == 0)
+-		return -EOPNOTSUPP;
+-
+-	indir = kcalloc(dev_size, sizeof(indir[0]), GFP_USER);
+-	if (!indir)
+-		return -ENOMEM;
+-
+-	ret = dev->ethtool_ops->get_rxfh(dev, indir, NULL, NULL);
+-	if (ret)
+-		goto out;
+-
+-	while (dev_size--)
+-		current_max = max(current_max, indir[dev_size]);
+-
+-	*max = current_max;
+-
+-out:
+-	kfree(indir);
+-	return ret;
+-}
+-
+ static noinline_for_stack int ethtool_get_rxfh_indir(struct net_device *dev,
+ 						     void __user *useraddr)
+ {
+@@ -1536,9 +1504,6 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
+ 						   void __user *useraddr)
+ {
+ 	struct ethtool_channels channels, curr = { .cmd = ETHTOOL_GCHANNELS };
+-	u16 from_channel, to_channel;
+-	u32 max_rx_in_use = 0;
+-	unsigned int i;
+ 	int ret;
+ 
+ 	if (!dev->ethtool_ops->set_channels || !dev->ethtool_ops->get_channels)
+@@ -1549,29 +1514,7 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
+ 
+ 	dev->ethtool_ops->get_channels(dev, &curr);
+ 
+-	/* ensure new counts are within the maximums */
+-	if (channels.rx_count > curr.max_rx ||
+-	    channels.tx_count > curr.max_tx ||
+-	    channels.combined_count > curr.max_combined ||
+-	    channels.other_count > curr.max_other)
+-		return -EINVAL;
+-
+-	/* ensure the new Rx count fits within the configured Rx flow
+-	 * indirection table settings */
+-	if (netif_is_rxfh_configured(dev) &&
+-	    !ethtool_get_max_rxfh_channel(dev, &max_rx_in_use) &&
+-	    (channels.combined_count + channels.rx_count) <= max_rx_in_use)
+-	    return -EINVAL;
+-
+-	/* Disabling channels, query zero-copy AF_XDP sockets */
+-	from_channel = channels.combined_count +
+-		min(channels.rx_count, channels.tx_count);
+-	to_channel = curr.combined_count + max(curr.rx_count, curr.tx_count);
+-	for (i = from_channel; i < to_channel; i++)
+-		if (xdp_get_umem_from_qid(dev, i))
+-			return -EINVAL;
+-
+-	ret = dev->ethtool_ops->set_channels(dev, &channels);
++	ret = __ethtool_set_channels(dev, &curr, &channels);
+ 	if (ret == 0)
+ 		ethtool_notify(dev, NULL, ETHNL_CMD_SET_PARAMS,
+ 			       ETH_PARAMS_IM_CHANNELS, NULL);
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
 index cd4f9228dfdf..c6da4e735b81 100644
 --- a/net/ethtool/netlink.c
@@ -150,10 +338,10 @@ index cd4f9228dfdf..c6da4e735b81 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index ba6a2b2c9b18..ff1b407ebbf3 100644
+index ba6a2b2c9b18..27cfd66a0372 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -472,3 +472,450 @@ const struct get_request_ops params_request_ops = {
+@@ -472,3 +472,447 @@ const struct get_request_ops params_request_ops = {
  	.reply_size		= params_size,
  	.fill_reply		= fill_params,
  };
@@ -401,10 +589,10 @@ index ba6a2b2c9b18..ff1b407ebbf3 100644
 +
 +static const struct nla_policy channels_policy[ETHA_CHANNELS_MAX + 1] = {
 +	[ETHA_CHANNELS_UNSPEC]		= { .type = NLA_REJECT },
-+	[ETHA_CHANNELS_MAX_RX]		= { .type = NLA_U32 },
-+	[ETHA_CHANNELS_MAX_TX]		= { .type = NLA_U32 },
-+	[ETHA_CHANNELS_MAX_OTHER]	= { .type = NLA_U32 },
-+	[ETHA_CHANNELS_MAX_COMBINED]	= { .type = NLA_U32 },
++	[ETHA_CHANNELS_MAX_RX]		= { .type = NLA_REJECT },
++	[ETHA_CHANNELS_MAX_TX]		= { .type = NLA_REJECT },
++	[ETHA_CHANNELS_MAX_OTHER]	= { .type = NLA_REJECT },
++	[ETHA_CHANNELS_MAX_COMBINED]	= { .type = NLA_REJECT },
 +	[ETHA_CHANNELS_RX_COUNT]	= { .type = NLA_U32 },
 +	[ETHA_CHANNELS_TX_COUNT]	= { .type = NLA_U32 },
 +	[ETHA_CHANNELS_OTHER_COUNT]	= { .type = NLA_U32 },
@@ -414,8 +602,9 @@ index ba6a2b2c9b18..ff1b407ebbf3 100644
 +static int update_channels(struct genl_info *info, struct net_device *dev,
 +			   struct nlattr *nest)
 +{
++	struct ethtool_channels old = { .cmd = ETHTOOL_GCHANNELS };
++	struct ethtool_channels new = { .cmd = ETHTOOL_SCHANNELS };
 +	struct nlattr *tb[ETHA_CHANNELS_MAX + 1];
-+	struct ethtool_channels data = {};
 +	bool mod = false;
 +	int ret;
 +
@@ -424,32 +613,28 @@ index ba6a2b2c9b18..ff1b407ebbf3 100644
 +	if (!dev->ethtool_ops->get_channels ||
 +	    !dev->ethtool_ops->set_channels)
 +		return -EOPNOTSUPP;
-+	dev->ethtool_ops->get_channels(dev, &data);
++	dev->ethtool_ops->get_channels(dev, &old);
++	new = old;
++	new.cmd = ETHTOOL_SCHANNELS;
 +
 +	ret = nla_parse_nested(tb, ETHA_CHANNELS_MAX, nest, channels_policy,
 +			       info->extack);
 +	if (ret < 0)
 +		return ret;
-+	/* read only attributes */
-+	if (tb[ETHA_CHANNELS_MAX_RX] || tb[ETHA_CHANNELS_MAX_TX] ||
-+	    tb[ETHA_CHANNELS_MAX_OTHER] || tb[ETHA_CHANNELS_MAX_COMBINED]) {
-+		ETHNL_SET_ERRMSG(info, "attempt to set a read only attribute");
-+		return -EINVAL;
-+	}
 +
-+	if (ethnl_update_u32(&data.rx_count, tb[ETHA_CHANNELS_RX_COUNT]))
++	if (ethnl_update_u32(&new.rx_count, tb[ETHA_CHANNELS_RX_COUNT]))
 +		mod = true;
-+	if (ethnl_update_u32(&data.tx_count, tb[ETHA_CHANNELS_TX_COUNT]))
++	if (ethnl_update_u32(&new.tx_count, tb[ETHA_CHANNELS_TX_COUNT]))
 +		mod = true;
-+	if (ethnl_update_u32(&data.other_count, tb[ETHA_CHANNELS_OTHER_COUNT]))
++	if (ethnl_update_u32(&new.other_count,tb[ETHA_CHANNELS_OTHER_COUNT]))
 +		mod = true;
-+	if (ethnl_update_u32(&data.combined_count,
++	if (ethnl_update_u32(&new.combined_count,
 +			     tb[ETHA_CHANNELS_COMBINED_COUNT]))
 +		mod = true;
-+
 +	if (!mod)
 +		return 0;
-+	ret = dev->ethtool_ops->set_channels(dev, &data);
++
++	ret = __ethtool_set_channels(dev, &old, &new);
 +	return (ret < 0) ? ret : 1;
 +}
 +
