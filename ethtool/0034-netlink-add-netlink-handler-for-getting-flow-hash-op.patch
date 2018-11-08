@@ -1,8 +1,8 @@
-From 4fadf49d46771dbbd397b02ada4dcc2fd7027abf Mon Sep 17 00:00:00 2001
+From d168fea773d6da9fd6c58c74ddc58fb45eaa5b02 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 7 Oct 2018 19:50:11 +0200
-Subject: [PATCH 34/34] netlink: add netlink handler for flow hash options (-n
- rx-flow-hash)
+Subject: [PATCH 34/35] netlink: add netlink handler for getting flow hash
+ options (-n rx-flow-hash)
 
 Implement "ethtool -n <dev> rx-flow-hash" subcommand using netlink
 interface command ETHNL_CMD_GET_RXFLOW with ETH_RXFLOW_IM_HASHOPTS mask.
@@ -12,8 +12,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c        |   3 +-
  netlink/extapi.h |   1 +
- netlink/rxflow.c | 186 +++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 189 insertions(+), 1 deletion(-)
+ netlink/rxflow.c | 187 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 190 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
 index 815cdb1a41fa..efadb8d55873 100644
@@ -49,7 +49,7 @@ index 42bd6c5d7848..e8470459a76e 100644
  
  void monitor_usage();
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
-index 4b90e6f6c028..fb1e9c103052 100644
+index 9dea556a0810..89d3a3a5708c 100644
 --- a/netlink/rxflow.c
 +++ b/netlink/rxflow.c
 @@ -8,6 +8,33 @@
@@ -168,7 +168,7 @@ index 4b90e6f6c028..fb1e9c103052 100644
  
  	return MNL_CB_OK;
  }
-@@ -283,6 +378,97 @@ int nl_grxfh(struct cmd_context *ctx)
+@@ -283,6 +378,98 @@ int nl_grxfh(struct cmd_context *ctx)
  	return ethnl_send_get_request(nlctx, rxflow_reply_cb);
  }
  
@@ -190,9 +190,10 @@ index 4b90e6f6c028..fb1e9c103052 100644
 +	{ .arg = "sctp6",	.val = SCTP_V6_FLOW },
 +	{ .arg = "ah6",		.val = AH_V6_FLOW },
 +	{ .arg = "esp6",	.val = ESP_V6_FLOW },
++	{}
 +};
 +
-+static const struct param_parser hashopts_parser[] = {
++static const struct param_parser get_hashopts_parser[] = {
 +	{
 +		.arg		= "rx-flow-hash",
 +		.handler	= nl_parse_lookup_u32,
@@ -209,13 +210,13 @@ index 4b90e6f6c028..fb1e9c103052 100644
 +	{}
 +};
 +
-+static int ethnl_hashopts(struct cmd_context *ctx)
++static int ethnl_get_hashopts(struct cmd_context *ctx)
 +{
 +	struct nl_context *nlctx = ctx->nlctx;
 +	struct hashopts_params params = {};
 +	int ret;
 +
-+	ret = nl_parser(nlctx, hashopts_parser, &params);
++	ret = nl_parser(nlctx, get_hashopts_parser, &params);
 +	if (ret < 0)
 +		exit(2);
 +
@@ -255,7 +256,7 @@ index 4b90e6f6c028..fb1e9c103052 100644
 +	arg = ctx->argp[0];
 +
 +	if (!strcmp(arg, "rx-flow-hash")) {
-+		return ethnl_hashopts(ctx);
++		return ethnl_get_hashopts(ctx);
 +	} else {
 +		fprintf(stderr, "ethtool: unknown argument '%s' for '-n'\n",
 +			arg);

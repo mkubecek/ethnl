@@ -1,7 +1,7 @@
-From 271c0975ab340d7605f738eff6256c7f9c1a40cf Mon Sep 17 00:00:00 2001
+From c393a8099dc138902e435d4ee9a482bc8563243c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:25:31 +0200
-Subject: [PATCH 14/34] netlink: add netlink handler for sfeatures (-K)
+Subject: [PATCH 14/35] netlink: add netlink handler for sfeatures (-K)
 
 Implement "ethtool -K <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_SETTINGS.
@@ -54,10 +54,10 @@ index d955966da72d..ed526cf60142 100644
  
  void monitor_usage();
 diff --git a/netlink/settings.c b/netlink/settings.c
-index dcda1d63c1a7..cd5ad768b4f9 100644
+index c7423bca9c2f..6d3b8feb9caf 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -745,3 +745,295 @@ int nl_sset(struct cmd_context *ctx)
+@@ -687,3 +687,295 @@ int nl_sset(struct cmd_context *ctx)
  		return 0;
  	return nlctx->exit_code ?: 75;
  }

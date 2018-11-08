@@ -1,7 +1,7 @@
-From 0a81448f2bc41d3a35d24117d31e32385ae8e4cd Mon Sep 17 00:00:00 2001
+From e48ea10d64d7b2cac0bf402dddff578fc18b78a0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
-Subject: [PATCH 10/34] netlink: add netlink handler for gset (no option)
+Subject: [PATCH 10/35] netlink: add netlink handler for gset (no option)
 
 Implement "ethtool <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_SETTINGS.

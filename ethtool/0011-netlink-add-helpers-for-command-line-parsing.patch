@@ -1,7 +1,7 @@
-From 70a696bd2907687e177e6b3e347cb3043aceef90 Mon Sep 17 00:00:00 2001
+From 9a3214b2452aa2d13cd6d59813804af36889ab24 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:42:26 +0100
-Subject: [PATCH 11/34] netlink: add helpers for command line parsing
+Subject: [PATCH 11/35] netlink: add helpers for command line parsing
 
 Support for easier parsing of subcommand parameters and their values from
 command line. Existing parser helpers in ethtool.c are closely tied to
@@ -11,9 +11,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |   1 +
  netlink/netlink.h |   4 +
- netlink/parser.c  | 758 ++++++++++++++++++++++++++++++++++++++++++++++
- netlink/parser.h  |  75 +++++
- 4 files changed, 838 insertions(+)
+ netlink/parser.c  | 836 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/parser.h  |  87 +++++
+ 4 files changed, 928 insertions(+)
  create mode 100644 netlink/parser.c
  create mode 100644 netlink/parser.h
 
@@ -46,10 +46,10 @@ index 9cbbaa94d3c2..052a91355cf8 100644
  	uint8_t filter_cmd;
 diff --git a/netlink/parser.c b/netlink/parser.c
 new file mode 100644
-index 000000000000..06e9a0e0b2ef
+index 000000000000..0fdbb8dc6d8a
 --- /dev/null
 +++ b/netlink/parser.c
-@@ -0,0 +1,758 @@
+@@ -0,0 +1,836 @@
 +#include <string.h>
 +#include <stdlib.h>
 +#include <errno.h>
@@ -391,6 +391,84 @@ index 000000000000..06e9a0e0b2ef
 +
 +		d->value = value;
 +		d->selector = selector;
++	}
++	return type ? ethnla_put_bitfield32(nlctx, type, value, selector) : 0;
++}
++
++static int __nl_parse_char_bitfield32(struct nl_context *nlctx, const char *str,
++				      const struct bitfield32_parser_data *pdata,
++				      uint32_t *result)
++{
++	unsigned int i;
++	const char *p;
++	int ret;
++
++	ret = parse_u32(str, result);
++	if (ret == 0)
++		return 0;
++
++	*result = 0;
++	for (p = str; *p; p++) {
++		const struct bitfield32_parser_special *special;
++
++		for (special = pdata->specials; special->name; special++) {
++			if (*p == special->name) {
++				*result = special->val;
++				break;
++			}
++		}
++		if (special->name)
++			continue;
++
++		for (i = 0; i < 32; i++) {
++			if (pdata->bits[i] == *p) {
++				*result |= (1U << i);
++				break;
++			}
++		}
++		if (i == 32) {
++			fprintf(stderr,
++				"ethtool (%s): invalid bitfield '%s'\n",
++				nlctx->cmd, str);
++			return -EINVAL;
++		}
++	}
++
++	return 0;
++}
++
++int nl_parse_char_bitfield32(struct nl_context *nlctx, uint16_t type,
++			     const void *data, void *dest)
++{
++	const char *arg = *nlctx->argp;
++	char *mask = strchr(arg, '/');
++	uint32_t value, selector;
++	int ret;
++
++	nlctx->argp++;
++	nlctx->argc--;
++	if (mask) {
++		*mask = '\0';
++		mask++;
++	}
++
++	ret = __nl_parse_char_bitfield32(nlctx, arg, data, &value);
++	if (ret < 0)
++		return ret;
++
++	if (!mask) {
++		selector = ~(uint32_t)0;
++	} else {
++		ret = __nl_parse_char_bitfield32(nlctx, mask, data, &selector);
++		if (ret < 0)
++			return ret;
++	}
++
++	if (dest) {
++		struct nla_bitfield32 *target = dest;
++
++		target->value = value;
++		target->selector = selector;
 +	}
 +	return type ? ethnla_put_bitfield32(nlctx, type, value, selector) : 0;
 +}
@@ -810,10 +888,10 @@ index 000000000000..06e9a0e0b2ef
 +}
 diff --git a/netlink/parser.h b/netlink/parser.h
 new file mode 100644
-index 000000000000..62878cedab9c
+index 000000000000..64d9f1ac05f3
 --- /dev/null
 +++ b/netlink/parser.h
-@@ -0,0 +1,75 @@
+@@ -0,0 +1,87 @@
 +#ifndef ETHTOOL_NETLINK_PARSER_H__
 +#define ETHTOOL_NETLINK_PARSER_H__
 +
@@ -834,6 +912,16 @@ index 000000000000..62878cedab9c
 +struct lookup_entry_u8 {
 +	const char	*arg;
 +	uint8_t		val;
++};
++
++struct bitfield32_parser_special {
++	char name;
++	char val;
++};
++
++struct bitfield32_parser_data {
++	char bits[32];
++	const struct bitfield32_parser_special *specials;
 +};
 +
 +struct byte_str_params {
@@ -878,6 +966,8 @@ index 000000000000..62878cedab9c
 +		       const void *data, void *dest);
 +int nl_parse_bitfield32(struct nl_context *nlctx, uint16_t type,
 +			const void *data, void *dest);
++int nl_parse_char_bitfield32(struct nl_context *nlctx, uint16_t type,
++			     const void *data, void *dest);
 +int nl_parse_bitset(struct nl_context *nlctx, uint16_t type, const void *data,
 +		    void *dest);
 +int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data,

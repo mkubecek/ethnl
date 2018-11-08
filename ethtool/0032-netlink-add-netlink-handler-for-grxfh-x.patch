@@ -1,7 +1,7 @@
-From 904d66140510345853264afc1aeae3fa48a0ef01 Mon Sep 17 00:00:00 2001
+From 596d639f7c33de96be69c0addd26ea7f142b5995 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:46:58 +0200
-Subject: [PATCH 32/34] netlink: add netlink handler for grxfh (-x)
+Subject: [PATCH 32/35] netlink: add netlink handler for grxfh (-x)
 
 Implement "ethtool -x <dev>" subcommand using netlink interface comand
 ETHNL_CMD_GET_RXFLOW.

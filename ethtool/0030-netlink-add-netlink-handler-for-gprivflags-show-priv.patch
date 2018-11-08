@@ -1,7 +1,7 @@
-From 97f4d894b0b40e2902e975a42e8201207d2b1052 Mon Sep 17 00:00:00 2001
+From fe1775dbf691ae84320c55ce71bce4a0918384bf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:20:18 +0200
-Subject: [PATCH 30/34] netlink: add netlink handler for gprivflags
+Subject: [PATCH 30/35] netlink: add netlink handler for gprivflags
  (--show-priv-flags)
 
 Implement "ethtool --show-priv-flags <dev>" subcommand using netlink
@@ -66,7 +66,7 @@ index 522ad654ad72..442c2c1057e5 100644
  		.pattern	= "-c|--show-coalesce|-C|--coalesce",
  		.cmd		= ETHNL_CMD_SET_PARAMS,
 diff --git a/netlink/settings.c b/netlink/settings.c
-index cd5ad768b4f9..8c1e60a47085 100644
+index 6d3b8feb9caf..ced16a15f9f6 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -248,6 +248,53 @@ out_free:

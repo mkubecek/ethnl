@@ -1,7 +1,7 @@
-From 3a99cebb15c005a12ddaf03f13d8343d51d8dde4 Mon Sep 17 00:00:00 2001
+From 4a985ac0cdb3563ea07da85a283926d4bdbf98ac Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Aug 2018 18:06:30 +0200
-Subject: [PATCH 03/34] ethtool: add --debug option to control debugging
+Subject: [PATCH 03/35] ethtool: add --debug option to control debugging
  messages
 
 Introduce --debug option to control which debugging messages will be shown.

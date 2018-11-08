@@ -1,7 +1,7 @@
-From 0a1fcb568776b4b27f0fc8c2464ce0f960639e62 Mon Sep 17 00:00:00 2001
+From 016e873f538a1be5f4da4b69f1ee7f0b42877c1d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:23:10 +0200
-Subject: [PATCH 31/34] netlink: add netlink handler for sprivflags
+Subject: [PATCH 31/35] netlink: add netlink handler for sprivflags
  (--set-priv-flags)
 
 Implement "ethtool --set-priv-flags <dev>" subcommand using netlink
@@ -48,10 +48,10 @@ index a9820609f3b8..cfef7baf923f 100644
  
  void monitor_usage();
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 8c1e60a47085..185c54294387 100644
+index ced16a15f9f6..a3199c69860d 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -1098,3 +1098,36 @@ int nl_sfeatures(struct cmd_context *ctx)
+@@ -1040,3 +1040,36 @@ int nl_sfeatures(struct cmd_context *ctx)
  		return 0;
  	return nlctx->exit_code ?: 92;
  }

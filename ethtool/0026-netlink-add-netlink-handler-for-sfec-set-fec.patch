@@ -1,7 +1,7 @@
-From 863020e4723f8ae7c4621a9f0d22e3e9c09e492d Mon Sep 17 00:00:00 2001
+From 27813f0db8435299a2c044c409f71fdc79d8a849 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:51:36 +0100
-Subject: [PATCH 26/34] netlink: add netlink handler for sfec (--set-fec)
+Subject: [PATCH 26/35] netlink: add netlink handler for sfec (--set-fec)
 
 Implement "ethtool --set-fec <dev>" subcommand using netlink interface
 command ETHNL_CMD_SET_PARAMS.

@@ -1,7 +1,7 @@
-From a7a9597864529098dead0e2a848aa6055a552e97 Mon Sep 17 00:00:00 2001
+From 41ffbc51d296845555cdac67ccc66ff5d6679ca8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
-Subject: [PATCH 06/34] netlink: add notification monitor
+Subject: [PATCH 06/35] netlink: add notification monitor
 
 With 'ethtool --monitor [ --all | opt ] [dev]', let ethtool listen to
 netlink notification and display them in a format similar to output of

@@ -1,7 +1,7 @@
-From 24104d20b06e8d7cef33b073093c6bc33ee70c6c Mon Sep 17 00:00:00 2001
+From 8aacff5dd77ce4ada927c8a15d569de402dc6ae3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
-Subject: [PATCH 13/34] netlink: add netlink handler for gfeatures (-k)
+Subject: [PATCH 13/35] netlink: add netlink handler for gfeatures (-k)
 
 Implement "ethtool -k <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_SETTINGS with ETH_SETTINGS_IM_FEATURES mask.
@@ -275,7 +275,7 @@ index 5d4f984be7c3..38d669ef58a6 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 04a49ff92a81..dcda1d63c1a7 100644
+index 20efb1be1f4e..c7423bca9c2f 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -5,6 +5,7 @@

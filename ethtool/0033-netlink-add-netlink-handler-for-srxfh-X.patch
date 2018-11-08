@@ -1,7 +1,7 @@
-From 208e8eb72228c0c4d212c1508eb8482d92595861 Mon Sep 17 00:00:00 2001
+From d878e12a4bdbee0195b1c4fd298497ee089411cc Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:24:40 +0200
-Subject: [PATCH 33/34] netlink: add netlink handler for srxfh (-X)
+Subject: [PATCH 33/35] netlink: add netlink handler for srxfh (-X)
 
 Implement "ethtool -X <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_RXFLOW.
@@ -11,8 +11,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.c         |   3 +-
  netlink/extapi.h  |   1 +
  netlink/monitor.c |  10 ++
- netlink/rxflow.c  | 328 ++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 341 insertions(+), 1 deletion(-)
+ netlink/rxflow.c  | 327 ++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 340 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
 index 530584a1d3a7..815cdb1a41fa 100644
@@ -83,10 +83,10 @@ index 442c2c1057e5..19d9b5269299 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
-index 55e8c650e4fd..4b90e6f6c028 100644
+index 55e8c650e4fd..9dea556a0810 100644
 --- a/netlink/rxflow.c
 +++ b/netlink/rxflow.c
-@@ -283,3 +283,331 @@ int nl_grxfh(struct cmd_context *ctx)
+@@ -283,3 +283,330 @@ int nl_grxfh(struct cmd_context *ctx)
  	return ethnl_send_get_request(nlctx, rxflow_reply_cb);
  }
  
@@ -417,7 +417,6 @@ index 55e8c650e4fd..4b90e6f6c028 100644
 +	free(data.weight.weights);
 +	return ret;
 +}
-+
 -- 
 2.19.1
 

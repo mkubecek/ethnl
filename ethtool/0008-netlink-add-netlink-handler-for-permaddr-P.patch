@@ -1,7 +1,7 @@
-From fbdedb685681104eef7df79d111a1b4bda2581af Mon Sep 17 00:00:00 2001
+From 38d0a2bf862bca3df6756d4fc1b64884b4cbf58b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Aug 2018 23:24:37 +0200
-Subject: [PATCH 08/34] netlink: add netlink handler for permaddr (-P)
+Subject: [PATCH 08/35] netlink: add netlink handler for permaddr (-P)
 
 Implement "-P" subcommand using netlink interface command
 ETHNL_CMD_GET_INFO.
