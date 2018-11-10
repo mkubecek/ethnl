@@ -1,4 +1,4 @@
-From 8ed91630c26b7daff7854689bf59aff9e54a48f1 Mon Sep 17 00:00:00 2001
+From db0ab3a977585c46c7bc2f75d33ab55182342423 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
 Subject: [PATCH 11/25] ethtool: implement GET_SETTINGS message
@@ -147,7 +147,7 @@ index 2a15e64a16f3..fba8ff961887 100644
  	ETHNL_MCGRP_MONITOR,
  };
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index 0a1ac30cb67b..aef0c1c5f376 100644
+index fc47726b29aa..e79c282a8f6f 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
 @@ -3817,6 +3817,8 @@ enum {

@@ -1,4 +1,4 @@
-From 2d4cef01e312b4f7876094c52a9df9479e35a9ee Mon Sep 17 00:00:00 2001
+From 0da18cea4af2e3ada4e438b8849bbdd9bab96dab Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 19/25] ethtool: implement SET_PARAMS message
@@ -137,7 +137,7 @@ index ef70ac4b1cb0..f3c77f39f1fe 100644
 +ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
  
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index 88e787ddd9ae..df8a90e01921 100644
+index 88e787ddd9ae..7422cc3f25c8 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
 @@ -3,6 +3,7 @@
@@ -185,8 +185,8 @@ index 88e787ddd9ae..df8a90e01921 100644
 +}
 +
 +int __ethtool_set_channels(struct net_device *dev,
-+			   struct ethtool_channels *channels,
-+			   const struct ethtool_channels *curr)
++			   const struct ethtool_channels *curr,
++			   struct ethtool_channels *channels)
 +{
 +	u16 from_channel, to_channel;
 +	u32 max_rx_in_use = 0;
@@ -217,7 +217,7 @@ index 88e787ddd9ae..df8a90e01921 100644
 +	return dev->ethtool_ops->set_channels(dev, channels);
 +}
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
-index 3c763b4d54bc..35503f1b7849 100644
+index 3c763b4d54bc..a0cf1249fd88 100644
 --- a/net/ethtool/common.h
 +++ b/net/ethtool/common.h
 @@ -17,6 +17,9 @@ int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info);
@@ -225,8 +225,8 @@ index 3c763b4d54bc..35503f1b7849 100644
  int __ethtool_get_wol(struct net_device *dev, struct ethtool_wolinfo *wol);
  int __ethtool_get_link(struct net_device *dev);
 +int __ethtool_set_channels(struct net_device *dev,
-+			   struct ethtool_channels *channels,
-+			   const struct ethtool_channels *curr);
++			   const struct ethtool_channels *curr,
++			   struct ethtool_channels *channels);
  
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,

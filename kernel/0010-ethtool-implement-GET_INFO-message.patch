@@ -1,4 +1,4 @@
-From 2ab33b34e16c9b96cb31c678421c015171b1f095 Mon Sep 17 00:00:00 2001
+From 8ad5203535db2aba00fb7f31a4beacd51dad8cbc Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
 Subject: [PATCH 10/25] ethtool: implement GET_INFO message

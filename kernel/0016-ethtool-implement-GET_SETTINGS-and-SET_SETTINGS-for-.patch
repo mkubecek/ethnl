@@ -1,4 +1,4 @@
-From 841de93fb11ff1106bdf081a3312158ff1cb0e6a Mon Sep 17 00:00:00 2001
+From 827de78e443f73361c8d0cd490fe1ed1ecf2d6d7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 16/25] ethtool: implement GET_SETTINGS and SET_SETTINGS for

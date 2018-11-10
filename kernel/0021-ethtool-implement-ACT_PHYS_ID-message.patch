@@ -1,4 +1,4 @@
-From 7a829334b678f7b38efb18130c5b796850d2ed63 Mon Sep 17 00:00:00 2001
+From 68e9bfcf3ff5ed76c40fd0114f67d91a547e8324 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 21/25] ethtool: implement ACT_PHYS_ID message
@@ -174,7 +174,7 @@ index 6e88408f88cc..8755ba4ff403 100644
 +	return ret;
 +}
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index df8a90e01921..9a8ec8ca8639 100644
+index 7422cc3f25c8..3b32e9bc8900 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
 @@ -1,5 +1,6 @@
@@ -253,13 +253,13 @@ index df8a90e01921..9a8ec8ca8639 100644
 +	return rc;
 +}
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
-index 35503f1b7849..27beb3030609 100644
+index a0cf1249fd88..dbad584cf15d 100644
 --- a/net/ethtool/common.h
 +++ b/net/ethtool/common.h
 @@ -20,6 +20,7 @@ int __ethtool_get_link(struct net_device *dev);
  int __ethtool_set_channels(struct net_device *dev,
- 			   struct ethtool_channels *channels,
- 			   const struct ethtool_channels *curr);
+ 			   const struct ethtool_channels *curr,
+ 			   struct ethtool_channels *channels);
 +int __ethtool_phys_id(struct net_device *dev, unsigned long timeout);
  
  bool convert_legacy_settings_to_link_ksettings(

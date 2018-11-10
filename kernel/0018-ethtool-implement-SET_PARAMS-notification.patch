@@ -1,4 +1,4 @@
-From 5773b8bd34dece91f464c3023db0b9061fe21fd9 Mon Sep 17 00:00:00 2001
+From a1ef500c6de500676ef72ff2d6f935125c4bc67f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:43:07 -0400
 Subject: [PATCH 18/25] ethtool: implement SET_PARAMS notification
