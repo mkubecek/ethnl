@@ -1,4 +1,4 @@
-From d5a829a82a873ba5a86f2bcbdf860bb4aa657aa4 Mon Sep 17 00:00:00 2001
+From e29592f81815c7585feb20435d6d6cd1dcef44eb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 10/35] netlink: add netlink handler for gset (no option)
@@ -631,10 +631,10 @@ index 0de6cbd653cc..938e71700f97 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index c6817b4883ff..5d4f984be7c3 100644
+index e8ad2f59a7c0..7d1dfc3e470d 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -67,6 +67,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -95,6 +95,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
  }
  
  int info_reply_cb(const struct nlmsghdr *nlhdr, void *data);
@@ -642,7 +642,7 @@ index c6817b4883ff..5d4f984be7c3 100644
  
  static struct {
  	uint8_t		cmd;
-@@ -80,6 +81,10 @@ static struct {
+@@ -108,6 +109,10 @@ static struct {
  		.cmd	= ETHNL_CMD_SET_INFO,
  		.cb	= info_reply_cb,
  	},
@@ -653,7 +653,7 @@ index c6817b4883ff..5d4f984be7c3 100644
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -113,6 +118,15 @@ static struct monitor_option monitor_opts[] = {
+@@ -141,6 +146,15 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "-i|--driver",
  		.cmd		= ETHNL_CMD_SET_INFO,
  	},
@@ -670,7 +670,7 @@ index c6817b4883ff..5d4f984be7c3 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index ec04ceb4a593..658d2f79ebf7 100644
+index 356d850fcbf5..eec98043f33d 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -4,8 +4,10 @@
@@ -684,8 +684,8 @@ index ec04ceb4a593..658d2f79ebf7 100644
  
  /* misc helpers */
  
-@@ -501,6 +503,124 @@ const char *get_dev_name(const struct nlattr *nest)
- 	return mnl_attr_get_str(dev_tb[ETHA_DEV_NAME]);
+@@ -535,6 +537,124 @@ int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname)
+ 	return 0;
  }
  
 +int dump_link_modes(const struct nlattr *bitset, bool mask, unsigned class,
@@ -810,10 +810,10 @@ index ec04ceb4a593..658d2f79ebf7 100644
  
  int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 800852d02275..9cbbaa94d3c2 100644
+index f09148663856..9460acd2cbad 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -64,6 +64,10 @@ typedef void (*bitset_walk_callback)(unsigned int, const char *, bool, void *);
+@@ -65,6 +65,10 @@ typedef void (*bitset_walk_callback)(unsigned int, const char *, bool, void *);
  int walk_bitset(const struct nlattr *bitset, const struct stringset *label,
  		bitset_walk_callback cb, void *data);
  

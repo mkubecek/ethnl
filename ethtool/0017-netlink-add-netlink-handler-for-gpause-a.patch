@@ -1,4 +1,4 @@
-From c49bc11b0434e1d2fbbcda9d566c61ba6069708b Mon Sep 17 00:00:00 2001
+From 21760b8be4e8f0660d63b6442701ffaa6abced22 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:04:09 +0100
 Subject: [PATCH 17/35] netlink: add netlink handler for gpause (-a)
@@ -48,10 +48,10 @@ index 9c84a80d223c..1f7de2a7992c 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 0f65d21c9377..b6912c556780 100644
+index da73684db1ba..476e04e45342 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -148,6 +148,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -176,6 +176,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
  		.info_mask	= ETH_PARAMS_IM_RING,
  	},

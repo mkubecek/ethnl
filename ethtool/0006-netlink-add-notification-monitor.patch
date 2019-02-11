@@ -1,4 +1,4 @@
-From 1fc103bc46124da8640e07a66ecf4515574763ab Mon Sep 17 00:00:00 2001
+From c40079b7168df0b63f0e6d328384d0390080c4f9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
 Subject: [PATCH 06/35] netlink: add notification monitor
@@ -12,12 +12,12 @@ device name or "*" is passed, show notifications for all devices.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |   2 +-
- ethtool.c         |  16 ++++
+ ethtool.c         |  16 +++
  netlink/extapi.h  |   4 +
- netlink/monitor.c | 216 ++++++++++++++++++++++++++++++++++++++++++++++
- netlink/netlink.c |  32 ++++++-
- netlink/netlink.h |  26 ++++++
- 6 files changed, 294 insertions(+), 2 deletions(-)
+ netlink/monitor.c | 244 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/netlink.c |  32 +++++-
+ netlink/netlink.h |  26 +++++
+ 6 files changed, 322 insertions(+), 2 deletions(-)
  create mode 100644 netlink/monitor.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -82,10 +82,10 @@ index 05ab083d9b9c..827e3732888a 100644
  #endif /* ETHTOOL_EXTAPI_H__ */
 diff --git a/netlink/monitor.c b/netlink/monitor.c
 new file mode 100644
-index 000000000000..51f64e6ad839
+index 000000000000..d02c0ac5339c
 --- /dev/null
 +++ b/netlink/monitor.c
-@@ -0,0 +1,216 @@
+@@ -0,0 +1,244 @@
 +#include <errno.h>
 +
 +#include "../internal.h"
@@ -135,6 +135,31 @@ index 000000000000..51f64e6ad839
 +	free_perdev_strings(devname);
 +}
 +
++static void monitor_renamedev(struct nl_context *nlctx, struct nlattr *evattr)
++{
++	const struct nlattr *tb[ETHA_RENAMEDEV_MAX + 1] = {};
++	DECLARE_ATTR_TB_INFO(tb);
++	char oldname[IFNAMSIZ] = "";
++	char newname[IFNAMSIZ];
++	int ifindex;
++	int ret;
++
++	ret = mnl_attr_parse_nested(evattr, attr_cb, &tb_info);
++	if (ret < 0)
++		return;
++	if (!tb[ETHA_RENAMEDEV_DEV])
++		return;
++	ret = get_dev_info(tb[ETHA_RENAMEDEV_DEV], &ifindex, newname);
++	if (ret < 0)
++		return;
++
++	ret = rename_perdev_strings(ifindex, newname, oldname);
++	if (ret < 0)
++		load_perdev_strings(nlctx->aux_nlctx, newname);
++	else
++		printf("Device %s renamed to %s.\n", oldname, newname);
++}
++
 +static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
 +{
 +	struct nl_context *nlctx = data;
@@ -147,6 +172,9 @@ index 000000000000..51f64e6ad839
 +			break;
 +		case ETHA_EVENT_DELDEV:
 +			monitor_deldev(nlctx, evattr);
++			break;
++		case ETHA_EVENT_RENAMEDEV:
++			monitor_renamedev(nlctx, evattr);
 +			break;
 +		}
 +	}
@@ -303,10 +331,10 @@ index 000000000000..51f64e6ad839
 +	fputs("                [ DEVNAME | * ]\n", stdout);
 +}
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index f452c0345517..ec04ceb4a593 100644
+index 5f7bc88e41c5..356d850fcbf5 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -548,6 +548,31 @@ err:
+@@ -582,6 +582,31 @@ err:
  
  /* get ethtool family id */
  
@@ -338,7 +366,7 @@ index f452c0345517..ec04ceb4a593 100644
  static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	struct nl_context *nlctx = data;
-@@ -555,9 +580,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -589,9 +614,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  
  	nlctx->ethnl_fam = 0;
  	mnl_attr_for_each(attr, nlhdr, GENL_HDRLEN) {
@@ -353,7 +381,7 @@ index f452c0345517..ec04ceb4a593 100644
  		}
  	}
  
-@@ -636,6 +665,7 @@ int __init_aux_nlctx(struct nl_context *nlctx)
+@@ -670,6 +699,7 @@ int __init_aux_nlctx(struct nl_context *nlctx)
  	}
  
  	aux->ethnl_fam = nlctx->ethnl_fam;
@@ -362,7 +390,7 @@ index f452c0345517..ec04ceb4a593 100644
  
  	return 0;
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 8c2f9f7c5d0c..800852d02275 100644
+index 2e5c0ae0f8dc..f09148663856 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -18,6 +18,7 @@
@@ -384,7 +412,7 @@ index 8c2f9f7c5d0c..800852d02275 100644
  };
  
  struct attr_tb_info {
-@@ -138,6 +143,27 @@ static inline void show_string(const struct nlattr **tb, unsigned int idx,
+@@ -139,6 +144,27 @@ static inline void show_string(const struct nlattr **tb, unsigned int idx,
  	printf("%s: %s\n", label, tb[idx] ? mnl_attr_get_str(tb[idx]) : "");
  }
  

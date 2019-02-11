@@ -1,4 +1,4 @@
-From 65283d7e25017826a5fff6a4e99830462280745f Mon Sep 17 00:00:00 2001
+From 93eff227bbc899d32efe982f5e719793c750d0df Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:08:21 +0100
 Subject: [PATCH 19/35] netlink: add netlink handler for geee (--show-eee)
@@ -48,10 +48,10 @@ index 4c33b3d0ee6a..23949cb632ec 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index cd13374e5470..8de683359586 100644
+index af0ba6084a72..1b32f7b39d8e 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -158,6 +158,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -186,6 +186,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
  		.info_mask	= ETH_PARAMS_IM_CHANNELS,
  	},

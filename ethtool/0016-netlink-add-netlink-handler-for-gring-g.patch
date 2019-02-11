@@ -1,4 +1,4 @@
-From 4f0380918ccf5ae4cec8818ff7d337d0d4bb2d70 Mon Sep 17 00:00:00 2001
+From 78856cd0c35edefaf7b2323edf4031f01075a095 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:59:50 +0100
 Subject: [PATCH 16/35] netlink: add netlink handler for gring (-g)
@@ -48,10 +48,10 @@ index bc0ca8f59686..9c84a80d223c 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index af6c1bbd4981..0f65d21c9377 100644
+index e68e13b36eba..da73684db1ba 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -143,6 +143,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -171,6 +171,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
  		.info_mask	= ETH_PARAMS_IM_COALESCE,
  	},

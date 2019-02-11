@@ -1,4 +1,4 @@
-From cc451a17c25d346a819754e7ca5fa4c230417d48 Mon Sep 17 00:00:00 2001
+From 92f3cafd65d12f7a3a27fffc2cb0a501bb988798 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:17:41 +0100
 Subject: [PATCH 23/35] netlink: add netlink handler for spause (-A)

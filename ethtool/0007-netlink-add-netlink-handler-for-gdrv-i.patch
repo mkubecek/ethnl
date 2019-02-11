@@ -1,4 +1,4 @@
-From a64d69c638f98a2a700d240831f7c8087d45414f Mon Sep 17 00:00:00 2001
+From a08563d9de9ea0f7112de0c96e0ee6f7307923c7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
 Subject: [PATCH 07/35] netlink: add netlink handler for gdrv (-i)
@@ -138,10 +138,10 @@ index 000000000000..8fa0c3e36088
 +	return info_request(ctx, ETH_INFO_IM_DRVINFO);
 +}
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 51f64e6ad839..c6817b4883ff 100644
+index d02c0ac5339c..e8ad2f59a7c0 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -66,6 +66,8 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -94,6 +94,8 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
  	return MNL_CB_OK;
  }
  
@@ -150,7 +150,7 @@ index 51f64e6ad839..c6817b4883ff 100644
  static struct {
  	uint8_t		cmd;
  	mnl_cb_t	cb;
-@@ -74,6 +76,10 @@ static struct {
+@@ -102,6 +104,10 @@ static struct {
  		.cmd	= ETHNL_CMD_EVENT,
  		.cb	= monitor_event_cb,
  	},
@@ -161,7 +161,7 @@ index 51f64e6ad839..c6817b4883ff 100644
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -103,6 +109,10 @@ static struct monitor_option monitor_opts[] = {
+@@ -131,6 +137,10 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "|--all",
  		.cmd		= 0,
  	},

@@ -1,4 +1,4 @@
-From 095be7cd5ea9edd10583c460dfdbd154158fe927 Mon Sep 17 00:00:00 2001
+From 5670b9986d60b9573f03ffeac3862cb430170b56 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:24:40 +0200
 Subject: [PATCH 33/35] netlink: add netlink handler for srxfh (-X)
@@ -48,10 +48,10 @@ index eba1a7f9800d..42bd6c5d7848 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 442c2c1057e5..19d9b5269299 100644
+index d9c67c9d9a43..4d485831a6ae 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -72,6 +72,7 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data);
+@@ -100,6 +100,7 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int nwayrst_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int physid_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int reset_reply_cb(const struct nlmsghdr *nlhdr, void *data);
@@ -59,7 +59,7 @@ index 442c2c1057e5..19d9b5269299 100644
  
  static struct {
  	uint8_t		cmd;
-@@ -105,6 +106,10 @@ static struct {
+@@ -133,6 +134,10 @@ static struct {
  		.cmd	= ETHNL_CMD_ACT_RESET,
  		.cb	= reset_reply_cb,
  	},
@@ -70,7 +70,7 @@ index 442c2c1057e5..19d9b5269299 100644
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -200,6 +205,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -228,6 +233,11 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "--reset",
  		.cmd		= ETHNL_CMD_ACT_RESET,
  	},

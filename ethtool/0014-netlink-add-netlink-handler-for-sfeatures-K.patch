@@ -1,4 +1,4 @@
-From 413d6888d02d31cd256f3f5d490a2f18bd272de3 Mon Sep 17 00:00:00 2001
+From 4c2b31bed0871e1cec87f524684397af7338d299 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:25:31 +0200
 Subject: [PATCH 14/35] netlink: add netlink handler for sfeatures (-K)

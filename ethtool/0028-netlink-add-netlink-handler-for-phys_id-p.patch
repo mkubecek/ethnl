@@ -1,4 +1,4 @@
-From 2ed546b27afa8033368f5f7524d83611343d9e65 Mon Sep 17 00:00:00 2001
+From af801acb5254422821d99831440aafe55e877ef3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 16:43:40 +0200
 Subject: [PATCH 28/35] netlink: add netlink handler for phys_id (-p)
@@ -134,10 +134,10 @@ index bb6ae9205642..87ac57955bab 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 2ae374cdaeb3..281aa1f5da16 100644
+index 0379e35106d5..adce9568a8da 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -70,6 +70,7 @@ int info_reply_cb(const struct nlmsghdr *nlhdr, void *data);
+@@ -98,6 +98,7 @@ int info_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int params_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int nwayrst_reply_cb(const struct nlmsghdr *nlhdr, void *data);
@@ -145,7 +145,7 @@ index 2ae374cdaeb3..281aa1f5da16 100644
  
  static struct {
  	uint8_t		cmd;
-@@ -95,6 +96,10 @@ static struct {
+@@ -123,6 +124,10 @@ static struct {
  		.cmd	= ETHNL_CMD_ACT_NWAY_RST,
  		.cb	= nwayrst_reply_cb,
  	},
@@ -156,7 +156,7 @@ index 2ae374cdaeb3..281aa1f5da16 100644
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -177,6 +182,10 @@ static struct monitor_option monitor_opts[] = {
+@@ -205,6 +210,10 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "-r|--negotiate",
  		.cmd		= ETHNL_CMD_ACT_NWAY_RST,
  	},

@@ -1,4 +1,4 @@
-From 38efe0af44d139f32c8b0dd31250699ea2191624 Mon Sep 17 00:00:00 2001
+From b0f24f7991ce15f0849309bcf51ef34f0ebfe261 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
 Subject: [PATCH 15/35] netlink: add netlink handler for gcoalesce (-c)
@@ -63,10 +63,10 @@ index ed526cf60142..bc0ca8f59686 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 38d669ef58a6..af6c1bbd4981 100644
+index f1c25f1449f6..e68e13b36eba 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -68,6 +68,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -96,6 +96,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
  
  int info_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);
@@ -74,7 +74,7 @@ index 38d669ef58a6..af6c1bbd4981 100644
  
  static struct {
  	uint8_t		cmd;
-@@ -85,6 +86,10 @@ static struct {
+@@ -113,6 +114,10 @@ static struct {
  		.cmd	= ETHNL_CMD_SET_SETTINGS,
  		.cb	= settings_reply_cb,
  	},
@@ -85,7 +85,7 @@ index 38d669ef58a6..af6c1bbd4981 100644
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -133,6 +138,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -161,6 +166,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_SETTINGS,
  		.info_mask	= ETH_SETTINGS_IM_FEATURES,
  	},
