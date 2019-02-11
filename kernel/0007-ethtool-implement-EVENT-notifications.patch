@@ -1,26 +1,30 @@
-From 58e536b5feb8cf9ec0a745196a0aee1cd4772b09 Mon Sep 17 00:00:00 2001
+From 55d499cecee645e55ea5728ecedb21f2badacd91 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 07/25] ethtool: implement EVENT notifications
 
-Two types of netlink notifications are introduced: ETHA_EVENT_NEWDEV to
-notify about newly registered network devices and ETHA_EVENT_DELDEV to
-notify about unregistered network devices. These are triggered by
-NETDEV_REGISTER and NETDEV_UNREGISTER notifiers.
+Three types of netlink notifications are introduced:
 
-These are intended for applications and daemons monitoring ethtool events
-to allow updating the list of existing devices without having to open
-another socket for rtnetlink.
+  - ETHA_EVENT_NEWDEV to notify about newly registered network devices
+  - ETHA_EVENT_DELDEV to notify about unregistered network devices
+  - ETHA_EVENT_RENAMEDEV to notify about renamed network device
+
+The notifications are triggered by NETDEV_REGISTER, NETDEV_UNREGISTER and
+NETDEV_CHANGENAME notifiers.
+
+These notifications are intended for applications and daemons monitoring
+ethtool events to allow updating the list of existing devices without
+having to open another socket for rtnetlink.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 22 +++++++
- include/uapi/linux/ethtool_netlink.h         | 28 +++++++++
- net/ethtool/netlink.c                        | 61 ++++++++++++++++++++
- 3 files changed, 111 insertions(+)
+ Documentation/networking/ethtool-netlink.txt | 27 ++++++++
+ include/uapi/linux/ethtool_netlink.h         | 37 +++++++++++
+ net/ethtool/netlink.c                        | 65 ++++++++++++++++++++
+ 3 files changed, 129 insertions(+)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index b883b358b442..1ec6dbf34f24 100644
+index b883b358b442..141322fefc25 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -125,6 +125,8 @@ which the request applies.
@@ -32,7 +36,7 @@ index b883b358b442..1ec6dbf34f24 100644
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
  
-@@ -136,9 +138,29 @@ messages marked as "response only" in the table above. "Get" messages with
+@@ -136,9 +138,34 @@ messages marked as "response only" in the table above. "Get" messages with
  NLM_F_DUMP flags and no device identification dump the information for all
  devices supporting the request.
  
@@ -53,6 +57,11 @@ index b883b358b442..1ec6dbf34f24 100644
 +       ETHA_NEWDEV_DEV			(nested)	new device
 +    ETHA_EVENT_DELDEV		(nested)	device was unregistered
 +       ETHA_DELDEV_DEV			(nested)	removed device
++    ETHA_EVENT_RENAMEDEV	(nested)	device was renamed
++       ETHA_RENAMEDEV_DEV		(nested)	renamed device
++
++For ETHA_EVENT_RENAMEDEV, the name ETHA_RENAME_DEV/ETHA_DEV_NAME is the new
++name after the rename.
 +
 +Userspace application must expect multiple events to be present in one message
 +and also multiple events of the same type (e.g. two or more newly registered
@@ -63,7 +72,7 @@ index b883b358b442..1ec6dbf34f24 100644
  -------------------
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index b662d75a0636..34721d3b5e40 100644
+index b662d75a0636..7e192ad8ce3a 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -7,6 +7,7 @@
@@ -74,7 +83,7 @@ index b662d75a0636..34721d3b5e40 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -55,6 +56,33 @@ enum {
+@@ -55,6 +56,42 @@ enum {
  	ETHA_BITSET_MAX = (__ETHA_BITSET_CNT - 1)
  };
  
@@ -97,9 +106,18 @@ index b662d75a0636..34721d3b5e40 100644
 +};
 +
 +enum {
++	ETHA_RENAMEDEV_UNSPEC,
++	ETHA_RENAMEDEV_DEV,			/* nest - ETHA_DEV_* */
++
++	__ETHA_RENAMEDEV_CNT,
++	ETHA_RENAMEDEV_MAX = (__ETHA_RENAMEDEV_CNT - 1)
++};
++
++enum {
 +	ETHA_EVENT_UNSPEC,
 +	ETHA_EVENT_NEWDEV,			/* nest - ETHA_NEWDEV_* */
 +	ETHA_EVENT_DELDEV,			/* nest - ETHA_DELDEV_* */
++	ETHA_EVENT_RENAMEDEV,			/* nest - ETHA_RENAMEDEV_* */
 +
 +	__ETHA_EVENT_CNT,
 +	ETHA_EVENT_MAX = (__ETHA_EVENT_CNT - 1)
@@ -109,10 +127,10 @@ index b662d75a0636..34721d3b5e40 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 27f514c3fc2d..4b1a00365e3e 100644
+index 27f514c3fc2d..1facc0968342 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -147,6 +147,63 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
+@@ -147,6 +147,67 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  }
  EXPORT_SYMBOL(ethtool_notify);
  
@@ -164,6 +182,10 @@ index 27f514c3fc2d..4b1a00365e3e 100644
 +	case NETDEV_UNREGISTER:
 +		ethnl_notify_devlist(ptr, ETHA_EVENT_DELDEV, ETHA_DELDEV_DEV);
 +		break;
++	case NETDEV_CHANGENAME:
++		ethnl_notify_devlist(ptr, ETHA_EVENT_RENAMEDEV,
++				     ETHA_RENAMEDEV_DEV);
++		break;
 +	}
 +
 +	return NOTIFY_DONE;
@@ -176,7 +198,7 @@ index 27f514c3fc2d..4b1a00365e3e 100644
  /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -178,6 +235,10 @@ static int __init ethnl_init(void)
+@@ -178,6 +239,10 @@ static int __init ethnl_init(void)
  	if (ret < 0)
  		panic("ethtool: could not register genetlink family\n");
  

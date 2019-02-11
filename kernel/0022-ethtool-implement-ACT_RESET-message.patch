@@ -1,4 +1,4 @@
-From 680014d48e6daa7b3c07f0689d6d78f98b228af2 Mon Sep 17 00:00:00 2001
+From 45f8ab89569607b2b9860201137f4be7ef2594eb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 22/25] ethtool: implement ACT_RESET message
@@ -20,10 +20,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 296 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 121c7be5648a..f31aca5c127b 100644
+index 6f925fccb7ac..1e92ded3758e 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -534,6 +534,29 @@ other ACT_PHYS_ID requests for any device fail with EBUSY. The same holds for
+@@ -539,6 +539,29 @@ other ACT_PHYS_ID requests for any device fail with EBUSY. The same holds for
  requests using ETHTOOL_PHYS_ID ioctl command.
  
  
@@ -53,7 +53,7 @@ index 121c7be5648a..f31aca5c127b 100644
  Request translation
  -------------------
  
-@@ -593,7 +616,7 @@ ETHTOOL_GRXCLSRLALL		n/a
+@@ -598,7 +621,7 @@ ETHTOOL_GRXCLSRLALL		n/a
  ETHTOOL_SRXCLSRLDEL		n/a
  ETHTOOL_SRXCLSRLINS		n/a
  ETHTOOL_FLASHDEV		n/a
@@ -91,7 +91,7 @@ index 4e0e864b036d..101a969ffd3e 100644
  
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index c195fe99e57d..74087a556a0d 100644
+index 16aa69bcddf4..607f82d2c38d 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -18,6 +18,7 @@ enum {
@@ -102,7 +102,7 @@ index c195fe99e57d..74087a556a0d 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -373,6 +374,21 @@ enum {
+@@ -382,6 +383,21 @@ enum {
  	ETHA_PHYSID_MAX = (__ETHA_PHYSID_CNT - 1)
  };
  
@@ -398,7 +398,7 @@ index b65af47a1b4b..1eab710df872 100644
  	if (copy_to_user(useraddr, &reset, sizeof(reset)))
  		return -EFAULT;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index f5b9add1ed09..1f926fd2d743 100644
+index 975ea250b4b5..7cf13ded4c51 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -480,6 +480,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
@@ -409,7 +409,7 @@ index f5b9add1ed09..1f926fd2d743 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -615,6 +616,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -619,6 +620,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_act_phys_id,
  	},

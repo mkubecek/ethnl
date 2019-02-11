@@ -1,4 +1,4 @@
-From 901c00f975ff8dcf36fc8e13c155b94c336861ab Mon Sep 17 00:00:00 2001
+From 77f39aee6cbf92c7663dc60d40e94dee60292d30 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 20/25] ethtool: implement ACT_NWAY_RST message
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/actions.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 0343c8e7601f..cf691ea0d6d1 100644
+index 174261ee4e06..dfec61958ca9 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -134,6 +134,7 @@ List of message types
@@ -31,7 +31,7 @@ index 0343c8e7601f..cf691ea0d6d1 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -499,6 +500,18 @@ cannot be set by SET_PARAMS request.
+@@ -504,6 +505,18 @@ cannot be set by SET_PARAMS request.
  		- change configured FEC encodings
  
  
@@ -50,7 +50,7 @@ index 0343c8e7601f..cf691ea0d6d1 100644
  Request translation
  -------------------
  
-@@ -516,7 +529,7 @@ ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
+@@ -521,7 +534,7 @@ ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SWOL			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GMSGLVL			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SMSGLVL			ETHNL_CMD_SET_SETTINGS
@@ -60,7 +60,7 @@ index 0343c8e7601f..cf691ea0d6d1 100644
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 36e1ba2e79ff..4347fad536d8 100644
+index b688090e9bff..bf96b6d8e26f 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -16,6 +16,7 @@ enum {
@@ -71,7 +71,7 @@ index 36e1ba2e79ff..4347fad536d8 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -350,6 +351,16 @@ enum {
+@@ -359,6 +360,16 @@ enum {
  	ETHA_FEC_MAX = (__ETHA_FEC_CNT - 1)
  };
  
@@ -199,7 +199,7 @@ index 9fc1c112b2ad..da7ff90b5e77 100644
  
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 0c13df8afc34..18bd49865184 100644
+index 64b4128bee87..c28bfbce1d26 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -478,6 +478,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
@@ -210,7 +210,7 @@ index 0c13df8afc34..18bd49865184 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -603,6 +604,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -607,6 +608,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_params,
  	},

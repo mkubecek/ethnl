@@ -1,4 +1,4 @@
-From 6bce99c181018ac1da66731fd04f61740e33d4df Mon Sep 17 00:00:00 2001
+From 75619fc74fd957f6f64a0443dd85fed65565f896 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 15/25] ethtool: implement SET_SETTINGS request for features
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 179 insertions(+), 9 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index f67a62f4daf0..86d0c5c9f7a9 100644
+index 0fcf30e714e5..cac539d161c5 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -310,6 +310,9 @@ to be passed with SET_SETTINGS request:
+@@ -315,6 +315,9 @@ to be passed with SET_SETTINGS request:
      ETHA_SETTINGS_SOPASS        (binary)        SecureOn(tm) password
      ETHA_SETTINGS_MSGLVL        (bitfield32)    debug level
      ETHA_SETTINGS_LINK_MODES    (bitset)        device link modes
@@ -32,7 +32,7 @@ index f67a62f4daf0..86d0c5c9f7a9 100644
  
  For both bitfield32 types, value and selector work the usual way, i.e. bits
  set in selector are set to corresponding bits from value and the rest is
-@@ -324,6 +327,17 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
+@@ -329,6 +332,17 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
  is supposed to allow requesting changes without knowing what exactly kernel
  supports.
  
@@ -50,7 +50,7 @@ index f67a62f4daf0..86d0c5c9f7a9 100644
  
  Request translation
  -------------------
-@@ -353,30 +367,30 @@ ETHTOOL_SRINGPARAM		n/a
+@@ -358,30 +372,30 @@ ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
  ETHTOOL_SPAUSEPARAM		n/a
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
@@ -89,7 +89,7 @@ index f67a62f4daf0..86d0c5c9f7a9 100644
  ETHTOOL_GRXRINGS		n/a
  ETHTOOL_GRXCLSRLCNT		n/a
  ETHTOOL_GRXCLSRULE		n/a
-@@ -391,7 +405,7 @@ ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
+@@ -396,7 +410,7 @@ ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
  ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
@@ -99,10 +99,10 @@ index f67a62f4daf0..86d0c5c9f7a9 100644
  ETHTOOL_SCHANNELS		n/a
  ETHTOOL_SET_DUMP		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 6a611dd3b1b7..1c2447f4a456 100644
+index c6c791c71b11..b114a2b91650 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -223,6 +223,7 @@ enum {
+@@ -232,6 +232,7 @@ enum {
  	ETHA_FEATURES_WANTED,			/* bitset */
  	ETHA_FEATURES_ACTIVE,			/* bitset */
  	ETHA_FEATURES_NOCHANGE,			/* bitset */

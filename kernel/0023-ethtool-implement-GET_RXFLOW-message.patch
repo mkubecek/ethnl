@@ -1,4 +1,4 @@
-From 2dc380ac71f0c15ecca4539151286568f582cb1a Mon Sep 17 00:00:00 2001
+From dc161c0f411617d221c56233a5d64fe198a772ef Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 23/25] ethtool: implement GET_RXFLOW message
@@ -25,7 +25,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/rxflow.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index f31aca5c127b..8592fae984ef 100644
+index 1e92ded3758e..38dfcb76e394 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -135,6 +135,8 @@ List of message types
@@ -37,7 +37,7 @@ index f31aca5c127b..8592fae984ef 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -557,6 +559,118 @@ indicating which components _were_ actually reset (this is different from
+@@ -562,6 +564,118 @@ indicating which components _were_ actually reset (this is different from
  ioctl interface). The same message is also broadcasted as a notification.
  
  
@@ -156,7 +156,7 @@ index f31aca5c127b..8592fae984ef 100644
  Request translation
  -------------------
  
-@@ -605,11 +719,11 @@ ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
+@@ -610,11 +724,11 @@ ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFLAGS			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GPFLAGS			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SPFLAGS			ETHNL_CMD_SET_SETTINGS
@@ -170,7 +170,7 @@ index f31aca5c127b..8592fae984ef 100644
  ETHTOOL_GRXCLSRLCNT		n/a
  ETHTOOL_GRXCLSRULE		n/a
  ETHTOOL_GRXCLSRLALL		n/a
-@@ -620,7 +734,7 @@ ETHTOOL_RESET			ETHNL_CMD_ACT_RESET
+@@ -625,7 +739,7 @@ ETHTOOL_RESET			ETHNL_CMD_ACT_RESET
  ETHTOOL_SRXNTUPLE		n/a
  ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
@@ -179,7 +179,7 @@ index f31aca5c127b..8592fae984ef 100644
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
-@@ -634,7 +748,7 @@ ETHTOOL_GMODULEINFO		n/a
+@@ -639,7 +753,7 @@ ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
  ETHTOOL_SEEE			ETHNL_CMD_SET_PARAMS
@@ -189,7 +189,7 @@ index f31aca5c127b..8592fae984ef 100644
  ETHTOOL_GTUNABLE		n/a
  ETHTOOL_STUNABLE		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 74087a556a0d..7fb413ca353b 100644
+index 607f82d2c38d..140762e91f28 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -19,6 +19,8 @@ enum {
@@ -201,7 +201,7 @@ index 74087a556a0d..7fb413ca353b 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -389,6 +391,101 @@ enum {
+@@ -398,6 +400,101 @@ enum {
  	ETHA_RESET_MAX = (__ETHA_RESET_CNT - 1)
  };
  
@@ -314,7 +314,7 @@ index b3e88cf0f4c0..a6ace735f44f 100644
 -		   actions.o
 +		   actions.o rxflow.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 1f926fd2d743..e77dc746e8e6 100644
+index 7cf13ded4c51..89073a2fcdf5 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -145,12 +145,14 @@ extern const struct get_request_ops strset_request_ops;
@@ -332,7 +332,7 @@ index 1f926fd2d743..e77dc746e8e6 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -621,6 +623,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -625,6 +627,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_ADMIN_PERM,
  		.doit	= ethnl_act_reset,
  	},

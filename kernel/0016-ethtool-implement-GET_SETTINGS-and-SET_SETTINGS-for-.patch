@@ -1,4 +1,4 @@
-From 805b51dccd88b8da2d863a056025ff65aac589fb Mon Sep 17 00:00:00 2001
+From 188b22841f013c8e03935fa00c43cf33cb7060d4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 16/25] ethtool: implement GET_SETTINGS and SET_SETTINGS for
@@ -20,10 +20,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 156 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 86d0c5c9f7a9..7ad1960e4bdd 100644
+index cac539d161c5..7ebbde927072 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -241,6 +241,7 @@ Info mask bits meaning:
+@@ -246,6 +246,7 @@ Info mask bits meaning:
      ETH_SETTINGS_IM_WOLINFO		struct ethtool_wolinfo
      ETH_SETTINGS_IM_LINK		link state
      ETH_SETTINGS_IM_FEATURES		features
@@ -31,7 +31,7 @@ index 86d0c5c9f7a9..7ad1960e4bdd 100644
  
  Response contents:
  
-@@ -264,6 +265,7 @@ Response contents:
+@@ -269,6 +270,7 @@ Response contents:
          ETHA_FEATURES_WANTED		(bitset)	dev->wanted_features
          ETHA_FEATURES_ACTIVE		(bitset)	dev->features
          ETHA_FEATURES_NOCHANGE		(bitset)	NETIF_F_NEVER_CHANGE
@@ -39,7 +39,7 @@ index 86d0c5c9f7a9..7ad1960e4bdd 100644
  
  Most of the attributes have the same meaning (including values) as
  corresponding members of ioctl structures. For ETHA_SETTINGS_MSGLVL, selector
-@@ -282,6 +284,11 @@ itself. ETHA_FEATURES_HW uses mask consisting of all features recognized by
+@@ -287,6 +289,11 @@ itself. ETHA_FEATURES_HW uses mask consisting of all features recognized by
  kernel (to provide all names when using verbose bitmap format), remaining
  three use mask equal to value (to save space).
  
@@ -51,7 +51,7 @@ index 86d0c5c9f7a9..7ad1960e4bdd 100644
  GET_SETTINGS request is allowed for unprivileged user but ETHA_SETTINGS_SOPASS
  is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
  requests.
-@@ -313,6 +320,7 @@ to be passed with SET_SETTINGS request:
+@@ -318,6 +325,7 @@ to be passed with SET_SETTINGS request:
      ETHA_SETTINGS_FEATURES	(nested)	device features
          ETHA_FEATURES_WANTED		(bitset)	wanted features
          ETHA_FEATURES_WANT_DIFF		(flag)		actual diff
@@ -59,7 +59,7 @@ index 86d0c5c9f7a9..7ad1960e4bdd 100644
  
  For both bitfield32 types, value and selector work the usual way, i.e. bits
  set in selector are set to corresponding bits from value and the rest is
-@@ -385,8 +393,8 @@ ETHTOOL_GGSO			ETHNL_CMD_GET_SETTINGS
+@@ -390,8 +398,8 @@ ETHTOOL_GGSO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SGSO			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFLAGS			ETHNL_CMD_SET_SETTINGS
@@ -71,10 +71,10 @@ index 86d0c5c9f7a9..7ad1960e4bdd 100644
  ETHTOOL_SRXFH			n/a
  ETHTOOL_GGRO			ETHNL_CMD_GET_SETTINGS
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 1c2447f4a456..ee639573d8a7 100644
+index b114a2b91650..4f6417b1fc4b 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -203,6 +203,7 @@ enum {
+@@ -212,6 +212,7 @@ enum {
  	ETHA_SETTINGS_PEER_MODES,		/* bitset */
  	ETHA_SETTINGS_LINK,			/* u8 */
  	ETHA_SETTINGS_FEATURES,			/* nest - ETHA_FEATURES_* */
@@ -82,7 +82,7 @@ index 1c2447f4a456..ee639573d8a7 100644
  
  	__ETHA_SETTINGS_CNT,
  	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
-@@ -214,8 +215,9 @@ enum {
+@@ -223,8 +224,9 @@ enum {
  #define ETH_SETTINGS_IM_WOLINFO			0x08
  #define ETH_SETTINGS_IM_LINK			0x10
  #define ETH_SETTINGS_IM_FEATURES		0x20

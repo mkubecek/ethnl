@@ -1,4 +1,4 @@
-From 3e68eb2329bf00e6f005ec1573e8f6cb1f94f096 Mon Sep 17 00:00:00 2001
+From 0ac4b2658a2a0c2de196ac1b3cd15ccd78d758c3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
 Subject: [PATCH 24/25] ethtool: implement SET_RXFLOW notification
@@ -138,7 +138,7 @@ index 1eab710df872..0eb0f6cdc20b 100644
  	if (copy_to_user(useraddr + offsetof(struct ethtool_rxfh, rss_context),
  			 &rxfh.rss_context, sizeof(rxfh.rss_context)))
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index e77dc746e8e6..72562ed4a942 100644
+index 89073a2fcdf5..45c6c47446c8 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -483,6 +483,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {

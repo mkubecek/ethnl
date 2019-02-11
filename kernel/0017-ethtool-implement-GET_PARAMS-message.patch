@@ -1,4 +1,4 @@
-From 910c381539ee4f70178b2172047a3f8a00f5bf0e Mon Sep 17 00:00:00 2001
+From c129cf17445f5b295d4c0fa92768db57a759a94b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
 Subject: [PATCH 17/25] ethtool: implement GET_PARAMS message
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/params.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 7ad1960e4bdd..62e6c0a5a477 100644
+index 7ebbde927072..29d7465a969f 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -132,6 +132,8 @@ List of message types
@@ -31,7 +31,7 @@ index 7ad1960e4bdd..62e6c0a5a477 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -347,6 +349,99 @@ the operation); mask shows bits which have been changed and value their new
+@@ -352,6 +354,99 @@ the operation); mask shows bits which have been changed and value their new
  values.
  
  
@@ -131,7 +131,7 @@ index 7ad1960e4bdd..62e6c0a5a477 100644
  Request translation
  -------------------
  
-@@ -368,11 +463,11 @@ ETHTOOL_NWAY_RST		n/a
+@@ -373,11 +468,11 @@ ETHTOOL_NWAY_RST		n/a
  ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
@@ -146,7 +146,7 @@ index 7ad1960e4bdd..62e6c0a5a477 100644
  ETHTOOL_SPAUSEPARAM		n/a
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SRXCSUM			ETHNL_CMD_SET_SETTINGS
-@@ -414,7 +509,7 @@ ETHTOOL_GRXFHINDIR		n/a
+@@ -419,7 +514,7 @@ ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
@@ -155,7 +155,7 @@ index 7ad1960e4bdd..62e6c0a5a477 100644
  ETHTOOL_SCHANNELS		n/a
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
-@@ -422,7 +517,7 @@ ETHTOOL_GET_DUMP_DATA		n/a
+@@ -427,7 +522,7 @@ ETHTOOL_GET_DUMP_DATA		n/a
  ETHTOOL_GET_TS_INFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a
@@ -164,7 +164,7 @@ index 7ad1960e4bdd..62e6c0a5a477 100644
  ETHTOOL_SEEE			n/a
  ETHTOOL_GRSSH			n/a
  ETHTOOL_SRSSH			n/a
-@@ -434,6 +529,6 @@ ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
+@@ -439,6 +534,6 @@ ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a
@@ -173,7 +173,7 @@ index 7ad1960e4bdd..62e6c0a5a477 100644
  ETHTOOL_SFECPARAM		n/a
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index ee639573d8a7..36e1ba2e79ff 100644
+index 4f6417b1fc4b..b688090e9bff 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -14,6 +14,8 @@ enum {
@@ -185,7 +185,7 @@ index ee639573d8a7..36e1ba2e79ff 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -231,6 +233,123 @@ enum {
+@@ -240,6 +242,123 @@ enum {
  	ETHA_FEATURES_MAX = (__ETHA_FEATURES_CNT - 1)
  };
  
@@ -320,7 +320,7 @@ index 6a7a182e1568..95e93c153cf6 100644
 -ethtool_nl-y	:= netlink.o bitset.o strset.o info.o settings.o
 +ethtool_nl-y	:= netlink.o bitset.o strset.o info.o settings.o params.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 5db58deda849..39a95ed8ef2e 100644
+index 333d45f3e6b0..36a18cfa5f3e 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -144,11 +144,13 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
@@ -337,7 +337,7 @@ index 5db58deda849..39a95ed8ef2e 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -588,6 +590,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -592,6 +594,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_settings,
  	},

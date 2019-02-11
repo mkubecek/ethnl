@@ -1,4 +1,4 @@
-From d882b3c44cb12ca284a895b601346b817b460583 Mon Sep 17 00:00:00 2001
+From 19d5ce31a6b4c3fcf2011f9f8a737238ba236958 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 25/25] ethtool: implement SET_RXFLOW message
@@ -25,7 +25,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 657 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 8592fae984ef..923c8703156c 100644
+index 38dfcb76e394..c1b7d9b818f0 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -136,7 +136,7 @@ List of message types
@@ -37,7 +37,7 @@ index 8592fae984ef..923c8703156c 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -671,6 +671,43 @@ these weights correspond to. If ETHA_ITWGHT_VALUES is omitted, values from 0
+@@ -676,6 +676,43 @@ these weights correspond to. If ETHA_ITWGHT_VALUES is omitted, values from 0
  to number of weights minus one are used.
  
  
@@ -81,7 +81,7 @@ index 8592fae984ef..923c8703156c 100644
  Request translation
  -------------------
  
-@@ -735,7 +772,7 @@ ETHTOOL_SRXNTUPLE		n/a
+@@ -740,7 +777,7 @@ ETHTOOL_SRXNTUPLE		n/a
  ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
  ETHTOOL_GRXFHINDIR		ETHNL_CMD_GET_RXFLOW
@@ -90,7 +90,7 @@ index 8592fae984ef..923c8703156c 100644
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GCHANNELS		ETHNL_CMD_GET_PARAMS
-@@ -749,7 +786,7 @@ ETHTOOL_GMODULEEEPROM		n/a
+@@ -754,7 +791,7 @@ ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
  ETHTOOL_SEEE			ETHNL_CMD_SET_PARAMS
  ETHTOOL_GRSSH			ETHNL_CMD_GET_RXFLOW
@@ -100,7 +100,7 @@ index 8592fae984ef..923c8703156c 100644
  ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 7fb413ca353b..7760c205a80b 100644
+index 140762e91f28..1dbd06100cf8 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -20,7 +20,7 @@ enum {
@@ -113,10 +113,10 @@ index 7fb413ca353b..7760c205a80b 100644
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 72562ed4a942..e303d018077c 100644
+index 45c6c47446c8..fbeca225796f 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -631,6 +631,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -635,6 +635,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},

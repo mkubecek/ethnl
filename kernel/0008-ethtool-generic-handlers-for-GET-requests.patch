@@ -1,4 +1,4 @@
-From a3a53ae4257556ef8443c964dde8bb53e0b72834 Mon Sep 17 00:00:00 2001
+From 62bbec4f8f90176415abcf91b745d38d5301333c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 27 Aug 2018 19:51:37 +0200
 Subject: [PATCH 08/25] ethtool: generic handlers for GET requests
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 375 insertions(+)
 
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 4b1a00365e3e..0a3fce66b4c0 100644
+index 1facc0968342..28b1b76a179e 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -83,6 +83,41 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)

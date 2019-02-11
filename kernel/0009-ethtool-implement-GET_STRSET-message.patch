@@ -1,4 +1,4 @@
-From b6d7e33c49772362f7460690dfd88638d2c00e26 Mon Sep 17 00:00:00 2001
+From ab79135d29876336ba6c6264dbea8e1a07930ed6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 09/25] ethtool: implement GET_STRSET message
@@ -34,7 +34,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/strset.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 1ec6dbf34f24..d127e5e6dd17 100644
+index 141322fefc25..ee75da136711 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -126,6 +126,8 @@ List of message types
@@ -46,7 +46,7 @@ index 1ec6dbf34f24..d127e5e6dd17 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -195,7 +197,7 @@ ETHTOOL_STXCSUM			n/a
+@@ -200,7 +202,7 @@ ETHTOOL_STXCSUM			n/a
  ETHTOOL_GSG			n/a
  ETHTOOL_SSG			n/a
  ETHTOOL_TEST			n/a
@@ -55,7 +55,7 @@ index 1ec6dbf34f24..d127e5e6dd17 100644
  ETHTOOL_PHYS_ID			n/a
  ETHTOOL_GSTATS			n/a
  ETHTOOL_GTSO			n/a
-@@ -223,7 +225,7 @@ ETHTOOL_FLASHDEV		n/a
+@@ -228,7 +230,7 @@ ETHTOOL_FLASHDEV		n/a
  ETHTOOL_RESET			n/a
  ETHTOOL_SRXNTUPLE		n/a
  ETHTOOL_GRXNTUPLE		n/a
@@ -80,7 +80,7 @@ index 17be76aeb468..7d535d6101d8 100644
  
  /**
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 34721d3b5e40..6d63822a0e4e 100644
+index 7e192ad8ce3a..e5a075eb310e 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -8,6 +8,8 @@
@@ -92,7 +92,7 @@ index 34721d3b5e40..6d63822a0e4e 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -83,6 +85,46 @@ enum {
+@@ -92,6 +94,46 @@ enum {
  	ETHA_EVENT_MAX = (__ETHA_EVENT_CNT - 1)
  };
  
@@ -349,7 +349,7 @@ index d2c47cdf25da..c10c2ad6125b 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 0a3fce66b4c0..cdf3b34886eb 100644
+index 28b1b76a179e..a121a7640ed1 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -85,7 +85,10 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
@@ -363,7 +363,7 @@ index 0a3fce66b4c0..cdf3b34886eb 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -487,6 +490,13 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -491,6 +494,13 @@ static struct notifier_block ethnl_netdev_notifier = {
  /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {

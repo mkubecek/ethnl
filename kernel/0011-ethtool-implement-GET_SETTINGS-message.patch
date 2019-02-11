@@ -1,4 +1,4 @@
-From da3d89a97cfe90ca61e5302e3566ec333dd2aee4 Mon Sep 17 00:00:00 2001
+From 7ecaf47948c1f47648eca417f68bb0e005ecfba0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
 Subject: [PATCH 11/25] ethtool: implement GET_SETTINGS message
@@ -27,7 +27,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 603601e71d1f..d2184ed9f3b1 100644
+index df6c68fb1db5..db091d44b330 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -130,6 +130,8 @@ List of message types
@@ -39,7 +39,7 @@ index 603601e71d1f..d2184ed9f3b1 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -218,6 +220,62 @@ if no PHC is associated, the attribute is not present.
+@@ -223,6 +225,62 @@ if no PHC is associated, the attribute is not present.
  GET_INFO requests allow dumps.
  
  
@@ -102,7 +102,7 @@ index 603601e71d1f..d2184ed9f3b1 100644
  Request translation
  -------------------
  
-@@ -227,16 +285,16 @@ have their netlink replacement yet.
+@@ -232,16 +290,16 @@ have their netlink replacement yet.
  
  ioctl command			netlink command
  ---------------------------------------------------------------------
@@ -123,7 +123,7 @@ index 603601e71d1f..d2184ed9f3b1 100644
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		n/a
-@@ -301,7 +359,7 @@ ETHTOOL_GTUNABLE		n/a
+@@ -306,7 +364,7 @@ ETHTOOL_GTUNABLE		n/a
  ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
@@ -180,7 +180,7 @@ index 615743a89715..4e0e864b036d 100644
  	__ETH_SS_MAX,
  	ETH_SS_MAX = (__ETH_SS_MAX - 1)
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index e3571dc883d2..76f7a9f4c04c 100644
+index 30a1594ce601..ca3f7fba4442 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -12,6 +12,8 @@ enum {
@@ -192,7 +192,7 @@ index e3571dc883d2..76f7a9f4c04c 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -179,6 +181,40 @@ enum {
+@@ -188,6 +190,40 @@ enum {
  	ETHA_TSINFO_MAX = (__ETHA_TSINFO_CNT - 1)
  };
  
@@ -426,7 +426,7 @@ index 2f5bf171a5f1..498d96e54058 100644
  		return -EFAULT;
  	return 0;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 27c86e52ad7e..c6a3e1a02c8a 100644
+index 2760ac0eae26..c5f2f5285a90 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -1,11 +1,67 @@
@@ -510,7 +510,7 @@ index 27c86e52ad7e..c6a3e1a02c8a 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -506,6 +564,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -510,6 +568,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -524,7 +524,7 @@ index 27c86e52ad7e..c6a3e1a02c8a 100644
  };
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
-@@ -530,6 +595,9 @@ static int __init ethnl_init(void)
+@@ -534,6 +599,9 @@ static int __init ethnl_init(void)
  {
  	int ret;
  

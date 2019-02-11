@@ -1,4 +1,4 @@
-From 943d60dbe421ec32cb9000bf25da47ed07a06bc1 Mon Sep 17 00:00:00 2001
+From ce6fbf018d306639813d30fc3ff80b87a3e8b0b4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 14/25] ethtool: implement SET_SETTINGS message
@@ -18,7 +18,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 479 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 80c3e2353cd5..f67a62f4daf0 100644
+index bbb9b14d1e70..0fcf30e714e5 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -131,7 +131,7 @@ List of message types
@@ -30,7 +30,7 @@ index 80c3e2353cd5..f67a62f4daf0 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -292,6 +292,39 @@ netlink or ioctl ethtool interface; feature notifications are also sent
+@@ -297,6 +297,39 @@ netlink or ioctl ethtool interface; feature notifications are also sent
  whenever netdev_update_features() or netdev_change_features() is called.
  
  
@@ -70,7 +70,7 @@ index 80c3e2353cd5..f67a62f4daf0 100644
  Request translation
  -------------------
  
-@@ -302,13 +335,13 @@ have their netlink replacement yet.
+@@ -307,13 +340,13 @@ have their netlink replacement yet.
  ioctl command			netlink command
  ---------------------------------------------------------------------
  ETHTOOL_GSET			ETHNL_CMD_GET_SETTINGS
@@ -87,7 +87,7 @@ index 80c3e2353cd5..f67a62f4daf0 100644
  ETHTOOL_NWAY_RST		n/a
  ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
-@@ -376,7 +409,7 @@ ETHTOOL_STUNABLE		n/a
+@@ -381,7 +414,7 @@ ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
  ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
@@ -97,10 +97,10 @@ index 80c3e2353cd5..f67a62f4daf0 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 028ebb91c8f3..5db58deda849 100644
+index 4d135395a1f1..333d45f3e6b0 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -583,6 +583,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -587,6 +587,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},

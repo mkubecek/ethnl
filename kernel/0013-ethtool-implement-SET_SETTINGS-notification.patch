@@ -1,4 +1,4 @@
-From 67e845177ad71dfcb6a93da2a6c6d596e0e6f176 Mon Sep 17 00:00:00 2001
+From 2c2c3dd2a94cf90b5393b8c8d625bc60d8ba8952 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:36:49 -0400
 Subject: [PATCH 13/25] ethtool: implement SET_SETTINGS notification
@@ -18,10 +18,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 33 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 89d1fdcea2b7..80c3e2353cd5 100644
+index c54262ead879..bbb9b14d1e70 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -288,7 +288,8 @@ requests.
+@@ -293,7 +293,8 @@ requests.
  
  GET_SETTINGS requests allow dumps and messages in the same format as response
  to them are broadcasted as notifications on change of these settings using
@@ -99,7 +99,7 @@ index feee9155f3d0..f5804c1c6522 100644
  	case ETHTOOL_GEEE:
  		rc = ethtool_get_eee(dev, useraddr);
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index c6a3e1a02c8a..028ebb91c8f3 100644
+index c5f2f5285a90..4d135395a1f1 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -474,6 +474,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
@@ -125,9 +125,9 @@ index c6a3e1a02c8a..028ebb91c8f3 100644
  static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
  			      void *ptr)
  {
-@@ -538,6 +547,9 @@ static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
- 	case NETDEV_UNREGISTER:
- 		ethnl_notify_devlist(ptr, ETHA_EVENT_DELDEV, ETHA_DELDEV_DEV);
+@@ -542,6 +551,9 @@ static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
+ 		ethnl_notify_devlist(ptr, ETHA_EVENT_RENAMEDEV,
+ 				     ETHA_RENAMEDEV_DEV);
  		break;
 +	case NETDEV_FEAT_CHANGE:
 +		ethnl_notify_features(ptr);
