@@ -1,4 +1,4 @@
-From c393a8099dc138902e435d4ee9a482bc8563243c Mon Sep 17 00:00:00 2001
+From 413d6888d02d31cd256f3f5d490a2f18bd272de3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:25:31 +0200
 Subject: [PATCH 14/35] netlink: add netlink handler for sfeatures (-K)
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 295 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index e4e7ca915ca2..7209b1b93841 100644
+index 6cab361c92db..e6ed1e7d5e3c 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4841,6 +4841,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4844,6 +4844,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gset		NULL
  #define nl_sset		NULL
  #define nl_gfeatures	NULL
@@ -32,7 +32,7 @@ index e4e7ca915ca2..7209b1b93841 100644
  #endif
  
  static const struct option {
-@@ -4907,7 +4908,7 @@ static const struct option {
+@@ -4910,7 +4911,7 @@ static const struct option {
  	  "		[ tx N ]\n" },
  	{ "-k|--show-features|--show-offload", 1, do_gfeatures, nl_gfeatures,
  	  "Get state of protocol offload and other features" },
@@ -354,5 +354,5 @@ index c7423bca9c2f..6d3b8feb9caf 100644
 +	return nlctx->exit_code ?: 92;
 +}
 -- 
-2.19.1
+2.20.1
 

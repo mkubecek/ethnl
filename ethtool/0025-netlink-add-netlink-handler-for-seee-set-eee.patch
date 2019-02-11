@@ -1,4 +1,4 @@
-From fefff86775bb815e0bccfab7072015697d548c0a Mon Sep 17 00:00:00 2001
+From 9d57c7290ceb6c7ae34f144ed27603ba0c452763 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:43:19 +0100
 Subject: [PATCH 25/35] netlink: add netlink handler for seee (--set-eee)
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 37 insertions(+), 2 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 17ae562ae269..377a7a2cfde2 100644
+index 00a48ba1fe23..6e4771fe3555 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4852,6 +4852,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4855,6 +4855,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sring	NULL
  #define nl_spause	NULL
  #define nl_schannels	NULL
@@ -25,7 +25,7 @@ index 17ae562ae269..377a7a2cfde2 100644
  #endif
  
  static const struct option {
-@@ -5024,10 +5025,10 @@ static const struct option {
+@@ -5027,10 +5028,10 @@ static const struct option {
  	  "		[ length N ]\n" },
  	{ "--show-eee", 1, do_geee, nl_geee,
  	  "Show EEE settings"},
@@ -92,5 +92,5 @@ index c52c818f453c..c4ebee11372c 100644
 +	return nl_set_param(ctx, "--set-eee", seee_params, ETHA_PARAMS_EEE);
 +}
 -- 
-2.19.1
+2.20.1
 

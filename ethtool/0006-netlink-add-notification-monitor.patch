@@ -1,4 +1,4 @@
-From 41ffbc51d296845555cdac67ccc66ff5d6679ca8 Mon Sep 17 00:00:00 2001
+From 1fc103bc46124da8640e07a66ecf4515574763ab Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
 Subject: [PATCH 06/35] netlink: add notification monitor
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/monitor.c
 
 diff --git a/Makefile.am b/Makefile.am
-index c7c7eeba79d1..188364c0c837 100644
+index 758d71868b59..b6a3500e93a6 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -22,7 +22,7 @@ endif
@@ -34,10 +34,10 @@ index c7c7eeba79d1..188364c0c837 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 57d685d02c77..d0866a583959 100644
+index 74bd7f84f3e1..8a7ed234d8c8 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -5297,6 +5297,9 @@ static int show_usage(struct cmd_context *ctx)
+@@ -5300,6 +5300,9 @@ static int show_usage(struct cmd_context *ctx)
  		if (args[i].opthelp)
  			fputs(args[i].opthelp, stdout);
  	}
@@ -47,7 +47,7 @@ index 57d685d02c77..d0866a583959 100644
  
  	return 0;
  }
-@@ -5351,6 +5354,19 @@ int main(int argc, char **argp)
+@@ -5354,6 +5357,19 @@ int main(int argc, char **argp)
  		argp += 2;
  		argc -= 2;
  	}
@@ -303,10 +303,10 @@ index 000000000000..51f64e6ad839
 +	fputs("                [ DEVNAME | * ]\n", stdout);
 +}
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 39de443fe382..a5b7d7d1cdda 100644
+index f452c0345517..ec04ceb4a593 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -546,6 +546,31 @@ err:
+@@ -548,6 +548,31 @@ err:
  
  /* get ethtool family id */
  
@@ -338,7 +338,7 @@ index 39de443fe382..a5b7d7d1cdda 100644
  static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	struct nl_context *nlctx = data;
-@@ -553,9 +578,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -555,9 +580,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  
  	nlctx->ethnl_fam = 0;
  	mnl_attr_for_each(attr, nlhdr, GENL_HDRLEN) {
@@ -353,7 +353,7 @@ index 39de443fe382..a5b7d7d1cdda 100644
  		}
  	}
  
-@@ -634,6 +663,7 @@ int __init_aux_nlctx(struct nl_context *nlctx)
+@@ -636,6 +665,7 @@ int __init_aux_nlctx(struct nl_context *nlctx)
  	}
  
  	aux->ethnl_fam = nlctx->ethnl_fam;
@@ -413,5 +413,5 @@ index 8c2f9f7c5d0c..800852d02275 100644
  
  static inline bool debug_on(unsigned long debug, unsigned int bit)
 -- 
-2.19.1
+2.20.1
 

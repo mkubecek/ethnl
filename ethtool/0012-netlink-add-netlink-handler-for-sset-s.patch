@@ -1,4 +1,4 @@
-From 095d3e05e656f1a455b65f57aecfcade6243c42a Mon Sep 17 00:00:00 2001
+From 492952bc757a47c9fb89c7d62b7b0f0625e3539e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 12/35] netlink: add netlink handler for sset (-s)
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  7 files changed, 215 insertions(+), 4 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index d3e52989e83a..330a174277ce 100644
+index 504017ba881b..be7e9ec659df 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4884,6 +4884,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4887,6 +4887,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_permaddr	NULL
  #define nl_tsinfo	NULL
  #define nl_gset		NULL
@@ -32,7 +32,7 @@ index d3e52989e83a..330a174277ce 100644
  #endif
  
  static const struct option {
-@@ -4894,19 +4895,19 @@ static const struct option {
+@@ -4897,19 +4898,19 @@ static const struct option {
  	char *help;
  	char *opthelp;
  } args[] = {
@@ -69,10 +69,10 @@ index 938e71700f97..e3b8c6949f36 100644
  
  void monitor_usage();
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 874927ab8f2b..e1e06f403fe3 100644
+index 658d2f79ebf7..b661e6b8450b 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -728,6 +728,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
+@@ -730,6 +730,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
  	return (nlctx->ethnl_fam ? 0 : -EADDRNOTAVAIL);
  }
  
@@ -101,10 +101,10 @@ index 052a91355cf8..7d7aad8ef8e3 100644
  
  /* put data wrappers */
 diff --git a/netlink/parser.c b/netlink/parser.c
-index 0fdbb8dc6d8a..dcdf082c5a82 100644
+index 9845ab4834a2..f4cb93b26d0f 100644
 --- a/netlink/parser.c
 +++ b/netlink/parser.c
-@@ -781,6 +781,42 @@ err:
+@@ -783,6 +783,42 @@ err:
  	return -EINVAL;
  }
  
@@ -148,7 +148,7 @@ index 0fdbb8dc6d8a..dcdf082c5a82 100644
   * @nlctx: netlink context
   * @params: array of struct param_parser describing expected arguments and
 diff --git a/netlink/parser.h b/netlink/parser.h
-index 64d9f1ac05f3..976ada0492a1 100644
+index a2b9ba912c99..41a936309289 100644
 --- a/netlink/parser.h
 +++ b/netlink/parser.h
 @@ -80,6 +80,8 @@ int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data,
@@ -337,5 +337,5 @@ index b29d699a36d1..20efb1be1f4e 100644
 +	return nlctx->exit_code ?: 75;
 +}
 -- 
-2.19.1
+2.20.1
 

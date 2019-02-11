@@ -1,4 +1,4 @@
-From d878e12a4bdbee0195b1c4fd298497ee089411cc Mon Sep 17 00:00:00 2001
+From 095be7cd5ea9edd10583c460dfdbd154158fe927 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:24:40 +0200
 Subject: [PATCH 33/35] netlink: add netlink handler for srxfh (-X)
@@ -11,14 +11,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.c         |   3 +-
  netlink/extapi.h  |   1 +
  netlink/monitor.c |  10 ++
- netlink/rxflow.c  | 327 ++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 340 insertions(+), 1 deletion(-)
+ netlink/rxflow.c  | 328 ++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 341 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 530584a1d3a7..815cdb1a41fa 100644
+index a143fab70471..538b5095d8f0 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4860,6 +4860,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4863,6 +4863,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gprivflags	NULL
  #define nl_sprivflags	NULL
  #define nl_grxfh	NULL
@@ -26,7 +26,7 @@ index 530584a1d3a7..815cdb1a41fa 100644
  #endif
  
  static const struct option {
-@@ -4993,7 +4994,7 @@ static const struct option {
+@@ -4996,7 +4997,7 @@ static const struct option {
  	{ "-x|--show-rxfh-indir|--show-rxfh", 1, do_grxfh, nl_grxfh,
  	  "Show Rx flow hash indirection table and/or RSS hash key",
  	  "		[ context %d ]\n" },
@@ -83,10 +83,10 @@ index 442c2c1057e5..19d9b5269299 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
-index 55e8c650e4fd..9dea556a0810 100644
+index 55e8c650e4fd..81b4ff032e04 100644
 --- a/netlink/rxflow.c
 +++ b/netlink/rxflow.c
-@@ -283,3 +283,330 @@ int nl_grxfh(struct cmd_context *ctx)
+@@ -283,3 +283,331 @@ int nl_grxfh(struct cmd_context *ctx)
  	return ethnl_send_get_request(nlctx, rxflow_reply_cb);
  }
  
@@ -338,6 +338,8 @@ index 55e8c650e4fd..9dea556a0810 100644
 +	bitset_attr = ethnla_nest_start(nlctx, ETHA_RXFLOW_HASH_FN);
 +	if (!bitset_attr)
 +		return -EMSGSIZE;
++	if (ethnla_put_flag(nlctx, ETHA_BITSET_LIST, true))
++		return -EMSGSIZE;
 +	bits_attr = ethnla_nest_start(nlctx, ETHA_BITSET_BITS);
 +	if (!bits_attr)
 +		goto err;
@@ -345,8 +347,7 @@ index 55e8c650e4fd..9dea556a0810 100644
 +	if (!bits_attr)
 +		goto err;
 +
-+	if (ethnla_put_strz(nlctx, ETHA_BIT_NAME, hashfn) ||
-+	    ethnla_put_flag(nlctx, ETHA_BIT_VALUE, true))
++	if (ethnla_put_strz(nlctx, ETHA_BIT_NAME, hashfn))
 +		goto err;
 +
 +	mnl_attr_nest_end(nlhdr, bit_attr);
@@ -418,5 +419,5 @@ index 55e8c650e4fd..9dea556a0810 100644
 +	return ret;
 +}
 -- 
-2.19.1
+2.20.1
 

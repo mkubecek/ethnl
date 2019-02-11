@@ -1,4 +1,4 @@
-From 7263d47d5ecb5d361f7b46073d00cc2a6a96c78e Mon Sep 17 00:00:00 2001
+From ef026a4ecb51dcf6ff3146bcd72781b34e2425fa Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 24 Nov 2017 01:02:29 +0100
 Subject: [PATCH 02/35] update UAPI header copies
@@ -7,12 +7,12 @@ Update to current net-next (commit 3bc950c34b28).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- uapi/linux/ethtool.h    | 15 +++------------
+ uapi/linux/ethtool.h    | 19 +++++--------------
  uapi/linux/net_tstamp.h | 19 +++++++++++++++++++
- 2 files changed, 22 insertions(+), 12 deletions(-)
+ 2 files changed, 24 insertions(+), 14 deletions(-)
 
 diff --git a/uapi/linux/ethtool.h b/uapi/linux/ethtool.h
-index 6bfbb85f9402..822169878db2 100644
+index 6bfbb85f9402..614996a5ff3a 100644
 --- a/uapi/linux/ethtool.h
 +++ b/uapi/linux/ethtool.h
 @@ -89,10 +89,6 @@
@@ -26,6 +26,24 @@ index 6bfbb85f9402..822169878db2 100644
   * Deprecated fields should be ignored by both users and drivers.
   */
  struct ethtool_cmd {
+@@ -884,7 +880,7 @@ struct ethtool_rx_flow_spec {
+ 	__u32		location;
+ };
+ 
+-/* How rings are layed out when accessing virtual functions or
++/* How rings are laid out when accessing virtual functions or
+  * offloaded queues is device specific. To allow users to do flow
+  * steering and specify these queues the ring cookie is partitioned
+  * into a 32bit queue index with an 8 bit virtual function id.
+@@ -893,7 +889,7 @@ struct ethtool_rx_flow_spec {
+  * devices start supporting PCIe w/ARI. However at the moment I
+  * do not know of any devices that support this so I do not reserve
+  * space for this at this time. If a future patch consumes the next
+- * byte it should be aware of this possiblity.
++ * byte it should be aware of this possibility.
+  */
+ #define ETHTOOL_RX_FLOW_SPEC_RING	0x00000000FFFFFFFFLL
+ #define ETHTOOL_RX_FLOW_SPEC_RING_VF	0x000000FF00000000LL
 @@ -1798,14 +1794,9 @@ enum ethtool_reset_flags {
   * rejected.
   *
@@ -77,5 +95,5 @@ index 3d421d912193..97ff3c17ec4d 100644
 +
  #endif /* _NET_TIMESTAMPING_H */
 -- 
-2.19.1
+2.20.1
 

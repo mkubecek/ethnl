@@ -1,4 +1,4 @@
-From e48ea10d64d7b2cac0bf402dddff578fc18b78a0 Mon Sep 17 00:00:00 2001
+From d5a829a82a873ba5a86f2bcbdf860bb4aa657aa4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 10/35] netlink: add netlink handler for gset (no option)
@@ -24,7 +24,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/settings.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 4006e7da5074..4afe329db81a 100644
+index 86097948dac8..e91fc09d6e28 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -23,7 +23,7 @@ if ETHTOOL_ENABLE_NETLINK
@@ -395,7 +395,7 @@ index 7c08ec2d7c2f..37edac765e65 100644
 +
  #endif /* ETHTOOL_COMMON_H__ */
 diff --git a/ethtool.c b/ethtool.c
-index ece53186da85..d3e52989e83a 100644
+index 8a21ad04f318..504017ba881b 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -57,26 +57,6 @@
@@ -576,7 +576,7 @@ index ece53186da85..d3e52989e83a 100644
  static int parse_rxfhashopts(char *optstr, u32 *data)
  {
  	*data = 0;
-@@ -2701,8 +2564,7 @@ static int do_gset(struct cmd_context *ctx)
+@@ -2704,8 +2567,7 @@ static int do_gset(struct cmd_context *ctx)
  		fprintf(stdout, "	Current message level: 0x%08x (%d)\n"
  			"			       ",
  			edata.data, edata.data);
@@ -586,7 +586,7 @@ index ece53186da85..d3e52989e83a 100644
  		fprintf(stdout, "\n");
  		allfail = 0;
  	} else if (errno != EOPNOTSUPP) {
-@@ -2748,13 +2610,13 @@ static int do_sset(struct cmd_context *ctx)
+@@ -2751,13 +2613,13 @@ static int do_sset(struct cmd_context *ctx)
  	int msglvl_changed = 0;
  	u32 msglvl_wanted = 0;
  	u32 msglvl_mask = 0;
@@ -602,7 +602,7 @@ index ece53186da85..d3e52989e83a 100644
  		flag_to_cmdline_info(flags_msglvl[i].name,
  				     flags_msglvl[i].value,
  				     &msglvl_wanted, &msglvl_mask,
-@@ -5021,6 +4883,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5024,6 +4886,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gdrv		NULL
  #define nl_permaddr	NULL
  #define nl_tsinfo	NULL
@@ -610,7 +610,7 @@ index ece53186da85..d3e52989e83a 100644
  #endif
  
  static const struct option {
-@@ -5358,6 +5221,7 @@ int main(int argc, char **argp)
+@@ -5361,6 +5224,7 @@ int main(int argc, char **argp)
  	}
  	if ((*argp)[0] == '-')
  		exit_bad_args();
@@ -670,7 +670,7 @@ index c6817b4883ff..5d4f984be7c3 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index a5b7d7d1cdda..874927ab8f2b 100644
+index ec04ceb4a593..658d2f79ebf7 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -4,8 +4,10 @@
@@ -684,7 +684,7 @@ index a5b7d7d1cdda..874927ab8f2b 100644
  
  /* misc helpers */
  
-@@ -499,6 +501,124 @@ const char *get_dev_name(const struct nlattr *nest)
+@@ -501,6 +503,124 @@ const char *get_dev_name(const struct nlattr *nest)
  	return mnl_attr_get_str(dev_tb[ETHA_DEV_NAME]);
  }
  
@@ -1133,5 +1133,5 @@ index 000000000000..b29d699a36d1
 +
 +}
 -- 
-2.19.1
+2.20.1
 

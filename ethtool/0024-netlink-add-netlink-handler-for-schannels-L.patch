@@ -1,4 +1,4 @@
-From 378c3b0cc5f22d8db7d1de206e490779d99d4143 Mon Sep 17 00:00:00 2001
+From b635c9d53f2d3ea3e754de6047180b4afe175af6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:32:39 +0100
 Subject: [PATCH 24/35] netlink: add netlink handler for schannels (-L)
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 36 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 62ef9b3a11b6..17ae562ae269 100644
+index 65a50f534da3..00a48ba1fe23 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4851,6 +4851,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4854,6 +4854,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_scoalesce	NULL
  #define nl_sring	NULL
  #define nl_spause	NULL
@@ -25,7 +25,7 @@ index 62ef9b3a11b6..17ae562ae269 100644
  #endif
  
  static const struct option {
-@@ -5004,7 +5005,7 @@ static const struct option {
+@@ -5007,7 +5008,7 @@ static const struct option {
  	  "		N\n"},
  	{ "-l|--show-channels", 1, do_gchannels, nl_gchannels,
  	  "Query Channels" },
@@ -88,5 +88,5 @@ index 8ba959f73433..c52c818f453c 100644
 +	return nl_set_param(ctx, "-L", schannels_params, ETHA_PARAMS_CHANNELS);
 +}
 -- 
-2.19.1
+2.20.1
 

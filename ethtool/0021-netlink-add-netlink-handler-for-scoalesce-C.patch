@@ -1,4 +1,4 @@
-From ca1eba7beacc05efacfee7021c6e12f641661245 Mon Sep 17 00:00:00 2001
+From e33a35ac7f31858010fc549c5857fed0b3aac9d0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 07:27:00 +0100
 Subject: [PATCH 21/35] netlink: add netlink handler for scoalesce (-C)
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 183 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 5784e01ce4f5..512e726cbdd7 100644
+index 1367e8c8c2c2..9243a64673aa 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4848,6 +4848,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4851,6 +4851,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gchannels	NULL
  #define nl_geee		NULL
  #define nl_gfec		NULL
@@ -25,7 +25,7 @@ index 5784e01ce4f5..512e726cbdd7 100644
  #endif
  
  static const struct option {
-@@ -4880,7 +4881,7 @@ static const struct option {
+@@ -4883,7 +4884,7 @@ static const struct option {
  	  "		[ tx on|off ]\n" },
  	{ "-c|--show-coalesce", 1, do_gcoalesce, nl_gcoalesce,
  	  "Show coalesce options" },
@@ -235,5 +235,5 @@ index 51c3960d6d5d..9ebd911b7a9b 100644
 +	return nl_set_param(ctx, "-C", scoalesce_params, ETHA_PARAMS_COALESCE);
 +}
 -- 
-2.19.1
+2.20.1
 

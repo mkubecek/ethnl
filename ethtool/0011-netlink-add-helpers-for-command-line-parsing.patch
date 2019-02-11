@@ -1,4 +1,4 @@
-From 9a3214b2452aa2d13cd6d59813804af36889ab24 Mon Sep 17 00:00:00 2001
+From 2eabd4fa9663a785ba06dc7a79d074946ba2e994 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:42:26 +0100
 Subject: [PATCH 11/35] netlink: add helpers for command line parsing
@@ -11,14 +11,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |   1 +
  netlink/netlink.h |   4 +
- netlink/parser.c  | 836 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/parser.c  | 838 ++++++++++++++++++++++++++++++++++++++++++++++
  netlink/parser.h  |  87 +++++
- 4 files changed, 928 insertions(+)
+ 4 files changed, 930 insertions(+)
  create mode 100644 netlink/parser.c
  create mode 100644 netlink/parser.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 4afe329db81a..9e4be2589064 100644
+index e91fc09d6e28..37b54b55d297 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -23,6 +23,7 @@ if ETHTOOL_ENABLE_NETLINK
@@ -46,10 +46,10 @@ index 9cbbaa94d3c2..052a91355cf8 100644
  	uint8_t filter_cmd;
 diff --git a/netlink/parser.c b/netlink/parser.c
 new file mode 100644
-index 000000000000..0fdbb8dc6d8a
+index 000000000000..9845ab4834a2
 --- /dev/null
 +++ b/netlink/parser.c
-@@ -0,0 +1,836 @@
+@@ -0,0 +1,838 @@
 +#include <string.h>
 +#include <stdlib.h>
 +#include <errno.h>
@@ -491,6 +491,8 @@ index 000000000000..0fdbb8dc6d8a
 +	const char *p = arg;
 +	bool has_slash = false;
 +
++	if (!arg)
++		return false;
 +	if (arg[0] == '0' && arg[1] == 'x')
 +		return true;
 +	while (*p) {
@@ -628,8 +630,8 @@ index 000000000000..0fdbb8dc6d8a
 +
 +	ret = -EMSGSIZE;
 +	if (!(nest = ethnla_nest_start(nlctx, type)) ||
-+	    ethnla_put_flag(nlctx, ETHA_BITSET_LIST, true) ||
-+	    (no_mask && ethnla_put_u32(nlctx, ETHA_BITSET_SIZE, nbits)) ||
++	    ethnla_put_flag(nlctx, ETHA_BITSET_LIST, !mask) ||
++	    ethnla_put_u32(nlctx, ETHA_BITSET_SIZE, nbits) ||
 +	    ethnla_put(nlctx, ETHA_BITSET_VALUE, nwords * sizeof(uint32_t),
 +		       value) ||
 +	    (mask &&
@@ -888,7 +890,7 @@ index 000000000000..0fdbb8dc6d8a
 +}
 diff --git a/netlink/parser.h b/netlink/parser.h
 new file mode 100644
-index 000000000000..64d9f1ac05f3
+index 000000000000..a2b9ba912c99
 --- /dev/null
 +++ b/netlink/parser.h
 @@ -0,0 +1,87 @@
@@ -915,13 +917,13 @@ index 000000000000..64d9f1ac05f3
 +};
 +
 +struct bitfield32_parser_special {
-+	char name;
-+	char val;
++	char		name;
++	uint32_t	val;
 +};
 +
 +struct bitfield32_parser_data {
-+	char bits[32];
-+	const struct bitfield32_parser_special *specials;
++	char					bits[32];
++	const struct bitfield32_parser_special	*specials;
 +};
 +
 +struct byte_str_params {
@@ -980,5 +982,5 @@ index 000000000000..64d9f1ac05f3
 +
 +#endif /* ETHTOOL_NETLINK_PARSER_H__ */
 -- 
-2.19.1
+2.20.1
 

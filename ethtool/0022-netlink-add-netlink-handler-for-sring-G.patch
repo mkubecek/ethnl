@@ -1,4 +1,4 @@
-From 71320f6c237df2679dea6d50ff12ab6c022f82a8 Mon Sep 17 00:00:00 2001
+From 6e03d3ad8c35e45642a75ced3675875f724fa467 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:04:49 +0100
 Subject: [PATCH 22/35] netlink: add netlink handler for sring (-G)
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 36 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 512e726cbdd7..098c2ff7459a 100644
+index 9243a64673aa..4a87d2292490 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4849,6 +4849,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4852,6 +4852,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_geee		NULL
  #define nl_gfec		NULL
  #define nl_scoalesce	NULL
@@ -25,7 +25,7 @@ index 512e726cbdd7..098c2ff7459a 100644
  #endif
  
  static const struct option {
-@@ -4907,7 +4908,7 @@ static const struct option {
+@@ -4910,7 +4911,7 @@ static const struct option {
  	  "		[sample-interval N]\n" },
  	{ "-g|--show-ring", 1, do_gring, nl_gring,
  	  "Query RX/TX ring parameters" },
@@ -88,5 +88,5 @@ index 9ebd911b7a9b..47ae0b53f5dd 100644
 +	return nl_set_param(ctx, "-G", sring_params, ETHA_PARAMS_RING);
 +}
 -- 
-2.19.1
+2.20.1
 

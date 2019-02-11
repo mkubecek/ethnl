@@ -1,4 +1,4 @@
-From 8ca8b38e03f8336e6704cbc6c9c8e2879d86eb25 Mon Sep 17 00:00:00 2001
+From 1a05f305cd4eec3e0999d764b8ed681d8c1d319e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
 Subject: [PATCH 20/35] netlink: add netlink handler for gfec (--show-fec)
@@ -52,10 +52,10 @@ index 749bf389e9e1..6c238701783f 100644
  
  enum link_mode_class {
 diff --git a/ethtool.c b/ethtool.c
-index 717fd9fa35a9..5784e01ce4f5 100644
+index 5c7c21db8bfc..1367e8c8c2c2 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4847,6 +4847,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4850,6 +4850,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gpause	NULL
  #define nl_gchannels	NULL
  #define nl_geee		NULL
@@ -63,7 +63,7 @@ index 717fd9fa35a9..5784e01ce4f5 100644
  #endif
  
  static const struct option {
-@@ -5054,7 +5055,7 @@ static const struct option {
+@@ -5057,7 +5058,7 @@ static const struct option {
  	  "		[ ap-shared ]\n"
  	  "		[ dedicated ]\n"
  	  "		[ all ]\n"},
@@ -166,5 +166,5 @@ index 55138b6fdc83..51c3960d6d5d 100644
 +	return params_request(ctx, ETH_PARAMS_IM_FEC);
 +}
 -- 
-2.19.1
+2.20.1
 

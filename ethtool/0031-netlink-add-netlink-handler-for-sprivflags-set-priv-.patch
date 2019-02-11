@@ -1,4 +1,4 @@
-From 016e873f538a1be5f4da4b69f1ee7f0b42877c1d Mon Sep 17 00:00:00 2001
+From 01787303fb772ed1ad6a2c92f7d809841792182a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:23:10 +0200
 Subject: [PATCH 31/35] netlink: add netlink handler for sprivflags
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 36 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index a4253f4b2be6..6a6b50a21f81 100644
+index 203f0f66df1a..d0d2ab6090e7 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4858,6 +4858,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4861,6 +4861,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_phys_id	NULL
  #define nl_reset	NULL
  #define nl_gprivflags	NULL
@@ -26,7 +26,7 @@ index a4253f4b2be6..6a6b50a21f81 100644
  #endif
  
  static const struct option {
-@@ -5019,7 +5020,7 @@ static const struct option {
+@@ -5022,7 +5023,7 @@ static const struct option {
  	  "               [ combined N ]\n" },
  	{ "--show-priv-flags", 1, do_gprivflags, nl_gprivflags,
  	  "Query private flags" },
@@ -89,5 +89,5 @@ index ced16a15f9f6..a3199c69860d 100644
 +		return nlctx->exit_code ?: 1;
 +}
 -- 
-2.19.1
+2.20.1
 

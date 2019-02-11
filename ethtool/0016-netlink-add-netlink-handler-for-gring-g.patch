@@ -1,4 +1,4 @@
-From 9c718d30372f46d04b76e88e5d231c7e7b5042e2 Mon Sep 17 00:00:00 2001
+From 4f0380918ccf5ae4cec8818ff7d337d0d4bb2d70 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:59:50 +0100
 Subject: [PATCH 16/35] netlink: add netlink handler for gring (-g)
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 50 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index f1183cc11f71..187ffff7af87 100644
+index 8780753231f8..c9db39709c5f 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4843,6 +4843,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4846,6 +4846,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gfeatures	NULL
  #define nl_sfeatures	NULL
  #define nl_gcoalesce	NULL
@@ -26,7 +26,7 @@ index f1183cc11f71..187ffff7af87 100644
  #endif
  
  static const struct option {
-@@ -4899,7 +4900,7 @@ static const struct option {
+@@ -4902,7 +4903,7 @@ static const struct option {
  	  "		[tx-usecs-high N]\n"
  	  "		[tx-frames-high N]\n"
  	  "		[sample-interval N]\n" },
@@ -128,5 +128,5 @@ index 30aee5758c42..6782d98a6956 100644
 +	return params_request(ctx, ETH_PARAMS_IM_RING);
 +}
 -- 
-2.19.1
+2.20.1
 

@@ -1,4 +1,4 @@
-From 74c212e311d46e9b329559c4d20304a261cf294d Mon Sep 17 00:00:00 2001
+From 4886a5ed00c12ac4991483d466e2dce22bb83fe8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 2 Nov 2018 19:41:56 +0100
 Subject: [PATCH 35/35] netlink: add netlink handler for setting flow hash
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 114 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index efadb8d55873..3e7f4e479b1b 100644
+index 7756bff34851..9cdfdee4c49e 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4862,6 +4862,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4865,6 +4865,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_grxfh	NULL
  #define nl_srxfh	NULL
  #define nl_grxclass	NULL
@@ -26,7 +26,7 @@ index efadb8d55873..3e7f4e479b1b 100644
  #endif
  
  static const struct option {
-@@ -4965,7 +4966,7 @@ static const struct option {
+@@ -4968,7 +4969,7 @@ static const struct option {
  	  "		[ rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 [context %d] |\n"
  	  "		  rule %d ]\n" },
@@ -48,10 +48,10 @@ index e8470459a76e..e701c6e9d795 100644
  
  void monitor_usage();
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
-index 89d3a3a5708c..346f1673d52a 100644
+index c02c62253b01..0d3d8b60ebed 100644
 --- a/netlink/rxflow.c
 +++ b/netlink/rxflow.c
-@@ -797,3 +797,114 @@ out_free:
+@@ -798,3 +798,114 @@ out_free:
  	free(data.weight.weights);
  	return ret;
  }
@@ -167,5 +167,5 @@ index 89d3a3a5708c..346f1673d52a 100644
 +	return -EOPNOTSUPP;
 +}
 -- 
-2.19.1
+2.20.1
 

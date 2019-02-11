@@ -1,4 +1,4 @@
-From fe1775dbf691ae84320c55ce71bce4a0918384bf Mon Sep 17 00:00:00 2001
+From 83e5ff15236b6b1aa0bde5fab9de9b6a3834ee5a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:20:18 +0200
 Subject: [PATCH 30/35] netlink: add netlink handler for gprivflags
@@ -17,10 +17,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 70 insertions(+), 2 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 2f7d2a3a4d53..a4253f4b2be6 100644
+index c8a357d9a322..203f0f66df1a 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4857,6 +4857,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4860,6 +4860,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_nway_rst	NULL
  #define nl_phys_id	NULL
  #define nl_reset	NULL
@@ -28,7 +28,7 @@ index 2f7d2a3a4d53..a4253f4b2be6 100644
  #endif
  
  static const struct option {
-@@ -5016,7 +5017,7 @@ static const struct option {
+@@ -5019,7 +5020,7 @@ static const struct option {
  	  "               [ tx N ]\n"
  	  "               [ other N ]\n"
  	  "               [ combined N ]\n" },
@@ -166,5 +166,5 @@ index 6d3b8feb9caf..ced16a15f9f6 100644
  
  enum {
 -- 
-2.19.1
+2.20.1
 

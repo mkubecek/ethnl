@@ -1,4 +1,4 @@
-From 05ae2113e284fcd65138b5f6af9a3e791a74a263 Mon Sep 17 00:00:00 2001
+From 1b5b65f9893ab65b6b3ba1d95b50cc043787108f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 08:43:44 +0200
 Subject: [PATCH 29/35] netlink: add netlink handler for reset (--reset)
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 255 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 6dea8cb0fa86..2f7d2a3a4d53 100644
+index 8a6101c61fc7..c8a357d9a322 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4856,6 +4856,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4859,6 +4859,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sfec		NULL
  #define nl_nway_rst	NULL
  #define nl_phys_id	NULL
@@ -26,7 +26,7 @@ index 6dea8cb0fa86..2f7d2a3a4d53 100644
  #endif
  
  static const struct option {
-@@ -5040,7 +5041,7 @@ static const struct option {
+@@ -5043,7 +5044,7 @@ static const struct option {
  	{ "--get-phy-tunable", 1, do_get_phy_tunable, NULL,
  	  "Get PHY tunable",
  	  "		[ downshift ]\n"},
@@ -340,5 +340,5 @@ index 281aa1f5da16..522ad654ad72 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 -- 
-2.19.1
+2.20.1
 

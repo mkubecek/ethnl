@@ -1,4 +1,4 @@
-From 1890d14e240af468f3266e420e65bbc9b493278d Mon Sep 17 00:00:00 2001
+From 161132c76f46557f8df33d1d27c6ec678b180077 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 09:02:44 +0100
 Subject: [PATCH 01/35] move UAPI header copies to a separate directory
@@ -22,7 +22,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  rename net_tstamp-copy.h => uapi/linux/net_tstamp.h (100%)
 
 diff --git a/Makefile.am b/Makefile.am
-index 14f79b68a9ee..e7da37a85499 100644
+index 468eed1fdd6b..5175491bf48d 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -1,12 +1,12 @@
@@ -40,9 +40,9 @@ index 14f79b68a9ee..e7da37a85499 100644
 +		  uapi/linux/net_tstamp.h rxclass.c
  if ETHTOOL_ENABLE_PRETTY_DUMP
  ethtool_SOURCES += \
- 		  amd8111e.c de2104x.c e100.c e1000.c et131x.c igb.c	\
+ 		  amd8111e.c de2104x.c dsa.c e100.c e1000.c et131x.c igb.c	\
 diff --git a/internal.h b/internal.h
-index b239dc7acbd8..0b04a9794b6b 100644
+index 84b0f9cef1c0..7217b926c165 100644
 --- a/internal.h
 +++ b/internal.h
 @@ -42,8 +42,8 @@ typedef int32_t s32;
@@ -65,5 +65,5 @@ similarity index 100%
 rename from net_tstamp-copy.h
 rename to uapi/linux/net_tstamp.h
 -- 
-2.19.1
+2.20.1
 
