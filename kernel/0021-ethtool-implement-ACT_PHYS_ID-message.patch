@@ -1,4 +1,4 @@
-From 68e9bfcf3ff5ed76c40fd0114f67d91a547e8324 Mon Sep 17 00:00:00 2001
+From 52448b5102bb8902bae03dca858c102ae9a73dec Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 21/25] ethtool: implement ACT_PHYS_ID message
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 184 insertions(+), 47 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 0b8870bdd997..26d729ecb5fb 100644
+index cf691ea0d6d1..121c7be5648a 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -511,6 +511,28 @@ Request contents:
+@@ -512,6 +512,28 @@ Request contents:
  If successful, a notification in the same format is sent.
  
  
@@ -53,7 +53,7 @@ index 0b8870bdd997..26d729ecb5fb 100644
  Request translation
  -------------------
  
-@@ -546,7 +568,7 @@ ETHTOOL_GSG			ETHNL_CMD_GET_SETTINGS
+@@ -547,7 +569,7 @@ ETHTOOL_GSG			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SSG			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_TEST			n/a
  ETHTOOL_GSTRINGS		ETHNL_CMD_GET_STRSET
@@ -174,7 +174,7 @@ index 6e88408f88cc..8755ba4ff403 100644
 +	return ret;
 +}
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index 7422cc3f25c8..3b32e9bc8900 100644
+index 45d381756885..171fad77b919 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
 @@ -1,5 +1,6 @@
@@ -184,7 +184,7 @@ index 7422cc3f25c8..3b32e9bc8900 100644
  #include <linux/rtnetlink.h>
  #include <linux/phy.h>
  #include <linux/net_tstamp.h>
-@@ -278,3 +279,67 @@ int __ethtool_set_channels(struct net_device *dev,
+@@ -290,3 +291,67 @@ int __ethtool_set_channels(struct net_device *dev,
  
  	return dev->ethtool_ops->set_channels(dev, channels);
  }
@@ -265,10 +265,10 @@ index a0cf1249fd88..dbad584cf15d 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 328b2a1f2c4d..35126f1718ad 100644
+index da7ff90b5e77..b65af47a1b4b 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -1636,60 +1636,15 @@ static int ethtool_get_strings(struct net_device *dev, void __user *useraddr)
+@@ -1637,60 +1637,15 @@ static int ethtool_get_strings(struct net_device *dev, void __user *useraddr)
  static int ethtool_phys_id(struct net_device *dev, void __user *useraddr)
  {
  	struct ethtool_value id;
@@ -331,10 +331,10 @@ index 328b2a1f2c4d..35126f1718ad 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index e11d5fe8a23a..cdfc79a17b67 100644
+index 18bd49865184..f5b9add1ed09 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -926,6 +926,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -479,6 +479,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_SETTINGS]	= ethnl_std_notify,
  	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
  	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,
@@ -342,7 +342,7 @@ index e11d5fe8a23a..cdfc79a17b67 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -1056,6 +1057,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -609,6 +610,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_act_nway_rst,
  	},
@@ -355,10 +355,10 @@ index e11d5fe8a23a..cdfc79a17b67 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index e3aa027b22b1..343f69883ac8 100644
+index 15be8d303c2f..6729611539c4 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -285,11 +285,14 @@ struct get_request_ops {
+@@ -264,11 +264,14 @@ struct get_request_ops {
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info);
@@ -374,5 +374,5 @@ index e3aa027b22b1..343f69883ac8 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
-2.19.1
+2.20.1
 

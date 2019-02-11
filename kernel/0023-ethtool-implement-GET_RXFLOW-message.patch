@@ -1,4 +1,4 @@
-From ec2cc282c6fb2fc1bf594d45eab6e783cf056386 Mon Sep 17 00:00:00 2001
+From 2dc380ac71f0c15ecca4539151286568f582cb1a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 23/25] ethtool: implement GET_RXFLOW message
@@ -18,17 +18,17 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt | 122 ++++-
  include/uapi/linux/ethtool_netlink.h         |  97 ++++
- net/ethtool/Makefile                         |   3 +-
+ net/ethtool/Makefile                         |   2 +-
  net/ethtool/netlink.c                        |   9 +
- net/ethtool/rxflow.c                         | 457 +++++++++++++++++++
- 5 files changed, 683 insertions(+), 5 deletions(-)
+ net/ethtool/rxflow.c                         | 463 +++++++++++++++++++
+ 5 files changed, 688 insertions(+), 5 deletions(-)
  create mode 100644 net/ethtool/rxflow.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index a83cc73dea69..128816de17c9 100644
+index f31aca5c127b..8592fae984ef 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -134,6 +134,8 @@ List of message types
+@@ -135,6 +135,8 @@ List of message types
      ETHNL_CMD_GET_PARAMS
      ETHNL_CMD_SET_PARAMS
      ETHNL_CMD_ACT_NWAY_RST
@@ -37,7 +37,7 @@ index a83cc73dea69..128816de17c9 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -556,6 +558,118 @@ indicating which components _were_ actually reset (this is different from
+@@ -557,6 +559,118 @@ indicating which components _were_ actually reset (this is different from
  ioctl interface). The same message is also broadcasted as a notification.
  
  
@@ -156,7 +156,7 @@ index a83cc73dea69..128816de17c9 100644
  Request translation
  -------------------
  
-@@ -604,11 +718,11 @@ ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
+@@ -605,11 +719,11 @@ ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFLAGS			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GPFLAGS			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SPFLAGS			ETHNL_CMD_SET_SETTINGS
@@ -170,7 +170,7 @@ index a83cc73dea69..128816de17c9 100644
  ETHTOOL_GRXCLSRLCNT		n/a
  ETHTOOL_GRXCLSRULE		n/a
  ETHTOOL_GRXCLSRLALL		n/a
-@@ -619,7 +733,7 @@ ETHTOOL_RESET			ETHNL_CMD_ACT_RESET
+@@ -620,7 +734,7 @@ ETHTOOL_RESET			ETHNL_CMD_ACT_RESET
  ETHTOOL_SRXNTUPLE		n/a
  ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
@@ -179,7 +179,7 @@ index a83cc73dea69..128816de17c9 100644
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
-@@ -633,7 +747,7 @@ ETHTOOL_GMODULEINFO		n/a
+@@ -634,7 +748,7 @@ ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
  ETHTOOL_SEEE			ETHNL_CMD_SET_PARAMS
@@ -304,21 +304,20 @@ index 74087a556a0d..7fb413ca353b 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/Makefile b/net/ethtool/Makefile
-index 0b965090bb55..a129a22824f8 100644
+index b3e88cf0f4c0..a6ace735f44f 100644
 --- a/net/ethtool/Makefile
 +++ b/net/ethtool/Makefile
-@@ -4,4 +4,5 @@ obj-y				+= ioctl.o common.o
- 
+@@ -5,4 +5,4 @@ obj-y				+= ioctl.o common.o
  obj-$(CONFIG_ETHTOOL_NETLINK)	+= ethtool_nl.o
  
--ethtool_nl-y	:= netlink.o strset.o info.o settings.o params.o actions.o
-+ethtool_nl-y	:= netlink.o strset.o info.o settings.o params.o actions.o \
-+		   rxflow.o
+ ethtool_nl-y	:= netlink.o bitset.o strset.o info.o settings.o params.o \
+-		   actions.o
++		   actions.o rxflow.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 766c72c69fa2..8e2bdb0490d5 100644
+index 1f926fd2d743..e77dc746e8e6 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -592,12 +592,14 @@ extern const struct get_request_ops strset_request_ops;
+@@ -145,12 +145,14 @@ extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops info_request_ops;
  extern const struct get_request_ops settings_request_ops;
  extern const struct get_request_ops params_request_ops;
@@ -333,7 +332,7 @@ index 766c72c69fa2..8e2bdb0490d5 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -1068,6 +1070,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -621,6 +623,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_ADMIN_PERM,
  		.doit	= ethnl_act_reset,
  	},
@@ -349,14 +348,15 @@ index 766c72c69fa2..8e2bdb0490d5 100644
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
 new file mode 100644
-index 000000000000..10837aecae4b
+index 000000000000..49e229658602
 --- /dev/null
 +++ b/net/ethtool/rxflow.c
-@@ -0,0 +1,457 @@
+@@ -0,0 +1,463 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
 +#include "common.h"
++#include "bitset.h"
 +
 +#define RXFLOW_ALL_HASHFNS \
 +       ((1 << (ETH_RSS_HASH_FUNCS_COUNT - 1)) | \
@@ -606,10 +606,13 @@ index 000000000000..10837aecae4b
 +	if (info_mask & ETH_RXFLOW_IM_INFO)
 +		len += nla_total_size(sizeof(u32));
 +	if (info_mask & ETH_RXFLOW_IM_HASHFN) {
-+		ret = ethnl_bitset32_size(req_info->compact,
-+					  ETH_RSS_HASH_FUNCS_COUNT,
++		const unsigned int flags =
++			(req_info->compact ? ETHNL_BITSET_COMPACT : 0) |
++			ETHNL_BITSET_LEGACY_NAMES;
++
++		ret = ethnl_bitset32_size(ETH_RSS_HASH_FUNCS_COUNT,
 +					  &data->hash_fn, &all_hashfn,
-+					  rss_hash_func_strings, true);
++					  rss_hash_func_strings, flags);
 +		if (ret < 0)
 +			return ret;
 +		len += ret;
@@ -627,13 +630,15 @@ index 000000000000..10837aecae4b
 +static int fill_rxflow_hashfn(struct sk_buff *skb,
 +			      const struct rxflow_data *data)
 +{
-+	bool compact = data->reqinfo_base.compact;
++	const unsigned int flags =
++		(data->reqinfo_base.compact ? ETHNL_BITSET_COMPACT : 0) |
++		ETHNL_BITSET_LEGACY_NAMES;
 +	const u32 all_hashfn = RXFLOW_ALL_HASHFNS;
 +	int ret;
 +
-+	ret = ethnl_put_bitset32(skb, ETHA_RXFLOW_HASH_FN, compact,
++	ret = ethnl_put_bitset32(skb, ETHA_RXFLOW_HASH_FN,
 +				 ETH_RSS_HASH_FUNCS_COUNT, &data->hash_fn,
-+				 &all_hashfn, rss_hash_func_strings, true);
++				 &all_hashfn, rss_hash_func_strings, flags);
 +	if (ret < 0)
 +		return ret;
 +
@@ -811,5 +816,5 @@ index 000000000000..10837aecae4b
 +	.cleanup		= rxflow_cleanup,
 +};
 -- 
-2.19.1
+2.20.1
 

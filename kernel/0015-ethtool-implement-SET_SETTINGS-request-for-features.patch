@@ -1,4 +1,4 @@
-From 9214eec39ea92a08a0450e8e142995617cb2969f Mon Sep 17 00:00:00 2001
+From 6bce99c181018ac1da66731fd04f61740e33d4df Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 15/25] ethtool: implement SET_SETTINGS request for features
@@ -15,14 +15,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  32 ++--
  include/uapi/linux/ethtool_netlink.h         |   1 +
- net/ethtool/settings.c                       | 152 +++++++++++++++++++
- 3 files changed, 176 insertions(+), 9 deletions(-)
+ net/ethtool/settings.c                       | 155 +++++++++++++++++++
+ 3 files changed, 179 insertions(+), 9 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index acff74e25506..06fb77183b17 100644
+index f67a62f4daf0..86d0c5c9f7a9 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -309,6 +309,9 @@ to be passed with SET_SETTINGS request:
+@@ -310,6 +310,9 @@ to be passed with SET_SETTINGS request:
      ETHA_SETTINGS_SOPASS        (binary)        SecureOn(tm) password
      ETHA_SETTINGS_MSGLVL        (bitfield32)    debug level
      ETHA_SETTINGS_LINK_MODES    (bitset)        device link modes
@@ -32,7 +32,7 @@ index acff74e25506..06fb77183b17 100644
  
  For both bitfield32 types, value and selector work the usual way, i.e. bits
  set in selector are set to corresponding bits from value and the rest is
-@@ -323,6 +326,17 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
+@@ -324,6 +327,17 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
  is supposed to allow requesting changes without knowing what exactly kernel
  supports.
  
@@ -50,7 +50,7 @@ index acff74e25506..06fb77183b17 100644
  
  Request translation
  -------------------
-@@ -352,30 +366,30 @@ ETHTOOL_SRINGPARAM		n/a
+@@ -353,30 +367,30 @@ ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
  ETHTOOL_SPAUSEPARAM		n/a
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
@@ -89,7 +89,7 @@ index acff74e25506..06fb77183b17 100644
  ETHTOOL_GRXRINGS		n/a
  ETHTOOL_GRXCLSRLCNT		n/a
  ETHTOOL_GRXCLSRULE		n/a
-@@ -390,7 +404,7 @@ ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
+@@ -391,7 +405,7 @@ ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
  ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
@@ -111,10 +111,10 @@ index 6a611dd3b1b7..1c2447f4a456 100644
  	__ETHA_FEATURES_CNT,
  	ETHA_FEATURES_MAX = (__ETHA_FEATURES_CNT - 1)
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 098494e68d25..630d97b18632 100644
+index c1f0b07cd61f..06c4934a8c88 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -691,6 +691,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+@@ -690,6 +690,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
  	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
  	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
@@ -122,7 +122,7 @@ index 098494e68d25..630d97b18632 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -803,6 +804,147 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
+@@ -802,6 +803,150 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
  	return 0;
  }
  
@@ -160,6 +160,9 @@ index 098494e68d25..630d97b18632 100644
 +			   const struct nlattr *nest, bool compact,
 +			   bool *changed)
 +{
++	const unsigned int bitset_flags =
++	       (compact ? ETHNL_BITSET_COMPACT : 0) |
++	       ETHNL_BITSET_LEGACY_NAMES;
 +	struct nlattr *tb[ETHA_FEATURES_MAX + 1];
 +	DECLARE_BITMAP(old_active, NETDEV_FEATURE_COUNT);
 +	DECLARE_BITMAP(req_wanted, NETDEV_FEATURE_COUNT);
@@ -219,15 +222,15 @@ index 098494e68d25..630d97b18632 100644
 +
 +	rskb = NULL;
 +	reply_len = 0;
-+	ret = ethnl_bitset_size(compact, NETDEV_FEATURE_COUNT, req_wanted,
++	ret = ethnl_bitset_size(NETDEV_FEATURE_COUNT, req_wanted,
 +				wanted_diff_mask, netdev_features_strings,
-+				true);
++				bitset_flags);
 +	if (ret < 0)
 +		goto err;
 +	reply_len += ret;
-+	ret = ethnl_bitset_size(compact, NETDEV_FEATURE_COUNT, new_active,
++	ret = ethnl_bitset_size(NETDEV_FEATURE_COUNT, new_active,
 +				active_diff_mask, netdev_features_strings,
-+				true);
++				bitset_flags);
 +	if (ret < 0)
 +		goto err;
 +	reply_len += ret;
@@ -242,14 +245,14 @@ index 098494e68d25..630d97b18632 100644
 +	feat_attr = ethnl_nest_start(rskb, ETHA_SETTINGS_FEATURES);
 +	if (!feat_attr)
 +		goto err;
-+	ret = ethnl_put_bitset(rskb, ETHA_FEATURES_WANTED, compact,
-+			       NETDEV_FEATURE_COUNT, req_wanted,
-+			       wanted_diff_mask, netdev_features_strings, true);
++	ret = ethnl_put_bitset(rskb, ETHA_FEATURES_WANTED, NETDEV_FEATURE_COUNT,
++			       req_wanted, wanted_diff_mask,
++			       netdev_features_strings, bitset_flags);
 +	if (ret < 0)
 +		goto err;
-+	ret = ethnl_put_bitset(rskb, ETHA_FEATURES_ACTIVE, compact,
-+			       NETDEV_FEATURE_COUNT, new_active,
-+			       active_diff_mask, netdev_features_strings, true);
++	ret = ethnl_put_bitset(rskb, ETHA_FEATURES_ACTIVE, NETDEV_FEATURE_COUNT,
++			       new_active, active_diff_mask,
++			       netdev_features_strings, bitset_flags);
 +	if (ret < 0)
 +		goto err;
 +	nla_nest_end(rskb, feat_attr);
@@ -270,7 +273,7 @@ index 098494e68d25..630d97b18632 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-@@ -871,6 +1013,16 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -870,6 +1015,16 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  			req_mask |= ETH_SETTINGS_IM_MSGLEVEL;
  		}
  	}
@@ -288,5 +291,5 @@ index 098494e68d25..630d97b18632 100644
  
  out_unlock:
 -- 
-2.19.1
+2.20.1
 

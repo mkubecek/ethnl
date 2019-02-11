@@ -1,4 +1,4 @@
-From a168344003e36e086a23a28994ad203323a1dfe6 Mon Sep 17 00:00:00 2001
+From b6d7e33c49772362f7460690dfd88638d2c00e26 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 09/25] ethtool: implement GET_STRSET message
@@ -34,10 +34,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/strset.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 53a40d2f4cc5..b0b4eda00904 100644
+index 1ec6dbf34f24..d127e5e6dd17 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -125,6 +125,8 @@ List of message types
+@@ -126,6 +126,8 @@ List of message types
  ---------------------
  
      ETHNL_CMD_EVENT			notification only
@@ -46,7 +46,7 @@ index 53a40d2f4cc5..b0b4eda00904 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -194,7 +196,7 @@ ETHTOOL_STXCSUM			n/a
+@@ -195,7 +197,7 @@ ETHTOOL_STXCSUM			n/a
  ETHTOOL_GSG			n/a
  ETHTOOL_SSG			n/a
  ETHTOOL_TEST			n/a
@@ -55,7 +55,7 @@ index 53a40d2f4cc5..b0b4eda00904 100644
  ETHTOOL_PHYS_ID			n/a
  ETHTOOL_GSTATS			n/a
  ETHTOOL_GTSO			n/a
-@@ -222,7 +224,7 @@ ETHTOOL_FLASHDEV		n/a
+@@ -223,7 +225,7 @@ ETHTOOL_FLASHDEV		n/a
  ETHTOOL_RESET			n/a
  ETHTOOL_SRXNTUPLE		n/a
  ETHTOOL_GRXNTUPLE		n/a
@@ -65,7 +65,7 @@ index 53a40d2f4cc5..b0b4eda00904 100644
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		n/a
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
-index c8f8e2455bf3..f6fc60539af4 100644
+index 17be76aeb468..7d535d6101d8 100644
 --- a/include/uapi/linux/ethtool.h
 +++ b/include/uapi/linux/ethtool.h
 @@ -574,6 +574,10 @@ enum ethtool_stringset {
@@ -140,15 +140,15 @@ index 34721d3b5e40..6d63822a0e4e 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/Makefile b/net/ethtool/Makefile
-index f30e0da88be5..ba260d5b53b2 100644
+index 482fdb9380fa..6569d766d6c1 100644
 --- a/net/ethtool/Makefile
 +++ b/net/ethtool/Makefile
 @@ -4,4 +4,4 @@ obj-y				+= ioctl.o
  
  obj-$(CONFIG_ETHTOOL_NETLINK)	+= ethtool_nl.o
  
--ethtool_nl-y	:= netlink.o
-+ethtool_nl-y	:= netlink.o strset.o
+-ethtool_nl-y	:= netlink.o bitset.o
++ethtool_nl-y	:= netlink.o bitset.o strset.o
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
 new file mode 100644
 index 000000000000..0b1ff5a1a918
@@ -258,10 +258,10 @@ index 000000000000..45c6492e4aee
 +
 +#endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index d05402868575..8386d0c0618d 100644
+index d2c47cdf25da..c10c2ad6125b 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -56,86 +56,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
+@@ -58,86 +58,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
  
  #define ETHTOOL_DEV_FEATURE_WORDS	((NETDEV_FEATURE_COUNT + 31) / 32)
  
@@ -349,10 +349,10 @@ index d05402868575..8386d0c0618d 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 7e2cde40f1f0..c16ecd97ac69 100644
+index 0a3fce66b4c0..cdf3b34886eb 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -532,7 +532,10 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
+@@ -85,7 +85,10 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
  
  /* GET request helpers */
  
@@ -363,7 +363,7 @@ index 7e2cde40f1f0..c16ecd97ac69 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -934,6 +937,13 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -487,6 +490,13 @@ static struct notifier_block ethnl_netdev_notifier = {
  /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
@@ -806,5 +806,5 @@ index 000000000000..bcc3d6243576
 +	.fill_reply		= fill_strset,
 +};
 -- 
-2.19.1
+2.20.1
 

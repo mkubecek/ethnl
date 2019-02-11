@@ -1,4 +1,4 @@
-From 0da18cea4af2e3ada4e438b8849bbdd9bab96dab Mon Sep 17 00:00:00 2001
+From c920c2b0610e7c5eebc9522ee7d8faff4bc28d28 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 19/25] ethtool: implement SET_PARAMS message
@@ -20,10 +20,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 582 insertions(+), 65 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index ef70ac4b1cb0..f3c77f39f1fe 100644
+index 62e6c0a5a477..0343c8e7601f 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -132,7 +132,7 @@ List of message types
+@@ -133,7 +133,7 @@ List of message types
      ETHNL_CMD_GET_SETTINGS
      ETHNL_CMD_SET_SETTINGS
      ETHNL_CMD_GET_PARAMS
@@ -32,7 +32,7 @@ index ef70ac4b1cb0..f3c77f39f1fe 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -440,6 +440,63 @@ to them are broadcasted as notifications on change of these settings using
+@@ -441,6 +441,63 @@ to them are broadcasted as notifications on change of these settings using
  netlink or ioctl ethtool interface.
  
  
@@ -96,7 +96,7 @@ index ef70ac4b1cb0..f3c77f39f1fe 100644
  
  Request translation
  -------------------
-@@ -463,11 +520,11 @@ ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
+@@ -464,11 +521,11 @@ ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		ETHNL_CMD_GET_PARAMS
@@ -111,7 +111,7 @@ index ef70ac4b1cb0..f3c77f39f1fe 100644
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SRXCSUM			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GTXCSUM			ETHNL_CMD_GET_SETTINGS
-@@ -509,7 +566,7 @@ ETHTOOL_SRXFHINDIR		n/a
+@@ -510,7 +567,7 @@ ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GCHANNELS		ETHNL_CMD_GET_PARAMS
@@ -120,7 +120,7 @@ index ef70ac4b1cb0..f3c77f39f1fe 100644
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
  ETHTOOL_GET_DUMP_DATA		n/a
-@@ -517,7 +574,7 @@ ETHTOOL_GET_TS_INFO		ETHNL_CMD_GET_INFO
+@@ -518,7 +575,7 @@ ETHTOOL_GET_TS_INFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
@@ -129,7 +129,7 @@ index ef70ac4b1cb0..f3c77f39f1fe 100644
  ETHTOOL_GRSSH			n/a
  ETHTOOL_SRSSH			n/a
  ETHTOOL_GTUNABLE		n/a
-@@ -529,5 +586,5 @@ ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
+@@ -530,5 +587,5 @@ ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		ETHNL_CMD_GET_PARAMS
@@ -137,18 +137,18 @@ index ef70ac4b1cb0..f3c77f39f1fe 100644
 +ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
  
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index 88e787ddd9ae..7422cc3f25c8 100644
+index 514c8d94bf31..45d381756885 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
-@@ -3,6 +3,7 @@
- #include <linux/rtnetlink.h>
+@@ -4,6 +4,7 @@
  #include <linux/phy.h>
  #include <linux/net_tstamp.h>
+ #include <net/devlink.h>
 +#include <net/xdp_sock.h>
  #include "common.h"
  
  const char netdev_features_strings[NETDEV_FEATURE_COUNT][ETH_GSTRING_LEN] = {
-@@ -213,3 +214,67 @@ int __ethtool_get_link(struct net_device *dev)
+@@ -225,3 +226,67 @@ int __ethtool_get_link(struct net_device *dev)
  
  	return netif_running(dev) && dev->ethtool_ops->get_link(dev);
  }
@@ -231,7 +231,7 @@ index 3c763b4d54bc..a0cf1249fd88 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index eed26794f0fc..86a16b31a77e 100644
+index 936357745f47..9fc1c112b2ad 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -27,7 +27,6 @@
@@ -239,10 +239,10 @@ index eed26794f0fc..86a16b31a77e 100644
  #include <linux/sched/signal.h>
  #include <linux/net.h>
 -#include <net/xdp_sock.h>
+ #include <net/flow_offload.h>
  #include <linux/ethtool_netlink.h>
  #include "common.h"
- 
-@@ -842,37 +841,6 @@ void netdev_rss_key_fill(void *buffer, size_t len)
+@@ -843,37 +842,6 @@ void netdev_rss_key_fill(void *buffer, size_t len)
  }
  EXPORT_SYMBOL(netdev_rss_key_fill);
  
@@ -280,7 +280,7 @@ index eed26794f0fc..86a16b31a77e 100644
  static noinline_for_stack int ethtool_get_rxfh_indir(struct net_device *dev,
  						     void __user *useraddr)
  {
-@@ -1536,9 +1504,6 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
+@@ -1537,9 +1505,6 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
  						   void __user *useraddr)
  {
  	struct ethtool_channels channels, curr = { .cmd = ETHTOOL_GCHANNELS };
@@ -290,7 +290,7 @@ index eed26794f0fc..86a16b31a77e 100644
  	int ret;
  
  	if (!dev->ethtool_ops->set_channels || !dev->ethtool_ops->get_channels)
-@@ -1549,29 +1514,7 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
+@@ -1550,29 +1515,7 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
  
  	dev->ethtool_ops->get_channels(dev, &curr);
  
@@ -322,10 +322,10 @@ index eed26794f0fc..86a16b31a77e 100644
  		ethtool_notify(dev, NULL, ETHNL_CMD_SET_PARAMS,
  			       ETH_PARAMS_IM_CHANNELS, NULL);
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index cd4f9228dfdf..c6da4e735b81 100644
+index f91174627ab3..0c13df8afc34 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -1045,6 +1045,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -598,6 +598,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -338,10 +338,10 @@ index cd4f9228dfdf..c6da4e735b81 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index ba6a2b2c9b18..27cfd66a0372 100644
+index 16646b72f607..26b470bbb12e 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -472,3 +472,447 @@ const struct get_request_ops params_request_ops = {
+@@ -477,3 +477,447 @@ const struct get_request_ops params_request_ops = {
  	.reply_size		= params_size,
  	.fill_reply		= fill_params,
  };
@@ -790,5 +790,5 @@ index ba6a2b2c9b18..27cfd66a0372 100644
 +	return ret;
 +}
 -- 
-2.19.1
+2.20.1
 

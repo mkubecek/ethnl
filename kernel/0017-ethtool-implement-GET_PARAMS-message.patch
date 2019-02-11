@@ -1,4 +1,4 @@
-From 211e7abaa21f7ed666827faa9d662ac6238326a7 Mon Sep 17 00:00:00 2001
+From 910c381539ee4f70178b2172047a3f8a00f5bf0e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
 Subject: [PATCH 17/25] ethtool: implement GET_PARAMS message
@@ -14,15 +14,15 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/netlink.c                        |   9 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/params.c                         | 474 +++++++++++++++++++
- 6 files changed, 705 insertions(+), 7 deletions(-)
+ net/ethtool/params.c                         | 479 +++++++++++++++++++
+ 6 files changed, 710 insertions(+), 7 deletions(-)
  create mode 100644 net/ethtool/params.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index c326e915dbaf..ef70ac4b1cb0 100644
+index 7ad1960e4bdd..62e6c0a5a477 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -131,6 +131,8 @@ List of message types
+@@ -132,6 +132,8 @@ List of message types
      ETHNL_CMD_SET_INFO			response only
      ETHNL_CMD_GET_SETTINGS
      ETHNL_CMD_SET_SETTINGS
@@ -31,7 +31,7 @@ index c326e915dbaf..ef70ac4b1cb0 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -346,6 +348,99 @@ the operation); mask shows bits which have been changed and value their new
+@@ -347,6 +349,99 @@ the operation); mask shows bits which have been changed and value their new
  values.
  
  
@@ -131,7 +131,7 @@ index c326e915dbaf..ef70ac4b1cb0 100644
  Request translation
  -------------------
  
-@@ -367,11 +462,11 @@ ETHTOOL_NWAY_RST		n/a
+@@ -368,11 +463,11 @@ ETHTOOL_NWAY_RST		n/a
  ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
@@ -146,7 +146,7 @@ index c326e915dbaf..ef70ac4b1cb0 100644
  ETHTOOL_SPAUSEPARAM		n/a
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SRXCSUM			ETHNL_CMD_SET_SETTINGS
-@@ -413,7 +508,7 @@ ETHTOOL_GRXFHINDIR		n/a
+@@ -414,7 +509,7 @@ ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
@@ -155,7 +155,7 @@ index c326e915dbaf..ef70ac4b1cb0 100644
  ETHTOOL_SCHANNELS		n/a
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
-@@ -421,7 +516,7 @@ ETHTOOL_GET_DUMP_DATA		n/a
+@@ -422,7 +517,7 @@ ETHTOOL_GET_DUMP_DATA		n/a
  ETHTOOL_GET_TS_INFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a
@@ -164,7 +164,7 @@ index c326e915dbaf..ef70ac4b1cb0 100644
  ETHTOOL_SEEE			n/a
  ETHTOOL_GRSSH			n/a
  ETHTOOL_SRSSH			n/a
-@@ -433,6 +528,6 @@ ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
+@@ -434,6 +529,6 @@ ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a
@@ -310,20 +310,20 @@ index ee639573d8a7..36e1ba2e79ff 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/Makefile b/net/ethtool/Makefile
-index cf9638e6710b..62313644ac7d 100644
+index 6a7a182e1568..95e93c153cf6 100644
 --- a/net/ethtool/Makefile
 +++ b/net/ethtool/Makefile
 @@ -4,4 +4,4 @@ obj-y				+= ioctl.o common.o
  
  obj-$(CONFIG_ETHTOOL_NETLINK)	+= ethtool_nl.o
  
--ethtool_nl-y	:= netlink.o strset.o info.o settings.o
-+ethtool_nl-y	:= netlink.o strset.o info.o settings.o params.o
+-ethtool_nl-y	:= netlink.o bitset.o strset.o info.o settings.o
++ethtool_nl-y	:= netlink.o bitset.o strset.o info.o settings.o params.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index c6ebc56ae0e8..fda18b37b04d 100644
+index 5db58deda849..39a95ed8ef2e 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -591,11 +591,13 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
+@@ -144,11 +144,13 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
  extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops info_request_ops;
  extern const struct get_request_ops settings_request_ops;
@@ -337,7 +337,7 @@ index c6ebc56ae0e8..fda18b37b04d 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -1035,6 +1037,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -588,6 +590,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_settings,
  	},
@@ -352,10 +352,10 @@ index c6ebc56ae0e8..fda18b37b04d 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index a799d4ac3e23..47e7e2ee6093 100644
+index fe80e0b00092..ef1b7c8ffb5f 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -283,5 +283,6 @@ struct get_request_ops {
+@@ -262,5 +262,6 @@ struct get_request_ops {
  /* request handlers */
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
@@ -364,14 +364,15 @@ index a799d4ac3e23..47e7e2ee6093 100644
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
 new file mode 100644
-index 000000000000..ba6a2b2c9b18
+index 000000000000..16646b72f607
 --- /dev/null
 +++ b/net/ethtool/params.c
-@@ -0,0 +1,474 @@
+@@ -0,0 +1,479 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
 +#include "common.h"
++#include "bitset.h"
 +
 +static const struct nla_policy get_params_policy[ETHA_PARAMS_MAX + 1] = {
 +	[ETHA_PARAMS_UNSPEC]		= { .type = NLA_REJECT },
@@ -550,18 +551,21 @@ index 000000000000..ba6a2b2c9b18
 +
 +static int eee_size(const struct ethtool_eee *eee, bool compact)
 +{
++	const unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
 +	int len = 0;
 +	int ret;
 +
 +	/* link_modes */
-+	ret = ethnl_bitset32_size(compact, sizeof(u32) * 8, &eee->advertised,
-+				  &eee->supported, link_mode_names, false);
++	ret = ethnl_bitset32_size(sizeof(eee->advertised) * BITS_PER_BYTE,
++				  &eee->advertised, &eee->supported,
++				  link_mode_names, flags);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
 +	/* peer_modes */
-+	ret = ethnl_bitset32_size(compact, sizeof(u32) * 8, &eee->lp_advertised,
-+				  &eee->lp_advertised, link_mode_names, false);
++	ret = ethnl_bitset32_size(sizeof(eee->lp_advertised) * BITS_PER_BYTE,
++				  &eee->lp_advertised, NULL, link_mode_names,
++				  flags | ETHNL_BITSET_LIST);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
@@ -739,21 +743,22 @@ index 000000000000..ba6a2b2c9b18
 +
 +static int fill_eee(struct sk_buff *skb, struct ethtool_eee *data, bool compact)
 +{
++	const unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
 +	struct nlattr *nest = ethnl_nest_start(skb, ETHA_PARAMS_EEE);
 +	int ret;
 +
 +	if (!nest)
 +		return -EMSGSIZE;
-+	ret = ethnl_put_bitset32(skb, ETHA_EEE_LINK_MODES, compact,
-+				 sizeof(data->advertised) * 8,
++	ret = ethnl_put_bitset32(skb, ETHA_EEE_LINK_MODES,
++				 sizeof(data->advertised) * BITS_PER_BYTE,
 +				 &data->advertised, &data->supported,
-+				 link_mode_names, false);
++				 link_mode_names, flags);
 +	if (ret < 0)
 +		goto err;
-+	ret = ethnl_put_bitset32(skb, ETHA_EEE_PEER_MODES, compact,
-+				 sizeof(data->advertised) * 8,
++	ret = ethnl_put_bitset32(skb, ETHA_EEE_PEER_MODES,
++				 sizeof(data->lp_advertised) * BITS_PER_BYTE,
 +				 &data->lp_advertised, &data->lp_advertised,
-+				 link_mode_names, false);
++				 link_mode_names, flags | ETHNL_BITSET_LIST);
 +	if (ret < 0)
 +		goto err;
 +
@@ -843,5 +848,5 @@ index 000000000000..ba6a2b2c9b18
 +	.fill_reply		= fill_params,
 +};
 -- 
-2.19.1
+2.20.1
 

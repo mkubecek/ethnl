@@ -1,4 +1,4 @@
-From 2cd544dcf2ca9cf79a2421875339ea051aa2f44f Mon Sep 17 00:00:00 2001
+From 58e536b5feb8cf9ec0a745196a0aee1cd4772b09 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 07/25] ethtool: implement EVENT notifications
@@ -20,10 +20,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 111 insertions(+)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 39671f70b489..53a40d2f4cc5 100644
+index b883b358b442..1ec6dbf34f24 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -124,6 +124,8 @@ which the request applies.
+@@ -125,6 +125,8 @@ which the request applies.
  List of message types
  ---------------------
  
@@ -32,7 +32,7 @@ index 39671f70b489..53a40d2f4cc5 100644
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
  
-@@ -135,9 +137,29 @@ messages marked as "response only" in the table above. "Get" messages with
+@@ -136,9 +138,29 @@ messages marked as "response only" in the table above. "Get" messages with
  NLM_F_DUMP flags and no device identification dump the information for all
  devices supporting the request.
  
@@ -109,10 +109,10 @@ index b662d75a0636..34721d3b5e40 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 6ac12878e519..cefb9416a8ff 100644
+index 27f514c3fc2d..4b1a00365e3e 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -594,6 +594,63 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
+@@ -147,6 +147,63 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  }
  EXPORT_SYMBOL(ethtool_notify);
  
@@ -176,7 +176,7 @@ index 6ac12878e519..cefb9416a8ff 100644
  /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -625,6 +682,10 @@ static int __init ethnl_init(void)
+@@ -178,6 +235,10 @@ static int __init ethnl_init(void)
  	if (ret < 0)
  		panic("ethtool: could not register genetlink family\n");
  
@@ -188,5 +188,5 @@ index 6ac12878e519..cefb9416a8ff 100644
  }
  
 -- 
-2.19.1
+2.20.1
 

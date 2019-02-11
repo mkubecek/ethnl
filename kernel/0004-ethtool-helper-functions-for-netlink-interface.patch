@@ -1,4 +1,4 @@
-From a3ba73e46a482bc89be66ff636f31111d13a34e4 Mon Sep 17 00:00:00 2001
+From 6a8c5b077754396d79ac78566b4661371f938d34 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 04/25] ethtool: helper functions for netlink interface
@@ -166,7 +166,7 @@ index 54370910fcd4..ca116b882171 100644
  
  static const struct genl_ops ethtool_genl_ops[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 63063b582ca2..ebee561e227d 100644
+index 63063b582ca2..5491d7db83f3 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -6,7 +6,141 @@
@@ -304,7 +304,7 @@ index 63063b582ca2..ebee561e227d 100644
 + * we do not need to hold RTNL longer than necessary to prevent rename between
 + * estimating the size and composing the message
 + */
-+static unsigned int dev_ident_size(void)
++static inline unsigned int dev_ident_size(void)
 +{
 +	return nla_total_size(nla_total_size(sizeof(u32)) +
 +			      nla_total_size(IFNAMSIZ));
@@ -312,5 +312,5 @@ index 63063b582ca2..ebee561e227d 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
-2.19.1
+2.20.1
 

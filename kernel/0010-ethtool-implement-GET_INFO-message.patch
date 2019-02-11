@@ -1,4 +1,4 @@
-From 8ad5203535db2aba00fb7f31a4beacd51dad8cbc Mon Sep 17 00:00:00 2001
+From 189e5339529df22f99063d0aadebe5624abbc1c7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
 Subject: [PATCH 10/25] ethtool: implement GET_INFO message
@@ -15,21 +15,21 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool_netlink.h         |  54 +++
  include/uapi/linux/net_tstamp.h              |  13 +
  net/ethtool/Makefile                         |   4 +-
- net/ethtool/common.c                         |  66 ++++
+ net/ethtool/common.c                         |  78 +++++
  net/ethtool/common.h                         |   4 +
- net/ethtool/info.c                           | 329 +++++++++++++++++++
- net/ethtool/ioctl.c                          |  62 +---
+ net/ethtool/info.c                           | 332 +++++++++++++++++++
+ net/ethtool/ioctl.c                          |  74 +----
  net/ethtool/netlink.c                        |   9 +
  net/ethtool/netlink.h                        |   9 +
  net/ethtool/strset.c                         |  18 +
- 12 files changed, 576 insertions(+), 60 deletions(-)
+ 12 files changed, 591 insertions(+), 72 deletions(-)
  create mode 100644 net/ethtool/info.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index b0b4eda00904..ca33fa8528f8 100644
+index d127e5e6dd17..603601e71d1f 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -127,6 +127,8 @@ List of message types
+@@ -128,6 +128,8 @@ List of message types
      ETHNL_CMD_EVENT			notification only
      ETHNL_CMD_GET_STRSET
      ETHNL_CMD_SET_STRSET		response only
@@ -38,7 +38,7 @@ index b0b4eda00904..ca33fa8528f8 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -162,6 +164,59 @@ and also multiple events of the same type (e.g. two or more newly registered
+@@ -163,6 +165,59 @@ and also multiple events of the same type (e.g. two or more newly registered
  devices).
  
  
@@ -98,7 +98,7 @@ index b0b4eda00904..ca33fa8528f8 100644
  Request translation
  -------------------
  
-@@ -173,7 +228,7 @@ ioctl command			netlink command
+@@ -174,7 +229,7 @@ ioctl command			netlink command
  ---------------------------------------------------------------------
  ETHTOOL_GSET			n/a
  ETHTOOL_SSET			n/a
@@ -107,7 +107,7 @@ index b0b4eda00904..ca33fa8528f8 100644
  ETHTOOL_GREGS			n/a
  ETHTOOL_GWOL			n/a
  ETHTOOL_SWOL			n/a
-@@ -201,7 +256,7 @@ ETHTOOL_PHYS_ID			n/a
+@@ -202,7 +257,7 @@ ETHTOOL_PHYS_ID			n/a
  ETHTOOL_GSTATS			n/a
  ETHTOOL_GTSO			n/a
  ETHTOOL_STSO			n/a
@@ -116,7 +116,7 @@ index b0b4eda00904..ca33fa8528f8 100644
  ETHTOOL_GUFO			n/a
  ETHTOOL_SUFO			n/a
  ETHTOOL_GGSO			n/a
-@@ -234,7 +289,7 @@ ETHTOOL_SCHANNELS		n/a
+@@ -235,7 +290,7 @@ ETHTOOL_SCHANNELS		n/a
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
  ETHTOOL_GET_DUMP_DATA		n/a
@@ -126,7 +126,7 @@ index b0b4eda00904..ca33fa8528f8 100644
  ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			n/a
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
-index f6fc60539af4..64bfd987510a 100644
+index 7d535d6101d8..615743a89715 100644
 --- a/include/uapi/linux/ethtool.h
 +++ b/include/uapi/linux/ethtool.h
 @@ -563,6 +563,9 @@ struct ethtool_pauseparam {
@@ -223,7 +223,7 @@ index 6d63822a0e4e..e3571dc883d2 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/include/uapi/linux/net_tstamp.h b/include/uapi/linux/net_tstamp.h
-index 97ff3c17ec4d..3166ff0f497e 100644
+index e5b39721c6e4..e5b0472c4416 100644
 --- a/include/uapi/linux/net_tstamp.h
 +++ b/include/uapi/linux/net_tstamp.h
 @@ -30,6 +30,9 @@ enum {
@@ -261,7 +261,7 @@ index 97ff3c17ec4d..3166ff0f497e 100644
  
  /* SCM_TIMESTAMPING_PKTINFO control message */
 diff --git a/net/ethtool/Makefile b/net/ethtool/Makefile
-index ba260d5b53b2..c910da728445 100644
+index 6569d766d6c1..96d41dc45d4f 100644
 --- a/net/ethtool/Makefile
 +++ b/net/ethtool/Makefile
 @@ -1,7 +1,7 @@
@@ -272,22 +272,23 @@ index ba260d5b53b2..c910da728445 100644
  
  obj-$(CONFIG_ETHTOOL_NETLINK)	+= ethtool_nl.o
  
--ethtool_nl-y	:= netlink.o strset.o
-+ethtool_nl-y	:= netlink.o strset.o info.o
+-ethtool_nl-y	:= netlink.o bitset.o strset.o
++ethtool_nl-y	:= netlink.o bitset.o strset.o info.o
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index 0b1ff5a1a918..3805e5b141a6 100644
+index 0b1ff5a1a918..3c7fdeb34c1e 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
-@@ -1,5 +1,8 @@
+@@ -1,5 +1,9 @@
  /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
  
 +#include <linux/rtnetlink.h>
 +#include <linux/phy.h>
 +#include <linux/net_tstamp.h>
++#include <net/devlink.h>
  #include "common.h"
  
  const char netdev_features_strings[NETDEV_FEATURE_COUNT][ETH_GSTRING_LEN] = {
-@@ -81,3 +84,66 @@ phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN] = {
+@@ -81,3 +85,77 @@ phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN] = {
  	[ETHTOOL_ID_UNSPEC]     = "Unspec",
  	[ETHTOOL_PHY_DOWNSHIFT]	= "phy-downshift",
  };
@@ -325,10 +326,21 @@ index 0b1ff5a1a918..3805e5b141a6 100644
 +		if (rc >= 0)
 +			info->n_priv_flags = rc;
 +	}
-+	if (ops->get_regs_len)
-+		info->regdump_len = ops->get_regs_len(dev);
++	if (ops->get_regs_len) {
++		int ret = ops->get_regs_len(dev);
++
++		if (ret > 0)
++			info->regdump_len = ret;
++	}
++
 +	if (ops->get_eeprom_len)
 +		info->eedump_len = ops->get_eeprom_len(dev);
++
++	rtnl_unlock();
++	if (!info->fw_version[0])
++		devlink_compat_running_version(dev, info->fw_version,
++					       sizeof(info->fw_version));
++	rtnl_lock();
 +
 +	return 0;
 +}
@@ -376,16 +388,17 @@ index 45c6492e4aee..12e916fdd04a 100644
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
 new file mode 100644
-index 000000000000..913a81b60469
+index 000000000000..91ee4c33a9d5
 --- /dev/null
 +++ b/net/ethtool/info.c
-@@ -0,0 +1,329 @@
+@@ -0,0 +1,332 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include <linux/net_tstamp.h>
 +
 +#include "netlink.h"
 +#include "common.h"
++#include "bitset.h"
 +
 +const char *const so_timestamping_labels[] = {
 +	"hardware-transmit",		/* SOF_TIMESTAMPING_TX_HARDWARE */
@@ -532,6 +545,7 @@ index 000000000000..913a81b60469
 +
 +static int tsinfo_size(const struct ethtool_ts_info *tsinfo, bool compact)
 +{
++	const unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
 +	int len = 0;
 +	int ret;
 +
@@ -542,21 +556,21 @@ index 000000000000..913a81b60469
 +	BUILD_BUG_ON(__HWTSTAMP_TX_COUNT > 32);
 +	BUILD_BUG_ON(__HWTSTAMP_FILTER_COUNT > 32);
 +
-+	ret = ethnl_bitset32_size(compact, __SOF_TIMESTAMPING_COUNT,
++	ret = ethnl_bitset32_size(__SOF_TIMESTAMPING_COUNT,
 +				  &tsinfo->so_timestamping, NULL,
-+				  so_timestamping_labels, false);
++				  so_timestamping_labels, flags);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
-+	ret = ethnl_bitset32_size(compact, __HWTSTAMP_TX_COUNT,
++	ret = ethnl_bitset32_size(__HWTSTAMP_TX_COUNT,
 +				  &tsinfo->tx_types, NULL,
-+				  tstamp_tx_type_labels, false);
++				  tstamp_tx_type_labels, flags);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
-+	ret = ethnl_bitset32_size(compact, __HWTSTAMP_FILTER_COUNT,
++	ret = ethnl_bitset32_size(__HWTSTAMP_FILTER_COUNT,
 +				  &tsinfo->rx_filters, NULL,
-+				  tstamp_rx_filter_labels, false);
++				  tstamp_rx_filter_labels, flags);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
@@ -636,15 +650,16 @@ index 000000000000..913a81b60469
 +static int fill_tsinfo(struct sk_buff *skb,
 +		       const struct ethtool_ts_info *tsinfo, bool compact)
 +{
++	const unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
 +	struct nlattr *nest = ethnl_nest_start(skb, ETHA_INFO_TSINFO);
 +	int ret;
 +
 +	if (!nest)
 +		return -EMSGSIZE;
-+	ret = ethnl_put_bitset32(skb, ETHA_TSINFO_TIMESTAMPING, compact,
++	ret = ethnl_put_bitset32(skb, ETHA_TSINFO_TIMESTAMPING,
 +				 __SOF_TIMESTAMPING_COUNT,
 +				 &tsinfo->so_timestamping, NULL,
-+				 so_timestamping_labels, false);
++				 so_timestamping_labels, flags);
 +	if (ret < 0)
 +		goto err;
 +	ret = -EMSGSIZE;
@@ -652,14 +667,14 @@ index 000000000000..913a81b60469
 +	    nla_put_u32(skb, ETHA_TSINFO_PHC_INDEX, tsinfo->phc_index))
 +		goto err;
 +
-+	ret = ethnl_put_bitset32(skb, ETHA_TSINFO_TX_TYPES, compact,
-+				 __HWTSTAMP_TX_COUNT, &tsinfo->tx_types, NULL,
-+				 tstamp_tx_type_labels, false);
++	ret = ethnl_put_bitset32(skb, ETHA_TSINFO_TX_TYPES, __HWTSTAMP_TX_COUNT,
++				 &tsinfo->tx_types, NULL, tstamp_tx_type_labels,
++				 flags);
 +	if (ret < 0)
 +		goto err;
-+	ret = ethnl_put_bitset32(skb, ETHA_TSINFO_RX_FILTERS, compact,
++	ret = ethnl_put_bitset32(skb, ETHA_TSINFO_RX_FILTERS,
 +				 __HWTSTAMP_FILTER_COUNT, &tsinfo->rx_filters,
-+				 NULL, tstamp_rx_filter_labels, false);
++				 NULL, tstamp_rx_filter_labels, flags);
 +	if (ret < 0)
 +		goto err;
 +
@@ -710,18 +725,21 @@ index 000000000000..913a81b60469
 +	.fill_reply		= fill_info,
 +};
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 8386d0c0618d..e5d930c79b96 100644
+index c10c2ad6125b..2f5bf171a5f1 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -28,6 +28,7 @@
+@@ -27,9 +27,9 @@
+ #include <linux/rtnetlink.h>
  #include <linux/sched/signal.h>
  #include <linux/net.h>
+-#include <net/devlink.h>
  #include <net/xdp_sock.h>
+ #include <net/flow_offload.h>
 +#include "common.h"
  
  /*
   * Some useful ethtool_ops methods that're device independent.
-@@ -681,45 +682,14 @@ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
+@@ -683,56 +683,14 @@ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
  						  void __user *useraddr)
  {
  	struct ethtool_drvinfo info;
@@ -757,10 +775,21 @@ index 8386d0c0618d..e5d930c79b96 100644
 -		if (rc >= 0)
 -			info.n_priv_flags = rc;
 -	}
--	if (ops->get_regs_len)
--		info.regdump_len = ops->get_regs_len(dev);
+-	if (ops->get_regs_len) {
+-		int ret = ops->get_regs_len(dev);
+-
+-		if (ret > 0)
+-			info.regdump_len = ret;
+-	}
+-
 -	if (ops->get_eeprom_len)
 -		info.eedump_len = ops->get_eeprom_len(dev);
+-
+-	rtnl_unlock();
+-	if (!info.fw_version[0])
+-		devlink_compat_running_version(dev, info.fw_version,
+-					       sizeof(info.fw_version));
+-	rtnl_lock();
 +	int rc;
  
 +	rc = __ethtool_get_drvinfo(dev, &info);
@@ -772,7 +801,7 @@ index 8386d0c0618d..e5d930c79b96 100644
  	return 0;
  }
  
-@@ -2055,28 +2025,12 @@ static int ethtool_get_dump_data(struct net_device *dev,
+@@ -2068,28 +2026,12 @@ static int ethtool_get_dump_data(struct net_device *dev,
  
  static int ethtool_get_ts_info(struct net_device *dev, void __user *useraddr)
  {
@@ -804,10 +833,10 @@ index 8386d0c0618d..e5d930c79b96 100644
  		err = -EFAULT;
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index c16ecd97ac69..aeb369ec110e 100644
+index cdf3b34886eb..27c86e52ad7e 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -533,9 +533,11 @@ bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
+@@ -86,9 +86,11 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
  /* GET request helpers */
  
  extern const struct get_request_ops strset_request_ops;
@@ -819,7 +848,7 @@ index c16ecd97ac69..aeb369ec110e 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -944,6 +946,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -497,6 +499,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -834,7 +863,7 @@ index c16ecd97ac69..aeb369ec110e 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 5aada243833a..2ba41451a789 100644
+index 8d494ec0bf35..576f7969a530 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -7,14 +7,23 @@
@@ -891,5 +920,5 @@ index bcc3d6243576..6d9648636aa4 100644
  
  struct strset_data {
 -- 
-2.19.1
+2.20.1
 

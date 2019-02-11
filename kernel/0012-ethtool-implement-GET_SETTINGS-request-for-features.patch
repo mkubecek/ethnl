@@ -1,4 +1,4 @@
-From e769d7f7fdd6d0c6d03dda48eec4aec1bcf7cfec Mon Sep 17 00:00:00 2001
+From adac0a38fe201c27ea4d2110ff0dbcf5d7e03656 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 12/25] ethtool: implement GET_SETTINGS request for features
@@ -13,14 +13,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool_netlink.h         |  15 ++-
  net/ethtool/common.h                         |   2 +
  net/ethtool/ioctl.c                          |   2 -
- net/ethtool/settings.c                       | 112 +++++++++++++++++++
- 5 files changed, 152 insertions(+), 12 deletions(-)
+ net/ethtool/settings.c                       | 108 +++++++++++++++++++
+ 5 files changed, 148 insertions(+), 12 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 5a5e5813312c..1b34f013a5fd 100644
+index d2184ed9f3b1..89d1fdcea2b7 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -239,6 +239,7 @@ Info mask bits meaning:
+@@ -240,6 +240,7 @@ Info mask bits meaning:
      ETH_SETTINGS_IM_MSGLEVEL		msglevel
      ETH_SETTINGS_IM_WOLINFO		struct ethtool_wolinfo
      ETH_SETTINGS_IM_LINK		link state
@@ -28,7 +28,7 @@ index 5a5e5813312c..1b34f013a5fd 100644
  
  Response contents:
  
-@@ -257,6 +258,11 @@ Response contents:
+@@ -258,6 +259,11 @@ Response contents:
      ETHA_SETTINGS_LINK_MODES	(bitset)	device link modes
      ETHA_SETTINGS_PEER_MODES	(bitset)	link partner link modes
      ETHA_SETTINGS_LINK		(u8)		link state
@@ -40,7 +40,7 @@ index 5a5e5813312c..1b34f013a5fd 100644
  
  Most of the attributes have the same meaning (including values) as
  corresponding members of ioctl structures. For ETHA_SETTINGS_MSGLVL, selector
-@@ -266,6 +272,15 @@ advertised modes and mask represents supported modes. For
+@@ -267,6 +273,15 @@ advertised modes and mask represents supported modes. For
  ETHA_SETTINGS_PEER_MODES, both value and mask represent partner advertised
  link modes.
  
@@ -56,7 +56,7 @@ index 5a5e5813312c..1b34f013a5fd 100644
  GET_SETTINGS request is allowed for unprivileged user but ETHA_SETTINGS_SOPASS
  is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
  requests.
-@@ -302,30 +317,30 @@ ETHTOOL_GRINGPARAM		n/a
+@@ -303,30 +318,30 @@ ETHTOOL_GRINGPARAM		n/a
  ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
  ETHTOOL_SPAUSEPARAM		n/a
@@ -95,7 +95,7 @@ index 5a5e5813312c..1b34f013a5fd 100644
  ETHTOOL_SGRO			n/a
  ETHTOOL_GRXRINGS		n/a
  ETHTOOL_GRXCLSRLCNT		n/a
-@@ -340,7 +355,7 @@ ETHTOOL_GRXNTUPLE		n/a
+@@ -341,7 +356,7 @@ ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
  ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
@@ -152,10 +152,10 @@ index b2b935a4569a..3c763b4d54bc 100644
  extern const char rss_hash_func_strings[ETH_RSS_HASH_FUNCS_COUNT][ETH_GSTRING_LEN];
  extern const char tunable_strings[__ETHTOOL_TUNABLE_COUNT][ETH_GSTRING_LEN];
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index b07eba65bf20..7a139cfb3815 100644
+index 498d96e54058..feee9155f3d0 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -55,8 +55,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
+@@ -56,8 +56,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
  
  /* Handlers for each ethtool command */
  
@@ -165,10 +165,10 @@ index b07eba65bf20..7a139cfb3815 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index c1ed91faa9cc..f027a1362ba4 100644
+index 788bc10b94f9..1093399b726e 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -16,6 +16,12 @@ struct settings_data {
+@@ -18,6 +18,12 @@ struct settings_data {
  	int				link;
  	u32				msglevel;
  	bool				lpm_empty;
@@ -181,7 +181,7 @@ index c1ed91faa9cc..f027a1362ba4 100644
  };
  
  /* We want to allow ~0 as selector for backward compatibility (to just set
-@@ -43,6 +49,7 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+@@ -45,6 +51,7 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
  	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
@@ -189,7 +189,7 @@ index c1ed91faa9cc..f027a1362ba4 100644
  };
  
  static int parse_settings(struct common_req_info *req_info,
-@@ -103,6 +110,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
+@@ -105,6 +112,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
  	return ret;
  }
  
@@ -214,7 +214,7 @@ index c1ed91faa9cc..f027a1362ba4 100644
  static int prepare_settings(struct common_req_info *req_info,
  			    struct genl_info *info)
  {
-@@ -150,6 +175,8 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -152,6 +177,8 @@ static int prepare_settings(struct common_req_info *req_info,
  	}
  	if (req_mask & ETH_SETTINGS_IM_LINK)
  		data->link = __ethtool_get_link(dev);
@@ -223,39 +223,35 @@ index c1ed91faa9cc..f027a1362ba4 100644
  	ethnl_after_ops(dev, req_info->have_rtnl);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -182,6 +209,42 @@ static int link_modes_size(const struct ethtool_link_ksettings *ksettings,
+@@ -184,6 +211,38 @@ static int link_modes_size(const struct ethtool_link_ksettings *ksettings,
  	return len;
  }
  
 +static int features_size(const struct settings_data *data)
 +{
-+	bool compact = data->reqinfo_base.compact;
++	unsigned int flags =
++		(data->reqinfo_base.compact ? ETHNL_BITSET_COMPACT : 0) |
++		ETHNL_BITSET_LEGACY_NAMES;
 +	int len = 0, ret;
 +
-+	ret = ethnl_bitset32_size(compact, NETDEV_FEATURE_COUNT,
-+				  data->features.hw, NULL,
-+				  netdev_features_strings, true);
++	ret = ethnl_bitset32_size(NETDEV_FEATURE_COUNT, data->features.hw,
++				  NULL, netdev_features_strings, flags);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
-+	ret = ethnl_bitset32_size(compact, NETDEV_FEATURE_COUNT,
-+				  data->features.wanted,
-+				  data->features.wanted,
-+				  netdev_features_strings, true);
++	flags |= ETHNL_BITSET_LIST;
++	ret = ethnl_bitset32_size(NETDEV_FEATURE_COUNT, data->features.wanted,
++				  NULL, netdev_features_strings, flags);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
-+	ret = ethnl_bitset32_size(compact, NETDEV_FEATURE_COUNT,
-+				  data->features.active,
-+				  data->features.active,
-+				  netdev_features_strings, true);
++	ret = ethnl_bitset32_size(NETDEV_FEATURE_COUNT, data->features.active,
++				  NULL, netdev_features_strings, flags);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
-+	ret = ethnl_bitset32_size(compact, NETDEV_FEATURE_COUNT,
-+				  data->features.nochange,
-+				  data->features.nochange,
-+				  netdev_features_strings, true);
++	ret = ethnl_bitset32_size(NETDEV_FEATURE_COUNT, data->features.nochange,
++				  NULL, netdev_features_strings, flags);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
@@ -266,7 +262,7 @@ index c1ed91faa9cc..f027a1362ba4 100644
  /* To keep things simple, reserve space for some attributes which may not
   * be added to the message (e.g. ETHA_SETTINGS_SOPASS); therefore the length
   * returned may be bigger than the actual length of the message sent
-@@ -219,6 +282,12 @@ static int settings_size(const struct common_req_info *req_info)
+@@ -221,6 +280,12 @@ static int settings_size(const struct common_req_info *req_info)
  	}
  	if (info_mask & ETH_SETTINGS_IM_LINK)
  		len += nla_total_size(sizeof(u32));
@@ -279,13 +275,15 @@ index c1ed91faa9cc..f027a1362ba4 100644
  
  	return len;
  }
-@@ -288,6 +357,44 @@ static int fill_wolinfo(struct sk_buff *skb,
+@@ -291,6 +356,44 @@ static int fill_wolinfo(struct sk_buff *skb,
  	return 0;
  }
  
 +static int fill_features(struct sk_buff *skb, const struct settings_data *data)
 +{
-+	bool compact = data->reqinfo_base.compact;
++	unsigned int flags =
++		(data->reqinfo_base.compact ? ETHNL_BITSET_COMPACT : 0) |
++		ETHNL_BITSET_LEGACY_NAMES;
 +	struct nlattr *feat_attr;
 +	int ret;
 +
@@ -293,27 +291,25 @@ index c1ed91faa9cc..f027a1362ba4 100644
 +	if (!feat_attr)
 +		return -EMSGSIZE;
 +
-+	ret = ethnl_put_bitset32(skb, ETHA_FEATURES_HW, compact,
-+				 NETDEV_FEATURE_COUNT, data->features.hw, NULL,
-+				 netdev_features_strings, true);
++	ret = ethnl_put_bitset32(skb, ETHA_FEATURES_HW, NETDEV_FEATURE_COUNT,
++				 data->features.hw, NULL,
++				 netdev_features_strings, flags);
 +	if (ret < 0)
 +		return ret;
-+	ret = ethnl_put_bitset32(skb, ETHA_FEATURES_WANTED, compact,
++	flags |= ETHNL_BITSET_LIST;
++	ret = ethnl_put_bitset32(skb, ETHA_FEATURES_WANTED,
 +				 NETDEV_FEATURE_COUNT, data->features.wanted,
-+				 data->features.wanted, netdev_features_strings,
-+				 true);
++				 NULL, netdev_features_strings, flags);
 +	if (ret < 0)
 +		return ret;
-+	ret = ethnl_put_bitset32(skb, ETHA_FEATURES_ACTIVE, compact,
++	ret = ethnl_put_bitset32(skb, ETHA_FEATURES_ACTIVE,
 +				 NETDEV_FEATURE_COUNT, data->features.active,
-+				 data->features.active, netdev_features_strings,
-+				 true);
++				 NULL, netdev_features_strings, flags);
 +	if (ret < 0)
 +		return ret;
-+	ret = ethnl_put_bitset32(skb, ETHA_FEATURES_NOCHANGE, compact,
++	ret = ethnl_put_bitset32(skb, ETHA_FEATURES_NOCHANGE,
 +				 NETDEV_FEATURE_COUNT, data->features.nochange,
-+				 data->features.nochange,
-+				 netdev_features_strings, true);
++				 NULL, netdev_features_strings, flags);
 +	if (ret < 0)
 +		return ret;
 +
@@ -324,7 +320,7 @@ index c1ed91faa9cc..f027a1362ba4 100644
  static int fill_settings(struct sk_buff *skb,
  			 const struct common_req_info *req_info)
  {
-@@ -322,6 +429,11 @@ static int fill_settings(struct sk_buff *skb,
+@@ -325,6 +428,11 @@ static int fill_settings(struct sk_buff *skb,
  		if (nla_put_u8(skb, ETHA_SETTINGS_LINK, data->link))
  			return -EMSGSIZE;
  	}
@@ -337,5 +333,5 @@ index c1ed91faa9cc..f027a1362ba4 100644
  	return 0;
  }
 -- 
-2.19.1
+2.20.1
 

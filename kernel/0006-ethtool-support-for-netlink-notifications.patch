@@ -1,4 +1,4 @@
-From 2e7afd66e49869086dcb69c363de381cd7eddd3e Mon Sep 17 00:00:00 2001
+From 9de12e26a08f432b005b93c61aa5172e7811dd70 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
 Subject: [PATCH 06/25] ethtool: support for netlink notifications
@@ -38,10 +38,10 @@ index 0412adb4f42f..2a15e64a16f3 100644
  
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index 487fa5e0e165..fc47726b29aa 100644
+index 1fb733f38a47..2f1b8aea769c 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -4311,6 +4311,18 @@ struct netdev_notifier_bonding_info {
+@@ -4341,6 +4341,18 @@ struct netdev_notifier_bonding_info {
  void netdev_bonding_info_change(struct net_device *dev,
  				struct netdev_bonding_info *bonding_info);
  
@@ -72,10 +72,10 @@ index 7f3d401977b4..b662d75a0636 100644
 +
  #endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 5745bcdf7259..6ac12878e519 100644
+index ca116b882171..27f514c3fc2d 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -5,6 +5,8 @@
+@@ -4,6 +4,8 @@
  #include <linux/ethtool_netlink.h>
  #include "netlink.h"
  
@@ -84,7 +84,7 @@ index 5745bcdf7259..6ac12878e519 100644
  static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
  	[ETHA_DEV_UNSPEC]	= { .type = NLA_REJECT },
  	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -568,11 +570,39 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -121,11 +123,39 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  	return NULL;
  }
  
@@ -124,7 +124,7 @@ index 5745bcdf7259..6ac12878e519 100644
  struct genl_family ethtool_genl_family = {
  	.hdrsize	= 0,
  	.name		= ETHTOOL_GENL_NAME,
-@@ -581,6 +611,8 @@ struct genl_family ethtool_genl_family = {
+@@ -134,6 +164,8 @@ struct genl_family ethtool_genl_family = {
  	.parallel_ops	= true,
  	.ops		= ethtool_genl_ops,
  	.n_ops		= ARRAY_SIZE(ethtool_genl_ops),
@@ -134,7 +134,7 @@ index 5745bcdf7259..6ac12878e519 100644
  
  /* module setup */
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 340b00488466..d0e75799c522 100644
+index 666342f9ffc4..292ad818959f 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -11,6 +11,8 @@
@@ -147,5 +147,5 @@ index 340b00488466..d0e75799c522 100644
  
  struct net_device *ethnl_dev_get(struct genl_info *info, struct nlattr *nest);
 -- 
-2.19.1
+2.20.1
 
