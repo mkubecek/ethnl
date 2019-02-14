@@ -1,4 +1,4 @@
-From 356e5f650594a5543dfd543776657d49931f1a12 Mon Sep 17 00:00:00 2001
+From 195d5abec733daea8f1c62256827acd320a7418b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 19/25] ethtool: implement SET_PARAMS message
@@ -16,8 +16,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/common.h                         |   3 +
  net/ethtool/ioctl.c                          |  59 +--
  net/ethtool/netlink.c                        |   5 +
- net/ethtool/params.c                         | 444 +++++++++++++++++++
- 6 files changed, 582 insertions(+), 65 deletions(-)
+ net/ethtool/params.c                         | 446 +++++++++++++++++++
+ 6 files changed, 584 insertions(+), 65 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 29d7465a969f..174261ee4e06 100644
@@ -322,10 +322,10 @@ index 936357745f47..9fc1c112b2ad 100644
  		ethtool_notify(dev, NULL, ETHNL_CMD_SET_PARAMS,
  			       ETH_PARAMS_IM_CHANNELS, NULL);
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 1204569f45fa..64b4128bee87 100644
+index 7edff91d3ee2..d8bc4a91df0d 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -602,6 +602,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -608,6 +608,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -338,10 +338,10 @@ index 1204569f45fa..64b4128bee87 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 16646b72f607..26b470bbb12e 100644
+index 3c095edc934a..c458456b1fe1 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -477,3 +477,447 @@ const struct get_request_ops params_request_ops = {
+@@ -477,3 +477,449 @@ const struct get_request_ops params_request_ops = {
  	.reply_size		= params_size,
  	.fill_reply		= fill_params,
  };
@@ -746,46 +746,48 @@ index 16646b72f607..26b470bbb12e 100644
 +	if (IS_ERR(dev))
 +		return PTR_ERR(dev);
 +
-+	ret = ethnl_before_ops(dev, false);
++	rtnl_lock();
++	ret = ethnl_before_ops(dev);
 +	if (ret < 0)
-+		goto out_dev;
++		goto out_rtnl;
 +	ret = update_coalesce(info, dev, tb[ETHA_PARAMS_COALESCE]);
 +	if (ret < 0)
-+		goto out_unlock;
++		goto out_ops;
 +	if (ret)
 +		req_mask |= ETH_PARAMS_IM_COALESCE;
 +	ret = update_ring(info, dev, tb[ETHA_PARAMS_RING]);
 +	if (ret < 0)
-+		goto out_unlock;
++		goto out_ops;
 +	if (ret)
 +		req_mask |= ETH_PARAMS_IM_RING;
 +	ret = update_pause(info, dev, tb[ETHA_PARAMS_PAUSE]);
 +	if (ret < 0)
-+		goto out_unlock;
++		goto out_ops;
 +	if (ret)
 +		req_mask |= ETH_PARAMS_IM_PAUSE;
 +	ret = update_channels(info, dev, tb[ETHA_PARAMS_CHANNELS]);
 +	if (ret < 0)
-+		goto out_unlock;
++		goto out_ops;
 +	if (ret)
 +		req_mask |= ETH_PARAMS_IM_CHANNELS;
 +	ret = update_eee(info, dev, tb[ETHA_PARAMS_EEE]);
 +	if (ret < 0)
-+		goto out_unlock;
++		goto out_ops;
 +	if (ret)
 +		req_mask |= ETH_PARAMS_IM_EEE;
 +	ret = update_fec(info, dev, tb[ETHA_PARAMS_FEC]);
 +	if (ret < 0)
-+		goto out_unlock;
++		goto out_ops;
 +	if (ret)
 +		req_mask |= ETH_PARAMS_IM_FEC;
 +
 +	ret = 0;
-+out_unlock:
++out_ops:
 +	if (req_mask)
 +		ethtool_notify(dev, NULL, ETHNL_CMD_SET_PARAMS, req_mask, NULL);
-+	ethnl_after_ops(dev, false);
-+out_dev:
++	ethnl_after_ops(dev);
++out_rtnl:
++	rtnl_unlock();
 +	dev_put(dev);
 +	return ret;
 +}

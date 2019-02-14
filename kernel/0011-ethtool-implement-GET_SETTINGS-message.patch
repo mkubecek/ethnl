@@ -1,4 +1,4 @@
-From 7ecaf47948c1f47648eca417f68bb0e005ecfba0 Mon Sep 17 00:00:00 2001
+From da9f54e6fe3f133a3c9db87f9cd49fa18a4f54f6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
 Subject: [PATCH 11/25] ethtool: implement GET_SETTINGS message
@@ -426,7 +426,7 @@ index 2f5bf171a5f1..498d96e54058 100644
  		return -EFAULT;
  	return 0;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 2760ac0eae26..c5f2f5285a90 100644
+index 97e122c0cb1c..fef330c80f9c 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -1,11 +1,67 @@
@@ -510,7 +510,7 @@ index 2760ac0eae26..c5f2f5285a90 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -510,6 +568,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -516,6 +574,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -524,7 +524,7 @@ index 2760ac0eae26..c5f2f5285a90 100644
  };
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
-@@ -534,6 +599,9 @@ static int __init ethnl_init(void)
+@@ -540,6 +605,9 @@ static int __init ethnl_init(void)
  {
  	int ret;
  
@@ -535,7 +535,7 @@ index 2760ac0eae26..c5f2f5285a90 100644
  	if (ret < 0)
  		panic("ethtool: could not register genetlink family\n");
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 576f7969a530..2c0e8d4a15eb 100644
+index 36c6846262d8..332f4e948b40 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -23,6 +23,7 @@ extern struct genl_family ethtool_genl_family;
@@ -548,7 +548,7 @@ index 576f7969a530..2c0e8d4a15eb 100644
  int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
-index 000000000000..788bc10b94f9
+index 000000000000..a754d3c00647
 --- /dev/null
 +++ b/net/ethtool/settings.c
 @@ -0,0 +1,343 @@
@@ -673,7 +673,7 @@ index 000000000000..788bc10b94f9
 +	data->lpm_empty = true;
 +	data->link = -EOPNOTSUPP;
 +
-+	ret = ethnl_before_ops(dev, req_info->have_rtnl);
++	ret = ethnl_before_ops(dev);
 +	if (ret < 0)
 +		return ret;
 +	if (req_mask & (ETH_SETTINGS_IM_LINKINFO | ETH_SETTINGS_IM_LINKMODES)) {
@@ -706,7 +706,7 @@ index 000000000000..788bc10b94f9
 +	}
 +	if (req_mask & ETH_SETTINGS_IM_LINK)
 +		data->link = __ethtool_get_link(dev);
-+	ethnl_after_ops(dev, req_info->have_rtnl);
++	ethnl_after_ops(dev);
 +
 +	data->repdata_base.info_mask = req_mask;
 +	if (req_info->req_mask & ~req_mask)
@@ -896,7 +896,7 @@ index 000000000000..788bc10b94f9
 +	.fill_reply		= fill_settings,
 +};
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index 6d9648636aa4..5155e7972969 100644
+index ee8d64d1cc39..2a2c3788b4ee 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -85,6 +85,12 @@ static const struct strset_info info_template[] = {

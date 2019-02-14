@@ -1,4 +1,4 @@
-From ee3cd0bf6476414e519ebdb8c607cf58132efe16 Mon Sep 17 00:00:00 2001
+From b009c1a46531aa7c051c1e5b6b168b32ef4a22c0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
 Subject: [PATCH 10/25] ethtool: implement GET_INFO message
@@ -388,7 +388,7 @@ index 45c6492e4aee..12e916fdd04a 100644
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
 new file mode 100644
-index 000000000000..91ee4c33a9d5
+index 000000000000..ce80a3fe2612
 --- /dev/null
 +++ b/net/ethtool/info.c
 @@ -0,0 +1,332 @@
@@ -500,7 +500,7 @@ index 000000000000..91ee4c33a9d5
 +	u32 req_mask = req_info->req_mask & ETH_INFO_IM_ALL;
 +	int ret;
 +
-+	ret = ethnl_before_ops(dev, req_info->have_rtnl);
++	ret = ethnl_before_ops(dev);
 +	if (ret < 0)
 +		return ret;
 +	if (req_mask & ETH_INFO_IM_DRVINFO) {
@@ -513,7 +513,7 @@ index 000000000000..91ee4c33a9d5
 +		if (ret < 0)
 +			req_mask &= ~ETH_INFO_IM_TSINFO;
 +	}
-+	ethnl_after_ops(dev, req_info->have_rtnl);
++	ethnl_after_ops(dev);
 +
 +	data->repdata_base.info_mask = req_mask;
 +	if (req_info->req_mask & ~req_mask)
@@ -833,7 +833,7 @@ index c10c2ad6125b..2f5bf171a5f1 100644
  		err = -EFAULT;
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index a121a7640ed1..2760ac0eae26 100644
+index fd466c1d0176..97e122c0cb1c 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -86,9 +86,11 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
@@ -848,7 +848,7 @@ index a121a7640ed1..2760ac0eae26 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -501,6 +503,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -507,6 +509,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -863,7 +863,7 @@ index a121a7640ed1..2760ac0eae26 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 8d494ec0bf35..576f7969a530 100644
+index 87e363f5e4d9..36c6846262d8 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -7,14 +7,23 @@
@@ -891,7 +891,7 @@ index 8d494ec0bf35..576f7969a530 100644
  int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
  
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index bcc3d6243576..6d9648636aa4 100644
+index 9812cbb5fcf9..ee8d64d1cc39 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -67,6 +67,24 @@ static const struct strset_info info_template[] = {

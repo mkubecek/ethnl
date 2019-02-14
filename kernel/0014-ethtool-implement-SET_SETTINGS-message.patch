@@ -1,4 +1,4 @@
-From ce6fbf018d306639813d30fc3ff80b87a3e8b0b4 Mon Sep 17 00:00:00 2001
+From c42ca1646f0a9bbe9c05b1928ddc2562dcf86bea Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 14/25] ethtool: implement SET_SETTINGS message
@@ -14,8 +14,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  43 +-
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   4 +
- net/ethtool/settings.c                       | 432 +++++++++++++++++++
- 4 files changed, 479 insertions(+), 5 deletions(-)
+ net/ethtool/settings.c                       | 434 +++++++++++++++++++
+ 4 files changed, 481 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index bbb9b14d1e70..0fcf30e714e5 100644
@@ -97,10 +97,10 @@ index bbb9b14d1e70..0fcf30e714e5 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 4d135395a1f1..333d45f3e6b0 100644
+index 92f65a815ae5..2cc0abd84f5b 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -587,6 +587,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -593,6 +593,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -113,10 +113,10 @@ index 4d135395a1f1..333d45f3e6b0 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 2c0e8d4a15eb..fe80e0b00092 100644
+index 332f4e948b40..6f63ea0288c1 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -259,4 +259,8 @@ struct get_request_ops {
+@@ -248,4 +248,8 @@ struct get_request_ops {
  	void (*cleanup)(struct common_req_info *req_info);
  };
  
@@ -126,7 +126,7 @@ index 2c0e8d4a15eb..fe80e0b00092 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 1093399b726e..c1f0b07cd61f 100644
+index cdc225a59d4f..6623ce2bf4a0 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -26,6 +26,222 @@ struct settings_data {
@@ -352,7 +352,7 @@ index 1093399b726e..c1f0b07cd61f 100644
  /* We want to allow ~0 as selector for backward compatibility (to just set
   * given set of modes, whatever kernel supports) so that we allow all bits
   * on validation and do our own sanity check later.
-@@ -449,3 +665,219 @@ const struct get_request_ops settings_request_ops = {
+@@ -449,3 +665,221 @@ const struct get_request_ops settings_request_ops = {
  	.reply_size		= settings_size,
  	.fill_reply		= fill_settings,
  };
@@ -511,24 +511,25 @@ index 1093399b726e..c1f0b07cd61f 100644
 +	if (IS_ERR(dev))
 +		return PTR_ERR(dev);
 +
-+	ret = ethnl_before_ops(dev, false);
++	rtnl_lock();
++	ret = ethnl_before_ops(dev);
 +	if (ret < 0)
-+		goto out_dev;
++		goto out_rtnl;
 +	if (tb[ETHA_SETTINGS_SPEED] || tb[ETHA_SETTINGS_DUPLEX] ||
 +	    tb[ETHA_SETTINGS_PORT] || tb[ETHA_SETTINGS_PHYADDR] ||
 +	    tb[ETHA_SETTINGS_AUTONEG] || tb[ETHA_SETTINGS_TP_MDIX_CTRL] ||
 +	    tb[ETHA_SETTINGS_LINK_MODES]) {
 +		ret = -EOPNOTSUPP;
 +		if (!dev->ethtool_ops->get_link_ksettings)
-+			goto out_unlock;
++			goto out_ops;
 +		ret = ethnl_update_ksettings(info, tb, dev, &req_mask);
 +		if (ret < 0)
-+			goto out_unlock;
++			goto out_ops;
 +	}
 +	if (tb[ETHA_SETTINGS_WOL_MODES] || tb[ETHA_SETTINGS_SOPASS]) {
 +		ret = ethnl_get_wol(info, dev, &wolinfo);
 +		if (ret < 0)
-+			goto out_unlock;
++			goto out_ops;
 +
 +		mod = false;
 +		if (ethnl_update_bitfield32(&wolinfo.wolopts,
@@ -540,7 +541,7 @@ index 1093399b726e..c1f0b07cd61f 100644
 +		if (mod) {
 +			ret = ethnl_set_wol(info, dev, &wolinfo);
 +			if (ret < 0)
-+				goto out_unlock;
++				goto out_ops;
 +			req_mask |= ETH_SETTINGS_IM_WOLINFO;
 +		}
 +	}
@@ -552,7 +553,7 @@ index 1093399b726e..c1f0b07cd61f 100644
 +		    !dev->ethtool_ops->set_msglevel) {
 +			ETHNL_SET_ERRMSG(info,
 +					 "device does not provide msglvl access");
-+			goto out_unlock;
++			goto out_ops;
 +		}
 +		msglvl = dev->ethtool_ops->get_msglevel(dev);
 +		if (ethnl_update_bitfield32(&msglvl,
@@ -563,12 +564,13 @@ index 1093399b726e..c1f0b07cd61f 100644
 +	}
 +	ret = 0;
 +
-+out_unlock:
++out_ops:
 +	if (req_mask)
 +		ethtool_notify(dev, NULL, ETHNL_CMD_SET_SETTINGS, req_mask,
 +			       NULL);
-+	ethnl_after_ops(dev, false);
-+out_dev:
++	ethnl_after_ops(dev);
++out_rtnl:
++	rtnl_unlock();
 +	dev_put(dev);
 +	return ret;
 +}

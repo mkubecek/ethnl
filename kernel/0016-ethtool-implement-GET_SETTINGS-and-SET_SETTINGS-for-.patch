@@ -1,4 +1,4 @@
-From 188b22841f013c8e03935fa00c43cf33cb7060d4 Mon Sep 17 00:00:00 2001
+From a7867e86ba50439a2239aea7c97bf2545f2cd9b0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 16/25] ethtool: implement GET_SETTINGS and SET_SETTINGS for
@@ -108,7 +108,7 @@ index f5804c1c6522..706887f5c7dd 100644
  	case ETHTOOL_GRXFH:
  	case ETHTOOL_GRXRINGS:
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 06c4934a8c88..0d180bd9cdd2 100644
+index a166a9f9c24b..bcf8c101b1a6 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -24,6 +24,9 @@ struct settings_data {
@@ -197,7 +197,7 @@ index 06c4934a8c88..0d180bd9cdd2 100644
 +		if (ret < 0)
 +			req_mask &= ~ETH_SETTINGS_IM_PRIVFLAGS;
 +	}
- 	ethnl_after_ops(dev, req_info->have_rtnl);
+ 	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
 @@ -502,6 +563,17 @@ static int settings_size(const struct common_req_info *req_info)
@@ -317,9 +317,9 @@ index 06c4934a8c88..0d180bd9cdd2 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-@@ -1025,6 +1157,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -1026,6 +1158,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret < 0)
- 			goto out_unlock;
+ 			goto out_ops;
  	}
 +	if (tb[ETHA_SETTINGS_PRIV_FLAGS]) {
 +		ret = update_priv_flags(info, dev, tb[ETHA_SETTINGS_PRIV_FLAGS],
@@ -327,11 +327,11 @@ index 06c4934a8c88..0d180bd9cdd2 100644
 +		if (mod)
 +			req_mask |= ETH_SETTINGS_IM_PRIVFLAGS;
 +		if (ret < 0)
-+			goto out_unlock;
++			goto out_ops;
 +	}
  	ret = 0;
  
- out_unlock:
+ out_ops:
 -- 
 2.20.1
 

@@ -1,4 +1,4 @@
-From 19d5ce31a6b4c3fcf2011f9f8a737238ba236958 Mon Sep 17 00:00:00 2001
+From e3e576b00575919b882f95bed6be56a1f43486f0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 25/25] ethtool: implement SET_RXFLOW message
@@ -21,8 +21,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool_netlink.h         |   2 +-
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/rxflow.c                         | 610 +++++++++++++++++++
- 5 files changed, 657 insertions(+), 4 deletions(-)
+ net/ethtool/rxflow.c                         | 613 +++++++++++++++++++
+ 5 files changed, 660 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 38dfcb76e394..c1b7d9b818f0 100644
@@ -113,10 +113,10 @@ index 140762e91f28..1dbd06100cf8 100644
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 45c6c47446c8..fbeca225796f 100644
+index af91997b5609..ba0ee924a796 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -635,6 +635,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -641,6 +641,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -129,10 +129,10 @@ index 45c6c47446c8..fbeca225796f 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 6eeedb305f5f..0a3e1368e87e 100644
+index ba2c4328f9b3..99c7f0d93ea7 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -264,6 +264,7 @@ struct get_request_ops {
+@@ -253,6 +253,7 @@ struct get_request_ops {
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
@@ -141,10 +141,10 @@ index 6eeedb305f5f..0a3e1368e87e 100644
  int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_reset(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index c060619d9808..df8b54b6de8a 100644
+index a0c18ef4f7fe..cda953716e2f 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
-@@ -532,3 +532,613 @@ void ethnl_rxflow_notify(struct net_device *dev,
+@@ -531,3 +531,616 @@ void ethnl_rxflow_notify(struct net_device *dev,
  err_data:
  	rxflow_cleanup(req_info);
  }
@@ -685,34 +685,36 @@ index c060619d9808..df8b54b6de8a 100644
 +		return PTR_ERR(dev);
 +	ops = dev->ethtool_ops;
 +
++	rtnl_lock();
++	ret = ethnl_before_ops(dev);
++	if (ret < 0)
++		goto out_rtnl;
++
 +	if (tb[ETHA_RXFLOW_HASH_OPTS]) {
 +		ret = set_rxflow_hash_opts(dev, context,
 +					   tb[ETHA_RXFLOW_HASH_OPTS], info);
 +		if (ret < 0)
-+			goto out_dev;
++			goto out_ops;
 +	}
 +	if (!do_rxfh)
-+		goto out_unlock;
++		goto out_ops;
 +
 +	ret = -EOPNOTSUPP;
 +	if (context && (!ops->get_rxfh_context || !ops->set_rxfh_context))
-+		goto out_dev;
++		goto out_ops;
 +	if (!context && (!ops->get_rxfh || !ops->set_rxfh))
-+		goto out_dev;
++		goto out_ops;
 +
-+	ret = ethnl_before_ops(dev, false);
-+	if (ret < 0)
-+		goto out_dev;
 +	if (ctxop == ETH_RXFLOW_CTXOP_DEL) {
 +		ret = set_rxflow_del_context(dev, context, info);
-+		goto out_unlock;
++		goto out_ops;
 +	}
 +	if (ctxop == ETH_RXFLOW_CTXOP_NEW)
 +		context = ETH_RXFH_CONTEXT_ALLOC;
 +	ret = set_rxflow_prep_hashfn(dev, info, tb[ETHA_RXFLOW_HASH_FN],
 +				     &hash_fn, &info_mask);
 +	if (ret < 0)
-+		goto out_unlock;
++		goto out_ops;
 +	ret = set_rxflow_prep_hkey(dev, info, tb[ETHA_RXFLOW_HASH_KEY], &hkey,
 +				   &info_mask);
 +	if (ret < 0)
@@ -743,7 +745,7 @@ index c060619d9808..df8b54b6de8a 100644
 +
 +out_free:
 +	kfree(indtbl);
-+out_unlock:
++out_ops:
 +	if (ret == 0 && (info_mask || ctxop != ETH_RXFLOW_CTXOP_SET)) {
 +		const struct ethtool_rxflow_notification_info ninfo = {
 +			.ctx_op		= ctxop,
@@ -753,8 +755,9 @@ index c060619d9808..df8b54b6de8a 100644
 +		ethnl_rxflow_notify(dev, info->extack, ETHNL_CMD_SET_RXFLOW,
 +				    info_mask, &ninfo);
 +	}
-+	ethnl_after_ops(dev, false);
-+out_dev:
++	ethnl_after_ops(dev);
++out_rtnl:
++	rtnl_unlock();
 +	dev_put(dev);
 +	return ret;
 +}

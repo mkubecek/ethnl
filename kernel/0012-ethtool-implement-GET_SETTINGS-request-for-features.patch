@@ -1,4 +1,4 @@
-From a5d20b92a37a76f4fc9ced8d5562d3cfc0ccd2ee Mon Sep 17 00:00:00 2001
+From 358df88fc403baffc4cb0679c416b227825f1056 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 12/25] ethtool: implement GET_SETTINGS request for features
@@ -165,7 +165,7 @@ index 498d96e54058..feee9155f3d0 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 788bc10b94f9..1093399b726e 100644
+index a754d3c00647..cdc225a59d4f 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -18,6 +18,12 @@ struct settings_data {
@@ -220,7 +220,7 @@ index 788bc10b94f9..1093399b726e 100644
  		data->link = __ethtool_get_link(dev);
 +	if (req_mask & ETH_SETTINGS_IM_FEATURES)
 +		ethnl_get_features(dev, data);
- 	ethnl_after_ops(dev, req_info->have_rtnl);
+ 	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
 @@ -184,6 +211,38 @@ static int link_modes_size(const struct ethtool_link_ksettings *ksettings,

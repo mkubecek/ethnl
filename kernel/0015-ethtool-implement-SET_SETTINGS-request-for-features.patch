@@ -1,4 +1,4 @@
-From 75619fc74fd957f6f64a0443dd85fed65565f896 Mon Sep 17 00:00:00 2001
+From a6a901d92824855c56378dc05d6d53591eaa8ac6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 15/25] ethtool: implement SET_SETTINGS request for features
@@ -111,7 +111,7 @@ index c6c791c71b11..b114a2b91650 100644
  	__ETHA_FEATURES_CNT,
  	ETHA_FEATURES_MAX = (__ETHA_FEATURES_CNT - 1)
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index c1f0b07cd61f..06c4934a8c88 100644
+index 6623ce2bf4a0..a166a9f9c24b 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -690,6 +690,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
@@ -273,7 +273,7 @@ index c1f0b07cd61f..06c4934a8c88 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-@@ -870,6 +1015,16 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -871,6 +1016,16 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  			req_mask |= ETH_SETTINGS_IM_MSGLEVEL;
  		}
  	}
@@ -285,11 +285,11 @@ index c1f0b07cd61f..06c4934a8c88 100644
 +		if (mod)
 +			req_mask |= ETH_SETTINGS_IM_FEATURES;
 +		if (ret < 0)
-+			goto out_unlock;
++			goto out_ops;
 +	}
  	ret = 0;
  
- out_unlock:
+ out_ops:
 -- 
 2.20.1
 

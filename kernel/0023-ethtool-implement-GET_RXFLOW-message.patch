@@ -1,4 +1,4 @@
-From dc161c0f411617d221c56233a5d64fe198a772ef Mon Sep 17 00:00:00 2001
+From 0b92e6c5ecbf36bdf0f122ede4f5a869fc7bf71b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 23/25] ethtool: implement GET_RXFLOW message
@@ -314,7 +314,7 @@ index b3e88cf0f4c0..a6ace735f44f 100644
 -		   actions.o
 +		   actions.o rxflow.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 7cf13ded4c51..89073a2fcdf5 100644
+index 5473866b1f38..5551a19315a7 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -145,12 +145,14 @@ extern const struct get_request_ops strset_request_ops;
@@ -332,7 +332,7 @@ index 7cf13ded4c51..89073a2fcdf5 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -625,6 +627,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -631,6 +633,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_ADMIN_PERM,
  		.doit	= ethnl_act_reset,
  	},
@@ -348,7 +348,7 @@ index 7cf13ded4c51..89073a2fcdf5 100644
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
 new file mode 100644
-index 000000000000..49e229658602
+index 000000000000..8846af6b7098
 --- /dev/null
 +++ b/net/ethtool/rxflow.c
 @@ -0,0 +1,463 @@
@@ -513,7 +513,7 @@ index 000000000000..49e229658602
 +	if (!data->req_context && !ops->get_rxfh)
 +		return -EOPNOTSUPP;
 +
-+	ret = ethnl_before_ops(dev, req_info->have_rtnl);
++	ret = ethnl_before_ops(dev);
 +	if (ret < 0)
 +		return ret;
 +
@@ -550,7 +550,7 @@ index 000000000000..49e229658602
 +		ret = ops->get_rxfh(dev, data->indir_tbl, data->hkey, &hash_fn);
 +	if (ret == 0)
 +		data->hash_fn = hash_fn;
-+	ethnl_after_ops(dev, req_info->have_rtnl);
++	ethnl_after_ops(dev);
 +
 +	data->repdata_base.info_mask = req_mask;
 +	if (ret == 0 && req_info->req_mask & ~req_mask)

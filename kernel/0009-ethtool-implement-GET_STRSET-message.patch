@@ -1,4 +1,4 @@
-From ab79135d29876336ba6c6264dbea8e1a07930ed6 Mon Sep 17 00:00:00 2001
+From 73f645e16f3319917768c11003b009a053cfb3e3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 09/25] ethtool: implement GET_STRSET message
@@ -349,7 +349,7 @@ index d2c47cdf25da..c10c2ad6125b 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 28b1b76a179e..a121a7640ed1 100644
+index 9920dd9f4e16..fd466c1d0176 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -85,7 +85,10 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
@@ -363,7 +363,7 @@ index 28b1b76a179e..a121a7640ed1 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -491,6 +494,13 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -497,6 +500,13 @@ static struct notifier_block ethnl_netdev_notifier = {
  /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
@@ -379,7 +379,7 @@ index 28b1b76a179e..a121a7640ed1 100644
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
 new file mode 100644
-index 000000000000..bcc3d6243576
+index 000000000000..9812cbb5fcf9
 --- /dev/null
 +++ b/net/ethtool/strset.c
 @@ -0,0 +1,422 @@
@@ -639,7 +639,7 @@ index 000000000000..bcc3d6243576
 +		}
 +	}
 +
-+	ret = ethnl_before_ops(dev, req_info->have_rtnl);
++	ret = ethnl_before_ops(dev);
 +	if (ret < 0)
 +		goto err_strset;
 +	for (i = 0; i <= ETH_SS_MAX; i++) {
@@ -648,17 +648,17 @@ index 000000000000..bcc3d6243576
 +		if (WARN_ONCE(data->info[i].type != ETH_SS_TYPE_LEGACY,
 +			      "unexpected string set type %u",
 +			      data->info[i].type))
-+			goto err_unlock;
++			goto err_ops;
 +
 +		ret = prepare_one_stringset(&data->info[i], dev, i);
 +		if (ret < 0)
-+			goto err_unlock;
++			goto err_ops;
 +	}
-+	ethnl_after_ops(dev, req_info->have_rtnl);
++	ethnl_after_ops(dev);
 +
 +	return 0;
-+err_unlock:
-+	ethnl_after_ops(dev, req_info->have_rtnl);
++err_ops:
++	ethnl_after_ops(dev);
 +err_strset:
 +	free_strset(data);
 +	return ret;

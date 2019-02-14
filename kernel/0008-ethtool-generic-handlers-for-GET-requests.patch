@@ -1,4 +1,4 @@
-From 62bbec4f8f90176415abcf91b745d38d5301333c Mon Sep 17 00:00:00 2001
+From 80a48a2693139181b12906b79d77f7b3418907bb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 27 Aug 2018 19:51:37 +0200
 Subject: [PATCH 08/25] ethtool: generic handlers for GET requests
@@ -16,12 +16,12 @@ These callback are defined in an instance of struct get_request_ops.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/ethtool/netlink.c | 280 ++++++++++++++++++++++++++++++++++++++++++
- net/ethtool/netlink.h |  95 ++++++++++++++
- 2 files changed, 375 insertions(+)
+ net/ethtool/netlink.c | 286 ++++++++++++++++++++++++++++++++++++++++++
+ net/ethtool/netlink.h |  84 +++++++++++++
+ 2 files changed, 370 insertions(+)
 
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 1facc0968342..28b1b76a179e 100644
+index 1facc0968342..9920dd9f4e16 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -83,6 +83,41 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
@@ -66,7 +66,7 @@ index 1facc0968342..28b1b76a179e 100644
  /* create skb for a reply and fill device identification
   * payload: payload length (without netlink and genetlink header)
   * dev:     device the reply is about (may be null)
-@@ -123,6 +158,251 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -123,6 +158,257 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  	return NULL;
  }
  
@@ -94,20 +94,23 @@ index 1facc0968342..28b1b76a179e 100644
 +	if (ret < 0)
 +		goto err_dev;
 +	init_reply_data(req_info, ops, req_info->dev);
++
++	rtnl_lock();
 +	ret = ops->prepare_data(req_info, info);
 +	if (ret < 0)
-+		goto err_dev;
++		goto err_rtnl;
 +	reply_len = ops->reply_size(req_info);
 +	if (ret < 0)
-+		goto err_dev;
++		goto err_rtnl;
 +	ret = -ENOMEM;
 +	rskb = ethnl_reply_init(reply_len, req_info->dev, ops->reply_cmd,
 +				ops->dev_attrtype, info, &reply_payload);
 +	if (!rskb)
-+		goto err_dev;
++		goto err_rtnl;
 +	ret = ops->fill_reply(rskb, req_info);
 +	if (ret < 0)
 +		goto err;
++	rtnl_unlock();
 +
 +	genlmsg_end(rskb, reply_payload);
 +	if (req_info->dev)
@@ -121,6 +124,8 @@ index 1facc0968342..28b1b76a179e 100644
 +		  reply_len);
 +	nlmsg_free(rskb);
 +	free_get_data(ops, req_info);
++err_rtnl:
++	rtnl_unlock();
 +err_dev:
 +	if (req_info->dev)
 +		dev_put(req_info->dev);
@@ -135,6 +140,7 @@ index 1facc0968342..28b1b76a179e 100644
 +	int ret;
 +
 +	init_reply_data(req_info, ops, dev);
++	rtnl_lock();
 +	ret = ops->prepare_data(req_info, NULL);
 +	if (ret < 0)
 +		return ret;
@@ -142,6 +148,7 @@ index 1facc0968342..28b1b76a179e 100644
 +	if (ret < 0)
 +		return ret;
 +	ret = ops->fill_reply(skb, req_info);
++	rtnl_unlock();
 +
 +	req_info->reply_data->dev = NULL;
 +	return ret;
@@ -279,7 +286,6 @@ index 1facc0968342..28b1b76a179e 100644
 +	req_info->dev = dev;
 +	req_info->req_mask = req_mask;
 +	req_info->compact = true;
-+	req_info->have_rtnl = true;
 +
 +	init_reply_data(req_info, ops, dev);
 +	ret = ops->prepare_data(req_info, NULL);
@@ -319,10 +325,10 @@ index 1facc0968342..28b1b76a179e 100644
  
  typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 292ad818959f..8d494ec0bf35 100644
+index 292ad818959f..87e363f5e4d9 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -154,4 +154,99 @@ static inline unsigned int dev_ident_size(void)
+@@ -154,4 +154,88 @@ static inline unsigned int dev_ident_size(void)
  			      nla_total_size(IFNAMSIZ));
  }
  
@@ -342,14 +348,12 @@ index 292ad818959f..8d494ec0bf35 100644
 + * @dev: requested device; may be null (dumps), if not, reference is held
 + * @req_mask: bit mask of parts of information requested
 + * @compact: use compact format for bitsets
-+ * @have_rtnl: RTNL already held, don't take it again (e.g. notifications)
 + */
 +struct common_req_info {
 +	struct common_reply_data	*reply_data;
 +	struct net_device		*dev;
 +	u32				req_mask;
 +	bool				compact;
-+	bool				have_rtnl;
 +};
 +
 +/* @dev: device for current reply message
@@ -360,27 +364,18 @@ index 292ad818959f..8d494ec0bf35 100644
 +	u32				info_mask;
 +};
 +
-+static inline int ethnl_before_ops(struct net_device *dev, bool have_rtnl)
++static inline int ethnl_before_ops(struct net_device *dev)
 +{
-+	if (!have_rtnl)
-+		rtnl_lock();
-+	if (dev && dev->ethtool_ops->begin) {
-+		int ret = dev->ethtool_ops->begin(dev);
-+
-+		if (ret < 0 && !have_rtnl)
-+			rtnl_unlock();
-+		return ret;
-+	}
-+
-+	return 0;
++	if (dev && dev->ethtool_ops->begin)
++		return dev->ethtool_ops->begin(dev);
++	else
++		return 0;
 +}
 +
-+static inline void ethnl_after_ops(struct net_device *dev, bool have_rtnl)
++static inline void ethnl_after_ops(struct net_device *dev)
 +{
 +	if (dev && dev->ethtool_ops->complete)
 +		dev->ethtool_ops->complete(dev);
-+	if (!have_rtnl)
-+		rtnl_unlock();
 +}
 +
 +/* parameters and callbacks for unified handling of GET requests
