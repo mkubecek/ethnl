@@ -1,4 +1,0 @@
-This directory contains a simple test program using mnl to access the
-kernel netlink interface for ethtool. It is not meant to be used for
-anything real, just to test newly developed parts of the kernel interface
-before its counterpart in ethtool is added.
