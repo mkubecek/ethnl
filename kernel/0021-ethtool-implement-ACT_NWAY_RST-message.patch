@@ -1,7 +1,7 @@
-From 11967c4dcea6c0481779fa3c1ae99bf79412e3ff Mon Sep 17 00:00:00 2001
+From 72bac962cebe2e922cf121b674fab7873b143cfb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
-Subject: [PATCH 20/25] ethtool: implement ACT_NWAY_RST message
+Subject: [PATCH 21/26] ethtool: implement ACT_NWAY_RST message
 
 Requests autonegotiation restart, equivalent of ETHTOOL_NWAY_RST.
 
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/actions.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 174261ee4e06..dfec61958ca9 100644
+index 2d6ffa3cd655..e2625a66d914 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -134,6 +134,7 @@ List of message types
@@ -31,7 +31,7 @@ index 174261ee4e06..dfec61958ca9 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -504,6 +505,18 @@ cannot be set by SET_PARAMS request.
+@@ -544,6 +545,18 @@ cannot be set by SET_PARAMS request.
  		- change configured FEC encodings
  
  
@@ -50,7 +50,7 @@ index 174261ee4e06..dfec61958ca9 100644
  Request translation
  -------------------
  
-@@ -521,7 +534,7 @@ ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
+@@ -561,7 +574,7 @@ ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SWOL			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GMSGLVL			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SMSGLVL			ETHNL_CMD_SET_SETTINGS
@@ -60,7 +60,7 @@ index 174261ee4e06..dfec61958ca9 100644
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index b688090e9bff..bf96b6d8e26f 100644
+index 6962af0c9d56..b14d9d0a97bc 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -16,6 +16,7 @@ enum {
@@ -71,7 +71,7 @@ index b688090e9bff..bf96b6d8e26f 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -359,6 +360,16 @@ enum {
+@@ -360,6 +361,16 @@ enum {
  	ETHA_FEC_MAX = (__ETHA_FEC_CNT - 1)
  };
  
@@ -181,10 +181,10 @@ index 000000000000..1df321a7a4f4
 +	return ret;
 +}
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 9fc1c112b2ad..da7ff90b5e77 100644
+index d605d3ea33ec..a13f3aa13335 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -1280,10 +1280,15 @@ static int ethtool_set_eee(struct net_device *dev, char __user *useraddr)
+@@ -1281,10 +1281,15 @@ static int ethtool_set_eee(struct net_device *dev, char __user *useraddr)
  
  static int ethtool_nway_reset(struct net_device *dev)
  {

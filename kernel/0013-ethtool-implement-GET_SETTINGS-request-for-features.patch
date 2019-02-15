@@ -1,7 +1,7 @@
-From 358df88fc403baffc4cb0679c416b227825f1056 Mon Sep 17 00:00:00 2001
+From 01e45498d73679f9b1c76b29d5664001650251e6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
-Subject: [PATCH 12/25] ethtool: implement GET_SETTINGS request for features
+Subject: [PATCH 13/26] ethtool: implement GET_SETTINGS request for features
 
 With ETH_SETTINGS_IM_FEATURES info mask, ETHNL_CMD_GET_SETTINGS request
 gets network device feature values. This is the same information as
@@ -17,10 +17,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 148 insertions(+), 12 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index db091d44b330..c54262ead879 100644
+index 94bd29d63dac..8ff38221df0b 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -245,6 +245,7 @@ Info mask bits meaning:
+@@ -285,6 +285,7 @@ Info mask bits meaning:
      ETH_SETTINGS_IM_MSGLEVEL		msglevel
      ETH_SETTINGS_IM_WOLINFO		struct ethtool_wolinfo
      ETH_SETTINGS_IM_LINK		link state
@@ -28,7 +28,7 @@ index db091d44b330..c54262ead879 100644
  
  Response contents:
  
-@@ -263,6 +264,11 @@ Response contents:
+@@ -303,6 +304,11 @@ Response contents:
      ETHA_SETTINGS_LINK_MODES	(bitset)	device link modes
      ETHA_SETTINGS_PEER_MODES	(bitset)	link partner link modes
      ETHA_SETTINGS_LINK		(u8)		link state
@@ -40,7 +40,7 @@ index db091d44b330..c54262ead879 100644
  
  Most of the attributes have the same meaning (including values) as
  corresponding members of ioctl structures. For ETHA_SETTINGS_MSGLVL, selector
-@@ -272,6 +278,15 @@ advertised modes and mask represents supported modes. For
+@@ -312,6 +318,15 @@ advertised modes and mask represents supported modes. For
  ETHA_SETTINGS_PEER_MODES, both value and mask represent partner advertised
  link modes.
  
@@ -56,7 +56,7 @@ index db091d44b330..c54262ead879 100644
  GET_SETTINGS request is allowed for unprivileged user but ETHA_SETTINGS_SOPASS
  is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
  requests.
-@@ -308,30 +323,30 @@ ETHTOOL_GRINGPARAM		n/a
+@@ -348,30 +363,30 @@ ETHTOOL_GRINGPARAM		n/a
  ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
  ETHTOOL_SPAUSEPARAM		n/a
@@ -95,7 +95,7 @@ index db091d44b330..c54262ead879 100644
  ETHTOOL_SGRO			n/a
  ETHTOOL_GRXRINGS		n/a
  ETHTOOL_GRXCLSRLCNT		n/a
-@@ -346,7 +361,7 @@ ETHTOOL_GRXNTUPLE		n/a
+@@ -386,7 +401,7 @@ ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
  ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
@@ -105,10 +105,10 @@ index db091d44b330..c54262ead879 100644
  ETHTOOL_GCHANNELS		n/a
  ETHTOOL_SCHANNELS		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index ca3f7fba4442..c6c791c71b11 100644
+index 6177e2ac8178..5e257d1f80d4 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -211,6 +211,7 @@ enum {
+@@ -212,6 +212,7 @@ enum {
  	ETHA_SETTINGS_LINK_MODES,		/* bitset */
  	ETHA_SETTINGS_PEER_MODES,		/* bitset */
  	ETHA_SETTINGS_LINK,			/* u8 */
@@ -116,7 +116,7 @@ index ca3f7fba4442..c6c791c71b11 100644
  
  	__ETHA_SETTINGS_CNT,
  	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
-@@ -221,8 +222,20 @@ enum {
+@@ -222,8 +223,20 @@ enum {
  #define ETH_SETTINGS_IM_MSGLEVEL		0x04
  #define ETH_SETTINGS_IM_WOLINFO			0x08
  #define ETH_SETTINGS_IM_LINK			0x10
@@ -152,10 +152,10 @@ index b2b935a4569a..3c763b4d54bc 100644
  extern const char rss_hash_func_strings[ETH_RSS_HASH_FUNCS_COUNT][ETH_GSTRING_LEN];
  extern const char tunable_strings[__ETHTOOL_TUNABLE_COUNT][ETH_GSTRING_LEN];
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 498d96e54058..feee9155f3d0 100644
+index d97dd2f8ba2b..d0d2ae4a8e60 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -56,8 +56,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
+@@ -57,8 +57,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
  
  /* Handlers for each ethtool command */
  

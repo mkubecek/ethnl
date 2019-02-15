@@ -1,7 +1,7 @@
-From 22190f3d53320bc3fe3fbdaf664bed1e92b71e62 Mon Sep 17 00:00:00 2001
+From 559e9973c9c120c8d50544e132a69889d8eac910 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:36:49 -0400
-Subject: [PATCH 13/25] ethtool: implement SET_SETTINGS notification
+Subject: [PATCH 14/26] ethtool: implement SET_SETTINGS notification
 
 SET_SETTINGS notification message has the same format as response to
 GET_SETTINGS request and is broadcasted on change of relevant fields. Info
@@ -18,10 +18,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 33 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index c54262ead879..bbb9b14d1e70 100644
+index 8ff38221df0b..3cec3fb5a309 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -293,7 +293,8 @@ requests.
+@@ -333,7 +333,8 @@ requests.
  
  GET_SETTINGS requests allow dumps and messages in the same format as response
  to them are broadcasted as notifications on change of these settings using
@@ -32,7 +32,7 @@ index c54262ead879..bbb9b14d1e70 100644
  
  Request translation
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index feee9155f3d0..f5804c1c6522 100644
+index d0d2ae4a8e60..4f0dd68f2d59 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -29,6 +29,7 @@
@@ -40,10 +40,10 @@ index feee9155f3d0..f5804c1c6522 100644
  #include <net/xdp_sock.h>
  #include <net/flow_offload.h>
 +#include <linux/ethtool_netlink.h>
+ 
  #include "common.h"
  
- /*
-@@ -565,7 +566,12 @@ static int ethtool_set_link_ksettings(struct net_device *dev,
+@@ -566,7 +567,12 @@ static int ethtool_set_link_ksettings(struct net_device *dev,
  	    != link_ksettings.base.link_mode_masks_nwords)
  		return -EINVAL;
  
@@ -57,7 +57,7 @@ index feee9155f3d0..f5804c1c6522 100644
  }
  
  /* Query device for its ethtool_cmd settings.
-@@ -614,6 +620,7 @@ static int ethtool_set_settings(struct net_device *dev, void __user *useraddr)
+@@ -615,6 +621,7 @@ static int ethtool_set_settings(struct net_device *dev, void __user *useraddr)
  {
  	struct ethtool_link_ksettings link_ksettings;
  	struct ethtool_cmd cmd;
@@ -65,7 +65,7 @@ index feee9155f3d0..f5804c1c6522 100644
  
  	ASSERT_RTNL();
  
-@@ -626,7 +633,12 @@ static int ethtool_set_settings(struct net_device *dev, void __user *useraddr)
+@@ -627,7 +634,12 @@ static int ethtool_set_settings(struct net_device *dev, void __user *useraddr)
  		return -EINVAL;
  	link_ksettings.base.link_mode_masks_nwords =
  		__ETHTOOL_LINK_MODE_MASK_NU32;
@@ -79,7 +79,7 @@ index feee9155f3d0..f5804c1c6522 100644
  }
  
  static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
-@@ -1253,6 +1265,8 @@ static int ethtool_set_wol(struct net_device *dev, char __user *useraddr)
+@@ -1254,6 +1266,8 @@ static int ethtool_set_wol(struct net_device *dev, char __user *useraddr)
  		return ret;
  
  	dev->wol_enabled = !!wol.wolopts;
@@ -88,7 +88,7 @@ index feee9155f3d0..f5804c1c6522 100644
  
  	return 0;
  }
-@@ -2445,6 +2459,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
+@@ -2446,6 +2460,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
  	case ETHTOOL_SMSGLVL:
  		rc = ethtool_set_value_void(dev, useraddr,
  				       dev->ethtool_ops->set_msglevel);

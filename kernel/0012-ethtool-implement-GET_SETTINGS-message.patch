@@ -1,7 +1,7 @@
-From da9f54e6fe3f133a3c9db87f9cd49fa18a4f54f6 Mon Sep 17 00:00:00 2001
+From 5a0fc009105e612a0895900ae9e7e7b783fa38a6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
-Subject: [PATCH 11/25] ethtool: implement GET_SETTINGS message
+Subject: [PATCH 12/26] ethtool: implement GET_SETTINGS message
 
 Requests the information provided by ETHTOOL_GLINKSETTINGS, ETHTOOL_GWOL
 and ETHTOOL_GMSGLVL. The info_mask header field can be used to request only
@@ -27,7 +27,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index df6c68fb1db5..db091d44b330 100644
+index 27dde1ee5631..94bd29d63dac 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -130,6 +130,8 @@ List of message types
@@ -39,7 +39,7 @@ index df6c68fb1db5..db091d44b330 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -223,6 +225,62 @@ if no PHC is associated, the attribute is not present.
+@@ -263,6 +265,62 @@ if no PHC is associated, the attribute is not present.
  GET_INFO requests allow dumps.
  
  
@@ -102,7 +102,7 @@ index df6c68fb1db5..db091d44b330 100644
  Request translation
  -------------------
  
-@@ -232,16 +290,16 @@ have their netlink replacement yet.
+@@ -272,16 +330,16 @@ have their netlink replacement yet.
  
  ioctl command			netlink command
  ---------------------------------------------------------------------
@@ -123,7 +123,7 @@ index df6c68fb1db5..db091d44b330 100644
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		n/a
-@@ -306,7 +364,7 @@ ETHTOOL_GTUNABLE		n/a
+@@ -346,7 +404,7 @@ ETHTOOL_GTUNABLE		n/a
  ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
@@ -160,7 +160,7 @@ index 2f1b8aea769c..c40cc60d9ab6 100644
  
  #define netif_msg_drv(p)	((p)->msg_enable & NETIF_MSG_DRV)
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
-index 615743a89715..4e0e864b036d 100644
+index 1b58637d3a4d..ba96a691bfd4 100644
 --- a/include/uapi/linux/ethtool.h
 +++ b/include/uapi/linux/ethtool.h
 @@ -566,6 +566,7 @@ struct ethtool_pauseparam {
@@ -177,10 +177,10 @@ index 615743a89715..4e0e864b036d 100644
  	ETH_SS_TSTAMP_RX_FILTER,
 +	ETH_SS_LINK_MODES,
  
- 	__ETH_SS_MAX,
- 	ETH_SS_MAX = (__ETH_SS_MAX - 1)
+ 	ETH_SS_COUNT
+ };
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 30a1594ce601..ca3f7fba4442 100644
+index 8ab2b7454e81..6177e2ac8178 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -12,6 +12,8 @@ enum {
@@ -192,7 +192,7 @@ index 30a1594ce601..ca3f7fba4442 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -188,6 +190,40 @@ enum {
+@@ -189,6 +191,40 @@ enum {
  	ETHA_TSINFO_MAX = (__ETHA_TSINFO_CNT - 1)
  };
  
@@ -334,10 +334,10 @@ index 12e916fdd04a..b2b935a4569a 100644
  
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 2f5bf171a5f1..498d96e54058 100644
+index b959532eb444..d97dd2f8ba2b 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -354,54 +354,6 @@ bool ethtool_convert_link_mode_to_legacy_u32(u32 *legacy_u32,
+@@ -355,54 +355,6 @@ bool ethtool_convert_link_mode_to_legacy_u32(u32 *legacy_u32,
  }
  EXPORT_SYMBOL(ethtool_convert_link_mode_to_legacy_u32);
  
@@ -392,7 +392,7 @@ index 2f5bf171a5f1..498d96e54058 100644
  /* return false if ksettings link modes had higher bits
   * set. legacy_settings always updated (best effort)
   */
-@@ -1276,11 +1228,11 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
+@@ -1277,11 +1229,11 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
  static int ethtool_get_wol(struct net_device *dev, char __user *useraddr)
  {
  	struct ethtool_wolinfo wol = { .cmd = ETHTOOL_GWOL };
@@ -408,7 +408,7 @@ index 2f5bf171a5f1..498d96e54058 100644
  
  	if (copy_to_user(useraddr, &wol, sizeof(wol)))
  		return -EFAULT;
-@@ -1352,12 +1304,12 @@ static int ethtool_nway_reset(struct net_device *dev)
+@@ -1353,12 +1305,12 @@ static int ethtool_nway_reset(struct net_device *dev)
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
  {
  	struct ethtool_value edata = { .cmd = ETHTOOL_GLINK };
@@ -896,7 +896,7 @@ index 000000000000..a754d3c00647
 +	.fill_reply		= fill_settings,
 +};
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index ee8d64d1cc39..2a2c3788b4ee 100644
+index 16366af006d3..dd08f8ba6bda 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -85,6 +85,12 @@ static const struct strset_info info_template[] = {

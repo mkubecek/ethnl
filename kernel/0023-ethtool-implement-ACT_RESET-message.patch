@@ -1,7 +1,7 @@
-From 73199fd88033deedb0bcde82f2af8bb3085ee986 Mon Sep 17 00:00:00 2001
+From d31e5686e1efdb41e6001a27ceccaa7af89bbcb9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
-Subject: [PATCH 22/25] ethtool: implement ACT_RESET message
+Subject: [PATCH 23/26] ethtool: implement ACT_RESET message
 
 Request reset of a NIC or its part(s), equivalent of ETHTOOL_RESET.
 
@@ -20,10 +20,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 300 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 6f925fccb7ac..1e92ded3758e 100644
+index 9d256e94696a..d2b6e0b2c71f 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -539,6 +539,29 @@ other ACT_PHYS_ID requests for any device fail with EBUSY. The same holds for
+@@ -579,6 +579,29 @@ other ACT_PHYS_ID requests for any device fail with EBUSY. The same holds for
  requests using ETHTOOL_PHYS_ID ioctl command.
  
  
@@ -53,7 +53,7 @@ index 6f925fccb7ac..1e92ded3758e 100644
  Request translation
  -------------------
  
-@@ -598,7 +621,7 @@ ETHTOOL_GRXCLSRLALL		n/a
+@@ -638,7 +661,7 @@ ETHTOOL_GRXCLSRLALL		n/a
  ETHTOOL_SRXCLSRLDEL		n/a
  ETHTOOL_SRXCLSRLINS		n/a
  ETHTOOL_FLASHDEV		n/a
@@ -63,7 +63,7 @@ index 6f925fccb7ac..1e92ded3758e 100644
  ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
-index 4e0e864b036d..101a969ffd3e 100644
+index ba96a691bfd4..d9c764994e2c 100644
 --- a/include/uapi/linux/ethtool.h
 +++ b/include/uapi/linux/ethtool.h
 @@ -567,6 +567,7 @@ struct ethtool_pauseparam {
@@ -80,9 +80,9 @@ index 4e0e864b036d..101a969ffd3e 100644
  	ETH_SS_LINK_MODES,
 +	ETH_SS_RESET_FLAGS,
  
- 	__ETH_SS_MAX,
- 	ETH_SS_MAX = (__ETH_SS_MAX - 1)
-@@ -1727,6 +1729,7 @@ enum ethtool_reset_flags {
+ 	ETH_SS_COUNT
+ };
+@@ -1726,6 +1728,7 @@ enum ethtool_reset_flags {
  	ETH_RESET_ALL		= 0xffffffff,	/* All components used by this
  						 * interface, even if shared */
  };
@@ -91,7 +91,7 @@ index 4e0e864b036d..101a969ffd3e 100644
  
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 16aa69bcddf4..607f82d2c38d 100644
+index cefb4b663e82..e05a359c21d2 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -18,6 +18,7 @@ enum {
@@ -102,7 +102,7 @@ index 16aa69bcddf4..607f82d2c38d 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -382,6 +383,21 @@ enum {
+@@ -383,6 +384,21 @@ enum {
  	ETHA_PHYSID_MAX = (__ETHA_PHYSID_CNT - 1)
  };
  
@@ -376,10 +376,10 @@ index 13f5067a79a2..5dfb321950de 100644
 +	return ret;
 +}
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index b65af47a1b4b..1eab710df872 100644
+index 29136a4133d1..27cc8289a0e1 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -1186,6 +1186,7 @@ static int ethtool_get_regs(struct net_device *dev, char __user *useraddr)
+@@ -1187,6 +1187,7 @@ static int ethtool_get_regs(struct net_device *dev, char __user *useraddr)
  static int ethtool_reset(struct net_device *dev, char __user *useraddr)
  {
  	struct ethtool_value reset;
@@ -387,7 +387,7 @@ index b65af47a1b4b..1eab710df872 100644
  	int ret;
  
  	if (!dev->ethtool_ops->reset)
-@@ -1194,9 +1195,13 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
+@@ -1195,9 +1196,13 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
  	if (copy_from_user(&reset, useraddr, sizeof(reset)))
  		return -EFAULT;
  
@@ -454,7 +454,7 @@ index 713d96c9507b..74364d16d687 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index 2a2c3788b4ee..905e0cacc66e 100644
+index dd08f8ba6bda..b470ebed4de5 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -91,6 +91,12 @@ static const struct strset_info info_template[] = {

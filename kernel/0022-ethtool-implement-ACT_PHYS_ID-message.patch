@@ -1,7 +1,7 @@
-From 8f36236759c893c2e322750561e952d0b180b8a8 Mon Sep 17 00:00:00 2001
+From b7225335198355992b5f8bdbc4dd442a5fba26d5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
-Subject: [PATCH 21/25] ethtool: implement ACT_PHYS_ID message
+Subject: [PATCH 22/26] ethtool: implement ACT_PHYS_ID message
 
 Request physical NIC identification (by blinking a LED), equivalent of
 ETHTOOL_PHYS_ID.
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 186 insertions(+), 47 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index dfec61958ca9..6f925fccb7ac 100644
+index e2625a66d914..9d256e94696a 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -517,6 +517,28 @@ Request contents:
+@@ -557,6 +557,28 @@ Request contents:
  If successful, a notification in the same format is sent.
  
  
@@ -53,7 +53,7 @@ index dfec61958ca9..6f925fccb7ac 100644
  Request translation
  -------------------
  
-@@ -552,7 +574,7 @@ ETHTOOL_GSG			ETHNL_CMD_GET_SETTINGS
+@@ -592,7 +614,7 @@ ETHTOOL_GSG			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SSG			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_TEST			n/a
  ETHTOOL_GSTRINGS		ETHNL_CMD_GET_STRSET
@@ -63,7 +63,7 @@ index dfec61958ca9..6f925fccb7ac 100644
  ETHTOOL_GTSO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_STSO			ETHNL_CMD_SET_SETTINGS
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index bf96b6d8e26f..16aa69bcddf4 100644
+index b14d9d0a97bc..cefb4b663e82 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -17,6 +17,7 @@ enum {
@@ -74,7 +74,7 @@ index bf96b6d8e26f..16aa69bcddf4 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -370,6 +371,17 @@ enum {
+@@ -371,6 +372,17 @@ enum {
  	ETHA_NWAYRST_MAX = (__ETHA_NWAYRST_CNT - 1)
  };
  
@@ -267,10 +267,10 @@ index a0cf1249fd88..dbad584cf15d 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index da7ff90b5e77..b65af47a1b4b 100644
+index a13f3aa13335..29136a4133d1 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -1637,60 +1637,15 @@ static int ethtool_get_strings(struct net_device *dev, void __user *useraddr)
+@@ -1638,60 +1638,15 @@ static int ethtool_get_strings(struct net_device *dev, void __user *useraddr)
  static int ethtool_phys_id(struct net_device *dev, void __user *useraddr)
  {
  	struct ethtool_value id;

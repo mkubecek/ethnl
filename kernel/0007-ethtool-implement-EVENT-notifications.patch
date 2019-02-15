@@ -1,7 +1,7 @@
 From 531cc9985789a07bf86e2010b500ad977e9e5b56 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
-Subject: [PATCH 07/25] ethtool: implement EVENT notifications
+Subject: [PATCH 07/26] ethtool: implement EVENT notifications
 
 Three types of netlink notifications are introduced:
 

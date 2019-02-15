@@ -1,7 +1,7 @@
-From 195d5abec733daea8f1c62256827acd320a7418b Mon Sep 17 00:00:00 2001
+From baf89fc8a10f9c2f71308fe7369d219de31db99b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
-Subject: [PATCH 19/25] ethtool: implement SET_PARAMS message
+Subject: [PATCH 20/26] ethtool: implement SET_PARAMS message
 
 Sets the information provided by ETHTOOL_SCOALESCE, ETHTOOL_SRINGPARAM,
 ETHTOOL_SPAUSEPARAM, ETHTOOL_SCHANNELS, ETHTOOL_SEEE and ETHTOOL_SFECPARAM.
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 584 insertions(+), 65 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 29d7465a969f..174261ee4e06 100644
+index b77904d80aa5..2d6ffa3cd655 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -133,7 +133,7 @@ List of message types
@@ -32,7 +32,7 @@ index 29d7465a969f..174261ee4e06 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -446,6 +446,63 @@ to them are broadcasted as notifications on change of these settings using
+@@ -486,6 +486,63 @@ to them are broadcasted as notifications on change of these settings using
  netlink or ioctl ethtool interface.
  
  
@@ -96,7 +96,7 @@ index 29d7465a969f..174261ee4e06 100644
  
  Request translation
  -------------------
-@@ -469,11 +526,11 @@ ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
+@@ -509,11 +566,11 @@ ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		ETHNL_CMD_GET_PARAMS
@@ -111,7 +111,7 @@ index 29d7465a969f..174261ee4e06 100644
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SRXCSUM			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GTXCSUM			ETHNL_CMD_GET_SETTINGS
-@@ -515,7 +572,7 @@ ETHTOOL_SRXFHINDIR		n/a
+@@ -555,7 +612,7 @@ ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GCHANNELS		ETHNL_CMD_GET_PARAMS
@@ -120,7 +120,7 @@ index 29d7465a969f..174261ee4e06 100644
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
  ETHTOOL_GET_DUMP_DATA		n/a
-@@ -523,7 +580,7 @@ ETHTOOL_GET_TS_INFO		ETHNL_CMD_GET_INFO
+@@ -563,7 +620,7 @@ ETHTOOL_GET_TS_INFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
@@ -129,7 +129,7 @@ index 29d7465a969f..174261ee4e06 100644
  ETHTOOL_GRSSH			n/a
  ETHTOOL_SRSSH			n/a
  ETHTOOL_GTUNABLE		n/a
-@@ -535,5 +592,5 @@ ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
+@@ -575,5 +632,5 @@ ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		ETHNL_CMD_GET_PARAMS
@@ -231,7 +231,7 @@ index 3c763b4d54bc..a0cf1249fd88 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 936357745f47..9fc1c112b2ad 100644
+index 80199595b8a7..d605d3ea33ec 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -27,7 +27,6 @@
@@ -241,8 +241,8 @@ index 936357745f47..9fc1c112b2ad 100644
 -#include <net/xdp_sock.h>
  #include <net/flow_offload.h>
  #include <linux/ethtool_netlink.h>
- #include "common.h"
-@@ -843,37 +842,6 @@ void netdev_rss_key_fill(void *buffer, size_t len)
+ 
+@@ -844,37 +843,6 @@ void netdev_rss_key_fill(void *buffer, size_t len)
  }
  EXPORT_SYMBOL(netdev_rss_key_fill);
  
@@ -280,7 +280,7 @@ index 936357745f47..9fc1c112b2ad 100644
  static noinline_for_stack int ethtool_get_rxfh_indir(struct net_device *dev,
  						     void __user *useraddr)
  {
-@@ -1537,9 +1505,6 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
+@@ -1538,9 +1506,6 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
  						   void __user *useraddr)
  {
  	struct ethtool_channels channels, curr = { .cmd = ETHTOOL_GCHANNELS };
@@ -290,7 +290,7 @@ index 936357745f47..9fc1c112b2ad 100644
  	int ret;
  
  	if (!dev->ethtool_ops->set_channels || !dev->ethtool_ops->get_channels)
-@@ -1550,29 +1515,7 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
+@@ -1551,29 +1516,7 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
  
  	dev->ethtool_ops->get_channels(dev, &curr);
  

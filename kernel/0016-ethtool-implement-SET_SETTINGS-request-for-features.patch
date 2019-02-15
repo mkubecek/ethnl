@@ -1,7 +1,7 @@
-From a6a901d92824855c56378dc05d6d53591eaa8ac6 Mon Sep 17 00:00:00 2001
+From e93ee627be3f855e154fc65402bf177435e19a25 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
-Subject: [PATCH 15/25] ethtool: implement SET_SETTINGS request for features
+Subject: [PATCH 16/26] ethtool: implement SET_SETTINGS request for features
 
 Using ETHNL_SETTINGS_FEATURES attribute, userspace can modify device
 features. Actual change is subject to netdev_change_features() sanity
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 179 insertions(+), 9 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 0fcf30e714e5..cac539d161c5 100644
+index e04ad878c88f..5606f7d786b4 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -315,6 +315,9 @@ to be passed with SET_SETTINGS request:
+@@ -355,6 +355,9 @@ to be passed with SET_SETTINGS request:
      ETHA_SETTINGS_SOPASS        (binary)        SecureOn(tm) password
      ETHA_SETTINGS_MSGLVL        (bitfield32)    debug level
      ETHA_SETTINGS_LINK_MODES    (bitset)        device link modes
@@ -32,7 +32,7 @@ index 0fcf30e714e5..cac539d161c5 100644
  
  For both bitfield32 types, value and selector work the usual way, i.e. bits
  set in selector are set to corresponding bits from value and the rest is
-@@ -329,6 +332,17 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
+@@ -369,6 +372,17 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
  is supposed to allow requesting changes without knowing what exactly kernel
  supports.
  
@@ -50,7 +50,7 @@ index 0fcf30e714e5..cac539d161c5 100644
  
  Request translation
  -------------------
-@@ -358,30 +372,30 @@ ETHTOOL_SRINGPARAM		n/a
+@@ -398,30 +412,30 @@ ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
  ETHTOOL_SPAUSEPARAM		n/a
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
@@ -89,7 +89,7 @@ index 0fcf30e714e5..cac539d161c5 100644
  ETHTOOL_GRXRINGS		n/a
  ETHTOOL_GRXCLSRLCNT		n/a
  ETHTOOL_GRXCLSRULE		n/a
-@@ -396,7 +410,7 @@ ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
+@@ -436,7 +450,7 @@ ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
  ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
@@ -99,10 +99,10 @@ index 0fcf30e714e5..cac539d161c5 100644
  ETHTOOL_SCHANNELS		n/a
  ETHTOOL_SET_DUMP		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index c6c791c71b11..b114a2b91650 100644
+index 5e257d1f80d4..52f464771444 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -232,6 +232,7 @@ enum {
+@@ -233,6 +233,7 @@ enum {
  	ETHA_FEATURES_WANTED,			/* bitset */
  	ETHA_FEATURES_ACTIVE,			/* bitset */
  	ETHA_FEATURES_NOCHANGE,			/* bitset */

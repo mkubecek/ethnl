@@ -1,7 +1,7 @@
-From 08229619e96d2dea0294d88c286b0256107d6939 Mon Sep 17 00:00:00 2001
+From a8dd3a1dea6ce35142067bfad2f67a05a1af33ea Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
-Subject: [PATCH 24/25] ethtool: implement SET_RXFLOW notification
+Subject: [PATCH 25/26] ethtool: implement SET_RXFLOW notification
 
 SET_RXFLOW notification message uses the same format as response to
 GET_RXFLOW request except for ETHA_RXFLOW_CTXOP attribute which may be
@@ -41,10 +41,10 @@ index e770e6e9acca..288e90f4dbb9 100644
 +
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 1eab710df872..0eb0f6cdc20b 100644
+index 27cc8289a0e1..aa4ef150a9fd 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -714,6 +714,7 @@ static noinline_for_stack int ethtool_get_sset_info(struct net_device *dev,
+@@ -715,6 +715,7 @@ static noinline_for_stack int ethtool_get_sset_info(struct net_device *dev,
  static noinline_for_stack int ethtool_set_rxnfc(struct net_device *dev,
  						u32 cmd, void __user *useraddr)
  {
@@ -52,7 +52,7 @@ index 1eab710df872..0eb0f6cdc20b 100644
  	struct ethtool_rxnfc info;
  	size_t info_size = sizeof(info);
  	int rc;
-@@ -732,10 +733,16 @@ static noinline_for_stack int ethtool_set_rxnfc(struct net_device *dev,
+@@ -733,10 +734,16 @@ static noinline_for_stack int ethtool_set_rxnfc(struct net_device *dev,
  	if (copy_from_user(&info, useraddr, info_size))
  		return -EFAULT;
  
@@ -69,7 +69,7 @@ index 1eab710df872..0eb0f6cdc20b 100644
  	if (cmd == ETHTOOL_SRXCLSRLINS &&
  	    copy_to_user(useraddr, &info, info_size))
  		return -EFAULT;
-@@ -940,6 +947,8 @@ static noinline_for_stack int ethtool_set_rxfh_indir(struct net_device *dev,
+@@ -941,6 +948,8 @@ static noinline_for_stack int ethtool_set_rxfh_indir(struct net_device *dev,
  	ret = ops->set_rxfh(dev, indir, NULL, ETH_RSS_HASH_NO_CHANGE);
  	if (ret)
  		goto out;
@@ -78,7 +78,7 @@ index 1eab710df872..0eb0f6cdc20b 100644
  
  	/* indicate whether rxfh was set to default */
  	if (user_size == 0)
-@@ -1035,6 +1044,9 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+@@ -1036,6 +1045,9 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
  					       void __user *useraddr)
  {
  	int ret;
@@ -88,7 +88,7 @@ index 1eab710df872..0eb0f6cdc20b 100644
  	const struct ethtool_ops *ops = dev->ethtool_ops;
  	struct ethtool_rxnfc rx_rings;
  	struct ethtool_rxfh rxfh;
-@@ -1044,6 +1056,7 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+@@ -1045,6 +1057,7 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
  	u8 *rss_config;
  	u32 rss_cfg_offset = offsetof(struct ethtool_rxfh, rss_config[0]);
  	bool delete = false;
@@ -96,7 +96,7 @@ index 1eab710df872..0eb0f6cdc20b 100644
  
  	if (!ops->get_rxnfc || !ops->set_rxfh)
  		return -EOPNOTSUPP;
-@@ -1074,8 +1087,18 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+@@ -1075,8 +1088,18 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
  	     rxfh.key_size == 0 && rxfh.hfunc == ETH_RSS_HASH_NO_CHANGE))
  		return -EINVAL;
  
@@ -116,7 +116,7 @@ index 1eab710df872..0eb0f6cdc20b 100644
  
  	rss_config = kzalloc(indir_bytes + rxfh.key_size, GFP_USER);
  	if (!rss_config)
-@@ -1105,6 +1128,7 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+@@ -1106,6 +1129,7 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
  			for (i = 0; i < dev_indir_size; i++)
  				indir[i] = ethtool_rxfh_indir_default(i, rx_rings.data);
  		} else {
@@ -124,7 +124,7 @@ index 1eab710df872..0eb0f6cdc20b 100644
  			delete = true;
  		}
  	}
-@@ -1126,6 +1150,12 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+@@ -1127,6 +1151,12 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
  		ret = ops->set_rxfh(dev, indir, hkey, rxfh.hfunc);
  	if (ret)
  		goto out;
