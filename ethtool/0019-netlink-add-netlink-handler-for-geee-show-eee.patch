@@ -1,4 +1,4 @@
-From 93eff227bbc899d32efe982f5e719793c750d0df Mon Sep 17 00:00:00 2001
+From 1e64faa7cf6ed91804f945aee12fadb0357d44e3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:08:21 +0100
 Subject: [PATCH 19/35] netlink: add netlink handler for geee (--show-eee)

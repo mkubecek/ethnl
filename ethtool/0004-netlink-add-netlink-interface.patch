@@ -1,4 +1,4 @@
-From c024661f79a4f028b7e8e8e842d7b8d37a637311 Mon Sep 17 00:00:00 2001
+From ecb005646cb6c893d03a18681d00af06de4ec482 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 04/35] netlink: add netlink interface
@@ -27,8 +27,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  netlink/extapi.h             |  16 +
  netlink/netlink.c            | 715 +++++++++++++++++++++++++++++++++++
  netlink/netlink.h            | 158 ++++++++
- uapi/linux/ethtool.h         |  14 +
- uapi/linux/ethtool_netlink.h | 504 ++++++++++++++++++++++++
+ uapi/linux/ethtool.h         |  13 +
+ uapi/linux/ethtool_netlink.h | 505 +++++++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 +++++
  uapi/linux/net_tstamp.h      |  13 +
  uapi/linux/netlink.h         | 248 ++++++++++++
@@ -1414,7 +1414,7 @@ index 000000000000..bbfa5aa5bc48
 +
 +#endif /* ETHTOOL_NETLINK_INT_H__ */
 diff --git a/uapi/linux/ethtool.h b/uapi/linux/ethtool.h
-index 614996a5ff3a..91455988303d 100644
+index 614996a5ff3a..c519b0952c4a 100644
 --- a/uapi/linux/ethtool.h
 +++ b/uapi/linux/ethtool.h
 @@ -561,6 +561,11 @@ struct ethtool_pauseparam {
@@ -1429,7 +1429,7 @@ index 614996a5ff3a..91455988303d 100644
   */
  enum ethtool_stringset {
  	ETH_SS_TEST		= 0,
-@@ -572,6 +577,14 @@ enum ethtool_stringset {
+@@ -572,6 +577,13 @@ enum ethtool_stringset {
  	ETH_SS_TUNABLES,
  	ETH_SS_PHY_STATS,
  	ETH_SS_PHY_TUNABLES,
@@ -1439,12 +1439,11 @@ index 614996a5ff3a..91455988303d 100644
 +	ETH_SS_LINK_MODES,
 +	ETH_SS_RESET_FLAGS,
 +
-+	__ETH_SS_MAX,
-+	ETH_SS_MAX = (__ETH_SS_MAX - 1)
++	ETH_SS_COUNT
  };
  
  /**
-@@ -1714,6 +1727,7 @@ enum ethtool_reset_flags {
+@@ -1714,6 +1726,7 @@ enum ethtool_reset_flags {
  	ETH_RESET_ALL		= 0xffffffff,	/* All components used by this
  						 * interface, even if shared */
  };
@@ -1454,10 +1453,10 @@ index 614996a5ff3a..91455988303d 100644
  
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..e49501c2503c
+index 000000000000..f38705b72be7
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,504 @@
+@@ -0,0 +1,505 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#ifndef _LINUX_ETHTOOL_NETLINK_H_
@@ -1599,6 +1598,7 @@ index 000000000000..e49501c2503c
 +enum {
 +	ETHA_STRSET_UNSPEC,
 +	ETHA_STRSET_DEV,			/* nest - ETHA_DEV_* */
++	ETHA_STRSET_COUNTS,			/* flag */
 +	ETHA_STRSET_STRINGSET,			/* nest - ETHA_STRSET_* */
 +
 +	__ETHA_STRSET_CNT,

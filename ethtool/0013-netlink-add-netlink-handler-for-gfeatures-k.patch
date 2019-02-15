@@ -1,4 +1,4 @@
-From 952bdf10723801b53fb3052cf21ff1355daa8883 Mon Sep 17 00:00:00 2001
+From 5f4adbb9d812511a4651a0ad7a3e8e2afdf43d49 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
 Subject: [PATCH 13/35] netlink: add netlink handler for gfeatures (-k)

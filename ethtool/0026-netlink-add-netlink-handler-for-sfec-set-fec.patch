@@ -1,4 +1,4 @@
-From 0dbc54b0178291924c92c4953e598f8ec3c473a3 Mon Sep 17 00:00:00 2001
+From f32af80f6dcd376f6428a54e4db1e8fedeb4b6cf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:51:36 +0100
 Subject: [PATCH 26/35] netlink: add netlink handler for sfec (--set-fec)

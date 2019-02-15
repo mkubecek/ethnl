@@ -1,4 +1,4 @@
-From ed485b5f95b27bf18f4398ba78f4286e14cc5b10 Mon Sep 17 00:00:00 2001
+From 51dc55b6ac5f604d37daa31b543ba031f7285296 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:05:40 +0100
 Subject: [PATCH 18/35] netlink: add netlink handler for gchannels (-l)

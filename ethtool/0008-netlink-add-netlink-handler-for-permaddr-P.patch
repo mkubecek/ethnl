@@ -1,4 +1,4 @@
-From c2f2f72246852b5d3f133d041b965c353e2c69a5 Mon Sep 17 00:00:00 2001
+From 90eb539b6086c987e57eef0156fd597f0bc050a6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Aug 2018 23:24:37 +0200
 Subject: [PATCH 08/35] netlink: add netlink handler for permaddr (-P)
@@ -47,7 +47,7 @@ index 546090a02a0d..3e3a03894e99 100644
  
  void monitor_usage();
 diff --git a/netlink/info.c b/netlink/info.c
-index 8fa0c3e36088..fda8b6a76bf4 100644
+index 634d29fd2534..31e709d176ff 100644
 --- a/netlink/info.c
 +++ b/netlink/info.c
 @@ -1,4 +1,5 @@
@@ -56,7 +56,7 @@ index 8fa0c3e36088..fda8b6a76bf4 100644
  
  #include "../internal.h"
  #include "netlink.h"
-@@ -25,6 +26,57 @@ static int show_drvinfo(struct nl_context *nlctx, const struct nlattr *nest)
+@@ -118,6 +119,57 @@ static int show_drvinfo(struct nl_context *nlctx, const struct nlattr *nest)
  	return MNL_CB_OK;
  }
  
@@ -114,7 +114,7 @@ index 8fa0c3e36088..fda8b6a76bf4 100644
  int info_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHA_INFO_MAX + 1] = {};
-@@ -48,6 +100,15 @@ int info_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -141,6 +193,15 @@ int info_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_ERROR;
  		}
  	}
@@ -130,7 +130,7 @@ index 8fa0c3e36088..fda8b6a76bf4 100644
  
  	return MNL_CB_OK;
  }
-@@ -68,3 +129,8 @@ int nl_gdrv(struct cmd_context *ctx)
+@@ -167,3 +228,8 @@ int nl_gdrv(struct cmd_context *ctx)
  {
  	return info_request(ctx, ETH_INFO_IM_DRVINFO);
  }

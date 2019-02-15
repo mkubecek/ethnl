@@ -1,4 +1,4 @@
-From 56b10285bf7b7e646a2d505d8f9cedff26a98e06 Mon Sep 17 00:00:00 2001
+From ea260da6ca042fb0425ae6b42cf333346d9ee6f1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:20:18 +0200
 Subject: [PATCH 30/35] netlink: add netlink handler for gprivflags

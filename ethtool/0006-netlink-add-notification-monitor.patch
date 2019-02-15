@@ -1,4 +1,4 @@
-From c40079b7168df0b63f0e6d328384d0390080c4f9 Mon Sep 17 00:00:00 2001
+From d1ab8df1cfc19e4a6b5a64de5f54a3ce8ba74afc Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
 Subject: [PATCH 06/35] netlink: add notification monitor
