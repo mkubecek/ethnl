@@ -1,4 +1,4 @@
-From 01e45498d73679f9b1c76b29d5664001650251e6 Mon Sep 17 00:00:00 2001
+From 9e6ca68b5d4aa4095f64e082013d24eff80ff1d3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 13/26] ethtool: implement GET_SETTINGS request for features

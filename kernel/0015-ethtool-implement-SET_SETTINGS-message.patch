@@ -1,4 +1,4 @@
-From f7b64a5e5715734cb815153f91a9ebf9eba7c0f2 Mon Sep 17 00:00:00 2001
+From fe66833a3eafeeb5d2edc6fcd037fbf1cf0e22ec Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 15/26] ethtool: implement SET_SETTINGS message
@@ -97,7 +97,7 @@ index 3cec3fb5a309..e04ad878c88f 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 92f65a815ae5..2cc0abd84f5b 100644
+index 29e85f679055..535fac0d5e17 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -593,6 +593,11 @@ static const struct genl_ops ethtool_genl_ops[] = {

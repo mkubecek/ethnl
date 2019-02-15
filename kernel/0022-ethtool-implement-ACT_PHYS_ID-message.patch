@@ -1,4 +1,4 @@
-From b7225335198355992b5f8bdbc4dd442a5fba26d5 Mon Sep 17 00:00:00 2001
+From 85a6aa38e847582a56e0ad71a21d3c265f103d6b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 22/26] ethtool: implement ACT_PHYS_ID message
@@ -333,7 +333,7 @@ index a13f3aa13335..29136a4133d1 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 725a7cbf74b9..f11805976e3b 100644
+index b29ed1e01b5c..9595c1bfa8e0 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -485,6 +485,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {

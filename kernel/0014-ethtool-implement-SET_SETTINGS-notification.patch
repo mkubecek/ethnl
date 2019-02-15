@@ -1,4 +1,4 @@
-From 559e9973c9c120c8d50544e132a69889d8eac910 Mon Sep 17 00:00:00 2001
+From 3b7be249d062ff65ae1a3ebc30356838874d0942 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:36:49 -0400
 Subject: [PATCH 14/26] ethtool: implement SET_SETTINGS notification
@@ -99,7 +99,7 @@ index d0d2ae4a8e60..4f0dd68f2d59 100644
  	case ETHTOOL_GEEE:
  		rc = ethtool_get_eee(dev, useraddr);
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index fef330c80f9c..92f65a815ae5 100644
+index 7252047907ff..29e85f679055 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -480,6 +480,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,

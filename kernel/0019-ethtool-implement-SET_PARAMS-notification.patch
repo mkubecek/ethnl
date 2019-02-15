@@ -1,4 +1,4 @@
-From b5da1f1e842472c6d49b9b21b07b6e2887fa6707 Mon Sep 17 00:00:00 2001
+From 3d0a0a88fd62e8f3f98af759ba21322011b00f8a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:43:07 -0400
 Subject: [PATCH 19/26] ethtool: implement SET_PARAMS notification
@@ -147,7 +147,7 @@ index 23e7b6009c59..80199595b8a7 100644
  
  /* The main entry point in this file.  Called from net/core/dev_ioctl.c */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index a5f64cd9703b..7edff91d3ee2 100644
+index 582e8527d798..0f2425f4c4ca 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -483,6 +483,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,

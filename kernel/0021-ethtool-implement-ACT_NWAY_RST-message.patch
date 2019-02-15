@@ -1,4 +1,4 @@
-From 72bac962cebe2e922cf121b674fab7873b143cfb Mon Sep 17 00:00:00 2001
+From b0a4c34b7501b10b6ecd7b8db2f3e62a34f54aec Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 21/26] ethtool: implement ACT_NWAY_RST message
@@ -202,7 +202,7 @@ index d605d3ea33ec..a13f3aa13335 100644
  
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index d8bc4a91df0d..725a7cbf74b9 100644
+index d44e78c5997f..b29ed1e01b5c 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -484,6 +484,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,

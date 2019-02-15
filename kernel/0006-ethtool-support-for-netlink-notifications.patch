@@ -1,4 +1,4 @@
-From 5cc7fd43baa66b3872d45b3b26010cc622cd8556 Mon Sep 17 00:00:00 2001
+From 2fbb100e1835fbe99b534f40aabd93a93a59ebd3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
 Subject: [PATCH 06/26] ethtool: support for netlink notifications
@@ -72,7 +72,7 @@ index 7f3d401977b4..b662d75a0636 100644
 +
  #endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index ca116b882171..27f514c3fc2d 100644
+index 22c39c6b9bc0..bd70784d5ab9 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -4,6 +4,8 @@

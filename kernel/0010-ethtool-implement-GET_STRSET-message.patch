@@ -1,4 +1,4 @@
-From e17ef4fe83748b31e5a59565879ba44d3695023d Mon Sep 17 00:00:00 2001
+From cfd67ff5416cfa88aa6090fd9bd2e26b0d178032 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 10/26] ethtool: implement GET_STRSET message
@@ -190,7 +190,7 @@ index 11782306593b..11ceb00821b3 100644
 -ethtool_nl-y	:= netlink.o bitset.o
 +ethtool_nl-y	:= netlink.o bitset.o strset.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 9920dd9f4e16..fd466c1d0176 100644
+index 1961574cfe12..1c4312941e18 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -85,7 +85,10 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)

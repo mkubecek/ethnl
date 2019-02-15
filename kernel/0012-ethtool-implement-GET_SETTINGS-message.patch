@@ -1,4 +1,4 @@
-From 5a0fc009105e612a0895900ae9e7e7b783fa38a6 Mon Sep 17 00:00:00 2001
+From e951896f405d14e77a00ef3cf5a0113a49dfa532 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 19:40:36 +0100
 Subject: [PATCH 12/26] ethtool: implement GET_SETTINGS message
@@ -426,7 +426,7 @@ index b959532eb444..d97dd2f8ba2b 100644
  		return -EFAULT;
  	return 0;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 97e122c0cb1c..fef330c80f9c 100644
+index 9f886bc4462e..7252047907ff 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -1,11 +1,67 @@

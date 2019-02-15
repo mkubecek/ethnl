@@ -1,4 +1,4 @@
-From 1e60b420065ab955d8fc3570cee8eb9f99d05788 Mon Sep 17 00:00:00 2001
+From e8c9569c16650b0c77ab0ef522eb5b86af3f23d8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:52:50 +0100
 Subject: [PATCH 11/26] ethtool: implement GET_INFO message
@@ -826,7 +826,7 @@ index 2b3b175708d2..b959532eb444 100644
  		err = -EFAULT;
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index fd466c1d0176..97e122c0cb1c 100644
+index 1c4312941e18..9f886bc4462e 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -86,9 +86,11 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
