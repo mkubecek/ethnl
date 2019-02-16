@@ -1,4 +1,4 @@
-From 2c9556fbf8201a8ffed8d92c68a288b5d476bcb8 Mon Sep 17 00:00:00 2001
+From bf4a5c7fbe1535c6c13253f0d6d73569e962122a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 29/33] ethtool: implement ACT_PHYS_ID message
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 186 insertions(+), 47 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 27321a399063..2179ca380ad0 100644
+index 56f28bb9227d..58e7810ee2a1 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -561,6 +561,28 @@ Request contents:
+@@ -565,6 +565,28 @@ Request contents:
  If successful, a notification in the same format is sent.
  
  
@@ -53,7 +53,7 @@ index 27321a399063..2179ca380ad0 100644
  Request translation
  -------------------
  
-@@ -596,7 +618,7 @@ ETHTOOL_GSG			ETHNL_CMD_GET_SETTINGS
+@@ -600,7 +622,7 @@ ETHTOOL_GSG			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SSG			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_TEST			n/a
  ETHTOOL_GSTRINGS		ETHNL_CMD_GET_STRSET
@@ -63,7 +63,7 @@ index 27321a399063..2179ca380ad0 100644
  ETHTOOL_GTSO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_STSO			ETHNL_CMD_SET_SETTINGS
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 3e89db173e07..fad0965e4fd2 100644
+index 11dc4117f36e..250b1c7c0789 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -17,6 +17,7 @@ enum {
@@ -74,7 +74,7 @@ index 3e89db173e07..fad0965e4fd2 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -371,6 +372,17 @@ enum {
+@@ -387,6 +388,17 @@ enum {
  	ETHA_NWAYRST_MAX = (__ETHA_NWAYRST_CNT - 1)
  };
  

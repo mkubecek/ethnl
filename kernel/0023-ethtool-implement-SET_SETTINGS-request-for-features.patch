@@ -1,4 +1,4 @@
-From 114f126dd28c3bde56d38ea7f957b4bb19992ec4 Mon Sep 17 00:00:00 2001
+From 07668821de70177ab8b6c9f6c1b5c5a30a04787a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 23/33] ethtool: implement SET_SETTINGS request for features
@@ -15,24 +15,24 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  32 ++--
  include/uapi/linux/ethtool_netlink.h         |   1 +
- net/ethtool/settings.c                       | 155 +++++++++++++++++++
- 3 files changed, 179 insertions(+), 9 deletions(-)
+ net/ethtool/settings.c                       | 156 +++++++++++++++++++
+ 3 files changed, 180 insertions(+), 9 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 4b80167f8118..39e11504029a 100644
+index 9a16c09918a3..1aa1f05c8920 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -366,6 +366,9 @@ to be passed with SET_SETTINGS request:
-     ETHA_SETTINGS_SOPASS        (binary)        SecureOn(tm) password
-     ETHA_SETTINGS_MSGLVL        (bitfield32)    debug level
-     ETHA_SETTINGS_LINK_MODES    (bitset)        device link modes
+@@ -370,6 +370,9 @@ to be passed with SET_SETTINGS request:
+         ETHA_WOL_MODES			(bitfield32)	wake on LAN modes
+         ETHA_WOL_SOPASS			(binary)	SecureOn(tm) password
+     ETHA_SETTINGS_MSGLEVEL	(bitfield32)	debug level
 +    ETHA_SETTINGS_FEATURES	(nested)	device features
 +        ETHA_FEATURES_WANTED		(bitset)	wanted features
 +        ETHA_FEATURES_WANT_DIFF		(flag)		actual diff
  
  For both bitfield32 types, value and selector work the usual way, i.e. bits
  set in selector are set to corresponding bits from value and the rest is
-@@ -380,6 +383,17 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
+@@ -384,6 +387,17 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
  is supposed to allow requesting changes without knowing what exactly kernel
  supports.
  
@@ -50,7 +50,7 @@ index 4b80167f8118..39e11504029a 100644
  
  Request translation
  -------------------
-@@ -409,30 +423,30 @@ ETHTOOL_SRINGPARAM		n/a
+@@ -413,30 +427,30 @@ ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
  ETHTOOL_SPAUSEPARAM		n/a
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
@@ -89,7 +89,7 @@ index 4b80167f8118..39e11504029a 100644
  ETHTOOL_GRXRINGS		n/a
  ETHTOOL_GRXCLSRLCNT		n/a
  ETHTOOL_GRXCLSRULE		n/a
-@@ -447,7 +461,7 @@ ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
+@@ -451,7 +465,7 @@ ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
  ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
@@ -99,10 +99,10 @@ index 4b80167f8118..39e11504029a 100644
  ETHTOOL_SCHANNELS		n/a
  ETHTOOL_SET_DUMP		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index ad804eb1aac8..32dfc7468ccd 100644
+index afd61d36bcf8..910b8aa28915 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -235,6 +235,7 @@ enum {
+@@ -227,6 +227,7 @@ enum {
  	ETHA_FEATURES_WANTED,			/* bitset */
  	ETHA_FEATURES_ACTIVE,			/* bitset */
  	ETHA_FEATURES_NOCHANGE,			/* bitset */
@@ -111,22 +111,14 @@ index ad804eb1aac8..32dfc7468ccd 100644
  	__ETHA_FEATURES_CNT,
  	ETHA_FEATURES_MAX = (__ETHA_FEATURES_CNT - 1)
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 753105fb5512..8e2e24b8b6b5 100644
+index 559bb5704aaf..c662208829fd 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -786,6 +786,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
- 	[ETHA_SETTINGS_MSGLVL]		= { .type = NLA_BITFIELD32,
- 					    .validation_data = &all_bits },
- 	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_NESTED },
+@@ -802,6 +802,15 @@ static const struct nla_policy set_wol_policy[ETHA_LINKINFO_MAX + 1] = {
+ 					    .len = SOPASS_MAX },
  };
  
- static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -898,6 +899,150 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
- 	return 0;
- }
- 
-+static const struct nla_policy features_policy[ETHA_FEATURES_MAX + 1] = {
++static const struct nla_policy set_features_policy[ETHA_FEATURES_MAX + 1] = {
 +	[ETHA_FEATURES_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHA_FEATURES_HW]		= { .type = NLA_NESTED },
 +	[ETHA_FEATURES_WANTED]		= { .type = NLA_NESTED },
@@ -135,6 +127,21 @@ index 753105fb5512..8e2e24b8b6b5 100644
 +	[ETHA_FEATURES_WANT_DIFF]	= { .type = NLA_FLAG },
 +};
 +
+ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
+ 	[ETHA_SETTINGS_DEV]		= { .type = NLA_NESTED },
+@@ -814,6 +823,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 					    .validation_data = &all_bits },
+ 	[ETHA_SETTINGS_WOL]		= { .type = NLA_NESTED },
+ 	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_NESTED },
+ };
+ 
+ static int ethnl_set_link_ksettings(struct genl_info *info,
+@@ -980,11 +990,147 @@ static int update_wol(struct genl_info *info, struct nlattr *nest,
+ 	return ret;
+ }
+ 
 +static void bitmap_from_features(unsigned long *bitmap, netdev_features_t val)
 +{
 +	const unsigned int words = BITS_TO_LONGS(NETDEV_FEATURE_COUNT);
@@ -178,7 +185,7 @@ index 753105fb5512..8e2e24b8b6b5 100644
 +	int ret;
 +
 +	*changed = false;
-+	ret = nla_parse_nested(tb, ETHA_FEATURES_MAX, nest, features_policy,
++	ret = nla_parse_nested(tb, ETHA_FEATURES_MAX, nest, set_features_policy,
 +			       info->extack);
 +	if (ret < 0)
 +		return ret;
@@ -273,7 +280,13 @@ index 753105fb5512..8e2e24b8b6b5 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-@@ -967,6 +1112,16 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+ 	struct net_device *dev;
+ 	u32 req_mask = 0;
++	bool mod;
+ 	int ret;
+ 
+ 	ret = genlmsg_parse(info->nlhdr, &ethtool_genl_family, tb,
+@@ -1032,6 +1178,16 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  			req_mask |= ETH_SETTINGS_IM_MSGLEVEL;
  		}
  	}

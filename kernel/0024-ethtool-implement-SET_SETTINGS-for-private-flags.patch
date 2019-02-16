@@ -1,4 +1,4 @@
-From 6395682b9a93e59bc3362756f99d60461e4e0d3a Mon Sep 17 00:00:00 2001
+From 85cf58bb2d8806a4e5e9a30390bd5405dca86030 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 24/33] ethtool: implement SET_SETTINGS for private flags
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 44 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 39e11504029a..6befc70c4c6f 100644
+index 1aa1f05c8920..1475a83e9937 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -369,6 +369,7 @@ to be passed with SET_SETTINGS request:
+@@ -373,6 +373,7 @@ to be passed with SET_SETTINGS request:
      ETHA_SETTINGS_FEATURES	(nested)	device features
          ETHA_FEATURES_WANTED		(bitset)	wanted features
          ETHA_FEATURES_WANT_DIFF		(flag)		actual diff
@@ -25,7 +25,7 @@ index 39e11504029a..6befc70c4c6f 100644
  
  For both bitfield32 types, value and selector work the usual way, i.e. bits
  set in selector are set to corresponding bits from value and the rest is
-@@ -442,7 +443,7 @@ ETHTOOL_SGSO			ETHNL_CMD_SET_SETTINGS
+@@ -446,7 +447,7 @@ ETHTOOL_SGSO			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFLAGS			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GPFLAGS			ETHNL_CMD_GET_SETTINGS
@@ -35,18 +35,18 @@ index 39e11504029a..6befc70c4c6f 100644
  ETHTOOL_SRXFH			n/a
  ETHTOOL_GGRO			ETHNL_CMD_GET_SETTINGS
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 8e2e24b8b6b5..40a14eee97b4 100644
+index c662208829fd..301bfd952171 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -787,6 +787,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
- 					    .validation_data = &all_bits },
+@@ -824,6 +824,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_NESTED },
 +	[ETHA_SETTINGS_PRIV_FLAGS]	= { .type = NLA_NESTED },
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -1043,6 +1044,39 @@ static int update_features(struct genl_info *info, struct net_device *dev,
+@@ -1125,6 +1126,39 @@ static int update_features(struct genl_info *info, struct net_device *dev,
  	return 0;
  }
  
@@ -86,7 +86,7 @@ index 8e2e24b8b6b5..40a14eee97b4 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-@@ -1122,6 +1156,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -1188,6 +1222,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret < 0)
  			goto out_ops;
  	}

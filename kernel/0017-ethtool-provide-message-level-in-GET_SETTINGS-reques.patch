@@ -1,4 +1,4 @@
-From 58aa91b27cfab7f7d74a5011d5d1d91f307ebb95 Mon Sep 17 00:00:00 2001
+From dcaabe6af1189c382b14776b7854f2872dbb5334 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:19:02 +0100
 Subject: [PATCH 17/33] ethtool: provide message level in GET_SETTINGS request
@@ -16,7 +16,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 27 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 333ed5005bf2..a00601821723 100644
+index f7a58cdee716..9bd4bc78a349 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -284,6 +284,7 @@ Info mask bits meaning:
@@ -27,25 +27,25 @@ index 333ed5005bf2..a00601821723 100644
  
  Response contents:
  
-@@ -300,6 +301,7 @@ Response contents:
-     ETHA_SETTINGS_PEER_MODES	(bitset)	link partner link modes
-     ETHA_SETTINGS_WOL_MODES	(bitfield32)	wake-on-lan modes
-     ETHA_SETTINGS_SOPASS	(binary)	SecureOn(tm) password
-+    ETHA_SETTINGS_MSGLVL	(bitfield32)	debug level
+@@ -302,6 +303,7 @@ Response contents:
+     ETHA_SETTINGS_WOL		(nested)	wake on LAN settings
+         ETHA_WOL_MODES			(bitfield32)	wake on LAN modes
+         ETHA_WOL_SOPASS			(binary)	SecureOn(tm) password
++    ETHA_SETTINGS_MSGLEVEL	(bitfield32)	debug level
  
  Most of the attributes and their values have the same meaning as matching
  members of the corresponding ioctl structures. For ETHA_SETTINGS_LINK_MODES,
-@@ -309,6 +311,9 @@ ETHA_SETTINGS_PEER_MODES in the reply is a bit list.
- For ETHA_SETTINGS_WOL_MODES, selector reports wake on LAN modes supported by
- the device and value enabled modes.
+@@ -311,6 +313,9 @@ ETHA_SETTINGS_PEER_MODES in the reply is a bit list.
+ For ETHA_WOL_MODES, selector reports wake on LAN modes supported by the
+ device and value enabled modes.
  
-+For ETHA_SETTINGS_MSGLVL, selector reports all flags supported by kernel and
++For ETHA_SETTINGS_MSGLEVEL, selector reports all flags supported by kernel and
 +value flags enabled for the device.
 +
  GET_SETTINGS request is allowed for unprivileged user but ETHA_SETTINGS_SOPASS
  is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
  requests.
-@@ -333,7 +338,7 @@ ETHTOOL_GDRVINFO		ETHNL_CMD_GET_INFO
+@@ -335,7 +340,7 @@ ETHTOOL_GDRVINFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GREGS			n/a
  ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SWOL			n/a
@@ -68,18 +68,18 @@ index 2f1b8aea769c..c40cc60d9ab6 100644
  
  #define netif_msg_drv(p)	((p)->msg_enable & NETIF_MSG_DRV)
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 6df263ba671f..b12811de3ee8 100644
+index ce9d6b48f814..360e20a73f19 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -210,6 +210,7 @@ enum {
+@@ -202,6 +202,7 @@ enum {
+ 	ETHA_SETTINGS_LINK_MODES,		/* bitset */
  	ETHA_SETTINGS_PEER_MODES,		/* bitset */
- 	ETHA_SETTINGS_WOL_MODES,		/* bitfield32 */
- 	ETHA_SETTINGS_SOPASS,			/* binary */
-+	ETHA_SETTINGS_MSGLVL,			/* bitfield32 */
+ 	ETHA_SETTINGS_WOL,			/* nested */
++	ETHA_SETTINGS_MSGLEVEL,			/* bitfield32 */
  
  	__ETHA_SETTINGS_CNT,
  	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
-@@ -218,8 +219,9 @@ enum {
+@@ -210,8 +211,9 @@ enum {
  #define ETH_SETTINGS_IM_LINKINFO		0x01
  #define ETH_SETTINGS_IM_LINKMODES		0x02
  #define ETH_SETTINGS_IM_WOLINFO			0x04
@@ -88,10 +88,10 @@ index 6df263ba671f..b12811de3ee8 100644
 -#define ETH_SETTINGS_IM_ALL			0x07
 +#define ETH_SETTINGS_IM_ALL			0x0f
  
- /* generic netlink info */
- #define ETHTOOL_GENL_NAME "ethtool"
+ enum {
+ 	ETHA_LINKINFO_UNSPEC,
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 388ff0a9dbd1..0b62cd66a2d1 100644
+index 0b7cff062e61..9839a2aaedd8 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -13,6 +13,7 @@ struct settings_data {
@@ -102,15 +102,15 @@ index 388ff0a9dbd1..0b62cd66a2d1 100644
  	bool				lpm_empty;
  };
  
-@@ -33,6 +34,7 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+@@ -25,6 +26,7 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_REJECT },
- 	[ETHA_SETTINGS_WOL_MODES]	= { .type = NLA_REJECT },
- 	[ETHA_SETTINGS_SOPASS]		= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_MSGLVL]		= { .type = NLA_REJECT },
+ 	[ETHA_SETTINGS_WOL]		= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_MSGLEVEL]	= { .type = NLA_REJECT },
  };
  
  static int parse_settings(struct common_req_info *req_info,
-@@ -99,6 +101,7 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -91,6 +93,7 @@ static int prepare_settings(struct common_req_info *req_info,
  	struct settings_data *data =
  		container_of(req_info, struct settings_data, reqinfo_base);
  	struct net_device *dev = data->repdata_base.dev;
@@ -118,7 +118,7 @@ index 388ff0a9dbd1..0b62cd66a2d1 100644
  	u32 req_mask = req_info->req_mask;
  	int ret;
  
-@@ -130,6 +133,12 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -122,6 +125,12 @@ static int prepare_settings(struct common_req_info *req_info,
  		if (ret < 0)
  			req_mask &= ~ETH_SETTINGS_IM_WOLINFO;
  	}
@@ -131,21 +131,21 @@ index 388ff0a9dbd1..0b62cd66a2d1 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -195,6 +204,8 @@ static int settings_size(const struct common_req_info *req_info)
- 		/* sopass */
- 		len += nla_total_size(SOPASS_MAX);
+@@ -198,6 +207,8 @@ static int settings_size(const struct common_req_info *req_info)
  	}
+ 	if (info_mask & ETH_SETTINGS_IM_WOLINFO)
+ 		len += wol_size();
 +	if (info_mask & ETH_SETTINGS_IM_MSGLEVEL)
 +		len += nla_total_size(sizeof(struct nla_bitfield32));
  
  	return len;
  }
-@@ -290,6 +301,11 @@ static int fill_settings(struct sk_buff *skb,
+@@ -308,6 +319,11 @@ static int fill_settings(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
 +	if (info_mask & ETH_SETTINGS_IM_MSGLEVEL) {
-+		if (nla_put_bitfield32(skb, ETHA_SETTINGS_MSGLVL,
++		if (nla_put_bitfield32(skb, ETHA_SETTINGS_MSGLEVEL,
 +				       data->msglevel, NETIF_MSG_ALL))
 +			return -EMSGSIZE;
 +	}

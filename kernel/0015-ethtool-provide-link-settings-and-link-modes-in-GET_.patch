@@ -1,4 +1,4 @@
-From beee0d3de1a7da5b1739101fa4c1e60ec366beeb Mon Sep 17 00:00:00 2001
+From 2b34c96554aabd57f471ed2c9cfb827d2e768ee1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 15/33] ethtool: provide link settings and link modes in
@@ -13,20 +13,20 @@ request and other settings when ETH_SETTINGS_IM_LINKINFO is set.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  48 +++-
+ Documentation/networking/ethtool-netlink.txt |  49 +++-
  include/linux/ethtool_netlink.h              |   3 +
- include/uapi/linux/ethtool_netlink.h         |  29 +++
+ include/uapi/linux/ethtool_netlink.h         |  37 +++
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/common.c                         |  48 ++++
  net/ethtool/common.h                         |   4 +
  net/ethtool/ioctl.c                          |  48 ----
  net/ethtool/netlink.c                        |   9 +
- net/ethtool/settings.c                       | 256 +++++++++++++++++++
- 9 files changed, 396 insertions(+), 51 deletions(-)
+ net/ethtool/settings.c                       | 265 +++++++++++++++++++
+ 9 files changed, 414 insertions(+), 51 deletions(-)
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index fbe43c58aee3..2ee108d7a87a 100644
+index fbe43c58aee3..3d8ba59ac6a8 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -130,6 +130,8 @@ List of message types
@@ -38,7 +38,7 @@ index fbe43c58aee3..2ee108d7a87a 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -264,6 +266,48 @@ if no PHC is associated, the attribute is not present.
+@@ -264,6 +266,49 @@ if no PHC is associated, the attribute is not present.
  GET_INFO requests allow dumps.
  
  
@@ -63,14 +63,15 @@ index fbe43c58aee3..2ee108d7a87a 100644
 +Response contents:
 +
 +    ETHA_SETTINGS_DEV		(nested)	device identification
-+    ETHA_SETTINGS_SPEED		(u32)		link speed (Mb/s)
-+    ETHA_SETTINGS_DUPLEX	(u8)		duplex mode
-+    ETHA_SETTINGS_PORT		(u8)		physical port
-+    ETHA_SETTINGS_PHYADDR	(u8)		MDIO address of phy
-+    ETHA_SETTINGS_AUTONEG	(u8)		autoneotiation status
-+    ETHA_SETTINGS_TP_MDIX	(u8)		MDI(-X) status
-+    ETHA_SETTINGS_TP_MDIX_CTRL	(u8)		MDI(-X) control
-+    ETHA_SETTINGS_TRANSCEIVER	(u8)		transceiver
++    ETHA_SETTINGS_LINK_INFO	(nested)	link settings
++        ETHA_LINKINFO_SPEED		(u32)		link speed (Mb/s)
++        ETHA_LINKINFO_DUPLEX		(u8)		duplex mode
++        ETHA_LINKINFO_PORT		(u8)		physical port
++        ETHA_LINKINFO_PHYADDR		(u8)		MDIO address of phy
++        ETHA_LINKINFO_AUTONEG		(u8)		autoneotiation status
++        ETHA_LINKINFO_TP_MDIX		(u8)		MDI(-X) status
++        ETHA_LINKINFO_TP_MDIX_CTRL	(u8)		MDI(-X) control
++        ETHA_LINKINFO_TRANSCEIVER	(u8)		transceiver
 +    ETHA_SETTINGS_LINK_MODES	(bitset)	device link modes
 +    ETHA_SETTINGS_PEER_MODES	(bitset)	link partner link modes
 +
@@ -87,7 +88,7 @@ index fbe43c58aee3..2ee108d7a87a 100644
  Request translation
  -------------------
  
-@@ -273,7 +317,7 @@ have their netlink replacement yet.
+@@ -273,7 +318,7 @@ have their netlink replacement yet.
  
  ioctl command			netlink command
  ---------------------------------------------------------------------
@@ -96,7 +97,7 @@ index fbe43c58aee3..2ee108d7a87a 100644
  ETHTOOL_SSET			n/a
  ETHTOOL_GDRVINFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GREGS			n/a
-@@ -347,7 +391,7 @@ ETHTOOL_GTUNABLE		n/a
+@@ -347,7 +392,7 @@ ETHTOOL_GTUNABLE		n/a
  ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
@@ -120,7 +121,7 @@ index 2a15e64a16f3..e770e6e9acca 100644
  	ETHNL_MCGRP_MONITOR,
  };
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 8ab2b7454e81..9a487b183595 100644
+index 8ab2b7454e81..4e1fa4a06aac 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -12,6 +12,8 @@ enum {
@@ -132,7 +133,7 @@ index 8ab2b7454e81..9a487b183595 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -189,6 +191,33 @@ enum {
+@@ -189,6 +191,41 @@ enum {
  	ETHA_TSINFO_MAX = (__ETHA_TSINFO_CNT - 1)
  };
  
@@ -143,14 +144,7 @@ index 8ab2b7454e81..9a487b183595 100644
 +	ETHA_SETTINGS_DEV,			/* nest - ETHA_DEV_* */
 +	ETHA_SETTINGS_INFOMASK,			/* u32 */
 +	ETHA_SETTINGS_COMPACT,			/* flag */
-+	ETHA_SETTINGS_SPEED,			/* u32 */
-+	ETHA_SETTINGS_DUPLEX,			/* u8 */
-+	ETHA_SETTINGS_PORT,			/* u8 */
-+	ETHA_SETTINGS_PHYADDR,			/* u8 */
-+	ETHA_SETTINGS_AUTONEG,			/* u8 */
-+	ETHA_SETTINGS_TP_MDIX,			/* u8 */
-+	ETHA_SETTINGS_TP_MDIX_CTRL,		/* u8 */
-+	ETHA_SETTINGS_TRANSCEIVER,		/* u8 */
++	ETHA_SETTINGS_LINK_INFO,		/* nested */
 +	ETHA_SETTINGS_LINK_MODES,		/* bitset */
 +	ETHA_SETTINGS_PEER_MODES,		/* bitset */
 +
@@ -162,6 +156,21 @@ index 8ab2b7454e81..9a487b183595 100644
 +#define ETH_SETTINGS_IM_LINKMODES		0x02
 +
 +#define ETH_SETTINGS_IM_ALL			0x03
++
++enum {
++	ETHA_LINKINFO_UNSPEC,
++	ETHA_LINKINFO_SPEED,			/* u32 */
++	ETHA_LINKINFO_DUPLEX,			/* u8 */
++	ETHA_LINKINFO_PORT,			/* u8 */
++	ETHA_LINKINFO_PHYADDR,			/* u8 */
++	ETHA_LINKINFO_AUTONEG,			/* u8 */
++	ETHA_LINKINFO_TP_MDIX,			/* u8 */
++	ETHA_LINKINFO_TP_MDIX_CTRL,		/* u8 */
++	ETHA_LINKINFO_TRANSCEIVER,		/* u8 */
++
++	__ETHA_LINKINFO_CNT,
++	ETHA_LINKINFO_MAX = (__ETHA_LINKINFO_CNT - 1)
++};
 +
  /* generic netlink info */
  #define ETHTOOL_GENL_NAME "ethtool"
@@ -337,10 +346,10 @@ index deb0144524c0..486f49da876c 100644
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
-index 000000000000..2caf7f91f011
+index 000000000000..00e33a1fa3dd
 --- /dev/null
 +++ b/net/ethtool/settings.c
-@@ -0,0 +1,256 @@
+@@ -0,0 +1,265 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
@@ -362,14 +371,7 @@ index 000000000000..2caf7f91f011
 +	[ETHA_SETTINGS_DEV]		= { .type = NLA_NESTED },
 +	[ETHA_SETTINGS_INFOMASK]	= { .type = NLA_U32 },
 +	[ETHA_SETTINGS_COMPACT]		= { .type = NLA_FLAG },
-+	[ETHA_SETTINGS_SPEED]		= { .type = NLA_U32 },
-+	[ETHA_SETTINGS_DUPLEX]		= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_PORT]		= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_PHYADDR]		= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_AUTONEG]		= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_TP_MDIX]		= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_TP_MDIX_CTRL]	= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_TRANSCEIVER]	= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_LINK_INFO]	= { .type = NLA_REJECT },
 +	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_REJECT },
 +	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_REJECT },
 +};
@@ -458,6 +460,21 @@ index 000000000000..2caf7f91f011
 +	return 0;
 +}
 +
++static int link_info_size(void)
++{
++	int len = 0;
++
++	/* speed */
++	len += nla_total_size(sizeof(u32));
++	/* duplex, autoneg, port, phyaddr, mdix, mdixctrl, transcvr */
++	len += 7 * nla_total_size(sizeof(u8));
++	/* mdio_support */
++	len += nla_total_size(sizeof(struct nla_bitfield32));
++
++	/* nest */
++	return nla_total_size(len);
++}
++
 +static int link_modes_size(const struct ethtool_link_ksettings *ksettings,
 +			   bool compact)
 +{
@@ -495,14 +512,8 @@ index 000000000000..2caf7f91f011
 +	int len = 0, ret;
 +
 +	len += dev_ident_size();
-+	if (info_mask & ETH_SETTINGS_IM_LINKINFO) {
-+		/* speed */
-+		len += nla_total_size(sizeof(u32));
-+		/* duplex, autoneg, port, phyaddr, mdix, mdixctrl, transcvr */
-+		len += 7 * nla_total_size(sizeof(u8));
-+		/* mdio_support */
-+		len += nla_total_size(sizeof(struct nla_bitfield32));
-+	}
++	if (info_mask & ETH_SETTINGS_IM_LINKINFO)
++		len += link_info_size();
 +	if (info_mask & ETH_SETTINGS_IM_LINKMODES) {
 +		ret = link_modes_size(&data->ksettings, compact);
 +		if (ret < 0)
@@ -516,21 +527,28 @@ index 000000000000..2caf7f91f011
 +static int fill_link_info(struct sk_buff *skb,
 +			  const struct ethtool_link_settings *lsettings)
 +{
-+	if (nla_put_u32(skb, ETHA_SETTINGS_SPEED, lsettings->speed) ||
-+	    nla_put_u8(skb, ETHA_SETTINGS_DUPLEX, lsettings->duplex) ||
-+	    nla_put_u8(skb, ETHA_SETTINGS_PORT, lsettings->port) ||
-+	    nla_put_u8(skb, ETHA_SETTINGS_PHYADDR,
-+		       lsettings->phy_address) ||
-+	    nla_put_u8(skb, ETHA_SETTINGS_AUTONEG,
-+		       lsettings->autoneg) ||
-+	    nla_put_u8(skb, ETHA_SETTINGS_TP_MDIX,
-+		       lsettings->eth_tp_mdix) ||
-+	    nla_put_u8(skb, ETHA_SETTINGS_TP_MDIX_CTRL,
-+		       lsettings->eth_tp_mdix_ctrl) ||
-+	    nla_put_u8(skb, ETHA_SETTINGS_TRANSCEIVER,
-+		       lsettings->transceiver))
-+		return -EMSGSIZE;
++	struct nlattr *nest = ethnl_nest_start(skb, ETHA_SETTINGS_LINK_INFO);
 +
++	if (!nest)
++		return -EMSGSIZE;
++	if (nla_put_u32(skb, ETHA_LINKINFO_SPEED, lsettings->speed) ||
++	    nla_put_u8(skb, ETHA_LINKINFO_DUPLEX, lsettings->duplex) ||
++	    nla_put_u8(skb, ETHA_LINKINFO_PORT, lsettings->port) ||
++	    nla_put_u8(skb, ETHA_LINKINFO_PHYADDR,
++		       lsettings->phy_address) ||
++	    nla_put_u8(skb, ETHA_LINKINFO_AUTONEG,
++		       lsettings->autoneg) ||
++	    nla_put_u8(skb, ETHA_LINKINFO_TP_MDIX,
++		       lsettings->eth_tp_mdix) ||
++	    nla_put_u8(skb, ETHA_LINKINFO_TP_MDIX_CTRL,
++		       lsettings->eth_tp_mdix_ctrl) ||
++	    nla_put_u8(skb, ETHA_LINKINFO_TRANSCEIVER,
++		       lsettings->transceiver)) {
++		nla_nest_cancel(skb, nest);
++		return -EMSGSIZE;
++	}
++
++	nla_nest_end(skb, nest);
 +	return 0;
 +}
 +

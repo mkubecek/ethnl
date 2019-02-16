@@ -1,4 +1,4 @@
-From e34e5335cdf9aff35613616b06b9e67c70855c25 Mon Sep 17 00:00:00 2001
+From 515d54194c9bcd03b474b82dbc98414625d1ae59 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 33/33] ethtool: implement SET_RXFLOW message
@@ -25,7 +25,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 660 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 05094d9120c1..bfc655e2feb1 100644
+index e22f5ad5b7c7..22bbe06e8f33 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -136,7 +136,7 @@ List of message types
@@ -37,7 +37,7 @@ index 05094d9120c1..bfc655e2feb1 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -720,6 +720,43 @@ these weights correspond to. If ETHA_ITWGHT_VALUES is omitted, values from 0
+@@ -724,6 +724,43 @@ these weights correspond to. If ETHA_ITWGHT_VALUES is omitted, values from 0
  to number of weights minus one are used.
  
  
@@ -81,7 +81,7 @@ index 05094d9120c1..bfc655e2feb1 100644
  Request translation
  -------------------
  
-@@ -784,7 +821,7 @@ ETHTOOL_SRXNTUPLE		n/a
+@@ -788,7 +825,7 @@ ETHTOOL_SRXNTUPLE		n/a
  ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
  ETHTOOL_GRXFHINDIR		ETHNL_CMD_GET_RXFLOW
@@ -90,7 +90,7 @@ index 05094d9120c1..bfc655e2feb1 100644
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GCHANNELS		ETHNL_CMD_GET_PARAMS
-@@ -798,7 +835,7 @@ ETHTOOL_GMODULEEEPROM		n/a
+@@ -802,7 +839,7 @@ ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
  ETHTOOL_SEEE			ETHNL_CMD_SET_PARAMS
  ETHTOOL_GRSSH			ETHNL_CMD_GET_RXFLOW
@@ -100,7 +100,7 @@ index 05094d9120c1..bfc655e2feb1 100644
  ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 8a78b5fecac9..dd88d83692b0 100644
+index f8a6532b9407..906efc237237 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -20,7 +20,7 @@ enum {

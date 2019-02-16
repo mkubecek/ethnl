@@ -1,4 +1,4 @@
-From 1f5a74147b71bc7f2ad15c169574b0f5322e702b Mon Sep 17 00:00:00 2001
+From d9f64d7dd648d6fec6f1454d25365c37f88fec91 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:50:07 +0100
 Subject: [PATCH 14/33] ethtool: provide link mode names as a string set

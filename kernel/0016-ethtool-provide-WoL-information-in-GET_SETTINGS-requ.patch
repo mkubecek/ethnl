@@ -1,4 +1,4 @@
-From 04d7ff286f770906b53cca8b378acb45b949b469 Mon Sep 17 00:00:00 2001
+From bdbd00e28d7e54be2247e92346953772be4061df Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:08:55 +0100
 Subject: [PATCH 16/33] ethtool: provide WoL information in GET_SETTINGS
@@ -12,16 +12,16 @@ such case the SecureOn password (if any) is not included in the reply.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 12 ++++-
- include/uapi/linux/ethtool_netlink.h         |  5 +-
+ Documentation/networking/ethtool-netlink.txt | 13 ++++-
+ include/uapi/linux/ethtool_netlink.h         | 13 ++++-
  net/ethtool/common.c                         | 10 ++++
  net/ethtool/common.h                         |  1 +
  net/ethtool/ioctl.c                          |  8 +--
- net/ethtool/settings.c                       | 52 ++++++++++++++++++++
- 6 files changed, 82 insertions(+), 6 deletions(-)
+ net/ethtool/settings.c                       | 61 ++++++++++++++++++++
+ 6 files changed, 100 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 2ee108d7a87a..333ed5005bf2 100644
+index 3d8ba59ac6a8..f7a58cdee716 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -283,6 +283,7 @@ Info mask bits meaning:
@@ -32,20 +32,21 @@ index 2ee108d7a87a..333ed5005bf2 100644
  
  Response contents:
  
-@@ -297,12 +298,21 @@ Response contents:
-     ETHA_SETTINGS_TRANSCEIVER	(u8)		transceiver
+@@ -298,12 +299,22 @@ Response contents:
+         ETHA_LINKINFO_TRANSCEIVER	(u8)		transceiver
      ETHA_SETTINGS_LINK_MODES	(bitset)	device link modes
      ETHA_SETTINGS_PEER_MODES	(bitset)	link partner link modes
-+    ETHA_SETTINGS_WOL_MODES	(bitfield32)	wake-on-lan modes
-+    ETHA_SETTINGS_SOPASS	(binary)	SecureOn(tm) password
++    ETHA_SETTINGS_WOL		(nested)	wake on LAN settings
++        ETHA_WOL_MODES			(bitfield32)	wake on LAN modes
++        ETHA_WOL_SOPASS			(binary)	SecureOn(tm) password
  
  Most of the attributes and their values have the same meaning as matching
  members of the corresponding ioctl structures. For ETHA_SETTINGS_LINK_MODES,
  value represents advertised modes and mask represents supported modes.
  ETHA_SETTINGS_PEER_MODES in the reply is a bit list.
  
-+For ETHA_SETTINGS_WOL_MODES, selector reports wake on LAN modes supported by
-+the device and value enabled modes.
++For ETHA_WOL_MODES, selector reports wake on LAN modes supported by the
++device and value enabled modes.
 +
 +GET_SETTINGS request is allowed for unprivileged user but ETHA_SETTINGS_SOPASS
 +is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
@@ -54,7 +55,7 @@ index 2ee108d7a87a..333ed5005bf2 100644
  GET_SETTINGS requests allow dumps and messages in the same format as response
  to them are broadcasted as notifications on change of these settings using
  netlink or ioctl ethtool interface.
-@@ -321,7 +331,7 @@ ETHTOOL_GSET			ETHNL_CMD_GET_SETTINGS
+@@ -322,7 +333,7 @@ ETHTOOL_GSET			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SSET			n/a
  ETHTOOL_GDRVINFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GREGS			n/a
@@ -64,19 +65,18 @@ index 2ee108d7a87a..333ed5005bf2 100644
  ETHTOOL_GMSGLVL			n/a
  ETHTOOL_SMSGLVL			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 9a487b183595..6df263ba671f 100644
+index 4e1fa4a06aac..ce9d6b48f814 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -208,6 +208,8 @@ enum {
- 	ETHA_SETTINGS_TRANSCEIVER,		/* u8 */
+@@ -201,6 +201,7 @@ enum {
+ 	ETHA_SETTINGS_LINK_INFO,		/* nested */
  	ETHA_SETTINGS_LINK_MODES,		/* bitset */
  	ETHA_SETTINGS_PEER_MODES,		/* bitset */
-+	ETHA_SETTINGS_WOL_MODES,		/* bitfield32 */
-+	ETHA_SETTINGS_SOPASS,			/* binary */
++	ETHA_SETTINGS_WOL,			/* nested */
  
  	__ETHA_SETTINGS_CNT,
  	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
-@@ -215,8 +217,9 @@ enum {
+@@ -208,8 +209,9 @@ enum {
  
  #define ETH_SETTINGS_IM_LINKINFO		0x01
  #define ETH_SETTINGS_IM_LINKMODES		0x02
@@ -85,8 +85,24 @@ index 9a487b183595..6df263ba671f 100644
 -#define ETH_SETTINGS_IM_ALL			0x03
 +#define ETH_SETTINGS_IM_ALL			0x07
  
+ enum {
+ 	ETHA_LINKINFO_UNSPEC,
+@@ -226,6 +228,15 @@ enum {
+ 	ETHA_LINKINFO_MAX = (__ETHA_LINKINFO_CNT - 1)
+ };
+ 
++enum {
++	ETHA_WOL_UNSPEC,
++	ETHA_WOL_MODES,				/* bitfield32 */
++	ETHA_WOL_SOPASS,			/* binary */
++
++	__ETHA_WOL_CNT,
++	ETHA_WOL_MAX = (__ETHA_WOL_CNT - 1)
++};
++
  /* generic netlink info */
  #define ETHTOOL_GENL_NAME "ethtool"
+ #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
 index cb849e6ab792..b04ed5f1cf3d 100644
 --- a/net/ethtool/common.c
@@ -138,7 +154,7 @@ index 22df7d6de2a5..8eea4e7c4c3d 100644
  	if (copy_to_user(useraddr, &wol, sizeof(wol)))
  		return -EFAULT;
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 2caf7f91f011..388ff0a9dbd1 100644
+index 00e33a1fa3dd..0b7cff062e61 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -6,11 +6,13 @@
@@ -155,12 +171,11 @@ index 2caf7f91f011..388ff0a9dbd1 100644
  	bool				lpm_empty;
  };
  
-@@ -29,15 +31,21 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
- 	[ETHA_SETTINGS_TRANSCEIVER]	= { .type = NLA_REJECT },
+@@ -22,15 +24,20 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_LINK_INFO]	= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_WOL_MODES]	= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_SOPASS]		= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_WOL]		= { .type = NLA_REJECT },
  };
  
  static int parse_settings(struct common_req_info *req_info,
@@ -177,7 +192,7 @@ index 2caf7f91f011..388ff0a9dbd1 100644
  	ret = genlmsg_parse(nlhdr, &ethtool_genl_family, tb,
  			    ETHA_SETTINGS_MAX, get_settings_policy,
  			    info ? info->extack : NULL);
-@@ -75,6 +83,16 @@ static int ethnl_get_link_ksettings(struct genl_info *info,
+@@ -68,6 +75,16 @@ static int ethnl_get_link_ksettings(struct genl_info *info,
  	return ret;
  }
  
@@ -194,7 +209,7 @@ index 2caf7f91f011..388ff0a9dbd1 100644
  static int prepare_settings(struct common_req_info *req_info,
  			    struct genl_info *info)
  {
-@@ -107,6 +125,11 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -100,6 +117,11 @@ static int prepare_settings(struct common_req_info *req_info,
  		ethnl_bitmap_to_u32(data->ksettings.link_modes.lp_advertising,
  				    __ETHTOOL_LINK_MODE_MASK_NWORDS);
  	}
@@ -206,45 +221,62 @@ index 2caf7f91f011..388ff0a9dbd1 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -166,6 +189,12 @@ static int settings_size(const struct common_req_info *req_info)
+@@ -147,6 +169,12 @@ static int link_modes_size(const struct ethtool_link_ksettings *ksettings,
+ 	return len;
+ }
+ 
++static int wol_size(void)
++{
++	return nla_total_size(nla_total_size(sizeof(struct nla_bitfield32)) +
++			      nla_total_size(SOPASS_MAX));
++}
++
+ /* To keep things simple, reserve space for some attributes which may not
+  * be added to the message (e.g. ETHA_SETTINGS_SOPASS); therefore the length
+  * returned may be bigger than the actual length of the message sent
+@@ -168,6 +196,8 @@ static int settings_size(const struct common_req_info *req_info)
  			return ret;
  		len += ret;
  	}
-+	if (info_mask & ETH_SETTINGS_IM_WOLINFO) {
-+		/* wolopts / wol_supported */
-+		len += nla_total_size(sizeof(struct nla_bitfield32));
-+		/* sopass */
-+		len += nla_total_size(SOPASS_MAX);
-+	}
++	if (info_mask & ETH_SETTINGS_IM_WOLINFO)
++		len += wol_size();
  
  	return len;
  }
-@@ -218,6 +247,24 @@ static int fill_link_modes(struct sk_buff *skb,
+@@ -227,6 +257,32 @@ static int fill_link_modes(struct sk_buff *skb,
  	return 0;
  }
  
 +static int fill_wolinfo(struct sk_buff *skb,
 +			const struct ethtool_wolinfo *wolinfo, bool privileged)
 +{
++	struct nlattr *nest = ethnl_nest_start(skb, ETHA_SETTINGS_WOL);
++
++	if (!nest)
++		return -EMSGSIZE;
++	if (nla_put_bitfield32(skb, ETHA_WOL_MODES, wolinfo->wolopts,
++			       wolinfo->supported))
++		goto err;
 +	/* ioctl() restricts read access to wolinfo but the actual
 +	 * reason is to hide sopass from unprivileged users; netlink
 +	 * can show wol modes without sopass
 +	 */
-+	if (nla_put_bitfield32(skb, ETHA_SETTINGS_WOL_MODES, wolinfo->wolopts,
-+			       wolinfo->supported))
-+		return -EMSGSIZE;
 +	if (privileged &&
-+	    nla_put(skb, ETHA_SETTINGS_SOPASS, sizeof(wolinfo->sopass),
++	    nla_put(skb, ETHA_WOL_SOPASS, sizeof(wolinfo->sopass),
 +		    wolinfo->sopass))
-+		return -EMSGSIZE;
-+
++		goto err;
++	nla_nest_end(skb, nest);
 +	return 0;
++
++err:
++	nla_nest_cancel(skb, nest);
++	return -EMSGSIZE;
 +}
 +
  static int fill_settings(struct sk_buff *skb,
  			 const struct common_req_info *req_info)
  {
-@@ -238,6 +285,11 @@ static int fill_settings(struct sk_buff *skb,
+@@ -247,6 +303,11 @@ static int fill_settings(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}

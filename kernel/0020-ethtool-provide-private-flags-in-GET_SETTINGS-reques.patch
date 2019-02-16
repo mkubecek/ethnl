@@ -1,4 +1,4 @@
-From d866f66a11fe730e39920c4396d10fb55b8dda53 Mon Sep 17 00:00:00 2001
+From 655aa4ec4476956b331580c7bf300591092328e1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 16:19:21 +0100
 Subject: [PATCH 20/33] ethtool: provide private flags in GET_SETTINGS request
@@ -15,7 +15,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 109 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index eae03048f86f..1e4c4c174ffb 100644
+index 82a2a444efee..a7416299d1a8 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -287,6 +287,7 @@ Info mask bits meaning:
@@ -26,7 +26,7 @@ index eae03048f86f..1e4c4c174ffb 100644
  
  Response contents:
  
-@@ -310,6 +311,7 @@ Response contents:
+@@ -312,6 +313,7 @@ Response contents:
          ETHA_FEATURES_WANTED		(bitset)	dev->wanted_features
          ETHA_FEATURES_ACTIVE		(bitset)	dev->features
          ETHA_FEATURES_NOCHANGE		(bitset)	NETIF_F_NEVER_CHANGE
@@ -34,7 +34,7 @@ index eae03048f86f..1e4c4c174ffb 100644
  
  Most of the attributes and their values have the same meaning as matching
  members of the corresponding ioctl structures. For ETHA_SETTINGS_LINK_MODES,
-@@ -331,6 +333,11 @@ itself. ETHA_FEATURES_HW uses mask consisting of all features recognized by
+@@ -333,6 +335,11 @@ itself. ETHA_FEATURES_HW uses mask consisting of all features recognized by
  kernel (to provide all names when using verbose bitmap format), remaining
  three use mask equal to value (to save space).
  
@@ -46,7 +46,7 @@ index eae03048f86f..1e4c4c174ffb 100644
  GET_SETTINGS request is allowed for unprivileged user but ETHA_SETTINGS_SOPASS
  is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
  requests.
-@@ -387,7 +394,7 @@ ETHTOOL_GGSO			ETHNL_CMD_GET_SETTINGS
+@@ -389,7 +396,7 @@ ETHTOOL_GGSO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SGSO			n/a
  ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFLAGS			n/a
@@ -56,18 +56,18 @@ index eae03048f86f..1e4c4c174ffb 100644
  ETHTOOL_GRXFH			n/a
  ETHTOOL_SRXFH			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index f30b4288c995..ad804eb1aac8 100644
+index 154d7e6a59dd..afd61d36bcf8 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -213,6 +213,7 @@ enum {
- 	ETHA_SETTINGS_MSGLVL,			/* bitfield32 */
+@@ -205,6 +205,7 @@ enum {
+ 	ETHA_SETTINGS_MSGLEVEL,			/* bitfield32 */
  	ETHA_SETTINGS_LINK,			/* u8 */
  	ETHA_SETTINGS_FEATURES,			/* nest - ETHA_FEATURES_* */
 +	ETHA_SETTINGS_PRIV_FLAGS,		/* nest - ETHA_BITSET_* */
  
  	__ETHA_SETTINGS_CNT,
  	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
-@@ -224,8 +225,9 @@ enum {
+@@ -216,8 +217,9 @@ enum {
  #define ETH_SETTINGS_IM_MSGLEVEL		0x08
  #define ETH_SETTINGS_IM_LINK			0x10
  #define ETH_SETTINGS_IM_FEATURES		0x20
@@ -79,7 +79,7 @@ index f30b4288c995..ad804eb1aac8 100644
  enum {
  	ETHA_FEATURES_UNSPEC,
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 191dbbee51e0..fee9bf4036c5 100644
+index d89665e7a168..05be00c01e7b 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -22,6 +22,9 @@ struct settings_data {
@@ -92,15 +92,15 @@ index 191dbbee51e0..fee9bf4036c5 100644
  };
  
  static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
-@@ -44,6 +47,7 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
- 	[ETHA_SETTINGS_MSGLVL]		= { .type = NLA_REJECT },
+@@ -36,6 +39,7 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_MSGLEVEL]	= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_REJECT },
 +	[ETHA_SETTINGS_PRIV_FLAGS]	= { .type = NLA_REJECT },
  };
  
  static int parse_settings(struct common_req_info *req_info,
-@@ -122,6 +126,58 @@ static int ethnl_get_features(struct net_device *dev,
+@@ -114,6 +118,58 @@ static int ethnl_get_features(struct net_device *dev,
  	return 0;
  }
  
@@ -159,7 +159,7 @@ index 191dbbee51e0..fee9bf4036c5 100644
  static int prepare_settings(struct common_req_info *req_info,
  			    struct genl_info *info)
  {
-@@ -171,6 +227,11 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -163,6 +219,11 @@ static int prepare_settings(struct common_req_info *req_info,
  		data->link = __ethtool_get_link(dev);
  	if (req_mask & ETH_SETTINGS_IM_FEATURES)
  		ethnl_get_features(dev, data);
@@ -171,7 +171,7 @@ index 191dbbee51e0..fee9bf4036c5 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -278,6 +339,17 @@ static int settings_size(const struct common_req_info *req_info)
+@@ -281,6 +342,17 @@ static int settings_size(const struct common_req_info *req_info)
  			return ret;
  		len += ret;
  	}
@@ -189,7 +189,7 @@ index 191dbbee51e0..fee9bf4036c5 100644
  
  	return len;
  }
-@@ -386,6 +458,18 @@ static int fill_features(struct sk_buff *skb, const struct settings_data *data)
+@@ -404,6 +476,18 @@ static int fill_features(struct sk_buff *skb, const struct settings_data *data)
  	return 0;
  }
  
@@ -208,7 +208,7 @@ index 191dbbee51e0..fee9bf4036c5 100644
  static int fill_settings(struct sk_buff *skb,
  			 const struct common_req_info *req_info)
  {
-@@ -425,10 +509,23 @@ static int fill_settings(struct sk_buff *skb,
+@@ -443,10 +527,23 @@ static int fill_settings(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -232,7 +232,7 @@ index 191dbbee51e0..fee9bf4036c5 100644
  const struct get_request_ops settings_request_ops = {
  	.request_cmd		= ETHNL_CMD_GET_SETTINGS,
  	.reply_cmd		= ETHNL_CMD_SET_SETTINGS,
-@@ -440,4 +537,5 @@ const struct get_request_ops settings_request_ops = {
+@@ -458,4 +555,5 @@ const struct get_request_ops settings_request_ops = {
  	.prepare_data		= prepare_settings,
  	.reply_size		= settings_size,
  	.fill_reply		= fill_settings,
