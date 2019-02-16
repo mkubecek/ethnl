@@ -1,7 +1,7 @@
-From b8ef8e431e5c3138af1abe6be17fedaf8bc6d3e9 Mon Sep 17 00:00:00 2001
+From 114f126dd28c3bde56d38ea7f957b4bb19992ec4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
-Subject: [PATCH 16/26] ethtool: implement SET_SETTINGS request for features
+Subject: [PATCH 23/33] ethtool: implement SET_SETTINGS request for features
 
 Using ETHNL_SETTINGS_FEATURES attribute, userspace can modify device
 features. Actual change is subject to netdev_change_features() sanity
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 179 insertions(+), 9 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index e04ad878c88f..5606f7d786b4 100644
+index 4b80167f8118..39e11504029a 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -355,6 +355,9 @@ to be passed with SET_SETTINGS request:
+@@ -366,6 +366,9 @@ to be passed with SET_SETTINGS request:
      ETHA_SETTINGS_SOPASS        (binary)        SecureOn(tm) password
      ETHA_SETTINGS_MSGLVL        (bitfield32)    debug level
      ETHA_SETTINGS_LINK_MODES    (bitset)        device link modes
@@ -32,7 +32,7 @@ index e04ad878c88f..5606f7d786b4 100644
  
  For both bitfield32 types, value and selector work the usual way, i.e. bits
  set in selector are set to corresponding bits from value and the rest is
-@@ -369,6 +372,17 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
+@@ -380,6 +383,17 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
  is supposed to allow requesting changes without knowing what exactly kernel
  supports.
  
@@ -50,7 +50,7 @@ index e04ad878c88f..5606f7d786b4 100644
  
  Request translation
  -------------------
-@@ -398,30 +412,30 @@ ETHTOOL_SRINGPARAM		n/a
+@@ -409,30 +423,30 @@ ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
  ETHTOOL_SPAUSEPARAM		n/a
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
@@ -79,7 +79,7 @@ index e04ad878c88f..5606f7d786b4 100644
  ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
 -ETHTOOL_SFLAGS			n/a
 +ETHTOOL_SFLAGS			ETHNL_CMD_SET_SETTINGS
- ETHTOOL_GPFLAGS			n/a
+ ETHTOOL_GPFLAGS			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SPFLAGS			n/a
  ETHTOOL_GRXFH			n/a
  ETHTOOL_SRXFH			n/a
@@ -89,7 +89,7 @@ index e04ad878c88f..5606f7d786b4 100644
  ETHTOOL_GRXRINGS		n/a
  ETHTOOL_GRXCLSRLCNT		n/a
  ETHTOOL_GRXCLSRULE		n/a
-@@ -436,7 +450,7 @@ ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
+@@ -447,7 +461,7 @@ ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
  ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
@@ -99,10 +99,10 @@ index e04ad878c88f..5606f7d786b4 100644
  ETHTOOL_SCHANNELS		n/a
  ETHTOOL_SET_DUMP		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 5e257d1f80d4..52f464771444 100644
+index ad804eb1aac8..32dfc7468ccd 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -233,6 +233,7 @@ enum {
+@@ -235,6 +235,7 @@ enum {
  	ETHA_FEATURES_WANTED,			/* bitset */
  	ETHA_FEATURES_ACTIVE,			/* bitset */
  	ETHA_FEATURES_NOCHANGE,			/* bitset */
@@ -111,18 +111,18 @@ index 5e257d1f80d4..52f464771444 100644
  	__ETHA_FEATURES_CNT,
  	ETHA_FEATURES_MAX = (__ETHA_FEATURES_CNT - 1)
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 6623ce2bf4a0..a166a9f9c24b 100644
+index 753105fb5512..8e2e24b8b6b5 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -690,6 +690,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
- 	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
- 	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_REJECT },
+@@ -786,6 +786,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_MSGLVL]		= { .type = NLA_BITFIELD32,
+ 					    .validation_data = &all_bits },
  	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
 +	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_NESTED },
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -802,6 +803,150 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
+@@ -898,6 +899,150 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
  	return 0;
  }
  
@@ -273,7 +273,7 @@ index 6623ce2bf4a0..a166a9f9c24b 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-@@ -871,6 +1016,16 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -967,6 +1112,16 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  			req_mask |= ETH_SETTINGS_IM_MSGLEVEL;
  		}
  	}

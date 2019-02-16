@@ -1,0 +1,144 @@
+From 1f5a74147b71bc7f2ad15c169574b0f5322e702b Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Sat, 16 Feb 2019 11:50:07 +0100
+Subject: [PATCH 14/33] ethtool: provide link mode names as a string set
+
+Add table of ethernet link mode names and make it available as a string set
+to userspace GET_STRSET requests.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ include/uapi/linux/ethtool.h |  2 ++
+ net/ethtool/netlink.c        | 58 ++++++++++++++++++++++++++++++++++++
+ net/ethtool/netlink.h        |  1 +
+ net/ethtool/strset.c         |  6 ++++
+ 4 files changed, 67 insertions(+)
+
+diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
+index 1b58637d3a4d..ba96a691bfd4 100644
+--- a/include/uapi/linux/ethtool.h
++++ b/include/uapi/linux/ethtool.h
+@@ -566,6 +566,7 @@ struct ethtool_pauseparam {
+  * @ETH_SS_TSTAMP_SOF: timestamping flag names
+  * @ETH_SS_TSTAMP_TX_TYPE: timestamping Tx type names
+  * @ETH_SS_TSTAMP_RX_FILTER: timestamping Rx filter names
++ * @ETH_SS_LINK_MODES: link mode names
+  */
+ enum ethtool_stringset {
+ 	ETH_SS_TEST		= 0,
+@@ -580,6 +581,7 @@ enum ethtool_stringset {
+ 	ETH_SS_TSTAMP_SOF,
+ 	ETH_SS_TSTAMP_TX_TYPE,
+ 	ETH_SS_TSTAMP_RX_FILTER,
++	ETH_SS_LINK_MODES,
+ 
+ 	ETH_SS_COUNT
+ };
+diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
+index 9f886bc4462e..deb0144524c0 100644
+--- a/net/ethtool/netlink.c
++++ b/net/ethtool/netlink.c
+@@ -6,6 +6,61 @@
+ 
+ u32 ethnl_bcast_seq;
+ 
++const char *const link_mode_names[] = {
++	[ETHTOOL_LINK_MODE_10baseT_Half_BIT]		= "10baseT/Half",
++	[ETHTOOL_LINK_MODE_10baseT_Full_BIT]		= "10baseT/Full",
++	[ETHTOOL_LINK_MODE_100baseT_Half_BIT]		= "100baseT/Half",
++	[ETHTOOL_LINK_MODE_100baseT_Full_BIT]		= "100baseT/Full",
++	[ETHTOOL_LINK_MODE_1000baseT_Half_BIT]		= "1000baseT/Half",
++	[ETHTOOL_LINK_MODE_1000baseT_Full_BIT]		= "1000baseT/Full",
++	[ETHTOOL_LINK_MODE_Autoneg_BIT]			= "Autoneg",
++	[ETHTOOL_LINK_MODE_TP_BIT]			= "TP",
++	[ETHTOOL_LINK_MODE_AUI_BIT]			= "AUI",
++	[ETHTOOL_LINK_MODE_MII_BIT]			= "MII",
++	[ETHTOOL_LINK_MODE_FIBRE_BIT]			= "FIBRE",
++	[ETHTOOL_LINK_MODE_BNC_BIT]			= "BNC",
++	[ETHTOOL_LINK_MODE_10000baseT_Full_BIT]		= "10000baseT/Full",
++	[ETHTOOL_LINK_MODE_Pause_BIT]			= "Pause",
++	[ETHTOOL_LINK_MODE_Asym_Pause_BIT]		= "Asym_Pause",
++	[ETHTOOL_LINK_MODE_2500baseX_Full_BIT]		= "2500baseX/Full",
++	[ETHTOOL_LINK_MODE_Backplane_BIT]		= "Backplane",
++	[ETHTOOL_LINK_MODE_1000baseKX_Full_BIT]		= "1000baseKX/Full",
++	[ETHTOOL_LINK_MODE_10000baseKX4_Full_BIT]	= "10000baseKX4/Full",
++	[ETHTOOL_LINK_MODE_10000baseKR_Full_BIT]	= "10000baseKR/Full",
++	[ETHTOOL_LINK_MODE_10000baseR_FEC_BIT]		= "10000baseR/FEC",
++	[ETHTOOL_LINK_MODE_20000baseMLD2_Full_BIT]	= "20000baseMLD2/Full",
++	[ETHTOOL_LINK_MODE_20000baseKR2_Full_BIT]	= "20000baseKR2/Full",
++	[ETHTOOL_LINK_MODE_40000baseKR4_Full_BIT]	= "40000baseKR4/Full",
++	[ETHTOOL_LINK_MODE_40000baseCR4_Full_BIT]	= "40000baseCR4/Full",
++	[ETHTOOL_LINK_MODE_40000baseSR4_Full_BIT]	= "40000baseSR4/Full",
++	[ETHTOOL_LINK_MODE_40000baseLR4_Full_BIT]	= "40000baseLR4/Full",
++	[ETHTOOL_LINK_MODE_56000baseKR4_Full_BIT]	= "56000baseKR4/Full",
++	[ETHTOOL_LINK_MODE_56000baseCR4_Full_BIT]	= "56000baseCR4/Full",
++	[ETHTOOL_LINK_MODE_56000baseSR4_Full_BIT]	= "56000baseSR4/Full",
++	[ETHTOOL_LINK_MODE_56000baseLR4_Full_BIT]	= "56000baseLR4/Full",
++	[ETHTOOL_LINK_MODE_25000baseCR_Full_BIT]	= "25000baseCR/Full",
++	[ETHTOOL_LINK_MODE_25000baseKR_Full_BIT]	= "25000baseKR/Full",
++	[ETHTOOL_LINK_MODE_25000baseSR_Full_BIT]	= "25000baseSR/Full",
++	[ETHTOOL_LINK_MODE_50000baseCR2_Full_BIT]	= "50000baseCR2/Full",
++	[ETHTOOL_LINK_MODE_50000baseKR2_Full_BIT]	= "50000baseKR2/Full",
++	[ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT]	= "100000baseKR4/Full",
++	[ETHTOOL_LINK_MODE_100000baseSR4_Full_BIT]	= "100000baseSR4/Full",
++	[ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT]	= "100000baseCR4/Full",
++	[ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT]	= "100000baseLR4/ER4_Full",
++	[ETHTOOL_LINK_MODE_50000baseSR2_Full_BIT]	= "50000baseSR2/Full",
++	[ETHTOOL_LINK_MODE_1000baseX_Full_BIT]		= "1000baseX/Full",
++	[ETHTOOL_LINK_MODE_10000baseCR_Full_BIT]	= "10000baseCR/Full",
++	[ETHTOOL_LINK_MODE_10000baseSR_Full_BIT]	= "10000baseSR/Full",
++	[ETHTOOL_LINK_MODE_10000baseLR_Full_BIT]	= "10000baseLR/Full",
++	[ETHTOOL_LINK_MODE_10000baseLRM_Full_BIT]	= "10000baseLRM/Full",
++	[ETHTOOL_LINK_MODE_10000baseER_Full_BIT]	= "10000baseER/Full",
++	[ETHTOOL_LINK_MODE_2500baseT_Full_BIT]		= "2500baseT/Full",
++	[ETHTOOL_LINK_MODE_5000baseT_Full_BIT]		= "5000baseT/Full",
++	[ETHTOOL_LINK_MODE_FEC_NONE_BIT]		= "None",
++	[ETHTOOL_LINK_MODE_FEC_RS_BIT]			= "RS",
++	[ETHTOOL_LINK_MODE_FEC_BASER_BIT]		= "BASER",
++};
++
+ static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
+ 	[ETHA_DEV_UNSPEC]	= { .type = NLA_REJECT },
+ 	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
+@@ -540,6 +595,9 @@ static int __init ethnl_init(void)
+ {
+ 	int ret;
+ 
++	BUILD_BUG_ON(ARRAY_SIZE(link_mode_names) <
++		     __ETHTOOL_LINK_MODE_MASK_NBITS);
++
+ 	ret = genl_register_family(&ethtool_genl_family);
+ 	if (ret < 0)
+ 		panic("ethtool: could not register genetlink family\n");
+diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
+index 36c6846262d8..332f4e948b40 100644
+--- a/net/ethtool/netlink.h
++++ b/net/ethtool/netlink.h
+@@ -23,6 +23,7 @@ extern struct genl_family ethtool_genl_family;
+ extern const char *const so_timestamping_labels[];
+ extern const char *const tstamp_tx_type_labels[];
+ extern const char *const tstamp_rx_filter_labels[];
++extern const char *const link_mode_names[];
+ 
+ struct net_device *ethnl_dev_get(struct genl_info *info, struct nlattr *nest);
+ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
+diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
+index 16366af006d3..dd08f8ba6bda 100644
+--- a/net/ethtool/strset.c
++++ b/net/ethtool/strset.c
+@@ -85,6 +85,12 @@ static const struct strset_info info_template[] = {
+ 		.count		= __HWTSTAMP_FILTER_COUNT,
+ 		.data		= { .simple = tstamp_rx_filter_labels },
+ 	},
++	[ETH_SS_LINK_MODES] = {
++		.type		= ETH_SS_TYPE_SIMPLE,
++		.per_dev	= false,
++		.count		= __ETHTOOL_LINK_MODE_MASK_NBITS,
++		.data		= { .simple = link_mode_names },
++	},
+ };
+ 
+ struct strset_data {
+-- 
+2.20.1
+

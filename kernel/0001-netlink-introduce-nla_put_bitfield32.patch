@@ -1,11 +1,11 @@
-From 6b3478fedd3bd1f018de159450bdbffd3af45626 Mon Sep 17 00:00:00 2001
+From c46a2a4e88812ed775f2d971d9055d271958432e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 14:17:36 +0100
-Subject: [PATCH 01/26] netlink: introduce nla_put_bitfield32()
+Subject: [PATCH 01/33] netlink: introduce nla_put_bitfield32()
 
 Similar to other data types, this helper puts NLA_BITFIELD32 attribute into
-a netlink message. It takes separate value and selector arguments, if you
-already have struct nla_bitfield32, you can use nla_put().
+a netlink message. It takes separate value and selector arguments, if there
+is a struct nla_bitfield32 already, one can use nla_put().
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---

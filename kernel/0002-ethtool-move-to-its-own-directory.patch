@@ -1,12 +1,12 @@
-From d6dbe31cc7ede805e03764000d1dc1be204c2941 Mon Sep 17 00:00:00 2001
+From 9a6910410f5b4a720e7644a50e34a3b874ada3ad Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 13 May 2018 02:35:53 +0200
-Subject: [PATCH 02/26] ethtool: move to its own directory
+Subject: [PATCH 02/33] ethtool: move to its own directory
 
-With ethtool netlink interface, there is going to be a lot of new files
-so that it seem more convenient to put them into a separate directory
-net/ethtool. Start with moving current file with ioctl implementation
-there and renaming it to ioctl.c.
+The ethtool netlink interface is going to be split into multiple files so
+that it will be more convenient to put all of them in a separate directory
+net/ethtool. Start by moving current ethtool.c with ioctl interface into
+this directory and renaming it to ioct.c.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---

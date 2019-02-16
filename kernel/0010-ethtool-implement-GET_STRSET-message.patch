@@ -1,7 +1,7 @@
-From cfd67ff5416cfa88aa6090fd9bd2e26b0d178032 Mon Sep 17 00:00:00 2001
+From 3323714a7d0c29e9886d236660bbcbbb90ac8791 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
-Subject: [PATCH 10/26] ethtool: implement GET_STRSET message
+Subject: [PATCH 10/33] ethtool: implement GET_STRSET message
 
 Requests a contents of one or more string sets, i.e. indexed arrays of
 strings; this information is provided by ETHTOOL_GSSET_INFO and
@@ -18,12 +18,12 @@ sets.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  46 +-
- include/uapi/linux/ethtool.h                 |   3 +
+ include/uapi/linux/ethtool.h                 |   2 +
  include/uapi/linux/ethtool_netlink.h         |  43 ++
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/netlink.c                        |  10 +
  net/ethtool/strset.c                         | 439 +++++++++++++++++++
- 6 files changed, 540 insertions(+), 3 deletions(-)
+ 6 files changed, 539 insertions(+), 3 deletions(-)
  create mode 100644 net/ethtool/strset.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -105,14 +105,13 @@ index 141322fefc25..9eab534fb7a4 100644
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		n/a
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
-index 17be76aeb468..76b71496a2ab 100644
+index 17be76aeb468..9ea278961d80 100644
 --- a/include/uapi/linux/ethtool.h
 +++ b/include/uapi/linux/ethtool.h
-@@ -574,6 +574,9 @@ enum ethtool_stringset {
+@@ -574,6 +574,8 @@ enum ethtool_stringset {
  	ETH_SS_TUNABLES,
  	ETH_SS_PHY_STATS,
  	ETH_SS_PHY_TUNABLES,
-+	ETH_SS_LINK_MODES,
 +
 +	ETH_SS_COUNT
  };

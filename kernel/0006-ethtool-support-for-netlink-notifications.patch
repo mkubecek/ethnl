@@ -1,17 +1,16 @@
-From 2fbb100e1835fbe99b534f40aabd93a93a59ebd3 Mon Sep 17 00:00:00 2001
+From 41a01686ef59b7f015632754d64889c1f419fa31 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
-Subject: [PATCH 06/26] ethtool: support for netlink notifications
+Subject: [PATCH 06/33] ethtool: support for netlink notifications
 
 Add infrastructure for ethtool netlink notifications. There is only one
 multicast group, "monitor" which userspace can use to get notifications.
 Notifications are supposed to be broadcasted on every configuration change,
 whether it is done using the netlink interface or legacy ioctl one.
 
-To trigger a notification, netlink code calls ethtool_notify(), external
-code (ioctl interface) uses NETDEV_ETHTOOL event, preferrably by the means
-of netdev_ethtool_info_change() helper. For both, the caller must hold
-RTNL (and, obviously, allow sleeping).
+To trigger an ethtool notification, both ethtool netlink and external code
+use ethtool_notify() helper. This helper requires RTNL to be held and may
+sleep.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---

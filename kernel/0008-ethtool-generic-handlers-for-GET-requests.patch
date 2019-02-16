@@ -1,10 +1,10 @@
-From 04136392aff95308c9924f1930bdd82a80ddd879 Mon Sep 17 00:00:00 2001
+From 6d92863729056122ec5b23b421b43e257f005582 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 27 Aug 2018 19:51:37 +0200
-Subject: [PATCH 08/26] ethtool: generic handlers for GET requests
+Subject: [PATCH 08/33] ethtool: generic handlers for GET requests
 
 Some parts of processing GET type requests and related notifications are
-independent on a command. Provide universal functions so that only four
+independent of a command. Provide universal functions so that only four
 callbacks need to be defined for each command type:
 
   parse_request() - parse incoming message

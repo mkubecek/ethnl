@@ -1,38 +1,24 @@
-From 3b7be249d062ff65ae1a3ebc30356838874d0942 Mon Sep 17 00:00:00 2001
+From c106dd90a92169dbed293a533ddaf2940f853f9f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:36:49 -0400
-Subject: [PATCH 14/26] ethtool: implement SET_SETTINGS notification
+Subject: [PATCH 21/33] ethtool: implement SET_SETTINGS notification
 
 SET_SETTINGS notification message has the same format as response to
 GET_SETTINGS request and is broadcasted on change of relevant fields. Info
 mask can be used to limit the information passed to userspace.
 
 Also trigger the notification on analogous changes performed via the legacy
-ioctl interface.
+ioctl interface; feature notifications are also sent whenever
+netdev_update_features() or netdev_change_features() is called.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  3 ++-
- net/ethtool/ioctl.c                          | 21 ++++++++++++++++++--
- net/ethtool/netlink.c                        | 12 +++++++++++
- 3 files changed, 33 insertions(+), 3 deletions(-)
+ net/ethtool/ioctl.c   | 24 ++++++++++++++++++++++--
+ net/ethtool/netlink.c | 12 ++++++++++++
+ 2 files changed, 34 insertions(+), 2 deletions(-)
 
-diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 8ff38221df0b..3cec3fb5a309 100644
---- a/Documentation/networking/ethtool-netlink.txt
-+++ b/Documentation/networking/ethtool-netlink.txt
-@@ -333,7 +333,8 @@ requests.
- 
- GET_SETTINGS requests allow dumps and messages in the same format as response
- to them are broadcasted as notifications on change of these settings using
--netlink or ioctl ethtool interface.
-+netlink or ioctl ethtool interface; feature notifications are also sent
-+whenever netdev_update_features() or netdev_change_features() is called.
- 
- 
- Request translation
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index d0d2ae4a8e60..4f0dd68f2d59 100644
+index d0d2ae4a8e60..23e7b6009c59 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -29,6 +29,7 @@
@@ -98,11 +84,21 @@ index d0d2ae4a8e60..4f0dd68f2d59 100644
  		break;
  	case ETHTOOL_GEEE:
  		rc = ethtool_get_eee(dev, useraddr);
+@@ -2512,6 +2529,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
+ 	case ETHTOOL_SPFLAGS:
+ 		rc = ethtool_set_value(dev, useraddr,
+ 				       dev->ethtool_ops->set_priv_flags);
++		if (rc == 0)
++			ethtool_notify(dev, NULL, ETHNL_CMD_SET_SETTINGS,
++				       ETH_SETTINGS_IM_PRIVFLAGS, NULL);
+ 		break;
+ 	case ETHTOOL_GRXFH:
+ 	case ETHTOOL_GRXRINGS:
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 7252047907ff..29e85f679055 100644
+index 486f49da876c..76119db147ec 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -480,6 +480,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -479,6 +479,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  				       const void *data);
  
  ethnl_notify_handler_t ethnl_notify_handlers[] = {
@@ -110,7 +106,7 @@ index 7252047907ff..29e85f679055 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -534,6 +535,14 @@ static void ethnl_notify_devlist(struct netdev_notifier_info *info,
+@@ -533,6 +534,14 @@ static void ethnl_notify_devlist(struct netdev_notifier_info *info,
  	nlmsg_free(skb);
  }
  
@@ -125,7 +121,7 @@ index 7252047907ff..29e85f679055 100644
  static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
  			      void *ptr)
  {
-@@ -548,6 +557,9 @@ static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
+@@ -547,6 +556,9 @@ static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
  		ethnl_notify_devlist(ptr, ETHA_EVENT_RENAMEDEV,
  				     ETHA_RENAMEDEV_DEV);
  		break;

@@ -1,36 +1,41 @@
-From 9e6ca68b5d4aa4095f64e082013d24eff80ff1d3 Mon Sep 17 00:00:00 2001
+From cead3fe25e7c44b941ca59b3a1f8aef73627cee5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
-Subject: [PATCH 13/26] ethtool: implement GET_SETTINGS request for features
+Subject: [PATCH 19/33] ethtool: provide device features in GET_SETTINGS
+ request
 
-With ETH_SETTINGS_IM_FEATURES info mask, ETHNL_CMD_GET_SETTINGS request
-gets network device feature values. This is the same information as
-provided via ETHTOOL_GFEATURES ioctl request.
+Add information about network device features (as provided by
+ETHTOOL_GFEATURES ioctl command) in GET_SETTINGS reply when
+ETH_SETTINGS_IM_FEATURES flag is set in the request.
+
+This request also provides information provided by ETHTOOL_GRXCSUM,
+ETHTOOL_GTXCSUM, ETHTOOL_GSG, ETHTOOL_GTSO, ETHTOOL_GUFO, ETHTOOL_GGSO,
+ETHTOOL_GFLAGS and ETHTOOL_GGRO ioctl commands.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  33 ++++--
+ Documentation/networking/ethtool-netlink.txt |  36 +++++--
  include/uapi/linux/ethtool_netlink.h         |  15 ++-
  net/ethtool/common.h                         |   2 +
  net/ethtool/ioctl.c                          |   2 -
  net/ethtool/settings.c                       | 108 +++++++++++++++++++
- 5 files changed, 148 insertions(+), 12 deletions(-)
+ 5 files changed, 150 insertions(+), 13 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 94bd29d63dac..8ff38221df0b 100644
+index e6ad5d9e6f62..eae03048f86f 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -285,6 +285,7 @@ Info mask bits meaning:
-     ETH_SETTINGS_IM_MSGLEVEL		msglevel
+@@ -286,6 +286,7 @@ Info mask bits meaning:
      ETH_SETTINGS_IM_WOLINFO		struct ethtool_wolinfo
+     ETH_SETTINGS_IM_MSGLEVEL		msglevel
      ETH_SETTINGS_IM_LINK		link state
 +    ETH_SETTINGS_IM_FEATURES		features
  
  Response contents:
  
-@@ -303,6 +304,11 @@ Response contents:
-     ETHA_SETTINGS_LINK_MODES	(bitset)	device link modes
-     ETHA_SETTINGS_PEER_MODES	(bitset)	link partner link modes
+@@ -304,6 +305,11 @@ Response contents:
+     ETHA_SETTINGS_SOPASS	(binary)	SecureOn(tm) password
+     ETHA_SETTINGS_MSGLVL	(bitfield32)	debug level
      ETHA_SETTINGS_LINK		(u8)		link state
 +    ETHA_SETTINGS_FEATURES	(nested)	device features
 +        ETHA_FEATURES_HW		(bitset)	dev->hw_features
@@ -38,11 +43,11 @@ index 94bd29d63dac..8ff38221df0b 100644
 +        ETHA_FEATURES_ACTIVE		(bitset)	dev->features
 +        ETHA_FEATURES_NOCHANGE		(bitset)	NETIF_F_NEVER_CHANGE
  
- Most of the attributes have the same meaning (including values) as
- corresponding members of ioctl structures. For ETHA_SETTINGS_MSGLVL, selector
-@@ -312,6 +318,15 @@ advertised modes and mask represents supported modes. For
- ETHA_SETTINGS_PEER_MODES, both value and mask represent partner advertised
- link modes.
+ Most of the attributes and their values have the same meaning as matching
+ members of the corresponding ioctl structures. For ETHA_SETTINGS_LINK_MODES,
+@@ -316,13 +322,23 @@ the device and value enabled modes.
+ For ETHA_SETTINGS_MSGLVL, selector reports all flags supported by kernel and
+ value flags enabled for the device.
  
 +Bitmaps contained in ETHA_SETTINGS_FEATURES have the same meaning as bitmaps
 +used in ioctl interference but attribute names are different (they are based
@@ -56,7 +61,16 @@ index 94bd29d63dac..8ff38221df0b 100644
  GET_SETTINGS request is allowed for unprivileged user but ETHA_SETTINGS_SOPASS
  is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
  requests.
-@@ -348,30 +363,30 @@ ETHTOOL_GRINGPARAM		n/a
+ 
+ GET_SETTINGS requests allow dumps and messages in the same format as response
+ to them are broadcasted as notifications on change of these settings using
+-netlink or ioctl ethtool interface.
++netlink or ioctl ethtool interface; feature notifications are also sent
++whenever netdev_update_features() or netdev_change_features() is called.
+ 
+ 
+ Request translation
+@@ -352,30 +368,30 @@ ETHTOOL_GRINGPARAM		n/a
  ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
  ETHTOOL_SPAUSEPARAM		n/a
@@ -95,7 +109,7 @@ index 94bd29d63dac..8ff38221df0b 100644
  ETHTOOL_SGRO			n/a
  ETHTOOL_GRXRINGS		n/a
  ETHTOOL_GRXCLSRLCNT		n/a
-@@ -386,7 +401,7 @@ ETHTOOL_GRXNTUPLE		n/a
+@@ -390,7 +406,7 @@ ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
  ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
@@ -105,20 +119,20 @@ index 94bd29d63dac..8ff38221df0b 100644
  ETHTOOL_GCHANNELS		n/a
  ETHTOOL_SCHANNELS		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 6177e2ac8178..5e257d1f80d4 100644
+index f94e8771eee5..f30b4288c995 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -212,6 +212,7 @@ enum {
- 	ETHA_SETTINGS_LINK_MODES,		/* bitset */
- 	ETHA_SETTINGS_PEER_MODES,		/* bitset */
+ 	ETHA_SETTINGS_SOPASS,			/* binary */
+ 	ETHA_SETTINGS_MSGLVL,			/* bitfield32 */
  	ETHA_SETTINGS_LINK,			/* u8 */
 +	ETHA_SETTINGS_FEATURES,			/* nest - ETHA_FEATURES_* */
  
  	__ETHA_SETTINGS_CNT,
  	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
 @@ -222,8 +223,20 @@ enum {
- #define ETH_SETTINGS_IM_MSGLEVEL		0x04
- #define ETH_SETTINGS_IM_WOLINFO			0x08
+ #define ETH_SETTINGS_IM_WOLINFO			0x04
+ #define ETH_SETTINGS_IM_MSGLEVEL		0x08
  #define ETH_SETTINGS_IM_LINK			0x10
 +#define ETH_SETTINGS_IM_FEATURES		0x20
  
@@ -165,12 +179,12 @@ index d97dd2f8ba2b..d0d2ae4a8e60 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index a754d3c00647..cdc225a59d4f 100644
+index 0f626030fe2c..191dbbee51e0 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -18,6 +18,12 @@ struct settings_data {
- 	int				link;
+@@ -16,6 +16,12 @@ struct settings_data {
  	u32				msglevel;
+ 	int				link;
  	bool				lpm_empty;
 +	struct {
 +		u32	hw[ETHTOOL_DEV_FEATURE_WORDS];
@@ -180,16 +194,16 @@ index a754d3c00647..cdc225a59d4f 100644
 +	} features;
  };
  
- /* We want to allow ~0 as selector for backward compatibility (to just set
-@@ -45,6 +51,7 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
- 	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_REJECT },
- 	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_REJECT },
+ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+@@ -37,6 +43,7 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_SOPASS]		= { .type = NLA_REJECT },
+ 	[ETHA_SETTINGS_MSGLVL]		= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
 +	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_REJECT },
  };
  
  static int parse_settings(struct common_req_info *req_info,
-@@ -105,6 +112,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
+@@ -97,6 +104,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
  	return ret;
  }
  
@@ -214,7 +228,7 @@ index a754d3c00647..cdc225a59d4f 100644
  static int prepare_settings(struct common_req_info *req_info,
  			    struct genl_info *info)
  {
-@@ -152,6 +177,8 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -144,6 +169,8 @@ static int prepare_settings(struct common_req_info *req_info,
  	}
  	if (req_mask & ETH_SETTINGS_IM_LINK)
  		data->link = __ethtool_get_link(dev);
@@ -223,7 +237,7 @@ index a754d3c00647..cdc225a59d4f 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -184,6 +211,38 @@ static int link_modes_size(const struct ethtool_link_ksettings *ksettings,
+@@ -176,6 +203,38 @@ static int link_modes_size(const struct ethtool_link_ksettings *ksettings,
  	return len;
  }
  
@@ -262,8 +276,8 @@ index a754d3c00647..cdc225a59d4f 100644
  /* To keep things simple, reserve space for some attributes which may not
   * be added to the message (e.g. ETHA_SETTINGS_SOPASS); therefore the length
   * returned may be bigger than the actual length of the message sent
-@@ -221,6 +280,12 @@ static int settings_size(const struct common_req_info *req_info)
- 	}
+@@ -213,6 +272,12 @@ static int settings_size(const struct common_req_info *req_info)
+ 		len += nla_total_size(sizeof(struct nla_bitfield32));
  	if (info_mask & ETH_SETTINGS_IM_LINK)
  		len += nla_total_size(sizeof(u32));
 +	if (info_mask & ETH_SETTINGS_IM_FEATURES) {
@@ -275,7 +289,7 @@ index a754d3c00647..cdc225a59d4f 100644
  
  	return len;
  }
-@@ -291,6 +356,44 @@ static int fill_wolinfo(struct sk_buff *skb,
+@@ -283,6 +348,44 @@ static int fill_wolinfo(struct sk_buff *skb,
  	return 0;
  }
  
@@ -320,7 +334,7 @@ index a754d3c00647..cdc225a59d4f 100644
  static int fill_settings(struct sk_buff *skb,
  			 const struct common_req_info *req_info)
  {
-@@ -325,6 +428,11 @@ static int fill_settings(struct sk_buff *skb,
+@@ -317,6 +420,11 @@ static int fill_settings(struct sk_buff *skb,
  		if (nla_put_u8(skb, ETHA_SETTINGS_LINK, data->link))
  			return -EMSGSIZE;
  	}
