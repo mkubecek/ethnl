@@ -1,7 +1,7 @@
-From 26400f23e6c9db3b8bd88a9ff5e67ff3bc7af0e8 Mon Sep 17 00:00:00 2001
+From 57ea27cf0818441dc2d91bb0ff43a7bb7d9fc87c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:32:39 +0100
-Subject: [PATCH 24/35] netlink: add netlink handler for schannels (-L)
+Subject: [PATCH 26/35] netlink: add netlink handler for schannels (-L)
 
 Implement "ethtool -L <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_PARAMS.
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 36 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 65a50f534da3..00a48ba1fe23 100644
+index 1d9f250d01cd..3b132f0bb938 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4854,6 +4854,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4856,6 +4856,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_scoalesce	NULL
  #define nl_sring	NULL
  #define nl_spause	NULL
@@ -25,7 +25,7 @@ index 65a50f534da3..00a48ba1fe23 100644
  #endif
  
  static const struct option {
-@@ -5007,7 +5008,7 @@ static const struct option {
+@@ -5009,7 +5010,7 @@ static const struct option {
  	  "		N\n"},
  	{ "-l|--show-channels", 1, do_gchannels, nl_gchannels,
  	  "Query Channels" },
@@ -35,10 +35,10 @@ index 65a50f534da3..00a48ba1fe23 100644
  	  "               [ rx N ]\n"
  	  "               [ tx N ]\n"
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 647cf14a2f5a..50e00fd8de5b 100644
+index c37e4df4d6a7..d1b56e7f923a 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -29,6 +29,7 @@ int nl_gfec(struct cmd_context *ctx);
+@@ -31,6 +31,7 @@ int nl_gfec(struct cmd_context *ctx);
  int nl_scoalesce(struct cmd_context *ctx);
  int nl_sring(struct cmd_context *ctx);
  int nl_spause(struct cmd_context *ctx);

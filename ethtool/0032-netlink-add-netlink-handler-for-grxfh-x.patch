@@ -1,4 +1,4 @@
-From be1d71bdcf54e71d4918875e4d4aa7c7fcec6a0a Mon Sep 17 00:00:00 2001
+From 3e70f449f02182676a0b7679784f27075074d0af Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:46:58 +0200
 Subject: [PATCH 32/35] netlink: add netlink handler for grxfh (-x)
@@ -29,13 +29,13 @@ index 5a0e63322fa5..8a01ed3a4949 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index d0d2ab6090e7..a143fab70471 100644
+index c2f317009728..9160ec95fc0a 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4862,6 +4862,7 @@ static int show_usage(struct cmd_context *ctx);
+ #define nl_nway_rst	NULL
+ #define nl_phys_id	NULL
  #define nl_reset	NULL
- #define nl_gprivflags	NULL
- #define nl_sprivflags	NULL
 +#define nl_grxfh	NULL
  #endif
  
@@ -50,13 +50,13 @@ index d0d2ab6090e7..a143fab70471 100644
  	  "		[ context %d ]\n" },
  	{ "-X|--set-rxfh-indir|--rxfh", 1, do_srxfh, NULL,
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index cfef7baf923f..eba1a7f9800d 100644
+index ea779afb527a..468f70014d79 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -37,6 +37,7 @@ int nl_phys_id(struct cmd_context *ctx);
+@@ -37,6 +37,7 @@ int nl_sfec(struct cmd_context *ctx);
+ int nl_nway_rst(struct cmd_context *ctx);
+ int nl_phys_id(struct cmd_context *ctx);
  int nl_reset(struct cmd_context *ctx);
- int nl_gprivflags(struct cmd_context *ctx);
- int nl_sprivflags(struct cmd_context *ctx);
 +int nl_grxfh(struct cmd_context *ctx);
  int nl_monitor(struct cmd_context *ctx);
  

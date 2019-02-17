@@ -1,7 +1,7 @@
-From 58ddbc5e197eb4caf5396b2115cee543b8faaee8 Mon Sep 17 00:00:00 2001
+From 0c4486858cac1d500d98f08a56b434b1914fc32c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:23:10 +0200
-Subject: [PATCH 31/35] netlink: add netlink handler for sprivflags
+Subject: [PATCH 16/35] netlink: add netlink handler for sprivflags
  (--set-priv-flags)
 
 Implement "ethtool --set-priv-flags <dev>" subcommand using netlink
@@ -15,18 +15,18 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 36 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 203f0f66df1a..d0d2ab6090e7 100644
+index cc3d0e3c166e..d0328a6cbe07 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4861,6 +4861,7 @@ static int show_usage(struct cmd_context *ctx);
- #define nl_phys_id	NULL
- #define nl_reset	NULL
+@@ -4846,6 +4846,7 @@ static int show_usage(struct cmd_context *ctx);
+ #define nl_gfeatures	NULL
+ #define nl_sfeatures	NULL
  #define nl_gprivflags	NULL
 +#define nl_sprivflags	NULL
  #endif
  
  static const struct option {
-@@ -5022,7 +5023,7 @@ static const struct option {
+@@ -5007,7 +5008,7 @@ static const struct option {
  	  "               [ combined N ]\n" },
  	{ "--show-priv-flags", 1, do_gprivflags, nl_gprivflags,
  	  "Query private flags" },
@@ -36,22 +36,22 @@ index 203f0f66df1a..d0d2ab6090e7 100644
  	  "		FLAG on|off ...\n" },
  	{ "-m|--dump-module-eeprom|--module-info", 1, do_getmodule, NULL,
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index a9820609f3b8..cfef7baf923f 100644
+index 3a09597056d2..ded02da74ff9 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -36,6 +36,7 @@ int nl_nway_rst(struct cmd_context *ctx);
- int nl_phys_id(struct cmd_context *ctx);
- int nl_reset(struct cmd_context *ctx);
+@@ -21,6 +21,7 @@ int nl_sset(struct cmd_context *ctx);
+ int nl_gfeatures(struct cmd_context *ctx);
+ int nl_sfeatures(struct cmd_context *ctx);
  int nl_gprivflags(struct cmd_context *ctx);
 +int nl_sprivflags(struct cmd_context *ctx);
  int nl_monitor(struct cmd_context *ctx);
  
  void monitor_usage();
 diff --git a/netlink/settings.c b/netlink/settings.c
-index ced16a15f9f6..a3199c69860d 100644
+index 41dcc0493602..50417e4f3c7c 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -1040,3 +1040,36 @@ int nl_sfeatures(struct cmd_context *ctx)
+@@ -1051,3 +1051,36 @@ int nl_sfeatures(struct cmd_context *ctx)
  		return 0;
  	return nlctx->exit_code ?: 92;
  }

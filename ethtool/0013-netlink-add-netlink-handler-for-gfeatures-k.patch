@@ -1,4 +1,4 @@
-From 5f4adbb9d812511a4651a0ad7a3e8e2afdf43d49 Mon Sep 17 00:00:00 2001
+From 554642e79371b306a0563c23f6625daa396add21 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
 Subject: [PATCH 13/35] netlink: add netlink handler for gfeatures (-k)
@@ -18,8 +18,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.c          |  68 +++-----------
  netlink/extapi.h   |   1 +
  netlink/monitor.c  |   6 ++
- netlink/settings.c | 226 +++++++++++++++++++++++++++++++++++++++++++++
- 6 files changed, 294 insertions(+), 56 deletions(-)
+ netlink/settings.c | 227 +++++++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 295 insertions(+), 56 deletions(-)
 
 diff --git a/common.c b/common.c
 index 962f3f9c318c..f52a1ba5f04c 100644
@@ -275,19 +275,11 @@ index 7d1dfc3e470d..f1c25f1449f6 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 20efb1be1f4e..c7423bca9c2f 100644
+index 6485241f39ff..ff0ac57deb00 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -5,6 +5,7 @@
- #include "../internal.h"
- #include "../common.h"
- #include "netlink.h"
-+#include "strset.h"
- #include "parser.h"
- 
- /* GET_SETTINGS */
-@@ -34,6 +35,219 @@ err:
- 	return ret;
+@@ -138,6 +138,219 @@ static int dump_wol_info(struct nl_context *nlctx, const struct nlattr *nest,
+ 	return dump_wol(&wolinfo) ? -EFAULT : 0;
  }
  
 +uint32_t *get_compact_bitset_value(const struct nlattr *bitset)
@@ -506,7 +498,7 @@ index 20efb1be1f4e..c7423bca9c2f 100644
  int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHA_SETTINGS_MAX + 1] = {};
-@@ -263,6 +477,15 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -267,6 +480,15 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  		printf("\tLink detected: %s\n", link ? "yes" : "no");
  		allfail = false;
  	};
@@ -522,16 +514,18 @@ index 20efb1be1f4e..c7423bca9c2f 100644
  
  	if (allfail && !nlctx->is_monitor && !nlctx->is_dump) {
  		fputs("No data available\n", stdout);
-@@ -300,6 +523,9 @@ int nl_gset(struct cmd_context *ctx)
+@@ -304,6 +526,11 @@ int nl_gset(struct cmd_context *ctx)
  				     ETH_SETTINGS_IM_LINK);
  }
  
 +int nl_gfeatures(struct cmd_context *ctx)
 +{
 +	return settings_request(ctx, ETH_SETTINGS_IM_FEATURES);
- }
- 
++}
++
  /* SET_SETTINGS */
+ 
+ enum {
 -- 
 2.20.1
 

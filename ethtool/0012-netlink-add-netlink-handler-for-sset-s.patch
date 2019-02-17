@@ -1,4 +1,4 @@
-From 51b9c31c2fc23a50856e95876a5e36b94a273dc0 Mon Sep 17 00:00:00 2001
+From bfe6ce78fc0aa8e938e1a82b98e54487690f6806 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 12/35] netlink: add netlink handler for sset (-s)
@@ -17,8 +17,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  netlink/netlink.h  |   1 +
  netlink/parser.c   |  36 ++++++++++
  netlink/parser.h   |   2 +
- netlink/settings.c | 161 +++++++++++++++++++++++++++++++++++++++++++++
- 7 files changed, 215 insertions(+), 4 deletions(-)
+ netlink/settings.c | 169 +++++++++++++++++++++++++++++++++++++++++++++
+ 7 files changed, 223 insertions(+), 4 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
 index 504017ba881b..be7e9ec659df 100644
@@ -101,10 +101,10 @@ index c586feeeeb67..21214d3c393b 100644
  
  /* put data wrappers */
 diff --git a/netlink/parser.c b/netlink/parser.c
-index 9845ab4834a2..f4cb93b26d0f 100644
+index 832693063b37..0250c0b25cf1 100644
 --- a/netlink/parser.c
 +++ b/netlink/parser.c
-@@ -783,6 +783,42 @@ err:
+@@ -831,6 +831,42 @@ err:
  	return -EINVAL;
  }
  
@@ -144,14 +144,14 @@ index 9845ab4834a2..f4cb93b26d0f 100644
 +	return -EINVAL;
 +}
 +
- /* Main entry point of parser implementation.
-  * @nlctx: netlink context
-  * @params: array of struct param_parser describing expected arguments and
+ static const struct param_parser *find_parser(const struct param_parser *params,
+ 				       const char *arg)
+ {
 diff --git a/netlink/parser.h b/netlink/parser.h
-index a2b9ba912c99..41a936309289 100644
+index c654d55d46f6..59f88145a61d 100644
 --- a/netlink/parser.h
 +++ b/netlink/parser.h
-@@ -80,6 +80,8 @@ int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data,
+@@ -81,6 +81,8 @@ int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data,
  		     void *dest);
  int nl_parse_byte_str(struct nl_context *nlctx, uint16_t type,
  		      const void *data, void *dest);
@@ -161,20 +161,20 @@ index a2b9ba912c99..41a936309289 100644
  int nl_parser(struct nl_context *nlctx, const struct param_parser *params,
  	      void *dest);
 diff --git a/netlink/settings.c b/netlink/settings.c
-index b29d699a36d1..20efb1be1f4e 100644
+index 0a0905e90bde..6485241f39ff 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -5,6 +5,7 @@
- #include "../internal.h"
+@@ -6,6 +6,7 @@
  #include "../common.h"
  #include "netlink.h"
+ #include "strset.h"
 +#include "parser.h"
  
  /* GET_SETTINGS */
  
-@@ -300,3 +301,163 @@ int nl_gset(struct cmd_context *ctx)
- }
- 
+@@ -302,3 +303,171 @@ int nl_gset(struct cmd_context *ctx)
+ 				     ETH_SETTINGS_IM_WOLINFO |
+ 				     ETH_SETTINGS_IM_LINK);
  }
 +
 +/* SET_SETTINGS */
@@ -242,34 +242,39 @@ index b29d699a36d1..20efb1be1f4e 100644
 +static const struct param_parser sset_params[] = {
 +	{
 +		.arg		= "speed",
-+		.type		= ETHA_SETTINGS_SPEED,
++		.nest		= ETHA_SETTINGS_LINK_INFO,
++		.type		= ETHA_LINKINFO_SPEED,
 +		.handler	= nl_parse_direct_u32,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "duplex",
-+		.type		= ETHA_SETTINGS_DUPLEX,
++		.nest		= ETHA_SETTINGS_LINK_INFO,
++		.type		= ETHA_LINKINFO_DUPLEX,
 +		.handler	= nl_parse_lookup_u8,
 +		.handler_data	= duplex_values,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "port",
-+		.type		= ETHA_SETTINGS_PORT,
++		.nest		= ETHA_SETTINGS_LINK_INFO,
++		.type		= ETHA_LINKINFO_PORT,
 +		.handler	= nl_parse_lookup_u8,
 +		.handler_data	= port_values,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "mdix",
-+		.type		= ETHA_SETTINGS_TP_MDIX_CTRL,
++		.nest		= ETHA_SETTINGS_LINK_INFO,
++		.type		= ETHA_LINKINFO_TP_MDIX_CTRL,
 +		.handler	= nl_parse_lookup_u8,
 +		.handler_data	= mdix_values,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "autoneg",
-+		.type		= ETHA_SETTINGS_AUTONEG,
++		.nest		= ETHA_SETTINGS_LINK_INFO,
++		.type		= ETHA_LINKINFO_AUTONEG,
 +		.handler	= nl_parse_lookup_u8,
 +		.handler_data	= autoneg_values,
 +		.min_argc	= 1,
@@ -282,26 +287,29 @@ index b29d699a36d1..20efb1be1f4e 100644
 +	},
 +	{
 +		.arg		= "phyad",
-+		.type		= ETHA_SETTINGS_PHYADDR,
++		.nest		= ETHA_SETTINGS_LINK_INFO,
++		.type		= ETHA_LINKINFO_PHYADDR,
 +		.handler	= nl_parse_direct_u8,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "wol",
-+		.type		= ETHA_SETTINGS_WOL_MODES,
++		.nest		= ETHA_SETTINGS_WOL,
++		.type		= ETHA_WOL_MODES,
 +		.handler	= nl_parse_char_bitfield32,
 +		.handler_data	= &wol_parser_data,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "sopass",
-+		.type		= ETHA_SETTINGS_SOPASS,
++		.nest		= ETHA_SETTINGS_WOL,
++		.type		= ETHA_WOL_SOPASS,
 +		.handler	= nl_parse_mac_addr,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "msglvl",
-+		.type		= ETHA_SETTINGS_MSGLVL,
++		.type		= ETHA_SETTINGS_MSGLEVEL,
 +		.handler	= nl_parse_bitfield32,
 +		.handler_data	= flags_msglvl,
 +		.min_argc	= 1,

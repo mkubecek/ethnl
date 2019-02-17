@@ -1,4 +1,4 @@
-From 1efae8a88b4b0e041ef09fc77d711284870899dc Mon Sep 17 00:00:00 2001
+From fd48022ad105af3a82c9a1e35e436540b4ea976c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 10/35] netlink: add netlink handler for gset (no option)
@@ -19,8 +19,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  netlink/monitor.c  |  14 +++
  netlink/netlink.c  | 120 ++++++++++++++++++
  netlink/netlink.h  |   4 +
- netlink/settings.c | 302 +++++++++++++++++++++++++++++++++++++++++++++
- 9 files changed, 791 insertions(+), 145 deletions(-)
+ netlink/settings.c | 304 +++++++++++++++++++++++++++++++++++++++++++++
+ 9 files changed, 793 insertions(+), 145 deletions(-)
  create mode 100644 netlink/settings.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -826,10 +826,10 @@ index f09148663856..9460acd2cbad 100644
  int attr_cb(const struct nlattr *attr, void *data);
 diff --git a/netlink/settings.c b/netlink/settings.c
 new file mode 100644
-index 000000000000..b29d699a36d1
+index 000000000000..0a0905e90bde
 --- /dev/null
 +++ b/netlink/settings.c
-@@ -0,0 +1,302 @@
+@@ -0,0 +1,304 @@
 +#include <errno.h>
 +#include <string.h>
 +#include <stdio.h>
@@ -837,6 +837,7 @@ index 000000000000..b29d699a36d1
 +#include "../internal.h"
 +#include "../common.h"
 +#include "netlink.h"
++#include "strset.h"
 +
 +/* GET_SETTINGS */
 +
@@ -865,6 +866,109 @@ index 000000000000..b29d699a36d1
 +	return ret;
 +}
 +
++static void print_banner(struct nl_context *nlctx, bool *first)
++{
++	if (!*first)
++		return;
++	printf("Settings for %s:\n", nlctx->devname);
++	*first = false;
++}
++
++static int dump_link_info(struct nl_context *nlctx, const struct nlattr *nest,
++			   bool *first)
++{
++	const struct nlattr *tb[ETHA_LINKINFO_MAX + 1] = {};
++	DECLARE_ATTR_TB_INFO(tb);
++	int port = -1;
++	int ret;
++
++	if (!nest)
++		return -EFAULT;
++	ret = mnl_attr_parse_nested(nest, attr_cb, &tb_info);
++	if (ret < 0)
++		return ret;
++
++	if (tb[ETHA_LINKINFO_SPEED]) {
++		uint32_t val = mnl_attr_get_u32(tb[ETHA_LINKINFO_SPEED]);
++
++		print_banner(nlctx, first);
++		if (val == 0 || val == (uint16_t)(-1) || val == (uint32_t)(-1))
++			printf("\tSpeed: Unknown!\n");
++		else
++			printf("\tSpeed: %uMb/s\n", val);
++	}
++	if (tb[ETHA_LINKINFO_DUPLEX]) {
++		uint8_t val = mnl_attr_get_u8(tb[ETHA_LINKINFO_DUPLEX]);
++
++		print_banner(nlctx, first);
++		print_enum(names_duplex, val, "\tDuplex: ", "Unknown! (%i)");
++	}
++	if (tb[ETHA_LINKINFO_PORT]) {
++		uint8_t val = mnl_attr_get_u8(tb[ETHA_LINKINFO_PORT]);
++
++		print_banner(nlctx, first);
++		print_enum(names_port, val, "\tPort: ", "Unknown! (%i)\n");
++		port = val;
++	}
++	if (tb[ETHA_LINKINFO_PHYADDR]) {
++		uint8_t val = mnl_attr_get_u8(tb[ETHA_LINKINFO_PHYADDR]);
++
++		print_banner(nlctx, first);
++		printf("\tPHYAD: %u\n", val);
++	}
++	if (tb[ETHA_LINKINFO_TRANSCEIVER]) {
++		uint8_t val = mnl_attr_get_u8(tb[ETHA_LINKINFO_TRANSCEIVER]);
++
++		print_banner(nlctx, first);
++		print_enum(names_transceiver, val, "\tTransceiver: ",
++			   "Unknown!");
++	}
++	if (tb[ETHA_LINKINFO_AUTONEG]) {
++		uint8_t val = mnl_attr_get_u8(tb[ETHA_LINKINFO_AUTONEG]);
++
++		print_banner(nlctx, first);
++		printf("\tAuto-negotiation: %s\n",
++		       (val == AUTONEG_DISABLE) ? "off" : "on");
++	}
++	if (tb[ETHA_LINKINFO_TP_MDIX] && tb[ETHA_LINKINFO_TP_MDIX] &&
++	    port == PORT_TP) {
++		uint8_t mdix = mnl_attr_get_u8(tb[ETHA_LINKINFO_TP_MDIX]);
++		uint8_t mdix_ctrl =
++			mnl_attr_get_u8(tb[ETHA_LINKINFO_TP_MDIX_CTRL]);
++
++		print_banner(nlctx, first);
++		dump_mdix(mdix, mdix_ctrl);
++	}
++
++	return 0;
++}
++
++static int dump_wol_info(struct nl_context *nlctx, const struct nlattr *nest,
++			 bool *first)
++{
++	const struct nlattr *tb[ETHA_WOL_MAX + 1] = {};
++	DECLARE_ATTR_TB_INFO(tb);
++	struct ethtool_wolinfo wolinfo = {};
++	const struct nla_bitfield32 *wol_bf;
++	int ret;
++
++	if (!nest)
++		return -EFAULT;
++	ret = mnl_attr_parse_nested(nest, attr_cb, &tb_info);
++	if (ret < 0)
++		return ret;
++
++	wol_bf = mnl_attr_get_payload(tb[ETHA_WOL_MODES]);
++
++	print_banner(nlctx, first);
++	wolinfo.wolopts = wol_bf->value;
++	wolinfo.supported = wol_bf->selector;
++	if (tb[ETHA_WOL_SOPASS])
++		nl_copy_payload(wolinfo.sopass, SOPASS_MAX,
++				tb[ETHA_WOL_SOPASS]);
++	return dump_wol(&wolinfo) ? -EFAULT : 0;
++}
++
 +int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
 +{
 +	const struct nlattr *tb[ETHA_SETTINGS_MAX + 1] = {};
@@ -872,7 +976,6 @@ index 000000000000..b29d699a36d1
 +	struct nl_context *nlctx = data;
 +	bool allfail = true;
 +	bool first = true;
-+	int port = -1;
 +	int ret;
 +
 +	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
@@ -887,10 +990,7 @@ index 000000000000..b29d699a36d1
 +		const struct nlattr *attr = tb[ETHA_SETTINGS_LINK_MODES];
 +		bool autoneg;
 +
-+		if (first) {
-+			printf("Settings for %s:\n", nlctx->devname);
-+			first = false;
-+		}
++		print_banner(nlctx, &first);
 +		ret = dump_link_modes(attr, true, LM_CLASS_PORT,
 +				      "Supported ports: [ ", " ", " ]\n", NULL);
 +		if (ret < 0)
@@ -944,10 +1044,7 @@ index 000000000000..b29d699a36d1
 +		const struct nlattr *attr = tb[ETHA_SETTINGS_PEER_MODES];
 +		bool autoneg;
 +
-+		if (first) {
-+			printf("Settings for %s:\n", nlctx->devname);
-+			first = false;
-+		}
++		print_banner(nlctx, &first);
 +		ret = dump_link_modes(attr, false, LM_CLASS_REAL,
 +				      "Link partner advertised link modes:  ",
 +				      NULL, "\n", "Not reported");
@@ -969,114 +1066,24 @@ index 000000000000..b29d699a36d1
 +		if (ret < 0)
 +			return ret;
 +	}
-+	if (tb[ETHA_SETTINGS_SPEED] &&
-+	    mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
-+		uint32_t val = mnl_attr_get_u32(tb[ETHA_SETTINGS_SPEED]);
-+
-+		if (first) {
-+			printf("Settings for %s:\n", nlctx->devname);
-+			first = false;
-+		}
-+		if (val == 0 || val == (uint16_t)(-1) || val == (uint32_t)(-1))
-+			printf("\tSpeed: Unknown!\n");
-+		else
-+			printf("\tSpeed: %uMb/s\n", val);
++	if (mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
++		ret = dump_link_info(nlctx, tb[ETHA_SETTINGS_LINK_INFO],
++				     &first);
++		if (ret == 0)
++			allfail = false;
 +	}
-+	if (tb[ETHA_SETTINGS_DUPLEX] &&
-+	    mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
-+		uint8_t val = mnl_attr_get_u8(tb[ETHA_SETTINGS_DUPLEX]);
-+
-+		if (first) {
-+			printf("Settings for %s:\n", nlctx->devname);
-+			first = false;
-+		}
-+		print_enum(names_duplex, val, "\tDuplex: ", "Unknown! (%i)");
++	if (tb[ETHA_SETTINGS_WOL] && mask_ok(nlctx, ETH_SETTINGS_IM_WOLINFO)) {
++		ret = dump_wol_info(nlctx, tb[ETHA_SETTINGS_WOL], &first);
++		if (ret == 0)
++			allfail = false;
 +	}
-+	if (tb[ETHA_SETTINGS_PORT] &&
-+	    mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
-+		uint8_t val = mnl_attr_get_u8(tb[ETHA_SETTINGS_PORT]);
-+
-+		if (first) {
-+			printf("Settings for %s:\n", nlctx->devname);
-+			first = false;
-+		}
-+		print_enum(names_port, val, "\tPort: ", "Unknown! (%i)\n");
-+		port = val;
-+	}
-+	if (tb[ETHA_SETTINGS_PHYADDR] &&
-+	    mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
-+		uint8_t val = mnl_attr_get_u8(tb[ETHA_SETTINGS_PHYADDR]);
-+
-+		if (first) {
-+			printf("Settings for %s:\n", nlctx->devname);
-+			first = false;
-+		}
-+		printf("\tPHYAD: %u\n", val);
-+	}
-+	if (tb[ETHA_SETTINGS_TRANSCEIVER] &&
-+	    mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
-+		uint8_t val = mnl_attr_get_u8(tb[ETHA_SETTINGS_TRANSCEIVER]);
-+
-+		if (first) {
-+			printf("Settings for %s:\n", nlctx->devname);
-+			first = false;
-+		}
-+		print_enum(names_transceiver, val, "\tTransceiver: ",
-+			   "Unknown!");
-+	}
-+	if (tb[ETHA_SETTINGS_AUTONEG] &&
-+	    mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
-+		uint8_t val = mnl_attr_get_u8(tb[ETHA_SETTINGS_AUTONEG]);
-+
-+		if (first) {
-+			printf("Settings for %s:\n", nlctx->devname);
-+			first = false;
-+		}
-+		printf("\tAuto-negotiation: %s\n",
-+		       (val == AUTONEG_DISABLE) ? "off" : "on");
-+	}
-+	if (tb[ETHA_SETTINGS_TP_MDIX] && tb[ETHA_SETTINGS_TP_MDIX] &&
-+	    port == PORT_TP && mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
-+		uint8_t mdix = mnl_attr_get_u8(tb[ETHA_SETTINGS_TP_MDIX]);
-+		uint8_t mdix_ctrl =
-+			mnl_attr_get_u8(tb[ETHA_SETTINGS_TP_MDIX_CTRL]);
-+
-+		if (first) {
-+			printf("Settings for %s:\n", nlctx->devname);
-+			first = false;
-+		}
-+		dump_mdix(mdix, mdix_ctrl);
-+	}
-+	if (tb[ETHA_SETTINGS_WOL_MODES] &&
-+	    mask_ok(nlctx, ETH_SETTINGS_IM_WOLINFO)) {
-+		struct ethtool_wolinfo wolinfo = {};
-+		const struct nla_bitfield32 *wol_bf =
-+			mnl_attr_get_payload(tb[ETHA_SETTINGS_WOL_MODES]);
-+
-+		if (first) {
-+			printf("Settings for %s:\n", nlctx->devname);
-+			first = false;
-+		}
-+		wolinfo.wolopts = wol_bf->value;
-+		wolinfo.supported = wol_bf->selector;
-+		if (tb[ETHA_SETTINGS_SOPASS])
-+			nl_copy_payload(wolinfo.sopass, SOPASS_MAX,
-+					tb[ETHA_SETTINGS_SOPASS]);
-+		ret = dump_wol(&wolinfo);
-+		if (ret)
-+			return ret;
-+		allfail = false;
-+	}
-+	if (tb[ETHA_SETTINGS_MSGLVL] &&
++	if (tb[ETHA_SETTINGS_MSGLEVEL] &&
 +	    mask_ok(nlctx, ETH_SETTINGS_IM_MSGLEVEL)) {
 +		struct nla_bitfield32 *val =
-+			mnl_attr_get_payload(tb[ETHA_SETTINGS_MSGLVL]);
++			mnl_attr_get_payload(tb[ETHA_SETTINGS_MSGLEVEL]);
 +		uint32_t msglvl = val->value;
 +
-+		if (first) {
-+			printf("Settings for %s:\n", nlctx->devname);
-+			first = false;
-+		}
++		print_banner(nlctx, &first);
 +		printf("	Current message level: 0x%08x (%d)\n"
 +			"			       ",
 +				msglvl, msglvl);
@@ -1087,10 +1094,7 @@ index 000000000000..b29d699a36d1
 +	if (tb[ETHA_SETTINGS_LINK] && mask_ok(nlctx, ETH_SETTINGS_IM_LINK)) {
 +		uint32_t link = mnl_attr_get_u8(tb[ETHA_SETTINGS_LINK]);
 +
-+		if (first) {
-+			printf("Settings for %s:\n", nlctx->devname);
-+			first = false;
-+		}
++		print_banner(nlctx, &first);
 +		printf("\tLink detected: %s\n", link ? "yes" : "no");
 +		allfail = false;
 +	};
@@ -1129,8 +1133,6 @@ index 000000000000..b29d699a36d1
 +				     ETH_SETTINGS_IM_MSGLEVEL |
 +				     ETH_SETTINGS_IM_WOLINFO |
 +				     ETH_SETTINGS_IM_LINK);
-+}
-+
 +}
 -- 
 2.20.1

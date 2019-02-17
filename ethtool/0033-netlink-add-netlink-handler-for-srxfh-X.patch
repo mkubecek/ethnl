@@ -1,4 +1,4 @@
-From 8fdf959fdc2058aecfbc102eca96f84609a19b3c Mon Sep 17 00:00:00 2001
+From cab868da00d263a24b0977c27b706284d47e06a0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:24:40 +0200
 Subject: [PATCH 33/35] netlink: add netlink handler for srxfh (-X)
@@ -15,12 +15,12 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 341 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index a143fab70471..538b5095d8f0 100644
+index 9160ec95fc0a..cc73abe22fd0 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4863,6 +4863,7 @@ static int show_usage(struct cmd_context *ctx);
- #define nl_gprivflags	NULL
- #define nl_sprivflags	NULL
+ #define nl_phys_id	NULL
+ #define nl_reset	NULL
  #define nl_grxfh	NULL
 +#define nl_srxfh	NULL
  #endif
@@ -36,12 +36,12 @@ index a143fab70471..538b5095d8f0 100644
  	  "		[ context %d|new ]\n"
  	  "		[ equal N | weight W0 W1 ... | default ]\n"
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index eba1a7f9800d..42bd6c5d7848 100644
+index 468f70014d79..4a25677892b0 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -38,6 +38,7 @@ int nl_reset(struct cmd_context *ctx);
- int nl_gprivflags(struct cmd_context *ctx);
- int nl_sprivflags(struct cmd_context *ctx);
+@@ -38,6 +38,7 @@ int nl_nway_rst(struct cmd_context *ctx);
+ int nl_phys_id(struct cmd_context *ctx);
+ int nl_reset(struct cmd_context *ctx);
  int nl_grxfh(struct cmd_context *ctx);
 +int nl_srxfh(struct cmd_context *ctx);
  int nl_monitor(struct cmd_context *ctx);

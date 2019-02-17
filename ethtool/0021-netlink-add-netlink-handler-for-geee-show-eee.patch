@@ -1,7 +1,7 @@
-From 1e64faa7cf6ed91804f945aee12fadb0357d44e3 Mon Sep 17 00:00:00 2001
+From 0a7bd7b97ad1ddcd2586cdff4888d5c09e133d46 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:08:21 +0100
-Subject: [PATCH 19/35] netlink: add netlink handler for geee (--show-eee)
+Subject: [PATCH 21/35] netlink: add netlink handler for geee (--show-eee)
 
 Implement "ethtool --show-eee <dev>" subcommand using netlink interface
 command ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_EEE mask.
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 74 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 30a6d120a35f..5c7c21db8bfc 100644
+index 6d64b2c5b44b..2516d4deb6b7 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4849,6 +4849,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4851,6 +4851,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gring	NULL
  #define nl_gpause	NULL
  #define nl_gchannels	NULL
@@ -26,7 +26,7 @@ index 30a6d120a35f..5c7c21db8bfc 100644
  #endif
  
  static const struct option {
-@@ -5019,7 +5020,7 @@ static const struct option {
+@@ -5021,7 +5022,7 @@ static const struct option {
  	  "		[ hex on|off ]\n"
  	  "		[ offset N ]\n"
  	  "		[ length N ]\n" },
@@ -36,10 +36,10 @@ index 30a6d120a35f..5c7c21db8bfc 100644
  	{ "--set-eee", 1, do_seee, NULL,
  	  "Set EEE settings",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 4c33b3d0ee6a..23949cb632ec 100644
+index 829c27653991..321d0279211f 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -24,6 +24,7 @@ int nl_gcoalesce(struct cmd_context *ctx);
+@@ -26,6 +26,7 @@ int nl_gcoalesce(struct cmd_context *ctx);
  int nl_gring(struct cmd_context *ctx);
  int nl_gpause(struct cmd_context *ctx);
  int nl_gchannels(struct cmd_context *ctx);
@@ -48,10 +48,10 @@ index 4c33b3d0ee6a..23949cb632ec 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index af0ba6084a72..1b32f7b39d8e 100644
+index b89f6dc1a8b8..e555c3f6d622 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -186,6 +186,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -191,6 +191,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
  		.info_mask	= ETH_PARAMS_IM_CHANNELS,
  	},

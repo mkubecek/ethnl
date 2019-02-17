@@ -1,7 +1,7 @@
-From db47d8a278df113a3a766da9df786e9dd11e8e3f Mon Sep 17 00:00:00 2001
+From 95da461b194fd4cef0318bf8fc424c03a3aa7bb7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 08:43:44 +0200
-Subject: [PATCH 29/35] netlink: add netlink handler for reset (--reset)
+Subject: [PATCH 31/35] netlink: add netlink handler for reset (--reset)
 
 Implement "ethtool --reset <dev>" using netlink interface command
 ETHNL_CMD_ACT_RESET.
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 255 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 8a6101c61fc7..c8a357d9a322 100644
+index af70b1c02e9a..c2f317009728 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4859,6 +4859,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4861,6 +4861,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sfec		NULL
  #define nl_nway_rst	NULL
  #define nl_phys_id	NULL
@@ -26,7 +26,7 @@ index 8a6101c61fc7..c8a357d9a322 100644
  #endif
  
  static const struct option {
-@@ -5043,7 +5044,7 @@ static const struct option {
+@@ -5045,7 +5046,7 @@ static const struct option {
  	{ "--get-phy-tunable", 1, do_get_phy_tunable, NULL,
  	  "Get PHY tunable",
  	  "		[ downshift ]\n"},
@@ -294,10 +294,10 @@ index 160352ea8df3..316004a8d786 100644
 +	return ret;
 +}
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 87ac57955bab..af2a5042f637 100644
+index a65946772537..ea779afb527a 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -34,6 +34,7 @@ int nl_seee(struct cmd_context *ctx);
+@@ -36,6 +36,7 @@ int nl_seee(struct cmd_context *ctx);
  int nl_sfec(struct cmd_context *ctx);
  int nl_nway_rst(struct cmd_context *ctx);
  int nl_phys_id(struct cmd_context *ctx);
@@ -306,7 +306,7 @@ index 87ac57955bab..af2a5042f637 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index adce9568a8da..00e8d8eafded 100644
+index 25664e192d1c..d9c67c9d9a43 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -99,6 +99,7 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);
@@ -328,7 +328,7 @@ index adce9568a8da..00e8d8eafded 100644
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -214,6 +219,10 @@ static struct monitor_option monitor_opts[] = {
+@@ -219,6 +224,10 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "-p|--identify",
  		.cmd		= ETHNL_CMD_ACT_PHYS_ID,
  	},

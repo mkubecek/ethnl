@@ -1,7 +1,7 @@
-From d7f888625b205e3c64795b2963fd11a337bbc32d Mon Sep 17 00:00:00 2001
+From 84ba81f7a67e3639a9ffac8b38a76ebe61e60138 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:29:46 +0200
-Subject: [PATCH 27/35] netlink: add netlink handler for nway_rst (-r)
+Subject: [PATCH 29/35] netlink: add netlink handler for nway_rst (-r)
 
 Implement "ethtool -r <dev>" subcommand using netlink interface command
 ETHNL_CMD_ACT_NWAY_RST.
@@ -29,10 +29,10 @@ index 017969125b4e..5a0e63322fa5 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 5c0138f66018..31eea46a9b9b 100644
+index 8e1e5bb98103..a29415b369a6 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4857,6 +4857,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4859,6 +4859,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_schannels	NULL
  #define nl_seee		NULL
  #define nl_sfec		NULL
@@ -40,7 +40,7 @@ index 5c0138f66018..31eea46a9b9b 100644
  #endif
  
  static const struct option {
-@@ -4943,7 +4944,7 @@ static const struct option {
+@@ -4945,7 +4946,7 @@ static const struct option {
  	  "		[ offset N ]\n"
  	  "		[ length N ]\n"
  	  "		[ value N ]\n" },
@@ -110,10 +110,10 @@ index 000000000000..d1bbcd163549
 +	return ret;
 +}
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 206f20029cff..bb6ae9205642 100644
+index 582f95cdf8bd..24cf96776d3e 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -32,6 +32,7 @@ int nl_spause(struct cmd_context *ctx);
+@@ -34,6 +34,7 @@ int nl_spause(struct cmd_context *ctx);
  int nl_schannels(struct cmd_context *ctx);
  int nl_seee(struct cmd_context *ctx);
  int nl_sfec(struct cmd_context *ctx);
@@ -122,7 +122,7 @@ index 206f20029cff..bb6ae9205642 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index eb8fc720de5b..0379e35106d5 100644
+index 574ec0321336..6e44838efb34 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -97,6 +97,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -144,7 +144,7 @@ index eb8fc720de5b..0379e35106d5 100644
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -196,6 +201,10 @@ static struct monitor_option monitor_opts[] = {
+@@ -201,6 +206,10 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
  		.info_mask	= ETH_PARAMS_IM_FEC,
  	},

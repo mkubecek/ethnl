@@ -1,7 +1,7 @@
-From d5ff46844935e63a24e682112d938b9359476626 Mon Sep 17 00:00:00 2001
+From 9eedefa5c7f08f8dac7de50395d12af43fa45dd0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
-Subject: [PATCH 15/35] netlink: add netlink handler for gcoalesce (-c)
+Subject: [PATCH 17/35] netlink: add netlink handler for gcoalesce (-c)
 
 Implement "ethtool -c <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_COALESCE mask.
@@ -30,18 +30,18 @@ index 37b54b55d297..017969125b4e 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index e6ed1e7d5e3c..8780753231f8 100644
+index d0328a6cbe07..52e93060741a 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4845,6 +4845,7 @@ static int show_usage(struct cmd_context *ctx);
- #define nl_sset		NULL
- #define nl_gfeatures	NULL
+@@ -4847,6 +4847,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sfeatures	NULL
+ #define nl_gprivflags	NULL
+ #define nl_sprivflags	NULL
 +#define nl_gcoalesce	NULL
  #endif
  
  static const struct option {
-@@ -4875,7 +4876,7 @@ static const struct option {
+@@ -4877,7 +4878,7 @@ static const struct option {
  	  "		[ autoneg on|off ]\n"
  	  "		[ rx on|off ]\n"
  	  "		[ tx on|off ]\n" },
@@ -51,19 +51,19 @@ index e6ed1e7d5e3c..8780753231f8 100644
  	{ "-C|--coalesce", 1, do_scoalesce, NULL,
  	  "Set coalesce options",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index ed526cf60142..bc0ca8f59686 100644
+index ded02da74ff9..93cb69c3c631 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -20,6 +20,7 @@ int nl_gset(struct cmd_context *ctx);
- int nl_sset(struct cmd_context *ctx);
- int nl_gfeatures(struct cmd_context *ctx);
+@@ -22,6 +22,7 @@ int nl_gfeatures(struct cmd_context *ctx);
  int nl_sfeatures(struct cmd_context *ctx);
+ int nl_gprivflags(struct cmd_context *ctx);
+ int nl_sprivflags(struct cmd_context *ctx);
 +int nl_gcoalesce(struct cmd_context *ctx);
  int nl_monitor(struct cmd_context *ctx);
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index f1c25f1449f6..e68e13b36eba 100644
+index c01dc7813c9e..927b60c598e8 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -96,6 +96,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -85,9 +85,9 @@ index f1c25f1449f6..e68e13b36eba 100644
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -161,6 +166,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -166,6 +171,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_SETTINGS,
- 		.info_mask	= ETH_SETTINGS_IM_FEATURES,
+ 		.info_mask	= ETH_SETTINGS_IM_PRIVFLAGS,
  	},
 +	{
 +		.pattern	= "-c|--show-coalesce|-C|--coalesce",

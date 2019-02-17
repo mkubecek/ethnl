@@ -1,7 +1,7 @@
-From b0e3160fa86a8e4baf8ec1606b98ec65d259d277 Mon Sep 17 00:00:00 2001
+From 97d4c88d98ae49f712114bcf2cd234dd55e11835 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:43:19 +0100
-Subject: [PATCH 25/35] netlink: add netlink handler for seee (--set-eee)
+Subject: [PATCH 27/35] netlink: add netlink handler for seee (--set-eee)
 
 Implement "ethtool --set-eee <dev>" subcommand using netlink interface
 command ETHNL_CMD_SET_PARAMS.
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 37 insertions(+), 2 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 00a48ba1fe23..6e4771fe3555 100644
+index 3b132f0bb938..3145e6d568f1 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4855,6 +4855,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4857,6 +4857,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sring	NULL
  #define nl_spause	NULL
  #define nl_schannels	NULL
@@ -25,7 +25,7 @@ index 00a48ba1fe23..6e4771fe3555 100644
  #endif
  
  static const struct option {
-@@ -5027,10 +5028,10 @@ static const struct option {
+@@ -5029,10 +5030,10 @@ static const struct option {
  	  "		[ length N ]\n" },
  	{ "--show-eee", 1, do_geee, nl_geee,
  	  "Show EEE settings"},
@@ -39,10 +39,10 @@ index 00a48ba1fe23..6e4771fe3555 100644
  	  "		[ tx-timer %d ]\n"},
  	{ "--set-phy-tunable", 1, do_set_phy_tunable, NULL,
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 50e00fd8de5b..ccb4f5e97a47 100644
+index d1b56e7f923a..31eb97c6240d 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -30,6 +30,7 @@ int nl_scoalesce(struct cmd_context *ctx);
+@@ -32,6 +32,7 @@ int nl_scoalesce(struct cmd_context *ctx);
  int nl_sring(struct cmd_context *ctx);
  int nl_spause(struct cmd_context *ctx);
  int nl_schannels(struct cmd_context *ctx);

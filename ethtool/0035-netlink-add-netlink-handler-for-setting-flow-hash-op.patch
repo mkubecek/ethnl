@@ -1,4 +1,4 @@
-From d46278b0654e7ec0281fb7c403f8c6df14727c80 Mon Sep 17 00:00:00 2001
+From a81c58cdcbbacef381cb1805d56f6ecd45c2e39a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 2 Nov 2018 19:41:56 +0100
 Subject: [PATCH 35/35] netlink: add netlink handler for setting flow hash
@@ -15,7 +15,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 114 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 7756bff34851..9cdfdee4c49e 100644
+index 907f3ea12faf..403cd09dadd1 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4865,6 +4865,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -36,10 +36,10 @@ index 7756bff34851..9cdfdee4c49e 100644
  	  "		rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 m|v|t|s|d|f|n|r... [context %d] |\n"
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index e8470459a76e..e701c6e9d795 100644
+index 102317b4feae..e065c63d7368 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -40,6 +40,7 @@ int nl_sprivflags(struct cmd_context *ctx);
+@@ -40,6 +40,7 @@ int nl_reset(struct cmd_context *ctx);
  int nl_grxfh(struct cmd_context *ctx);
  int nl_srxfh(struct cmd_context *ctx);
  int nl_grxclass(struct cmd_context *ctx);

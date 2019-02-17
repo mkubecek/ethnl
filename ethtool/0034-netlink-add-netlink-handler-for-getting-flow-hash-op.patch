@@ -1,4 +1,4 @@
-From 553a4aae30a93f6f79be91d59e4114b7030154c6 Mon Sep 17 00:00:00 2001
+From 6cce4d4d0f4ab9c0ea7ba8274f43928e4ec2892d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 7 Oct 2018 19:50:11 +0200
 Subject: [PATCH 34/35] netlink: add netlink handler for getting flow hash
@@ -16,11 +16,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 190 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 538b5095d8f0..7756bff34851 100644
+index cc73abe22fd0..907f3ea12faf 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4864,6 +4864,7 @@ static int show_usage(struct cmd_context *ctx);
- #define nl_sprivflags	NULL
+ #define nl_reset	NULL
  #define nl_grxfh	NULL
  #define nl_srxfh	NULL
 +#define nl_grxclass	NULL
@@ -37,11 +37,11 @@ index 538b5095d8f0..7756bff34851 100644
  	  "		[ rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 [context %d] |\n"
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 42bd6c5d7848..e8470459a76e 100644
+index 4a25677892b0..102317b4feae 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -39,6 +39,7 @@ int nl_gprivflags(struct cmd_context *ctx);
- int nl_sprivflags(struct cmd_context *ctx);
+@@ -39,6 +39,7 @@ int nl_phys_id(struct cmd_context *ctx);
+ int nl_reset(struct cmd_context *ctx);
  int nl_grxfh(struct cmd_context *ctx);
  int nl_srxfh(struct cmd_context *ctx);
 +int nl_grxclass(struct cmd_context *ctx);

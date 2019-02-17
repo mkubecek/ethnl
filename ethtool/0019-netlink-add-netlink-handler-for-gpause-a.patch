@@ -1,7 +1,7 @@
-From eeb8f97a771a77ec1169f7f6daf16d38df2f9f3c Mon Sep 17 00:00:00 2001
+From 844567fe336d0270396514a702ed73e00cfe82dc Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:04:09 +0100
-Subject: [PATCH 17/35] netlink: add netlink handler for gpause (-a)
+Subject: [PATCH 19/35] netlink: add netlink handler for gpause (-a)
 
 Implement "ethtool -a <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_PAUSE mask.
@@ -15,18 +15,18 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 44 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index c9db39709c5f..9a4e85b9969a 100644
+index 7fe04b7bff8c..a1a58ddab74a 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4847,6 +4847,7 @@ static int show_usage(struct cmd_context *ctx);
- #define nl_sfeatures	NULL
+@@ -4849,6 +4849,7 @@ static int show_usage(struct cmd_context *ctx);
+ #define nl_sprivflags	NULL
  #define nl_gcoalesce	NULL
  #define nl_gring	NULL
 +#define nl_gpause	NULL
  #endif
  
  static const struct option {
-@@ -4870,7 +4871,7 @@ static const struct option {
+@@ -4872,7 +4873,7 @@ static const struct option {
  	  "		[ wol %d[/%d] |  p|u|m|b|a|g|s|f|d...[/p|u|m|b|a|g|s|f|d...] ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
  	  "		[ msglvl %d[/%d] | type on|off ... [--] ]\n" },
@@ -36,11 +36,11 @@ index c9db39709c5f..9a4e85b9969a 100644
  	{ "-A|--pause", 1, do_spause, NULL,
  	  "Set pause options",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 9c84a80d223c..1f7de2a7992c 100644
+index 808188c6d8b8..01e5b6d7b621 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -22,6 +22,7 @@ int nl_gfeatures(struct cmd_context *ctx);
- int nl_sfeatures(struct cmd_context *ctx);
+@@ -24,6 +24,7 @@ int nl_gprivflags(struct cmd_context *ctx);
+ int nl_sprivflags(struct cmd_context *ctx);
  int nl_gcoalesce(struct cmd_context *ctx);
  int nl_gring(struct cmd_context *ctx);
 +int nl_gpause(struct cmd_context *ctx);
@@ -48,10 +48,10 @@ index 9c84a80d223c..1f7de2a7992c 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index da73684db1ba..476e04e45342 100644
+index 108286ed45b9..e340a9fbe123 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -176,6 +176,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -181,6 +181,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
  		.info_mask	= ETH_PARAMS_IM_RING,
  	},

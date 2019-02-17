@@ -1,7 +1,7 @@
-From f32af80f6dcd376f6428a54e4db1e8fedeb4b6cf Mon Sep 17 00:00:00 2001
+From 878c2647abb0087330aea25203db8f6824fd72ba Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:51:36 +0100
-Subject: [PATCH 26/35] netlink: add netlink handler for sfec (--set-fec)
+Subject: [PATCH 28/35] netlink: add netlink handler for sfec (--set-fec)
 
 Implement "ethtool --set-fec <dev>" subcommand using netlink interface
 command ETHNL_CMD_SET_PARAMS.
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 19 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 6e4771fe3555..5c0138f66018 100644
+index 3145e6d568f1..8e1e5bb98103 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4856,6 +4856,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4858,6 +4858,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_spause	NULL
  #define nl_schannels	NULL
  #define nl_seee		NULL
@@ -25,7 +25,7 @@ index 6e4771fe3555..5c0138f66018 100644
  #endif
  
  static const struct option {
-@@ -5065,7 +5066,7 @@ static const struct option {
+@@ -5067,7 +5068,7 @@ static const struct option {
  	  "		[ all ]\n"},
  	{ "--show-fec", 1, do_gfec, nl_gfec,
  	  "Show FEC settings"},
@@ -35,10 +35,10 @@ index 6e4771fe3555..5c0138f66018 100644
  	  "		[ encoding auto|off|rs|baser [...]]\n"},
  	{ "-h|--help", 0, show_usage, NULL,
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index ccb4f5e97a47..206f20029cff 100644
+index 31eb97c6240d..582f95cdf8bd 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -31,6 +31,7 @@ int nl_sring(struct cmd_context *ctx);
+@@ -33,6 +33,7 @@ int nl_sring(struct cmd_context *ctx);
  int nl_spause(struct cmd_context *ctx);
  int nl_schannels(struct cmd_context *ctx);
  int nl_seee(struct cmd_context *ctx);

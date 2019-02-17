@@ -1,4 +1,4 @@
-From a33a6fecf72ad93f45cf5c0a9da05fd3964af5f3 Mon Sep 17 00:00:00 2001
+From 9474b0fd06ac7a360441c1e827187fcee610ad90 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:42:26 +0100
 Subject: [PATCH 11/35] netlink: add helpers for command line parsing
@@ -9,11 +9,11 @@ ioctl() interface and using them would be often inconvenient.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Makefile.am       |   1 +
- netlink/netlink.h |   4 +
- netlink/parser.c  | 838 ++++++++++++++++++++++++++++++++++++++++++++++
- netlink/parser.h  |  87 +++++
- 4 files changed, 930 insertions(+)
+ Makefile.am       |    1 +
+ netlink/netlink.h |    4 +
+ netlink/parser.c  | 1001 +++++++++++++++++++++++++++++++++++++++++++++
+ netlink/parser.h  |   88 ++++
+ 4 files changed, 1094 insertions(+)
  create mode 100644 netlink/parser.c
  create mode 100644 netlink/parser.h
 
@@ -46,10 +46,10 @@ index 9460acd2cbad..c586feeeeb67 100644
  	uint8_t filter_cmd;
 diff --git a/netlink/parser.c b/netlink/parser.c
 new file mode 100644
-index 000000000000..9845ab4834a2
+index 000000000000..832693063b37
 --- /dev/null
 +++ b/netlink/parser.c
-@@ -0,0 +1,838 @@
+@@ -0,0 +1,1001 @@
 +#include <string.h>
 +#include <stdlib.h>
 +#include <errno.h>
@@ -184,7 +184,7 @@ index 000000000000..9845ab4834a2
 +{
 +	if (dest)
 +		*(bool *)dest = true;
-+	return ethnla_put_flag(nlctx, type, true) ? -EMSGSIZE : 0;
++	return (type && ethnla_put_flag(nlctx, type, true)) ? -EMSGSIZE : 0;
 +}
 +
 +/* Just pick next argument and generate NLA_STRING (or fill const char *). */
@@ -198,7 +198,7 @@ index 000000000000..9845ab4834a2
 +
 +	if (dest)
 +		*(const char **)dest = arg;
-+	return ethnla_put_strz(nlctx, type, arg) ? -EMSGSIZE : 0;
++	return (type && ethnla_put_strz(nlctx, type, arg)) ? -EMSGSIZE : 0;
 +}
 +
 +/* parser handler for unsigned 32-bit integer */
@@ -331,8 +331,18 @@ index 000000000000..9845ab4834a2
 +
 +	ret = parse_u32(arg, &value);
 +	if (isdigit(arg[0])) {
-+		char *mask = strchr(arg, '/');
++		char *buff;
++		char *mask;
 +
++		nlctx->argp++;
++		nlctx->argc--;
++		if (!type && !dest)
++			return 0;
++
++		buff = strdup(arg);
++		if (!buff)
++			return -ENOMEM;
++		mask = strchr(buff, '/');
 +		if (mask) {
 +			/* numeric value / mask */
 +			*mask = '\0';
@@ -340,19 +350,20 @@ index 000000000000..9845ab4834a2
 +			ret = parse_u32(mask, &selector);
 +			if (ret < 0) {
 +				parser_err_invalid_value(nlctx, mask);
++				free(buff);
 +				return ret;
 +			}
 +		} else {
 +			/* numeric value */
 +			selector = ~(uint32_t)0;
 +		}
-+		ret = parse_u32(arg, &value);
++
++		ret = parse_u32(buff, &value);
++		free(buff);
 +		if (ret < 0) {
 +			parser_err_invalid_value(nlctx, arg);
 +			return ret;
 +		}
-+		nlctx->argp++;
-+		nlctx->argc--;
 +	} else {
 +		/* flag on/off... [--] */
 +		value = 0;
@@ -440,28 +451,33 @@ index 000000000000..9845ab4834a2
 +int nl_parse_char_bitfield32(struct nl_context *nlctx, uint16_t type,
 +			     const void *data, void *dest)
 +{
-+	const char *arg = *nlctx->argp;
++	char *arg = *nlctx->argp;
 +	char *mask = strchr(arg, '/');
 +	uint32_t value, selector;
 +	int ret;
 +
 +	nlctx->argp++;
 +	nlctx->argc--;
-+	if (mask) {
-+		*mask = '\0';
-+		mask++;
-+	}
++	if (!type && !dest)
++		return 0;
++	arg = strdup(arg);
++	if (!arg)
++		return -ENOMEM;
++
++	mask = strchr(arg, '/');
++	if (mask)
++		*(mask++) = '\0';
 +
 +	ret = __nl_parse_char_bitfield32(nlctx, arg, data, &value);
 +	if (ret < 0)
-+		return ret;
++		goto out;
 +
 +	if (!mask) {
 +		selector = ~(uint32_t)0;
 +	} else {
 +		ret = __nl_parse_char_bitfield32(nlctx, mask, data, &selector);
 +		if (ret < 0)
-+			return ret;
++			goto out;
 +	}
 +
 +	if (dest) {
@@ -470,7 +486,10 @@ index 000000000000..9845ab4834a2
 +		target->value = value;
 +		target->selector = selector;
 +	}
-+	return type ? ethnla_put_bitfield32(nlctx, type, value, selector) : 0;
++	ret = type ? ethnla_put_bitfield32(nlctx, type, value, selector) : 0;
++out:
++	free(arg);
++	return ret;
 +}
 +
 +static bool is_hex(char c)
@@ -587,8 +606,10 @@ index 000000000000..9845ab4834a2
 +	uint32_t *value = NULL;
 +	uint32_t *mask = NULL;
 +	int nbits;
-+	int ret;
++	int ret = 0;
 +
++	if (!type)
++		goto out;
 +	if (arg[0] == '0' && arg[1] == 'x')
 +		arg += 2;
 +
@@ -628,6 +649,9 @@ index 000000000000..9845ab4834a2
 +	nbits = (nbits < ret) ? ret : nbits;
 +	nwords = (nbits + 31) / 32;
 +
++	ret = 0;
++	if (!type)
++		goto out_free;
 +	ret = -EMSGSIZE;
 +	if (!(nest = ethnla_nest_start(nlctx, type)) ||
 +	    ethnla_put_flag(nlctx, ETHA_BITSET_LIST, !mask) ||
@@ -644,6 +668,7 @@ index 000000000000..9845ab4834a2
 +out_free:
 +	free(value);
 +	free(mask);
++out:
 +	nlctx->argp++;
 +	nlctx->argc--;
 +	return ret;
@@ -657,6 +682,29 @@ index 000000000000..9845ab4834a2
 +	struct nlattr *bits_attr;
 +	struct nlattr *bit_attr;
 +	int ret;
++
++	if (!type) {
++		/* no output, only skip to the end of bitset arguments */
++		while (nlctx->argc > 0) {
++			if (!strcmp(*nlctx->argp, "--")) {
++				nlctx->argp++;
++				nlctx->argc--;
++				break;
++			}
++			if (list) {
++				nlctx->argp++;
++				nlctx->argc--;
++			} else {
++				if (nlctx->argc < 2 ||
++				    (strcmp(nlctx->argp[1], "on") &&
++				     strcmp(nlctx->argp[1], "off")))
++					return -EINVAL;
++				nlctx->argp += 2;
++				nlctx->argc -= 2;
++			}
++		}
++		return 0;
++	}
 +
 +	bitset_attr = ethnla_nest_start(nlctx, type);
 +	if (!bitset_attr)
@@ -835,6 +883,33 @@ index 000000000000..9845ab4834a2
 +	return -EINVAL;
 +}
 +
++static const struct param_parser *find_parser(const struct param_parser *params,
++				       const char *arg)
++{
++	const struct param_parser *parser;
++
++	for (parser = params; parser->arg; parser++)
++		if (!strcmp(arg, parser->arg))
++			return parser;
++	return NULL;
++}
++
++static bool __parser_bit(const uint64_t *map, unsigned int idx)
++{
++	return map[idx / 64] & (1 << (idx % 64));
++}
++
++static void __parser_set(uint64_t *map, unsigned int idx)
++{
++	map[idx / 64] |= (1 << (idx % 64));
++}
++
++struct arg_info {
++	const struct param_parser *parser;	/* matching parser */
++	int next;				/* offset of next parameter */
++	bool processed;				/* param processed already */
++};
++
 +/* Main entry point of parser implementation.
 + * @nlctx: netlink context
 + * @params: array of struct param_parser describing expected arguments and
@@ -844,56 +919,144 @@ index 000000000000..9845ab4834a2
 +int nl_parser(struct nl_context *nlctx, const struct param_parser *params,
 +	      void *dest)
 +{
++	char **orig_argp = nlctx->argp;
++	int orig_argc = nlctx->argc;
 +	const struct param_parser *parser;
++	struct arg_info *args_info;
++	unsigned int args_left;
 +	unsigned int n_params;
-+	uint64_t attrs_set = 0;
++	uint64_t *params_seen;
++	unsigned int idx;
 +	int ret;
 +
 +	n_params = 0;
 +	for (parser = params; parser->arg; parser++)
 +		n_params++;
-+	if (n_params > 64) {
-+		/* if we hit this, longer bitmap attrs_set is needed */
-+		fprintf(stderr, "bug: too many parser arguments, update %s\n",
-+			__func__);
-+		return -EFAULT;
-+	}
++	params_seen = calloc(DIV_ROUND_UP(n_params, 64), sizeof(uint64_t));
++	if (!params_seen)
++		return -ENOMEM;
++	ret = -ENOMEM;
++	args_info = calloc(orig_argc, sizeof(struct arg_info));
++	if (!args_info)
++		goto out_free;
 +
++	/* first run: process unnested args and mark arg_info so that we do not
++	 * have to repeat parser lookup and dry parse in subsequent runs
++	 */
++	args_left = 0;
 +	while (nlctx->argc > 0) {
++		idx = orig_argc - nlctx->argc;
++
 +		nlctx->param = *nlctx->argp;
-+		for (parser = params; parser->arg; parser++)
-+			if (!strcmp(nlctx->param, parser->arg))
-+				break;
-+		if (!parser->arg) {
++		ret = -EINVAL;
++		parser = find_parser(params, nlctx->param);
++		if (!parser) {
 +			parser_err_unknown_param(nlctx);
-+			return -EINVAL;
++			goto out_free;
 +		}
-+		nlctx->argp++;
-+		nlctx->argc--;
-+		if (attrs_set & (1ULL << (parser - params))) {
++		args_info[idx].parser = parser;
++
++		/* check duplicate and minimum number of arguments */
++		if (__parser_bit(params_seen, parser - params)) {
 +			parser_err_dup_param(nlctx);
-+			return -EINVAL;
++			goto out_free;
 +		}
 +		if (nlctx->argc < parser->min_argc) {
 +			parser_err_min_argc(nlctx, parser->min_argc);
 +			return -EINVAL;
 +		}
++		nlctx->argc--;
++		nlctx->argp++;
++		__parser_set(params_seen, parser - params);
 +
-+		ret = parser->handler(nlctx, parser->type, parser->handler_data,
-+				      dest ? dest + parser->dest_offset : NULL);
-+		if (ret < 0)
-+			return ret;
-+		attrs_set |= (1ULL << (parser - params));
++		if (parser->nest) {
++			/* nested parameter; only let the parser find next
++			 * parameter, mark it down and increment the counter
++			 */
++			ret = parser->handler(nlctx, 0, parser->handler_data,
++					      NULL);
++			if (ret < 0)
++				goto out_free;
++			args_left++;
++		} else {
++			void *param_dest = dest ? (dest + parser->dest_offset)
++					        : NULL;
++
++			/* unnested parameter, process normally and mark as
++			 * processed
++			 */
++			ret = parser->handler(nlctx, parser->type,
++					      parser->handler_data, param_dest);
++			if (ret < 0)
++				goto out_free;
++			args_info[idx].processed = true;
++		}
++		args_info[idx].next = orig_argc - nlctx->argc;
 +	}
 +
-+	return 0;
++	/* process nested parameters (if any); we can omit some checks this
++	 * time and can use the information marked down first time
++	 */
++	while (args_left) {
++		nlctx->argp = orig_argp;
++		nlctx->argc = orig_argc;
++		struct nlattr *nest;
++		uint16_t nest_type;
++		idx = 0;
++
++		/* we know thare must be something left (args_left > 0) */
++		while (args_info[idx].processed)
++			idx = args_info[idx].next;
++		nlctx->argp = orig_argp + idx;
++		nlctx->argc = orig_argc - idx;
++
++		parser = args_info[idx].parser;
++		nest_type = parser->nest;
++		ret = -ENOMEM;
++		nest = ethnla_nest_start(nlctx, nest_type);
++		if (!nest)
++			goto out_free;
++
++		do {
++			nlctx->param = *nlctx->argp;
++			nlctx->argp++;
++			nlctx->argc--;
++			ret = parser->handler(nlctx, parser->type,
++					      parser->handler_data,
++					      dest ? dest + parser->dest_offset
++						   : NULL);
++			if (ret < 0)
++				goto out_free;
++
++			args_info[idx].processed = true;
++			if (--args_left == 0)
++				break;
++			idx = orig_argc - nlctx->argc;
++
++			while (idx < orig_argc &&
++			       (args_info[idx].processed ||
++				args_info[idx].parser->nest != nest_type))
++				idx = args_info[idx].next;
++			nlctx->argp = orig_argp + idx;
++			nlctx->argc = orig_argc - idx;
++			parser = args_info[idx].parser;
++		} while (nlctx->argc > 0);
++
++		mnl_attr_nest_end(nlctx->nlhdr, nest);
++	}
++	ret = 0;
++
++out_free:
++	free(args_info);
++	free(params_seen);
++	return ret;
 +}
 diff --git a/netlink/parser.h b/netlink/parser.h
 new file mode 100644
-index 000000000000..a2b9ba912c99
+index 000000000000..c654d55d46f6
 --- /dev/null
 +++ b/netlink/parser.h
-@@ -0,0 +1,87 @@
+@@ -0,0 +1,88 @@
 +#ifndef ETHTOOL_NETLINK_PARSER_H__
 +#define ETHTOOL_NETLINK_PARSER_H__
 +
@@ -942,6 +1105,7 @@ index 000000000000..a2b9ba912c99
 +
 +struct param_parser {
 +	const char		*arg;
++	uint16_t		nest;
 +	uint16_t		type;
 +	param_parser_cb_t	handler;
 +	const void		*handler_data;
