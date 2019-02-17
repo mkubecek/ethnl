@@ -1,4 +1,4 @@
-From c732098c374afbe3eca64a50eda73b7fcf493ad5 Mon Sep 17 00:00:00 2001
+From 9c6ad03a5c5c14a9b59c2ffe4008b7f227c86f37 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 22/33] ethtool: implement SET_SETTINGS message
@@ -14,8 +14,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  45 +-
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   4 +
- net/ethtool/settings.c                       | 487 +++++++++++++++++++
- 4 files changed, 536 insertions(+), 5 deletions(-)
+ net/ethtool/settings.c                       | 489 +++++++++++++++++++
+ 4 files changed, 538 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index a7416299d1a8..9a16c09918a3 100644
@@ -128,7 +128,7 @@ index 332f4e948b40..6f63ea0288c1 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 05be00c01e7b..559bb5704aaf 100644
+index 05be00c01e7b..52412ce523cc 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -27,6 +27,228 @@ struct settings_data {
@@ -360,7 +360,7 @@ index 05be00c01e7b..559bb5704aaf 100644
  static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
  	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_DEV]		= { .type = NLA_NESTED },
-@@ -557,3 +779,268 @@ const struct get_request_ops settings_request_ops = {
+@@ -557,3 +779,270 @@ const struct get_request_ops settings_request_ops = {
  	.fill_reply		= fill_settings,
  	.cleanup		= settings_cleanup,
  };
@@ -557,9 +557,11 @@ index 05be00c01e7b..559bb5704aaf 100644
 +				tb[ETHA_WOL_SOPASS]))
 +		ret = 1;
 +	if (ret) {
-+		ret = dev->ethtool_ops->set_wol(dev, &wolinfo);
-+		if (ret < 0)
++		int ret2 = dev->ethtool_ops->set_wol(dev, &wolinfo);
++		if (ret2 < 0) {
 +			ETHNL_SET_ERRMSG(info, "wol info update failed");
++			ret = ret2;
++		}
 +	}
 +
 +	return ret;

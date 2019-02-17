@@ -1,4 +1,4 @@
-From 1cb44c22384da4f225b242e1a2684a6bbe6f8a5c Mon Sep 17 00:00:00 2001
+From 6667fba38a000d416cbddcde85cd4d240aab7508 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
 Subject: [PATCH 25/33] ethtool: implement GET_PARAMS message

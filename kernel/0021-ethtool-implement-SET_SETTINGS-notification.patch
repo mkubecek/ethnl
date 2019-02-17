@@ -1,4 +1,4 @@
-From 65b1cc9d834dea90ef8a9faee8e2a5ae2771e7b7 Mon Sep 17 00:00:00 2001
+From 2e4cdcb2ad5d0346ba28c749ef31c7741ed3731d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:36:49 -0400
 Subject: [PATCH 21/33] ethtool: implement SET_SETTINGS notification

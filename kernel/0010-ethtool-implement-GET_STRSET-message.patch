@@ -1,4 +1,4 @@
-From 07d611b4ba40a2827cee32a936f8b9490405b4f5 Mon Sep 17 00:00:00 2001
+From d82577163848ac5fb4f96d6d59064565f3a5e3f6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 10/33] ethtool: implement GET_STRSET message

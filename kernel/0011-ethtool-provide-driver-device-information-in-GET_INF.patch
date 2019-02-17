@@ -1,4 +1,4 @@
-From 6405a0cfdf844ec51966c9c3610d9d69e5974f9b Mon Sep 17 00:00:00 2001
+From 1465418d3d67ef73aa8747bfaa10d366c5c3e7e7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 11/33] ethtool: provide driver/device information in GET_INFO

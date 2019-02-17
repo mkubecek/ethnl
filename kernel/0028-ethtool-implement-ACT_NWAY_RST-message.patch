@@ -1,4 +1,4 @@
-From 15723b8e48a201cbb0fad9fcfe2c0ee5158445b7 Mon Sep 17 00:00:00 2001
+From baaf1ebd06b8862e93906ad2ec559d06f3f2ab70 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 28/33] ethtool: implement ACT_NWAY_RST message

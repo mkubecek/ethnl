@@ -1,4 +1,4 @@
-From 07668821de70177ab8b6c9f6c1b5c5a30a04787a Mon Sep 17 00:00:00 2001
+From 37962fec949f84c250b0ca7eba31ef6781a36d51 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 23/33] ethtool: implement SET_SETTINGS request for features
@@ -111,7 +111,7 @@ index afd61d36bcf8..910b8aa28915 100644
  	__ETHA_FEATURES_CNT,
  	ETHA_FEATURES_MAX = (__ETHA_FEATURES_CNT - 1)
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 559bb5704aaf..c662208829fd 100644
+index 52412ce523cc..4002c93550eb 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -802,6 +802,15 @@ static const struct nla_policy set_wol_policy[ETHA_LINKINFO_MAX + 1] = {
@@ -138,7 +138,7 @@ index 559bb5704aaf..c662208829fd 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -980,11 +990,147 @@ static int update_wol(struct genl_info *info, struct nlattr *nest,
+@@ -982,11 +992,147 @@ static int update_wol(struct genl_info *info, struct nlattr *nest,
  	return ret;
  }
  
@@ -286,7 +286,7 @@ index 559bb5704aaf..c662208829fd 100644
  	int ret;
  
  	ret = genlmsg_parse(info->nlhdr, &ethtool_genl_family, tb,
-@@ -1032,6 +1178,16 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -1034,6 +1180,16 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  			req_mask |= ETH_SETTINGS_IM_MSGLEVEL;
  		}
  	}

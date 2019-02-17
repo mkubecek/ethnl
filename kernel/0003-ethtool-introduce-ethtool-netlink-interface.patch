@@ -1,4 +1,4 @@
-From 98577aa7c8e89cee724808372870927e679e5ab2 Mon Sep 17 00:00:00 2001
+From 2f86ea150a2565781321bbbd0766424e44911973 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 03/33] ethtool: introduce ethtool netlink interface

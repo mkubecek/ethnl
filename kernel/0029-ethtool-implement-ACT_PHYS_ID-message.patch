@@ -1,4 +1,4 @@
-From bf4a5c7fbe1535c6c13253f0d6d73569e962122a Mon Sep 17 00:00:00 2001
+From 9b4969acd1b0ce7c383211fc3df8d9739882488c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 29/33] ethtool: implement ACT_PHYS_ID message
