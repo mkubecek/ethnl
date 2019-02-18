@@ -7,10 +7,9 @@ The work started as a SUSE Hackweek 16 project
 
   https://hackweek.suse.com/16/projects/netlink-interface-for-ethtool
 
-but we were able to do much less than we wanted to. We do not want to give
-up, though, so the work is going on.
+but it's an ongoing effort aiming to get the interface into mainline kernel
+and let ethtool use it where available.
 
-Note that this hasn't been submitted yet, not even as an RFC so that
-everything must be expected to change (and even more so once the work is
-sent to upstream mailing list for review). Comments and suggestions are
-welcome.
+There are two directories: kernel with a patch series for kernel (based on
+net-next tree) and ethtool with a patch series for userspace ethtool
+utility (based on master branch).
