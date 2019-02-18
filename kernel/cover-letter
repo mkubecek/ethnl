@@ -70,16 +70,11 @@ ToDo / open questions:
   in the future ("phase two"), it would be nice to get rid of it
 
 - ethtool_ops should pass extack pointer to allow drivers more meaningful
-  error reporting
+  error reporting; it's not clear, however, how to pass information about
+  offending attribute
 
 - notifications are sent whenever a change is done via netlink API or
   ioctl API and for netdev features also whenever they are updated using
   netdev_change_features(); it would be desirable to notify also about
   link state and negotiation result (speed/duplex and partner link
   modes) but it would be more tricky
-
-- find reasonable format for data transfers (e.g. eeprom dump or flash);
-  I don't have clear idea how big these can get and if 64 KB limit on
-  attribute size (including nested ones) is a problem; if so, dumps can
-  be an answer for dumps, some kind of multi-message requests would be
-  needed for flashes
