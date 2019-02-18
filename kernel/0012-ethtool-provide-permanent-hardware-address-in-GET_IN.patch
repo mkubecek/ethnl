@@ -1,8 +1,8 @@
-From b903a48dde254597fb9e05c0006f6736c9a47a54 Mon Sep 17 00:00:00 2001
+From aa819553f38d5e1208bc9be6425c46c7ffee7639 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:06:56 +0100
 Subject: [PATCH 12/33] ethtool: provide permanent hardware address in GET_INFO
- message
+ request
 
 Add information about permanent hadware address of a device (as provided by
 ETHTOOL_GPERMADDR ioctl command) in GET_INFO reply if ETH_INFO_IM_PERMADDR

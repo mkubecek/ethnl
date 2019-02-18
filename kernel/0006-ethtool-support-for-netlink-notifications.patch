@@ -1,10 +1,10 @@
-From b138a9274467efbb8942bcfdaf29a7cdb9c420fc Mon Sep 17 00:00:00 2001
+From 2eba141272b6d04fc88ff9482de08b83ff457426 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
 Subject: [PATCH 06/33] ethtool: support for netlink notifications
 
 Add infrastructure for ethtool netlink notifications. There is only one
-multicast group, "monitor" which userspace can use to get notifications.
+multicast group "monitor" which is used to notify userspace about changes.
 Notifications are supposed to be broadcasted on every configuration change,
 whether it is done using the netlink interface or legacy ioctl one.
 
@@ -37,10 +37,10 @@ index 0412adb4f42f..2a15e64a16f3 100644
  
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index 1fb733f38a47..2f1b8aea769c 100644
+index aab4d9f6613d..9a50a67f328f 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -4341,6 +4341,18 @@ struct netdev_notifier_bonding_info {
+@@ -4340,6 +4340,18 @@ struct netdev_notifier_bonding_info {
  void netdev_bonding_info_change(struct net_device *dev,
  				struct netdev_bonding_info *bonding_info);
  

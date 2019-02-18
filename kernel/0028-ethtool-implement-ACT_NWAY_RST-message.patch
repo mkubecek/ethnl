@@ -1,4 +1,4 @@
-From baaf1ebd06b8862e93906ad2ec559d06f3f2ab70 Mon Sep 17 00:00:00 2001
+From 0ea6a2e065c214d6baca56872ba21f04b95404ab Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 28/33] ethtool: implement ACT_NWAY_RST message
@@ -181,7 +181,7 @@ index 000000000000..1df321a7a4f4
 +	return ret;
 +}
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index d605d3ea33ec..a13f3aa13335 100644
+index 24a4a032a072..9764beff39e3 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1281,10 +1281,15 @@ static int ethtool_set_eee(struct net_device *dev, char __user *useraddr)

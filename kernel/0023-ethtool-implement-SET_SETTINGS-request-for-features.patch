@@ -1,4 +1,4 @@
-From 37962fec949f84c250b0ca7eba31ef6781a36d51 Mon Sep 17 00:00:00 2001
+From b86562a8688e6f492577494bf0e3d28ab6a460fd Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 23/33] ethtool: implement SET_SETTINGS request for features

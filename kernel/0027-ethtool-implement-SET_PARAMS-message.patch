@@ -1,4 +1,4 @@
-From c9812d9f0a46de64f6331e41b7b18c96f1b17bca Mon Sep 17 00:00:00 2001
+From e67d0bb5a048e51098adbf8c4893424cd8d432fa Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 27/33] ethtool: implement SET_PARAMS message
@@ -231,7 +231,7 @@ index 3c763b4d54bc..a0cf1249fd88 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 80199595b8a7..d605d3ea33ec 100644
+index fb0b89fba6e1..24a4a032a072 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -27,7 +27,6 @@

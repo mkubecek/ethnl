@@ -1,7 +1,7 @@
-From d82577163848ac5fb4f96d6d59064565f3a5e3f6 Mon Sep 17 00:00:00 2001
+From 616b7c1f853ae2da4e945a8c7856e4ca0b994896 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
-Subject: [PATCH 10/33] ethtool: implement GET_STRSET message
+Subject: [PATCH 10/33] ethtool: provide string sets with GET_STRSET request
 
 Requests a contents of one or more string sets, i.e. indexed arrays of
 strings; this information is provided by ETHTOOL_GSSET_INFO and
@@ -13,7 +13,8 @@ requests:
   - NLM_F_DUMP, no device: get device related string sets for all devices
 
 It's possible to request all string sets of given type or only specific
-sets.
+sets. With ETHA_STRSET_COUNTS flag, only set sizes (number of strings) are
+returned.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---

@@ -1,4 +1,4 @@
-From c6b9fd3d5b635223298880feb7498912d5c39618 Mon Sep 17 00:00:00 2001
+From ce29fd1566c6ad5430c4cc8ec194c9fc91c84413 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:08:55 +0100
 Subject: [PATCH 16/33] ethtool: provide WoL information in GET_SETTINGS
@@ -134,7 +134,7 @@ index bd329859d9a8..acecbe0cfc2b 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 22df7d6de2a5..8eea4e7c4c3d 100644
+index de90fa2b0a9f..8f36e01b6176 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1229,11 +1229,11 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)

@@ -1,4 +1,4 @@
-From e9cda05eddc2ddbb110c6c26277e2ee1897c9772 Mon Sep 17 00:00:00 2001
+From 506a2ee4d9b4abc4f8ff96c0faa4e6f27c2debbf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:43:07 -0400
 Subject: [PATCH 26/33] ethtool: implement SET_PARAMS notification
@@ -17,7 +17,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 37 insertions(+), 6 deletions(-)
 
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 23e7b6009c59..80199595b8a7 100644
+index 9a9ab9edca5f..fb0b89fba6e1 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1296,6 +1296,7 @@ static int ethtool_get_eee(struct net_device *dev, char __user *useraddr)
@@ -125,7 +125,7 @@ index 23e7b6009c59..80199595b8a7 100644
  }
  
  static int ethtool_self_test(struct net_device *dev, char __user *useraddr)
-@@ -2351,6 +2376,7 @@ static int ethtool_get_fecparam(struct net_device *dev, void __user *useraddr)
+@@ -2357,6 +2382,7 @@ static int ethtool_get_fecparam(struct net_device *dev, void __user *useraddr)
  static int ethtool_set_fecparam(struct net_device *dev, void __user *useraddr)
  {
  	struct ethtool_fecparam fecparam;
@@ -133,7 +133,7 @@ index 23e7b6009c59..80199595b8a7 100644
  
  	if (!dev->ethtool_ops->set_fecparam)
  		return -EOPNOTSUPP;
-@@ -2358,7 +2384,11 @@ static int ethtool_set_fecparam(struct net_device *dev, void __user *useraddr)
+@@ -2364,7 +2390,11 @@ static int ethtool_set_fecparam(struct net_device *dev, void __user *useraddr)
  	if (copy_from_user(&fecparam, useraddr, sizeof(fecparam)))
  		return -EFAULT;
  

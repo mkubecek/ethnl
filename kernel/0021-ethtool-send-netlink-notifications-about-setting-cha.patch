@@ -1,15 +1,17 @@
-From 2e4cdcb2ad5d0346ba28c749ef31c7741ed3731d Mon Sep 17 00:00:00 2001
+From f70d3b53c6ff28a5bf0798cb634eab9814d83197 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:36:49 -0400
-Subject: [PATCH 21/33] ethtool: implement SET_SETTINGS notification
+Subject: [PATCH 21/33] ethtool: send netlink notifications about setting
+ changes
 
 SET_SETTINGS notification message has the same format as response to
 GET_SETTINGS request and is broadcasted on change of relevant fields. Info
 mask can be used to limit the information passed to userspace.
 
-Also trigger the notification on analogous changes performed via the legacy
-ioctl interface; feature notifications are also sent whenever
-netdev_update_features() or netdev_change_features() is called.
+Send the notification on changes performed via the legacy ioctl interface;
+feature notifications are also sent whenever netdev_update_features() or
+netdev_change_features() is called, even if the change was not performed
+using the ethtool interface.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -18,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 34 insertions(+), 2 deletions(-)
 
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index d0d2ae4a8e60..23e7b6009c59 100644
+index 51250ca3e404..9a9ab9edca5f 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -29,6 +29,7 @@
@@ -74,7 +76,7 @@ index d0d2ae4a8e60..23e7b6009c59 100644
  
  	return 0;
  }
-@@ -2446,6 +2460,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
+@@ -2452,6 +2466,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
  	case ETHTOOL_SMSGLVL:
  		rc = ethtool_set_value_void(dev, useraddr,
  				       dev->ethtool_ops->set_msglevel);
@@ -84,7 +86,7 @@ index d0d2ae4a8e60..23e7b6009c59 100644
  		break;
  	case ETHTOOL_GEEE:
  		rc = ethtool_get_eee(dev, useraddr);
-@@ -2512,6 +2529,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
+@@ -2518,6 +2535,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
  	case ETHTOOL_SPFLAGS:
  		rc = ethtool_set_value(dev, useraddr,
  				       dev->ethtool_ops->set_priv_flags);

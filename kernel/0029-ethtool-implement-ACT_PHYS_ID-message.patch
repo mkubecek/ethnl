@@ -1,4 +1,4 @@
-From 9b4969acd1b0ce7c383211fc3df8d9739882488c Mon Sep 17 00:00:00 2001
+From 2ddcf2272f5811aee442c1bbef565ef819a5fc20 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 29/33] ethtool: implement ACT_PHYS_ID message
@@ -267,7 +267,7 @@ index a0cf1249fd88..dbad584cf15d 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index a13f3aa13335..29136a4133d1 100644
+index 9764beff39e3..3066cdfa7149 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1638,60 +1638,15 @@ static int ethtool_get_strings(struct net_device *dev, void __user *useraddr)

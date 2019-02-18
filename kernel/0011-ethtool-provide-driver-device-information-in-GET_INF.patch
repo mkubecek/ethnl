@@ -1,8 +1,8 @@
-From 1465418d3d67ef73aa8747bfaa10d366c5c3e7e7 Mon Sep 17 00:00:00 2001
+From 8bc510c35f24b66b28b79276e3e09392a87fbc8c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 11/33] ethtool: provide driver/device information in GET_INFO
- message
+ request
 
 Implement GET_INFO request to get basic driver and device information as
 provided by ETHTOOL_GDRVINFO ioct command. The information is read only so
@@ -400,7 +400,7 @@ index 000000000000..f617f4682bc4
 +	.fill_reply		= fill_info,
 +};
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 2b3b175708d2..23682b6847c8 100644
+index 71a1643adb2b..648aef92bdef 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -27,7 +27,6 @@

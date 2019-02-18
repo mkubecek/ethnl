@@ -1,4 +1,4 @@
-From 54f9bf66a5bb18a11caf26e15bc3721d48f04f32 Mon Sep 17 00:00:00 2001
+From c2a16fd7ad1feee190587ef55e2eff64eeff20b3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:19:02 +0100
 Subject: [PATCH 17/33] ethtool: provide message level in GET_SETTINGS request
@@ -55,10 +55,10 @@ index f7a58cdee716..9bd4bc78a349 100644
  ETHTOOL_NWAY_RST		n/a
  ETHTOOL_GLINK			n/a
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index 2f1b8aea769c..c40cc60d9ab6 100644
+index 9a50a67f328f..a2ddfeb381bb 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -3847,6 +3847,8 @@ enum {
+@@ -3846,6 +3846,8 @@ enum {
  	NETIF_MSG_PKTDATA	= 0x1000,
  	NETIF_MSG_HW		= 0x2000,
  	NETIF_MSG_WOL		= 0x4000,

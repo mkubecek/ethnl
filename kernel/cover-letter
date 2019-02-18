@@ -1,55 +1,49 @@
-A netlink based interface for ethtool is a recurring discussion theme;
-such discussion happens from time to time but never seems to reach any
-clear conclusion except that netlink interface is desperately needed.
-I'm sending this hoping that having a proposal (even if partial) on the
-table could help move the discussion further.
+Note: this is marked as RFC because it's rather late in the cycle; the plan
+is to make a regular submission (with changes based on review) once
+net-next reopens after the 5.1 merge window. The full (work in progress)
+series, together with the (userspace) ethtool counterpart can be found at
+https://github.com/mkubecek/ethnl
 
-The interface used for communication between ethtool and kernel is based on
-ioctl() and suffers from many problems. The most pressing seems the be the
-lack of extensibility. While some of the newer commands use structures
-designed to allow future extensions (e.g. GFEATURES or TEST), most either
-allow no extension at all (GPAUSEPARAM, GCOALESCE) or only limited set of
-reserved fields (GDRVINFO, GEEE). Even most of those which support future
-extensions limit the data types that can be used.
+This is first part of alternative userspace interface for ethtool. The aim
+is to address some long known issues with the ioctl interface, mainly lack
+of extensibility, raciness, limited error reporting and absence of
+notifications.
 
-This series aims to provide an alternative interface based on netlink which
-is what other network configuration utilities use. In particular, it uses
-generic netlink (family "ethtool"). The goal is to provide an interface
-which would be extensible, flexible and practical both for ethtool and for
-other network configuration tools (e.g. wicked, systemd-networkd or
-NetworkManager).
-
-The interface is documented in Documentation/networking/ethtool-netlink.txt
-
-A series for ethtool utility will follow shortly.
+The interface uses generic netlink family "ethtool"; it provides multicast
+group "monitor" which is used for notifications. Documentation for the
+interface is in Documentation/networking/ethtool-netlink.txt
 
 Basic concepts:
 
-- the interface is based on generic netlink (family name "ethtool")
-
 - the goal is to provide all features of ioctl interface but allow
-  easier future extensions
-
+  easier future extensions; at some point, it should be possible to have
+  full ethtool functionality without using the ioctl interface
 - inextensibility of ioctl interface resulted in way too many commands,
   many of them obsoleted by newer ones; reduce the number by  ignoring the
   obsolete commands and grouping some together
-
-- for "set" type commands, netlink allows providing only the attributes to
-  be changed; therefore we don't need a get-modify-set cycle (which is
+- for "set" type commands, allows passing only the attributes to be
+  changed; therefore we don't need a get-modify-set cycle (which is
   inherently racy), userspace can simply say what it wants to change
-
-- provide notifications to multicast group "monitor" like rtnetlink
-  does, i.e. in the form of messages close to replies to "get" requests
-
-- allow dump requests to get some information about all network defices
+- provide notifications to multicast group "monitor" like rtnetlink does,
+  i.e. in the form of messages close to replies to "get" requests
+- allow dump requests to get some information about all network devices
   providing it
-
 - be less dependent on ethtool and kernel being in sync; allow e.g. saying
   "ethtool -s eth0 advertise foo off" without ethtool knowing what "foo"
-  means; it's kernel's job to know what mode "xyz" is and if it exists
-  and is supported
+  means; it's kernel's job to know what mode "xyz" is and if it exists and
+  is supported
 
-Main changes again RFC v1:
+Main changes between RFC v2 and RFC v3:
+
+- do not allow building as a module (no netdev notifiers needed)
+- drop some obsolete fields
+- add permanent hw address, timestamping and private flags support
+- rework bitset handling to get rid of variable length arrays
+- notify monitor on device renames
+- restructure GET_SETTINGS/SET_SETTINGS messages
+- split too long patches and submit only first part of the series
+
+Main changes between RFC v1 and RFC v2:
 
 - support dumps for all "get" requests
 - provide notifications for changes related to supported request types
@@ -60,17 +54,23 @@ Main changes again RFC v1:
 
 ToDo / open questions:
 
-- as some comments in discussion on v1 pointed out, some features of
-  ethtool would rather belong to devlink; phy_tunables and phy_stats
-  seem to be candidates, maybe part of drvinfo; are there more?
+- some features provided by ethtool would rather belong to devlink (and
+  some are already superseded by devlink); however, only few drivers
+  provide devlink interface at the moment and as recent discussion on
+  flashing revealed, we cannot rely on devlink's presence
 
-- another question is where to do the split; should ethtool use devlink
-  API for these or can we provide them in ethtool API as well but with
-  devlink backend (for communication with NIC)
+- while the netlink interface allows easy future extensions, ethtool_ops
+  interface does not; some settings could be implemented using tunables and
+  accessed via relevant netlink messages (as well as tunables) from
+  userspace but in the long term, something better will be needed
 
 - currently, all communication with drivers via ethtool_ops is done
-  under RTNL as this is what ioctl interface does and I suspect many
-  ethtool_ops rely on that; can we do without RTNL?
+  under RTNL as this is what ioctl interface does and likely many
+  ethtool_ops handlers rely on that; if we are going to rework ethtool_ops
+  in the future ("phase two"), it would be nice to get rid of it
+
+- ethtool_ops should pass extack pointer to allow drivers more meaningful
+  error reporting
 
 - notifications are sent whenever a change is done via netlink API or
   ioctl API and for netdev features also whenever they are updated using
@@ -83,23 +83,3 @@ ToDo / open questions:
   attribute size (including nested ones) is a problem; if so, dumps can
   be an answer for dumps, some kind of multi-message requests would be
   needed for flashes
-
-- while the netlink interface allows easy future extensions, ethtool_ops
-  interface does not; some settings could be implemented using tunables and
-  accessed via relevant netlink messages (as well as tunables) from
-  userspace but in the long term, something better will be needed
-
-- it would be nice if driver could provide useful error/warning messages to
-  be passed to userspace via extended ACK; example: while testing, I found
-  a driver which only allows values 0, 1, 3 and 10000 for certain parameter
-  but the only way poor user can find out is either by trying all values or
-  by checking driver source
-
-- some of the functions for GET_SETTINGS and GET_PARAMS are quite
-  similar (e.g. ethtool_get_*); it might be beneficial to introduce some
-  "ops", leave only "parse", "prepare", "size" and "fill" handlers and
-  make the rest generic (like ethnl_dumpit()).
-
-- the counts and sizes in GET_DRVINFO reply seem to be a relic of the
-  past and if userspace needs them, there are (or will be) other ways to
-  get them; they should most likely go

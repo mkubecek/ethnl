@@ -1,8 +1,8 @@
-From 34a650a7b3b07db8a620a74c2ab7388d11af837d Mon Sep 17 00:00:00 2001
+From 33e9f4da0a78ca911bdd1318dc15fec3a7dddfbf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
 Subject: [PATCH 13/33] ethtool: provide timestamping information in GET_INFO
- message
+ request
 
 Add timestamping information as provided by ETHTOOL_GET_TS_INFO ioctl
 command in GET_INFO reply if ETH_INFO_IM_TSINFO flag is set in the request.
@@ -406,10 +406,10 @@ index 76610dc59414..ce80a3fe2612 100644
  	return 0;
  }
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 23682b6847c8..b959532eb444 100644
+index 648aef92bdef..da3c15e7238a 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -2027,28 +2027,12 @@ static int ethtool_get_dump_data(struct net_device *dev,
+@@ -2033,28 +2033,12 @@ static int ethtool_get_dump_data(struct net_device *dev,
  
  static int ethtool_get_ts_info(struct net_device *dev, void __user *useraddr)
  {

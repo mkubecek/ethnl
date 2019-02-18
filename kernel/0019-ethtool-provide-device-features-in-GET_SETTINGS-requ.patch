@@ -1,4 +1,4 @@
-From 1fd8224036a534cf3a0e44a9bfdf8e426ebdf001 Mon Sep 17 00:00:00 2001
+From c2307a1e9832dc1b8743e3ddd4c87060d48e9789 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 19/33] ethtool: provide device features in GET_SETTINGS
@@ -166,7 +166,7 @@ index b2b935a4569a..3c763b4d54bc 100644
  extern const char rss_hash_func_strings[ETH_RSS_HASH_FUNCS_COUNT][ETH_GSTRING_LEN];
  extern const char tunable_strings[__ETHTOOL_TUNABLE_COUNT][ETH_GSTRING_LEN];
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index d97dd2f8ba2b..d0d2ae4a8e60 100644
+index 8748458ec418..51250ca3e404 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -57,8 +57,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);

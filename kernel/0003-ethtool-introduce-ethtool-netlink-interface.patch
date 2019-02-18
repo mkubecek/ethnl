@@ -1,4 +1,4 @@
-From 2f86ea150a2565781321bbbd0766424e44911973 Mon Sep 17 00:00:00 2001
+From d7a85e2deff1b70ee0a895a564ab442600884252 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 03/33] ethtool: introduce ethtool netlink interface
@@ -238,7 +238,7 @@ index 000000000000..d8a8d3c72c2f
 +
 +#endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/Kconfig b/net/Kconfig
-index 5cb9de1aaf88..6f53eb81a60b 100644
+index 62da6148e9f8..32ebf73ca101 100644
 --- a/net/Kconfig
 +++ b/net/Kconfig
 @@ -460,6 +460,13 @@ config FAILOVER
