@@ -1,4 +1,4 @@
-From d3298c78a56acd46e8ffbab81e5f09d44c0a4971 Mon Sep 17 00:00:00 2001
+From 119a61384fc8dfbe836babbd9fc87bf6309a9faa Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 05/33] ethtool: netlink bitset handling
@@ -11,10 +11,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  63 ++
  include/uapi/linux/ethtool_netlink.h         |  32 ++
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/bitset.c                         | 570 +++++++++++++++++++
+ net/ethtool/bitset.c                         | 572 +++++++++++++++++++
  net/ethtool/bitset.h                         |  40 ++
  net/ethtool/netlink.h                        |   9 +
- 6 files changed, 715 insertions(+), 1 deletion(-)
+ 6 files changed, 717 insertions(+), 1 deletion(-)
  create mode 100644 net/ethtool/bitset.c
  create mode 100644 net/ethtool/bitset.h
 
@@ -147,10 +147,12 @@ index f30e0da88be5..482fdb9380fa 100644
 +ethtool_nl-y	:= netlink.o bitset.o
 diff --git a/net/ethtool/bitset.c b/net/ethtool/bitset.c
 new file mode 100644
-index 000000000000..abcab7d0e2fa
+index 000000000000..b8ee750a4924
 --- /dev/null
 +++ b/net/ethtool/bitset.c
-@@ -0,0 +1,570 @@
+@@ -0,0 +1,572 @@
++// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
++
 +#include <linux/ethtool_netlink.h>
 +#include <linux/bitmap.h>
 +#include "netlink.h"
@@ -723,7 +725,7 @@ index 000000000000..abcab7d0e2fa
 +}
 diff --git a/net/ethtool/bitset.h b/net/ethtool/bitset.h
 new file mode 100644
-index 000000000000..3de9c86e89ef
+index 000000000000..761d0c47fe23
 --- /dev/null
 +++ b/net/ethtool/bitset.h
 @@ -0,0 +1,40 @@
@@ -735,15 +737,15 @@ index 000000000000..3de9c86e89ef
 +/* when set, value and mask bitmaps are arrays of u32, when not, arrays of
 + * unsigned long
 + */
-+#define ETHNL_BITSET_U32		(1U << 0)
++#define ETHNL_BITSET_U32		BIT(0)
 +/* generate a compact format bitset */
-+#define ETHNL_BITSET_COMPACT		(1U << 1)
++#define ETHNL_BITSET_COMPACT		BIT(1)
 +/* generate a bit list */
-+#define ETHNL_BITSET_LIST		(1U << 2)
++#define ETHNL_BITSET_LIST		BIT(2)
 +/* when set, names are interpreted as legacy string set (an array of
 + * char[ETH_GSTRING_LEN]), when not, as a simple array of char *
 + */
-+#define ETHNL_BITSET_LEGACY_NAMES	(1U << 3)
++#define ETHNL_BITSET_LEGACY_NAMES	BIT(3)
 +
 +int ethnl_bitset_is_compact(const struct nlattr *bitset, bool *compact);
 +int ethnl_bitset_size(unsigned int size, const unsigned long *val,
@@ -768,7 +770,7 @@ index 000000000000..3de9c86e89ef
 +
 +#endif /* _NET_ETHTOOL_BITSET_H */
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 5491d7db83f3..666342f9ffc4 100644
+index 36a397656127..ba638eb5a99a 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -20,6 +20,15 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,

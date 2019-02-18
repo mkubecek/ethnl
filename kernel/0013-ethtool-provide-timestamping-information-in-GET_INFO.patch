@@ -1,4 +1,4 @@
-From 33e9f4da0a78ca911bdd1318dc15fec3a7dddfbf Mon Sep 17 00:00:00 2001
+From 4ade517559f9888cc1484072306ad7d358d2daa1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
 Subject: [PATCH 13/33] ethtool: provide timestamping information in GET_INFO
@@ -156,11 +156,11 @@ index e5b39721c6e4..e5b0472c4416 100644
  
  /* SCM_TIMESTAMPING_PKTINFO control message */
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index 09388c736d26..3c7fdeb34c1e 100644
+index e0bd7c6c5874..4616816861cc 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
 @@ -1,6 +1,8 @@
- /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
+ // SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
  
  #include <linux/rtnetlink.h>
 +#include <linux/phy.h>
@@ -195,22 +195,22 @@ index 09388c736d26..3c7fdeb34c1e 100644
 +	return err;
 +}
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
-index 200656d46d16..12e916fdd04a 100644
+index e87e58b3a274..02cbee79da35 100644
 --- a/net/ethtool/common.h
 +++ b/net/ethtool/common.h
-@@ -12,4 +12,6 @@ extern const char tunable_strings[__ETHTOOL_TUNABLE_COUNT][ETH_GSTRING_LEN];
- extern const char phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN];
+@@ -16,4 +16,6 @@ extern const char
+ phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN];
  
  int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info);
 +int __ethtool_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info);
 +
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
-index 76610dc59414..ce80a3fe2612 100644
+index 05dbd87ebc41..838257db1d31 100644
 --- a/net/ethtool/info.c
 +++ b/net/ethtool/info.c
 @@ -1,15 +1,61 @@
- /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
+ // SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
  
 +#include <linux/net_tstamp.h>
 +
@@ -441,7 +441,7 @@ index 648aef92bdef..da3c15e7238a 100644
  		err = -EFAULT;
  
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 87e363f5e4d9..36c6846262d8 100644
+index 7141ec71a6d3..82a4c1f398d8 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -7,14 +7,23 @@
@@ -469,7 +469,7 @@ index 87e363f5e4d9..36c6846262d8 100644
  int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
  
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index 4fd95fd9c373..16366af006d3 100644
+index a7d0ec2865fb..5c74498d9c72 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -67,6 +67,24 @@ static const struct strset_info info_template[] = {

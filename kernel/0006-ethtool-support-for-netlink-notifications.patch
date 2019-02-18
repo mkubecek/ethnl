@@ -1,4 +1,4 @@
-From 2eba141272b6d04fc88ff9482de08b83ff457426 Mon Sep 17 00:00:00 2001
+From 45904ca8caf416686b1e47ebfc051b5618e9555e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
 Subject: [PATCH 06/33] ethtool: support for netlink notifications
@@ -71,7 +71,7 @@ index 7f3d401977b4..b662d75a0636 100644
 +
  #endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 22c39c6b9bc0..bd70784d5ab9 100644
+index ffdcc7c9d4bc..a5fa54c2b743 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -4,6 +4,8 @@
@@ -83,7 +83,7 @@ index 22c39c6b9bc0..bd70784d5ab9 100644
  static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
  	[ETHA_DEV_UNSPEC]	= { .type = NLA_REJECT },
  	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -121,11 +123,39 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -122,11 +124,39 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  	return NULL;
  }
  
@@ -123,7 +123,7 @@ index 22c39c6b9bc0..bd70784d5ab9 100644
  struct genl_family ethtool_genl_family = {
  	.hdrsize	= 0,
  	.name		= ETHTOOL_GENL_NAME,
-@@ -134,6 +164,8 @@ struct genl_family ethtool_genl_family = {
+@@ -135,6 +165,8 @@ struct genl_family ethtool_genl_family = {
  	.parallel_ops	= true,
  	.ops		= ethtool_genl_ops,
  	.n_ops		= ARRAY_SIZE(ethtool_genl_ops),
@@ -133,7 +133,7 @@ index 22c39c6b9bc0..bd70784d5ab9 100644
  
  /* module setup */
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 666342f9ffc4..292ad818959f 100644
+index ba638eb5a99a..78385baeaec0 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -11,6 +11,8 @@

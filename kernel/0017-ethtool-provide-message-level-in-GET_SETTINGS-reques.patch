@@ -1,4 +1,4 @@
-From c2a16fd7ad1feee190587ef55e2eff64eeff20b3 Mon Sep 17 00:00:00 2001
+From 6ce75a3043adb76e22a13f15d5bce268633cb9fb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:19:02 +0100
 Subject: [PATCH 17/33] ethtool: provide message level in GET_SETTINGS request
@@ -91,7 +91,7 @@ index ce9d6b48f814..360e20a73f19 100644
  enum {
  	ETHA_LINKINFO_UNSPEC,
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 0b7cff062e61..9839a2aaedd8 100644
+index d296625edb2b..58cd2d19a75d 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -13,6 +13,7 @@ struct settings_data {

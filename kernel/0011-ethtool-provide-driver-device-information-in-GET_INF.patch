@@ -1,4 +1,4 @@
-From 8bc510c35f24b66b28b79276e3e09392a87fbc8c Mon Sep 17 00:00:00 2001
+From 71d884080300f6863973edfcbc76daecff8aa476 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 11/33] ethtool: provide driver/device information in GET_INFO
@@ -153,11 +153,11 @@ index 11ceb00821b3..96d41dc45d4f 100644
 -ethtool_nl-y	:= netlink.o bitset.o strset.o
 +ethtool_nl-y	:= netlink.o bitset.o strset.o info.o
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index 0b1ff5a1a918..09388c736d26 100644
+index 73f721a1c557..e0bd7c6c5874 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
 @@ -1,5 +1,7 @@
- /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
+ // SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
  
 +#include <linux/rtnetlink.h>
 +#include <net/devlink.h>
@@ -221,7 +221,7 @@ index 0b1ff5a1a918..09388c736d26 100644
 +	return 0;
 +}
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
-index 45c6492e4aee..200656d46d16 100644
+index 41b2efc1e4e1..e87e58b3a274 100644
 --- a/net/ethtool/common.h
 +++ b/net/ethtool/common.h
 @@ -3,6 +3,7 @@
@@ -231,20 +231,20 @@ index 45c6492e4aee..200656d46d16 100644
 +#include <linux/netdevice.h>
  #include <linux/ethtool.h>
  
- extern const char netdev_features_strings[NETDEV_FEATURE_COUNT][ETH_GSTRING_LEN];
-@@ -10,4 +11,5 @@ extern const char rss_hash_func_strings[ETH_RSS_HASH_FUNCS_COUNT][ETH_GSTRING_LE
- extern const char tunable_strings[__ETHTOOL_TUNABLE_COUNT][ETH_GSTRING_LEN];
- extern const char phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN];
+ extern const char
+@@ -14,4 +15,5 @@ tunable_strings[__ETHTOOL_TUNABLE_COUNT][ETH_GSTRING_LEN];
+ extern const char
+ phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN];
  
 +int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info);
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
 new file mode 100644
-index 000000000000..f617f4682bc4
+index 000000000000..1a2e78d238e3
 --- /dev/null
 +++ b/net/ethtool/info.c
 @@ -0,0 +1,155 @@
-+/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
++// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include "netlink.h"
 +#include "common.h"
@@ -474,10 +474,10 @@ index 71a1643adb2b..648aef92bdef 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 1c4312941e18..9f886bc4462e 100644
+index 082a9f2aa0a7..e27dec427414 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -86,9 +86,11 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
+@@ -87,9 +87,11 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
  /* GET request helpers */
  
  extern const struct get_request_ops strset_request_ops;
@@ -489,7 +489,7 @@ index 1c4312941e18..9f886bc4462e 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -507,6 +509,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -508,6 +510,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},

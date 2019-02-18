@@ -1,4 +1,4 @@
-From c2307a1e9832dc1b8743e3ddd4c87060d48e9789 Mon Sep 17 00:00:00 2001
+From dc197b088dd428035aa5c48dfaa7956a3e8c74cd Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 19/33] ethtool: provide device features in GET_SETTINGS
@@ -153,7 +153,7 @@ index 06e78d94cacc..154d7e6a59dd 100644
  enum {
  	ETHA_LINKINFO_UNSPEC,
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
-index b2b935a4569a..3c763b4d54bc 100644
+index e5b5c5c2a4b9..cf0b81af2d9f 100644
 --- a/net/ethtool/common.h
 +++ b/net/ethtool/common.h
 @@ -6,6 +6,8 @@
@@ -162,9 +162,9 @@ index b2b935a4569a..3c763b4d54bc 100644
  
 +#define ETHTOOL_DEV_FEATURE_WORDS	((NETDEV_FEATURE_COUNT + 31) / 32)
 +
- extern const char netdev_features_strings[NETDEV_FEATURE_COUNT][ETH_GSTRING_LEN];
- extern const char rss_hash_func_strings[ETH_RSS_HASH_FUNCS_COUNT][ETH_GSTRING_LEN];
- extern const char tunable_strings[__ETHTOOL_TUNABLE_COUNT][ETH_GSTRING_LEN];
+ extern const char
+ netdev_features_strings[NETDEV_FEATURE_COUNT][ETH_GSTRING_LEN];
+ extern const char
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
 index 8748458ec418..51250ca3e404 100644
 --- a/net/ethtool/ioctl.c
@@ -179,7 +179,7 @@ index 8748458ec418..51250ca3e404 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 95e3b0bcee94..d89665e7a168 100644
+index 099300901c12..32ee273de879 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -16,6 +16,12 @@ struct settings_data {

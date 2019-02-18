@@ -1,4 +1,4 @@
-From 9b0719b8d80957b64e72565e36a1f4bdc068de40 Mon Sep 17 00:00:00 2001
+From fd8ed78ec970136f87f7c6ff0cc30896e6b5a8e4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:26:45 +0100
 Subject: [PATCH 18/33] ethtool: provide link state in GET_SETTINGS request
@@ -73,7 +73,7 @@ index 360e20a73f19..06e78d94cacc 100644
  enum {
  	ETHA_LINKINFO_UNSPEC,
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index b04ed5f1cf3d..514c8d94bf31 100644
+index 9fba57f554dd..a188f07bcb4c 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
 @@ -217,3 +217,11 @@ int __ethtool_get_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
@@ -89,10 +89,10 @@ index b04ed5f1cf3d..514c8d94bf31 100644
 +	return netif_running(dev) && dev->ethtool_ops->get_link(dev);
 +}
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
-index acecbe0cfc2b..b2b935a4569a 100644
+index ed3f1ca54660..e5b5c5c2a4b9 100644
 --- a/net/ethtool/common.h
 +++ b/net/ethtool/common.h
-@@ -14,6 +14,7 @@ extern const char phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_L
+@@ -18,6 +18,7 @@ phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN];
  int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info);
  int __ethtool_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info);
  int __ethtool_get_wol(struct net_device *dev, struct ethtool_wolinfo *wol);
@@ -122,7 +122,7 @@ index 8f36e01b6176..8748458ec418 100644
  		return -EFAULT;
  	return 0;
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 9839a2aaedd8..95e3b0bcee94 100644
+index 58cd2d19a75d..099300901c12 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,7 @@ struct settings_data {

@@ -1,4 +1,4 @@
-From 616b7c1f853ae2da4e945a8c7856e4ca0b994896 Mon Sep 17 00:00:00 2001
+From 16f45dc30ad92a125eb0aeb46f22cd58ad0a180b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 10/33] ethtool: provide string sets with GET_STRSET request
@@ -23,8 +23,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool_netlink.h         |  43 ++
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/netlink.c                        |  10 +
- net/ethtool/strset.c                         | 439 +++++++++++++++++++
- 6 files changed, 539 insertions(+), 3 deletions(-)
+ net/ethtool/strset.c                         | 437 +++++++++++++++++++
+ 6 files changed, 537 insertions(+), 3 deletions(-)
  create mode 100644 net/ethtool/strset.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -190,10 +190,10 @@ index 11782306593b..11ceb00821b3 100644
 -ethtool_nl-y	:= netlink.o bitset.o
 +ethtool_nl-y	:= netlink.o bitset.o strset.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 1961574cfe12..1c4312941e18 100644
+index 8cdb6f52cb4a..082a9f2aa0a7 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -85,7 +85,10 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
+@@ -86,7 +86,10 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
  
  /* GET request helpers */
  
@@ -204,7 +204,7 @@ index 1961574cfe12..1c4312941e18 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -497,6 +500,13 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -498,6 +501,13 @@ static struct notifier_block ethnl_netdev_notifier = {
  /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
@@ -220,11 +220,11 @@ index 1961574cfe12..1c4312941e18 100644
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
 new file mode 100644
-index 000000000000..4fd95fd9c373
+index 000000000000..a7d0ec2865fb
 --- /dev/null
 +++ b/net/ethtool/strset.c
-@@ -0,0 +1,439 @@
-+/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
+@@ -0,0 +1,437 @@
++// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include <linux/ethtool.h>
 +#include <linux/phy.h>
@@ -326,22 +326,22 @@ index 000000000000..4fd95fd9c373
 +
 +static bool include_set(const struct strset_data *data, u32 id)
 +{
++	bool per_dev;
++
 +	BUILD_BUG_ON(ETH_SS_COUNT >= BITS_PER_BYTE * sizeof(data->req_ids));
 +
 +	if (data->req_ids)
 +		return id_requested(data, id);
-+	else {
-+		bool per_dev = data->info[id].per_dev;
 +
-+		if (data->info[id].type == ETH_SS_TYPE_NONE)
-+			return false;
-+		return data->repdata_base.dev ? per_dev : !per_dev;
-+	}
++	per_dev = data->info[id].per_dev;
++	if (data->info[id].type == ETH_SS_TYPE_NONE)
++		return false;
++	return data->repdata_base.dev ? per_dev : !per_dev;
 +}
 +
 +const char *str_value(const struct strset_info *info, unsigned int i)
 +{
-+	switch(info->type) {
++	switch (info->type) {
 +	case ETH_SS_TYPE_LEGACY:
 +		return info->data.legacy[i];
 +	case ETH_SS_TYPE_SIMPLE:
@@ -385,7 +385,7 @@ index 000000000000..4fd95fd9c373
 +	nlmsg_for_each_attr(attr, nlhdr, GENL_HDRLEN, rem) {
 +		u32 id;
 +
-+		switch(nla_type(attr)) {
++		switch (nla_type(attr)) {
 +		case ETHA_STRSET_DEV:
 +			req_info->dev = ethnl_dev_get(info, attr);
 +			if (IS_ERR(req_info->dev)) {
@@ -430,7 +430,6 @@ index 000000000000..4fd95fd9c373
 +	const struct ethtool_ops *ops = dev->ethtool_ops;
 +	void *strings;
 +	int count, ret;
-+
 +
 +	if (id == ETH_SS_PHY_STATS && dev->phydev &&
 +	    !ops->get_ethtool_phy_stats)
@@ -489,7 +488,7 @@ index 000000000000..4fd95fd9c373
 +		goto err_strset;
 +	for (i = 0; i < ETH_SS_COUNT; i++) {
 +		if (!include_set(data, i) || !data->info[i].per_dev)
-+		    continue;
++			continue;
 +		if (WARN_ONCE(data->info[i].type != ETH_SS_TYPE_LEGACY,
 +			      "unexpected string set type %u",
 +			      data->info[i].type))
@@ -510,9 +509,10 @@ index 000000000000..4fd95fd9c373
 +	return ret;
 +}
 +
-+static int legacy_set_size(const char (*set)[ETH_GSTRING_LEN], unsigned count)
++static int legacy_set_size(const char (*set)[ETH_GSTRING_LEN],
++			   unsigned int count)
 +{
-+	unsigned len = 0;
++	unsigned int len = 0;
 +	unsigned int i;
 +
 +	for (i = 0; i < count; i++)
@@ -523,9 +523,9 @@ index 000000000000..4fd95fd9c373
 +	return nla_total_size(len);
 +}
 +
-+static int simple_set_size(const char * const *set, unsigned count)
++static int simple_set_size(const char * const *set, unsigned int count)
 +{
-+	unsigned len = 0;
++	unsigned int len = 0;
 +	unsigned int i;
 +
 +	for (i = 0; i < count; i++)
@@ -543,7 +543,7 @@ index 000000000000..4fd95fd9c373
 +	if (counts_only)
 +		return nla_total_size(2 * nla_total_size(sizeof(u32)));
 +
-+	switch(info->type) {
++	switch (info->type) {
 +	case ETH_SS_TYPE_LEGACY:
 +		return legacy_set_size(info->data.legacy, info->count);
 +	case ETH_SS_TYPE_SIMPLE:
@@ -565,15 +565,13 @@ index 000000000000..4fd95fd9c373
 +	for (i = 0; i < ETH_SS_COUNT; i++) {
 +		const struct strset_info *info = &data->info[i];
 +
-+		if (!include_set(data, i) ||
-+		    (info->type == ETH_SS_TYPE_NONE))
++		if (!include_set(data, i) || info->type == ETH_SS_TYPE_NONE)
 +			continue;
 +
 +		ret = set_size(info, data->counts_only);
 +		if (ret < 0)
 +			return ret;
-+		else
-+			len += ret;
++		len += ret;
 +	}
 +
 +	return len;
@@ -642,9 +640,9 @@ index 000000000000..4fd95fd9c373
 +
 +	for (i = 0; i < ETH_SS_COUNT; i++)
 +		if (include_set(data, i)) {
-+		    ret = fill_set(skb, data, i);
-+		    if (ret < 0)
-+			    return ret;
++			ret = fill_set(skb, data, i);
++			if (ret < 0)
++				return ret;
 +		}
 +
 +	return 0;

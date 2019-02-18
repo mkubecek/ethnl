@@ -1,4 +1,4 @@
-From 310ae0bfb743f4461225f2aa891f39b9cfd9a822 Mon Sep 17 00:00:00 2001
+From f8bc33a2b63942ff88a433d66a3f0c2b9cfcd5e6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 15 Feb 2019 11:50:56 +0100
 Subject: [PATCH 09/33] ethtool: move string arrays into common file
@@ -11,9 +11,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  net/ethtool/Makefile |  2 +-
  net/ethtool/common.c | 83 ++++++++++++++++++++++++++++++++++++++++++++
- net/ethtool/common.h | 13 +++++++
+ net/ethtool/common.h | 17 +++++++++
  net/ethtool/ioctl.c  | 82 ++-----------------------------------------
- 4 files changed, 99 insertions(+), 81 deletions(-)
+ 4 files changed, 103 insertions(+), 81 deletions(-)
  create mode 100644 net/ethtool/common.c
  create mode 100644 net/ethtool/common.h
 
@@ -31,11 +31,11 @@ index 482fdb9380fa..11782306593b 100644
  
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
 new file mode 100644
-index 000000000000..0b1ff5a1a918
+index 000000000000..73f721a1c557
 --- /dev/null
 +++ b/net/ethtool/common.c
 @@ -0,0 +1,83 @@
-+/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
++// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include "common.h"
 +
@@ -120,10 +120,10 @@ index 000000000000..0b1ff5a1a918
 +};
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
 new file mode 100644
-index 000000000000..45c6492e4aee
+index 000000000000..41b2efc1e4e1
 --- /dev/null
 +++ b/net/ethtool/common.h
-@@ -0,0 +1,13 @@
+@@ -0,0 +1,17 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#ifndef _ETHTOOL_COMMON_H
@@ -131,10 +131,14 @@ index 000000000000..45c6492e4aee
 +
 +#include <linux/ethtool.h>
 +
-+extern const char netdev_features_strings[NETDEV_FEATURE_COUNT][ETH_GSTRING_LEN];
-+extern const char rss_hash_func_strings[ETH_RSS_HASH_FUNCS_COUNT][ETH_GSTRING_LEN];
-+extern const char tunable_strings[__ETHTOOL_TUNABLE_COUNT][ETH_GSTRING_LEN];
-+extern const char phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN];
++extern const char
++netdev_features_strings[NETDEV_FEATURE_COUNT][ETH_GSTRING_LEN];
++extern const char
++rss_hash_func_strings[ETH_RSS_HASH_FUNCS_COUNT][ETH_GSTRING_LEN];
++extern const char
++tunable_strings[__ETHTOOL_TUNABLE_COUNT][ETH_GSTRING_LEN];
++extern const char
++phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN];
 +
 +#endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c

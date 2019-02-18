@@ -1,4 +1,4 @@
-From 2122c19f3e0582c3a8652807e5a9639e217722a3 Mon Sep 17 00:00:00 2001
+From bbde43611de7d7f33b8e427e94ff9a1b848fafa3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 07/33] ethtool: implement EVENT notifications
@@ -127,10 +127,10 @@ index b662d75a0636..7e192ad8ce3a 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index bd70784d5ab9..7f169ae969f4 100644
+index a5fa54c2b743..ee3424cd1f90 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -147,6 +147,67 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
+@@ -148,6 +148,67 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  }
  EXPORT_SYMBOL(ethtool_notify);
  
@@ -175,7 +175,7 @@ index bd70784d5ab9..7f169ae969f4 100644
 +static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
 +			      void *ptr)
 +{
-+	switch(event) {
++	switch (event) {
 +	case NETDEV_REGISTER:
 +		ethnl_notify_devlist(ptr, ETHA_EVENT_NEWDEV, ETHA_NEWDEV_DEV);
 +		break;
@@ -198,7 +198,7 @@ index bd70784d5ab9..7f169ae969f4 100644
  /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -178,6 +239,10 @@ static int __init ethnl_init(void)
+@@ -179,6 +240,10 @@ static int __init ethnl_init(void)
  	if (ret < 0)
  		panic("ethtool: could not register genetlink family\n");
  

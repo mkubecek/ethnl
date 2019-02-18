@@ -1,4 +1,4 @@
-From 2aea069ff1da602f9fcccedfeaa82311399f88af Mon Sep 17 00:00:00 2001
+From c710e9a6f3e8f359a28a6481973fcedaa3d9e520 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 15/33] ethtool: provide link settings and link modes in
@@ -186,7 +186,7 @@ index 96d41dc45d4f..6a7a182e1568 100644
 -ethtool_nl-y	:= netlink.o bitset.o strset.o info.o
 +ethtool_nl-y	:= netlink.o bitset.o strset.o info.o settings.o
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index 3c7fdeb34c1e..cb849e6ab792 100644
+index 4616816861cc..3316e9e403c9 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
 @@ -159,3 +159,51 @@ int __ethtool_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info)
@@ -242,10 +242,10 @@ index 3c7fdeb34c1e..cb849e6ab792 100644
 +	return retval;
 +}
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
-index 12e916fdd04a..bd329859d9a8 100644
+index 02cbee79da35..7a3e0b10e69a 100644
 --- a/net/ethtool/common.h
 +++ b/net/ethtool/common.h
-@@ -14,4 +14,8 @@ extern const char phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_L
+@@ -18,4 +18,8 @@ phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN];
  int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info);
  int __ethtool_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info);
  
@@ -314,10 +314,10 @@ index da3c15e7238a..de90fa2b0a9f 100644
   * set. legacy_settings always updated (best effort)
   */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index deb0144524c0..486f49da876c 100644
+index 1ff6696ad716..5166b0c28288 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -142,10 +142,12 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
+@@ -143,10 +143,12 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
  
  extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops info_request_ops;
@@ -330,7 +330,7 @@ index deb0144524c0..486f49da876c 100644
  };
  
  static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -571,6 +573,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -572,6 +574,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -346,11 +346,11 @@ index deb0144524c0..486f49da876c 100644
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
-index 000000000000..00e33a1fa3dd
+index 000000000000..4f2858fe1a7d
 --- /dev/null
 +++ b/net/ethtool/settings.c
 @@ -0,0 +1,265 @@
-+/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
++// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include "netlink.h"
 +#include "common.h"

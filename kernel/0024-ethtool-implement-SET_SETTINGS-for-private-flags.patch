@@ -1,4 +1,4 @@
-From 7d2b47a6d59f867b292d2712ee4098ed570fb6ea Mon Sep 17 00:00:00 2001
+From 9c0d14d877d9eedacfe2a7f42fdf3b8be06ecac4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 24/33] ethtool: implement SET_SETTINGS for private flags
@@ -35,7 +35,7 @@ index 1aa1f05c8920..1475a83e9937 100644
  ETHTOOL_SRXFH			n/a
  ETHTOOL_GGRO			ETHNL_CMD_GET_SETTINGS
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 4002c93550eb..59a3224276dc 100644
+index 6a3b27978ee7..0601c59eb262 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -824,6 +824,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {

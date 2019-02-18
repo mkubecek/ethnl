@@ -1,4 +1,4 @@
-From 0e742b5d75de5e844bf6c6fa607f83cc3be4c118 Mon Sep 17 00:00:00 2001
+From cd854053ca4775e6dc41388451f2d9a0a0196c16 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 22/33] ethtool: implement SET_SETTINGS message
@@ -99,10 +99,10 @@ index a7416299d1a8..9a16c09918a3 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 76119db147ec..f4bb06afa5da 100644
+index 6f94aec6fa69..740a0caa6c4d 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -592,6 +592,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -593,6 +593,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -115,10 +115,10 @@ index 76119db147ec..f4bb06afa5da 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 332f4e948b40..6f63ea0288c1 100644
+index 800ea57ab0de..230d7f7b4fa6 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -248,4 +248,8 @@ struct get_request_ops {
+@@ -249,4 +249,8 @@ struct get_request_ops {
  	void (*cleanup)(struct common_req_info *req_info);
  };
  
@@ -128,7 +128,7 @@ index 332f4e948b40..6f63ea0288c1 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 05be00c01e7b..52412ce523cc 100644
+index 7f72f4250306..24c2b750a277 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -27,6 +27,228 @@ struct settings_data {

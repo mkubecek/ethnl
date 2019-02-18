@@ -1,4 +1,4 @@
-From ce29fd1566c6ad5430c4cc8ec194c9fc91c84413 Mon Sep 17 00:00:00 2001
+From 59713600afa1ba77f8383c5e735d753799689d27 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:08:55 +0100
 Subject: [PATCH 16/33] ethtool: provide WoL information in GET_SETTINGS
@@ -104,7 +104,7 @@ index 4e1fa4a06aac..ce9d6b48f814 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index cb849e6ab792..b04ed5f1cf3d 100644
+index 3316e9e403c9..9fba57f554dd 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
 @@ -207,3 +207,13 @@ convert_legacy_settings_to_link_ksettings(
@@ -122,10 +122,10 @@ index cb849e6ab792..b04ed5f1cf3d 100644
 +	return 0;
 +}
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
-index bd329859d9a8..acecbe0cfc2b 100644
+index 7a3e0b10e69a..ed3f1ca54660 100644
 --- a/net/ethtool/common.h
 +++ b/net/ethtool/common.h
-@@ -13,6 +13,7 @@ extern const char phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_L
+@@ -17,6 +17,7 @@ phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN];
  
  int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info);
  int __ethtool_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info);
@@ -154,7 +154,7 @@ index de90fa2b0a9f..8f36e01b6176 100644
  	if (copy_to_user(useraddr, &wol, sizeof(wol)))
  		return -EFAULT;
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 00e33a1fa3dd..0b7cff062e61 100644
+index 4f2858fe1a7d..d296625edb2b 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -6,11 +6,13 @@

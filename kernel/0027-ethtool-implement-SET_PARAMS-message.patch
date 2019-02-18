@@ -1,4 +1,4 @@
-From e67d0bb5a048e51098adbf8c4893424cd8d432fa Mon Sep 17 00:00:00 2001
+From 110651843e789c57d18d1da10f8f59a0fe25b29e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 27/33] ethtool: implement SET_PARAMS message
@@ -137,7 +137,7 @@ index 043a1d0d9d1b..54351f5c5ccf 100644
 +ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
  
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index 514c8d94bf31..45d381756885 100644
+index a188f07bcb4c..74dbfca7101c 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
 @@ -4,6 +4,7 @@
@@ -217,10 +217,10 @@ index 514c8d94bf31..45d381756885 100644
 +	return dev->ethtool_ops->set_channels(dev, channels);
 +}
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
-index 3c763b4d54bc..a0cf1249fd88 100644
+index cf0b81af2d9f..d557702d0f78 100644
 --- a/net/ethtool/common.h
 +++ b/net/ethtool/common.h
-@@ -17,6 +17,9 @@ int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info);
+@@ -21,6 +21,9 @@ int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info);
  int __ethtool_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info);
  int __ethtool_get_wol(struct net_device *dev, struct ethtool_wolinfo *wol);
  int __ethtool_get_link(struct net_device *dev);
@@ -322,10 +322,10 @@ index fb0b89fba6e1..24a4a032a072 100644
  		ethtool_notify(dev, NULL, ETHNL_CMD_SET_PARAMS,
  			       ETH_PARAMS_IM_CHANNELS, NULL);
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 6c2d0099e314..dace548bf21f 100644
+index e4b87d03d1de..44a84dd3641e 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -607,6 +607,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -608,6 +608,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
