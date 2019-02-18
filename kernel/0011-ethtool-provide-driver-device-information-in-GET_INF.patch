@@ -1,4 +1,4 @@
-From 71d884080300f6863973edfcbc76daecff8aa476 Mon Sep 17 00:00:00 2001
+From c9938022c3689b0b4ea69873fad1d83dc9a4e51c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 11/33] ethtool: provide driver/device information in GET_INFO
@@ -19,9 +19,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/common.c                         |  54 +++++++
  net/ethtool/common.h                         |   2 +
  net/ethtool/info.c                           | 155 +++++++++++++++++++
- net/ethtool/ioctl.c                          |  53 +------
+ net/ethtool/ioctl.c                          |  52 +------
  net/ethtool/netlink.c                        |   9 ++
- 8 files changed, 300 insertions(+), 50 deletions(-)
+ 8 files changed, 300 insertions(+), 49 deletions(-)
  create mode 100644 net/ethtool/info.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -400,18 +400,10 @@ index 000000000000..1a2e78d238e3
 +	.fill_reply		= fill_info,
 +};
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 71a1643adb2b..648aef92bdef 100644
+index 71a1643adb2b..c883239001a4 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -27,7 +27,6 @@
- #include <linux/rtnetlink.h>
- #include <linux/sched/signal.h>
- #include <linux/net.h>
--#include <net/devlink.h>
- #include <net/xdp_sock.h>
- #include <net/flow_offload.h>
- 
-@@ -685,56 +684,14 @@ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
+@@ -685,56 +685,14 @@ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
  						  void __user *useraddr)
  {
  	struct ethtool_drvinfo info;

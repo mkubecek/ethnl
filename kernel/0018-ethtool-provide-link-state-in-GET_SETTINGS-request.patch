@@ -1,4 +1,4 @@
-From fd8ed78ec970136f87f7c6ff0cc30896e6b5a8e4 Mon Sep 17 00:00:00 2001
+From dad30aad36688998c25432c2e0f0c3734b93dc74 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:26:45 +0100
 Subject: [PATCH 18/33] ethtool: provide link state in GET_SETTINGS request
@@ -101,10 +101,10 @@ index ed3f1ca54660..e5b5c5c2a4b9 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 8f36e01b6176..8748458ec418 100644
+index 945eaf551a4c..63662a3fa2ae 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -1305,12 +1305,12 @@ static int ethtool_nway_reset(struct net_device *dev)
+@@ -1306,12 +1306,12 @@ static int ethtool_nway_reset(struct net_device *dev)
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
  {
  	struct ethtool_value edata = { .cmd = ETHTOOL_GLINK };

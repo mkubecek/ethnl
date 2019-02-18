@@ -1,4 +1,4 @@
-From 4ade517559f9888cc1484072306ad7d358d2daa1 Mon Sep 17 00:00:00 2001
+From b34935279fa942bf943e46f028145a81a78edac8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
 Subject: [PATCH 13/33] ethtool: provide timestamping information in GET_INFO
@@ -406,10 +406,10 @@ index 05dbd87ebc41..838257db1d31 100644
  	return 0;
  }
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 648aef92bdef..da3c15e7238a 100644
+index c883239001a4..0837849156d3 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -2033,28 +2033,12 @@ static int ethtool_get_dump_data(struct net_device *dev,
+@@ -2034,28 +2034,12 @@ static int ethtool_get_dump_data(struct net_device *dev,
  
  static int ethtool_get_ts_info(struct net_device *dev, void __user *useraddr)
  {

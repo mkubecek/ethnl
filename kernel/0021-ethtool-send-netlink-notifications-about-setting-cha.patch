@@ -1,4 +1,4 @@
-From 02f86ee7e6452d7017b75db9d4dbc72d1d915744 Mon Sep 17 00:00:00 2001
+From 17740c74e610960454b5b2ddb752cdd873cf4cd9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:36:49 -0400
 Subject: [PATCH 21/33] ethtool: send netlink notifications about setting
@@ -20,18 +20,18 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 34 insertions(+), 2 deletions(-)
 
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 51250ca3e404..9a9ab9edca5f 100644
+index 6c3b492a88fe..17ccca14f5c3 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -29,6 +29,7 @@
- #include <linux/net.h>
+@@ -30,6 +30,7 @@
+ #include <net/devlink.h>
  #include <net/xdp_sock.h>
  #include <net/flow_offload.h>
 +#include <linux/ethtool_netlink.h>
  
  #include "common.h"
  
-@@ -566,7 +567,12 @@ static int ethtool_set_link_ksettings(struct net_device *dev,
+@@ -567,7 +568,12 @@ static int ethtool_set_link_ksettings(struct net_device *dev,
  	    != link_ksettings.base.link_mode_masks_nwords)
  		return -EINVAL;
  
@@ -45,7 +45,7 @@ index 51250ca3e404..9a9ab9edca5f 100644
  }
  
  /* Query device for its ethtool_cmd settings.
-@@ -615,6 +621,7 @@ static int ethtool_set_settings(struct net_device *dev, void __user *useraddr)
+@@ -616,6 +622,7 @@ static int ethtool_set_settings(struct net_device *dev, void __user *useraddr)
  {
  	struct ethtool_link_ksettings link_ksettings;
  	struct ethtool_cmd cmd;
@@ -53,7 +53,7 @@ index 51250ca3e404..9a9ab9edca5f 100644
  
  	ASSERT_RTNL();
  
-@@ -627,7 +634,12 @@ static int ethtool_set_settings(struct net_device *dev, void __user *useraddr)
+@@ -628,7 +635,12 @@ static int ethtool_set_settings(struct net_device *dev, void __user *useraddr)
  		return -EINVAL;
  	link_ksettings.base.link_mode_masks_nwords =
  		__ETHTOOL_LINK_MODE_MASK_NU32;
@@ -67,7 +67,7 @@ index 51250ca3e404..9a9ab9edca5f 100644
  }
  
  static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
-@@ -1254,6 +1266,8 @@ static int ethtool_set_wol(struct net_device *dev, char __user *useraddr)
+@@ -1255,6 +1267,8 @@ static int ethtool_set_wol(struct net_device *dev, char __user *useraddr)
  		return ret;
  
  	dev->wol_enabled = !!wol.wolopts;
@@ -76,7 +76,7 @@ index 51250ca3e404..9a9ab9edca5f 100644
  
  	return 0;
  }
-@@ -2452,6 +2466,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
+@@ -2453,6 +2467,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
  	case ETHTOOL_SMSGLVL:
  		rc = ethtool_set_value_void(dev, useraddr,
  				       dev->ethtool_ops->set_msglevel);
@@ -86,7 +86,7 @@ index 51250ca3e404..9a9ab9edca5f 100644
  		break;
  	case ETHTOOL_GEEE:
  		rc = ethtool_get_eee(dev, useraddr);
-@@ -2518,6 +2535,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
+@@ -2519,6 +2536,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
  	case ETHTOOL_SPFLAGS:
  		rc = ethtool_set_value(dev, useraddr,
  				       dev->ethtool_ops->set_priv_flags);

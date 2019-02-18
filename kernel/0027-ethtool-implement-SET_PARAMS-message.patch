@@ -1,4 +1,4 @@
-From 110651843e789c57d18d1da10f8f59a0fe25b29e Mon Sep 17 00:00:00 2001
+From 5d252b513bcd83671fa637aee734f01c78c1d73a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 27/33] ethtool: implement SET_PARAMS message
@@ -231,18 +231,18 @@ index cf0b81af2d9f..d557702d0f78 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index fb0b89fba6e1..24a4a032a072 100644
+index 4129ee11dd50..dede5dcd2757 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -27,7 +27,6 @@
- #include <linux/rtnetlink.h>
+@@ -28,7 +28,6 @@
  #include <linux/sched/signal.h>
  #include <linux/net.h>
+ #include <net/devlink.h>
 -#include <net/xdp_sock.h>
  #include <net/flow_offload.h>
  #include <linux/ethtool_netlink.h>
  
-@@ -844,37 +843,6 @@ void netdev_rss_key_fill(void *buffer, size_t len)
+@@ -845,37 +844,6 @@ void netdev_rss_key_fill(void *buffer, size_t len)
  }
  EXPORT_SYMBOL(netdev_rss_key_fill);
  
@@ -280,7 +280,7 @@ index fb0b89fba6e1..24a4a032a072 100644
  static noinline_for_stack int ethtool_get_rxfh_indir(struct net_device *dev,
  						     void __user *useraddr)
  {
-@@ -1538,9 +1506,6 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
+@@ -1539,9 +1507,6 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
  						   void __user *useraddr)
  {
  	struct ethtool_channels channels, curr = { .cmd = ETHTOOL_GCHANNELS };
@@ -290,7 +290,7 @@ index fb0b89fba6e1..24a4a032a072 100644
  	int ret;
  
  	if (!dev->ethtool_ops->set_channels || !dev->ethtool_ops->get_channels)
-@@ -1551,29 +1516,7 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
+@@ -1552,29 +1517,7 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
  
  	dev->ethtool_ops->get_channels(dev, &curr);
  

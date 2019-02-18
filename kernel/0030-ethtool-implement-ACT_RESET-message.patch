@@ -1,4 +1,4 @@
-From a09feaee912204fe27603f6556f8420ea9d7f292 Mon Sep 17 00:00:00 2001
+From d27f5309119671e1a48d1e6894f473d04f8510d4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 30/33] ethtool: implement ACT_RESET message
@@ -376,10 +376,10 @@ index 13f5067a79a2..5dfb321950de 100644
 +	return ret;
 +}
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 3066cdfa7149..b873a56712a1 100644
+index 1827e5074b16..a2adaab72c91 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -1187,6 +1187,7 @@ static int ethtool_get_regs(struct net_device *dev, char __user *useraddr)
+@@ -1188,6 +1188,7 @@ static int ethtool_get_regs(struct net_device *dev, char __user *useraddr)
  static int ethtool_reset(struct net_device *dev, char __user *useraddr)
  {
  	struct ethtool_value reset;
@@ -387,7 +387,7 @@ index 3066cdfa7149..b873a56712a1 100644
  	int ret;
  
  	if (!dev->ethtool_ops->reset)
-@@ -1195,9 +1196,13 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
+@@ -1196,9 +1197,13 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
  	if (copy_from_user(&reset, useraddr, sizeof(reset)))
  		return -EFAULT;
  
