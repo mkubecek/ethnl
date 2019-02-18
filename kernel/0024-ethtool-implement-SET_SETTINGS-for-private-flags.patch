@@ -1,4 +1,4 @@
-From 1dae3e25443dc8f7e0da47ab3b73a36a37e3c29f Mon Sep 17 00:00:00 2001
+From c93a8e7ee4a4dbe342630ef8fbffd5703608296d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 24/33] ethtool: implement SET_SETTINGS for private flags
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 44 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 1aa1f05c8920..1475a83e9937 100644
+index 829a879b00fd..18554717681b 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -373,6 +373,7 @@ to be passed with SET_SETTINGS request:

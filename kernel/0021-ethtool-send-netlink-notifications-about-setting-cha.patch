@@ -1,4 +1,4 @@
-From 17740c74e610960454b5b2ddb752cdd873cf4cd9 Mon Sep 17 00:00:00 2001
+From 73fef81aa207a254ff6a24a60a1910b3c0682af3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:36:49 -0400
 Subject: [PATCH 21/33] ethtool: send netlink notifications about setting

@@ -1,4 +1,4 @@
-From 16f45dc30ad92a125eb0aeb46f22cd58ad0a180b Mon Sep 17 00:00:00 2001
+From abfb63ea613f295a68a77f8ffba202d198c38fe1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 10/33] ethtool: provide string sets with GET_STRSET request
@@ -28,7 +28,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/strset.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 141322fefc25..9eab534fb7a4 100644
+index b79c26b5e92b..f0fe4f50db9f 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -126,6 +126,8 @@ List of message types

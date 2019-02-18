@@ -1,4 +1,4 @@
-From 119a61384fc8dfbe836babbd9fc87bf6309a9faa Mon Sep 17 00:00:00 2001
+From 5f70eb8055a26f60f2282d7c1d193619a96c40a1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 05/33] ethtool: netlink bitset handling
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/bitset.h
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 120376e0f91b..b883b358b442 100644
+index 09c36e0392a8..205ae4462e9e 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -59,6 +59,69 @@ provided by kernel. In dump requests, device is not specified and kernel
@@ -147,7 +147,7 @@ index f30e0da88be5..482fdb9380fa 100644
 +ethtool_nl-y	:= netlink.o bitset.o
 diff --git a/net/ethtool/bitset.c b/net/ethtool/bitset.c
 new file mode 100644
-index 000000000000..b8ee750a4924
+index 000000000000..8f5c60999a96
 --- /dev/null
 +++ b/net/ethtool/bitset.c
 @@ -0,0 +1,572 @@
@@ -500,7 +500,7 @@ index 000000000000..b8ee750a4924
 +	unsigned long op;
 +
 +	while (nbits >= BITS_PER_LONG) {
-+		op = src[0] | (src[1] << 32);
++		op = src[0] | ((unsigned long)src[1] << 32);
 +		*dst &= op;
 +
 +		dst++;
@@ -512,7 +512,7 @@ index 000000000000..b8ee750a4924
 +		return;
 +	op = src[0];
 +	if (nbits > 32)
-+		op |= (src[1] << 32);
++		op |= ((unsigned long)src[1] << 32);
 +	*dst = (op & BITMAP_LAST_WORD_MASK(nbits));
 +}
 +
@@ -523,7 +523,7 @@ index 000000000000..b8ee750a4924
 +	unsigned long dword;
 +
 +	while (nbits >= BITS_PER_LONG) {
-+		dword = map2[0] | (map2[1] << 32);
++		dword = map2[0] | ((unsigned long)map2[1] << 32);
 +		if (*map1 != dword)
 +			return false;
 +
@@ -536,8 +536,8 @@ index 000000000000..b8ee750a4924
 +		return true;
 +	dword = map2[0];
 +	if (nbits > 32)
-+		dword |= (map2[1] << 32);
-+	return !((*dst ^ dword) & BITMAP_LAST_WORD_MASK(nbits));
++		dword |= ((unsigned long)map2[1] << 32);
++	return !((*map1 ^ dword) & BITMAP_LAST_WORD_MASK(nbits));
 +}
 +#else
 +/* On 32-bit and 64-bit LE, unsigned long and u32 bitmap layout is the same

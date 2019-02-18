@@ -1,4 +1,4 @@
-From 528b6a01ac19b7051c4cedb6df350c80e10b6836 Mon Sep 17 00:00:00 2001
+From 36883766988dda4655c8d5ac42ff4d62851ea3d9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 33/33] ethtool: implement SET_RXFLOW message
@@ -25,7 +25,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 660 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index e22f5ad5b7c7..22bbe06e8f33 100644
+index 0968ce2d54cf..c3a480441f98 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -136,7 +136,7 @@ List of message types

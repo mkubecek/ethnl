@@ -1,4 +1,4 @@
-From e8aab17edca0699f938787810cdeb3d2920ed442 Mon Sep 17 00:00:00 2001
+From 30bfdbfa7e8a7c6eedabcda0aea41c4e2e78a4fe Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
 Subject: [PATCH 25/33] ethtool: implement GET_PARAMS message
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/params.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 1475a83e9937..043a1d0d9d1b 100644
+index 18554717681b..53ef817b08c9 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -132,6 +132,8 @@ List of message types
@@ -164,14 +164,13 @@ index 1475a83e9937..043a1d0d9d1b 100644
  ETHTOOL_SEEE			n/a
  ETHTOOL_GRSSH			n/a
  ETHTOOL_SRSSH			n/a
-@@ -487,6 +582,6 @@ ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
+@@ -487,5 +582,5 @@ ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a
 -ETHTOOL_GFECPARAM		n/a
 +ETHTOOL_GFECPARAM		ETHNL_CMD_GET_PARAMS
  ETHTOOL_SFECPARAM		n/a
- 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 index 910b8aa28915..e3fa1003f31e 100644
 --- a/include/uapi/linux/ethtool_netlink.h

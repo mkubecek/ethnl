@@ -1,4 +1,4 @@
-From b7c554c94cab8f601a880dc93661c7c5668d3953 Mon Sep 17 00:00:00 2001
+From 4e5879e36289c526dc79db37e55e5fc7d89d15fe Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:06:56 +0100
 Subject: [PATCH 12/33] ethtool: provide permanent hardware address in GET_INFO
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 58 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 039e352003c5..c15c92709abb 100644
+index b6999a2167e8..1e615e111262 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -239,6 +239,9 @@ Kernel response contents:

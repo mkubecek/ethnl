@@ -1,4 +1,4 @@
-From cf5eff33dffe6eead0dc552090fde9a62c8a1561 Mon Sep 17 00:00:00 2001
+From e367bf5f973ccc58f2568af87cefcf882601d5a3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 29/33] ethtool: implement ACT_PHYS_ID message
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 186 insertions(+), 47 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 56f28bb9227d..58e7810ee2a1 100644
+index c10351063f58..30f927b2f505 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -565,6 +565,28 @@ Request contents:

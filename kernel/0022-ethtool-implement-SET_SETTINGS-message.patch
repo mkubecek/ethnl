@@ -1,4 +1,4 @@
-From 9ddac2dc33325b1dbd9fa97ee3d5682b2b48a51b Mon Sep 17 00:00:00 2001
+From 335557ef65e87923f9e08a45fcab19c6d50adfb0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 22/33] ethtool: implement SET_SETTINGS message
@@ -18,7 +18,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 538 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index a7416299d1a8..9a16c09918a3 100644
+index 290008aaed0a..f4800b9f6daa 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -131,7 +131,7 @@ List of message types

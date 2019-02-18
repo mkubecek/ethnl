@@ -1,4 +1,4 @@
-From 5d252b513bcd83671fa637aee734f01c78c1d73a Mon Sep 17 00:00:00 2001
+From 75210c005cc74c2acc63206c6fe6e59ef4d6576a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 27/33] ethtool: implement SET_PARAMS message
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 584 insertions(+), 65 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 043a1d0d9d1b..54351f5c5ccf 100644
+index 53ef817b08c9..227cc56aac17 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -133,7 +133,7 @@ List of message types
@@ -129,13 +129,12 @@ index 043a1d0d9d1b..54351f5c5ccf 100644
  ETHTOOL_GRSSH			n/a
  ETHTOOL_SRSSH			n/a
  ETHTOOL_GTUNABLE		n/a
-@@ -583,5 +640,5 @@ ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
+@@ -583,4 +640,4 @@ ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		ETHNL_CMD_GET_PARAMS
 -ETHTOOL_SFECPARAM		n/a
 +ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
- 
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
 index a188f07bcb4c..74dbfca7101c 100644
 --- a/net/ethtool/common.c

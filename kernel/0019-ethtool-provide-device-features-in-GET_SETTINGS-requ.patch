@@ -1,4 +1,4 @@
-From e069cb325f9c38f2bb1cc872accf2efd387d0a59 Mon Sep 17 00:00:00 2001
+From 88d6cdc068d9ffd241401b31e0899d876ac27e7b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 19/33] ethtool: provide device features in GET_SETTINGS
@@ -22,7 +22,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 150 insertions(+), 13 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 0fb41b79353a..82a2a444efee 100644
+index 538dad93009f..664c922a05eb 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -286,6 +286,7 @@ Info mask bits meaning:

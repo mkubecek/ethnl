@@ -1,4 +1,4 @@
-From bbde43611de7d7f33b8e427e94ff9a1b848fafa3 Mon Sep 17 00:00:00 2001
+From c75c70d7b8f5e1b9a3ef6b83c2adaac2b113db31 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 07/33] ethtool: implement EVENT notifications
@@ -24,7 +24,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 129 insertions(+)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index b883b358b442..141322fefc25 100644
+index 205ae4462e9e..b79c26b5e92b 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -125,6 +125,8 @@ which the request applies.

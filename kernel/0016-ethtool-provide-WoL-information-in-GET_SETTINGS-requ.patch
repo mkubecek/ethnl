@@ -1,4 +1,4 @@
-From 6b4a14b1dc931dcb3999935e42cc41ac6defacea Mon Sep 17 00:00:00 2001
+From 245dea0700fe52a3430958c1eab97f21a964c6ee Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:08:55 +0100
 Subject: [PATCH 16/33] ethtool: provide WoL information in GET_SETTINGS
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 100 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 3d8ba59ac6a8..f7a58cdee716 100644
+index 0ea7d89c6052..913df35cb762 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -283,6 +283,7 @@ Info mask bits meaning:

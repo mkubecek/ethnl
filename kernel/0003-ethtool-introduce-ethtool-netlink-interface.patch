@@ -1,4 +1,4 @@
-From 090143cfa0a671806d39e132505d685811b604ca Mon Sep 17 00:00:00 2001
+From bce5336ab83cd06e2c801d967db26cb55b5e8e3b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 03/33] ethtool: introduce ethtool netlink interface
@@ -9,14 +9,14 @@ option. Add interface description into Documentation/networking.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 168 +++++++++++++++++++
+ Documentation/networking/ethtool-netlink.txt | 167 +++++++++++++++++++
  include/linux/ethtool_netlink.h              |   9 +
  include/uapi/linux/ethtool_netlink.h         |  19 +++
  net/Kconfig                                  |   8 +
  net/ethtool/Makefile                         |   6 +-
  net/ethtool/netlink.c                        |  34 ++++
  net/ethtool/netlink.h                        |  12 ++
- 7 files changed, 255 insertions(+), 1 deletion(-)
+ 7 files changed, 254 insertions(+), 1 deletion(-)
  create mode 100644 Documentation/networking/ethtool-netlink.txt
  create mode 100644 include/linux/ethtool_netlink.h
  create mode 100644 include/uapi/linux/ethtool_netlink.h
@@ -25,10 +25,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 new file mode 100644
-index 000000000000..120376e0f91b
+index 000000000000..09c36e0392a8
 --- /dev/null
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -0,0 +1,168 @@
+@@ -0,0 +1,167 @@
 +                        Netlink interface for ethtool
 +                        =============================
 +
@@ -196,7 +196,6 @@ index 000000000000..120376e0f91b
 +ETHTOOL_PHY_STUNABLE		n/a
 +ETHTOOL_GFECPARAM		n/a
 +ETHTOOL_SFECPARAM		n/a
-+
 diff --git a/include/linux/ethtool_netlink.h b/include/linux/ethtool_netlink.h
 new file mode 100644
 index 000000000000..0412adb4f42f

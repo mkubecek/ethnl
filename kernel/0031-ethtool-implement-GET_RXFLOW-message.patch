@@ -1,4 +1,4 @@
-From 19ac2b1e96770e696d7eebf83e004691d60eba36 Mon Sep 17 00:00:00 2001
+From f6e4fb2974e497e2f46c44b0f9f0eae6590238b8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 31/33] ethtool: implement GET_RXFLOW message
@@ -25,7 +25,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/rxflow.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 43ef93eaa30b..e22f5ad5b7c7 100644
+index 287f8606dd51..0968ce2d54cf 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -135,6 +135,8 @@ List of message types

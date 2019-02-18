@@ -1,4 +1,4 @@
-From cbd16ef12af067091f318f1bd3dfea57d357ae87 Mon Sep 17 00:00:00 2001
+From 00e931c1ecd29bf302a190c7d7a3f2cbd0388542 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 15/33] ethtool: provide link settings and link modes in
@@ -26,7 +26,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index fbe43c58aee3..3d8ba59ac6a8 100644
+index c6c7475340e2..0ea7d89c6052 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -130,6 +130,8 @@ List of message types

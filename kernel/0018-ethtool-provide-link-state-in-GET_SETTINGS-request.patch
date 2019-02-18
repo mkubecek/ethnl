@@ -1,4 +1,4 @@
-From dad30aad36688998c25432c2e0f0c3734b93dc74 Mon Sep 17 00:00:00 2001
+From 5d1c101f83f74008b68c5ae53ab2d9e2cc87db75 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:26:45 +0100
 Subject: [PATCH 18/33] ethtool: provide link state in GET_SETTINGS request
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 30 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 9bd4bc78a349..0fb41b79353a 100644
+index 057eb3213cfe..538dad93009f 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -285,6 +285,7 @@ Info mask bits meaning:
