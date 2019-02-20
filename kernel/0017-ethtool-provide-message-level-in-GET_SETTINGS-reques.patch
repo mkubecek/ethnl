@@ -1,4 +1,4 @@
-From 3e11d2901feca6a4aa8460a63537f5e59204a14a Mon Sep 17 00:00:00 2001
+From 9565e9921e55746b41524a4ecc208698c7fcdb36 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:19:02 +0100
 Subject: [PATCH 17/33] ethtool: provide message level in GET_SETTINGS request

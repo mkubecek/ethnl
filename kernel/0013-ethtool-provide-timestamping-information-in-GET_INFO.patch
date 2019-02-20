@@ -1,4 +1,4 @@
-From 790ee93d90931278b6e4fc51da712aadfcb8ec90 Mon Sep 17 00:00:00 2001
+From 24ddbe6fca0614be0d85b99e2c41d8f8c4c2456c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
 Subject: [PATCH 13/33] ethtool: provide timestamping information in GET_INFO
@@ -206,7 +206,7 @@ index e87e58b3a274..02cbee79da35 100644
 +
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
-index 05dbd87ebc41..838257db1d31 100644
+index e90f47222645..fd3e75a7781e 100644
 --- a/net/ethtool/info.c
 +++ b/net/ethtool/info.c
 @@ -1,15 +1,61 @@
@@ -278,8 +278,8 @@ index 05dbd87ebc41..838257db1d31 100644
 +	[ETHA_INFO_TSINFO]		= { .type = NLA_REJECT },
  };
  
- static int parse_info(struct common_req_info *req_info, struct sk_buff *skb,
-@@ -67,6 +114,11 @@ static int prepare_info(struct common_req_info *req_info,
+ /* parse_request() handler */
+@@ -69,6 +116,11 @@ static int prepare_info(struct common_req_info *req_info,
  		if (ret < 0)
  			req_mask &= ~ETH_INFO_IM_DRVINFO;
  	}
@@ -291,7 +291,7 @@ index 05dbd87ebc41..838257db1d31 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -97,6 +149,42 @@ static int permaddr_size(const struct net_device *dev)
+@@ -99,6 +151,42 @@ static int permaddr_size(const struct net_device *dev)
  	return nla_total_size(len);
  }
  
@@ -331,10 +331,10 @@ index 05dbd87ebc41..838257db1d31 100644
 +	return nla_total_size(len);
 +}
 +
+ /* reply_size() handler */
  static int info_size(const struct common_req_info *req_info)
  {
- 	const struct info_data *data =
-@@ -110,6 +198,13 @@ static int info_size(const struct common_req_info *req_info)
+@@ -113,6 +201,13 @@ static int info_size(const struct common_req_info *req_info)
  		len += drvinfo_size(&data->drvinfo);
  	if (info_mask & ETH_INFO_IM_PERMADDR)
  		len += permaddr_size(dev);
@@ -348,7 +348,7 @@ index 05dbd87ebc41..838257db1d31 100644
  
  	return len;
  }
-@@ -158,6 +253,44 @@ static int fill_permaddr(struct sk_buff *skb, const struct net_device *dev)
+@@ -161,6 +256,44 @@ static int fill_permaddr(struct sk_buff *skb, const struct net_device *dev)
  	return ret;
  }
  
@@ -390,10 +390,10 @@ index 05dbd87ebc41..838257db1d31 100644
 +	return ret;
 +}
 +
+ /* fill_reply() handler */
  static int fill_info(struct sk_buff *skb,
  		     const struct common_req_info *req_info)
- {
-@@ -176,6 +309,11 @@ static int fill_info(struct sk_buff *skb,
+@@ -180,6 +313,11 @@ static int fill_info(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -441,7 +441,7 @@ index c883239001a4..0837849156d3 100644
  		err = -EFAULT;
  
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 7141ec71a6d3..82a4c1f398d8 100644
+index 6bbbad2f7c4c..f019b263e21f 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -7,14 +7,23 @@
@@ -469,7 +469,7 @@ index 7141ec71a6d3..82a4c1f398d8 100644
  int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
  
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index a7d0ec2865fb..5c74498d9c72 100644
+index 7884b37547f4..185165c8ca1b 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -67,6 +67,24 @@ static const struct strset_info info_template[] = {

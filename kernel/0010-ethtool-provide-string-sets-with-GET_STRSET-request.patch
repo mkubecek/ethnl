@@ -1,4 +1,4 @@
-From abfb63ea613f295a68a77f8ffba202d198c38fe1 Mon Sep 17 00:00:00 2001
+From 7d7d3053d043bdb8970138cbce0da04e6719def0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 10/33] ethtool: provide string sets with GET_STRSET request
@@ -23,8 +23,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool_netlink.h         |  43 ++
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/netlink.c                        |  10 +
- net/ethtool/strset.c                         | 437 +++++++++++++++++++
- 6 files changed, 537 insertions(+), 3 deletions(-)
+ net/ethtool/strset.c                         | 441 +++++++++++++++++++
+ 6 files changed, 541 insertions(+), 3 deletions(-)
  create mode 100644 net/ethtool/strset.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -190,10 +190,10 @@ index 11782306593b..11ceb00821b3 100644
 -ethtool_nl-y	:= netlink.o bitset.o
 +ethtool_nl-y	:= netlink.o bitset.o strset.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 8cdb6f52cb4a..082a9f2aa0a7 100644
+index b38a510438ff..793d64ac5e25 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -86,7 +86,10 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
+@@ -151,7 +151,10 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  
  /* GET request helpers */
  
@@ -203,8 +203,8 @@ index 8cdb6f52cb4a..082a9f2aa0a7 100644
 +	[ETHNL_CMD_GET_STRSET]		= &strset_request_ops,
  };
  
- static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -498,6 +501,13 @@ static struct notifier_block ethnl_netdev_notifier = {
+ /**
+@@ -556,6 +559,13 @@ static struct notifier_block ethnl_netdev_notifier = {
  /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
@@ -220,10 +220,10 @@ index 8cdb6f52cb4a..082a9f2aa0a7 100644
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
 new file mode 100644
-index 000000000000..a7d0ec2865fb
+index 000000000000..7884b37547f4
 --- /dev/null
 +++ b/net/ethtool/strset.c
-@@ -0,0 +1,437 @@
+@@ -0,0 +1,441 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include <linux/ethtool.h>
@@ -369,6 +369,7 @@ index 000000000000..a7d0ec2865fb
 +	return 0;
 +}
 +
++/* parse_request() handler */
 +static int parse_strset(struct common_req_info *req_info, struct sk_buff *skb,
 +			struct genl_info *info, const struct nlmsghdr *nlhdr)
 +{
@@ -461,6 +462,7 @@ index 000000000000..a7d0ec2865fb
 +	return 0;
 +}
 +
++/* prepare_data() handler */
 +static int prepare_strset(struct common_req_info *req_info,
 +			  struct genl_info *info)
 +{
@@ -553,6 +555,7 @@ index 000000000000..a7d0ec2865fb
 +	};
 +}
 +
++/* reply_size() handler */
 +static int strset_size(const struct common_req_info *req_info)
 +{
 +	const struct strset_data *data =
@@ -630,6 +633,7 @@ index 000000000000..a7d0ec2865fb
 +	return -EMSGSIZE;
 +}
 +
++/* fill_reply() handler */
 +static int fill_strset(struct sk_buff *skb,
 +		       const struct common_req_info *req_info)
 +{

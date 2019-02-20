@@ -1,4 +1,4 @@
-From 7f16d345d4e65239b9ec450ae0239d7dafa67cbb Mon Sep 17 00:00:00 2001
+From 2908e4c1071c91692d14bf1116cbc8f74c54fcb4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 11/33] ethtool: provide driver/device information in GET_INFO
@@ -18,10 +18,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/common.c                         |  54 +++++++
  net/ethtool/common.h                         |   2 +
- net/ethtool/info.c                           | 155 +++++++++++++++++++
- net/ethtool/ioctl.c                          |  52 +------
+ net/ethtool/info.c                           | 159 +++++++++++++++++++
+ net/ethtool/ioctl.c                          |  52 +-----
  net/ethtool/netlink.c                        |   9 ++
- 8 files changed, 300 insertions(+), 49 deletions(-)
+ 8 files changed, 304 insertions(+), 49 deletions(-)
  create mode 100644 net/ethtool/info.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -240,10 +240,10 @@ index 41b2efc1e4e1..e87e58b3a274 100644
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
 new file mode 100644
-index 000000000000..1a2e78d238e3
+index 000000000000..93d78aaa5626
 --- /dev/null
 +++ b/net/ethtool/info.c
-@@ -0,0 +1,155 @@
+@@ -0,0 +1,159 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include "netlink.h"
@@ -266,6 +266,7 @@ index 000000000000..1a2e78d238e3
 +	[ETHA_INFO_DRVINFO]		= { .type = NLA_REJECT },
 +};
 +
++/* parse_request() handler */
 +static int parse_info(struct common_req_info *req_info, struct sk_buff *skb,
 +		      struct genl_info *info, const struct nlmsghdr *nlhdr)
 +{
@@ -295,6 +296,7 @@ index 000000000000..1a2e78d238e3
 +	return 0;
 +}
 +
++/* prepare_data() handler */
 +static int prepare_info(struct common_req_info *req_info,
 +			struct genl_info *info)
 +{
@@ -332,6 +334,7 @@ index 000000000000..1a2e78d238e3
 +	return nla_total_size(len);
 +}
 +
++/* reply_size() handler */
 +static int info_size(const struct common_req_info *req_info)
 +{
 +	const struct info_data *data =
@@ -370,6 +373,7 @@ index 000000000000..1a2e78d238e3
 +	return ret;
 +}
 +
++/* fill_reply() handler */
 +static int fill_info(struct sk_buff *skb,
 +		     const struct common_req_info *req_info)
 +{
@@ -466,10 +470,10 @@ index 71a1643adb2b..c883239001a4 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 082a9f2aa0a7..e27dec427414 100644
+index 793d64ac5e25..a468696b8590 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -87,9 +87,11 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
+@@ -152,9 +152,11 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  /* GET request helpers */
  
  extern const struct get_request_ops strset_request_ops;
@@ -480,8 +484,8 @@ index 082a9f2aa0a7..e27dec427414 100644
 +	[ETHNL_CMD_GET_INFO]		= &info_request_ops,
  };
  
- static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -508,6 +510,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+ /**
+@@ -566,6 +568,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},

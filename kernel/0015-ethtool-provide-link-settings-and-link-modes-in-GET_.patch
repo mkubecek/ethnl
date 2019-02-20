@@ -1,4 +1,4 @@
-From 00e931c1ecd29bf302a190c7d7a3f2cbd0388542 Mon Sep 17 00:00:00 2001
+From 040029aab773de232ad21d454665fd18ebe9acfd Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 15/33] ethtool: provide link settings and link modes in
@@ -314,10 +314,10 @@ index 0837849156d3..5e878cf6f418 100644
   * set. legacy_settings always updated (best effort)
   */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 1ff6696ad716..5166b0c28288 100644
+index 36a7515ced42..ea7a55e08650 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -143,10 +143,12 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
+@@ -208,10 +208,12 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  
  extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops info_request_ops;
@@ -329,8 +329,8 @@ index 1ff6696ad716..5166b0c28288 100644
 +	[ETHNL_CMD_GET_SETTINGS]	= &settings_request_ops,
  };
  
- static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -572,6 +574,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+ /**
+@@ -630,6 +632,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},

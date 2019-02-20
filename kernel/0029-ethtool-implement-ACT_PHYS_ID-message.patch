@@ -1,4 +1,4 @@
-From e367bf5f973ccc58f2568af87cefcf882601d5a3 Mon Sep 17 00:00:00 2001
+From dccd335e4a2ebd1257eb8f5dbc50aac269dc71d9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 29/33] ethtool: implement ACT_PHYS_ID message
@@ -333,10 +333,10 @@ index 2cdc2872085b..1827e5074b16 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index dc751e6299d6..de9ee5a3938e 100644
+index 2807374115c7..498ff9be476f 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -485,6 +485,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -543,6 +543,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_SETTINGS]	= ethnl_std_notify,
  	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
  	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,
@@ -344,7 +344,7 @@ index dc751e6299d6..de9ee5a3938e 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -619,6 +620,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -677,6 +678,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_act_nway_rst,
  	},
@@ -357,10 +357,10 @@ index dc751e6299d6..de9ee5a3938e 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 2f87ca27aeff..f07308d6d8b4 100644
+index 470010690955..55780af93d75 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -254,11 +254,14 @@ struct get_request_ops {
+@@ -281,11 +281,14 @@ struct get_request_ops {
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info);

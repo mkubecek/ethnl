@@ -1,6 +1,6 @@
-From 99e5e578d2a554bb2bfd9ee04984ff54f8320b43 Mon Sep 17 00:00:00 2001
+From f746b662bdabdc39f5740f7fe1d31ae41e421c64 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Mon, 27 Aug 2018 19:51:37 +0200
+Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 08/33] ethtool: generic handlers for GET requests
 
 Some parts of processing GET type requests and related notifications are
@@ -16,16 +16,16 @@ These callback are defined in an instance of struct get_request_ops.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/ethtool/netlink.c | 286 ++++++++++++++++++++++++++++++++++++++++++
- net/ethtool/netlink.h |  84 +++++++++++++
- 2 files changed, 370 insertions(+)
+ net/ethtool/netlink.c | 319 ++++++++++++++++++++++++++++++++++++++++++
+ net/ethtool/netlink.h | 111 +++++++++++++++
+ 2 files changed, 430 insertions(+)
 
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index ee3424cd1f90..8cdb6f52cb4a 100644
+index 01605fcac6b3..b38a510438ff 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -84,6 +84,41 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
- 	return ret;
+@@ -149,6 +149,325 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+ 	return NULL;
  }
  
 +/* GET request helpers */
@@ -33,43 +33,68 @@ index ee3424cd1f90..8cdb6f52cb4a 100644
 +const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
 +};
 +
-+static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
++/**
++ * ethnl_alloc_get_data() - Allocate and initialize data for a GET request
++ * @ops: instance of struct get_request_ops describing size and layout
++ *
++ * This initializes only the first part (req_info), second part (reply_data)
++ * is initialized before filling the reply data into it (which is done for
++ * each iteration in dump requests).
++ *
++ * Return: pointer to allocated and initialized data, NULL on error
++ */
++static struct common_req_info *
++ethnl_alloc_get_data(const struct get_request_ops *ops)
 +{
-+	struct common_req_info *req_info = kmalloc(ops->data_size, GFP_KERNEL);
++	struct common_req_info *req_info;
 +
++	req_info = kmalloc(ops->data_size, GFP_KERNEL);
 +	if (!req_info)
 +		return NULL;
++
 +	memset(req_info, '\0', ops->repdata_offset);
 +	req_info->reply_data =
 +		(struct common_reply_data *)((char *)req_info +
 +					     ops->repdata_offset);
++
 +	return req_info;
 +}
 +
-+static void free_get_data(const struct get_request_ops *ops,
-+			  struct common_req_info *req_info)
++/**
++ * ethnl_free_get_data() - free GET request data
++ * @ops: instance of struct get_request_ops describing the layout
++ * @req_info: pointer to embedded struct common_req_info (at offset 0)
++ *
++ * Calls ->cleanup() handler if defined and frees the data block.
++ */
++static void ethnl_free_get_data(const struct get_request_ops *ops,
++				struct common_req_info *req_info)
 +{
 +	if (ops->cleanup)
 +		ops->cleanup(req_info);
 +	kfree(req_info);
 +}
 +
-+static void init_reply_data(const struct common_req_info *req_info,
-+			    const struct get_request_ops *ops,
-+			    struct net_device *dev)
++/**
++ * ethnl_init_reply_data() - Initialize reply data for GET request
++ * @req_info: pointer to embedded struct common_req_info
++ * @ops:      instance of struct get_request_ops describing the layout
++ * @dev:      network device to initialize the reply for
++ *
++ * Fills the reply data part with zeros and sets the dev member. Must be called
++ * before calling the ->fill_reply() callback (for each iteration when handling
++ * dump requests).
++ */
++static void ethnl_init_reply_data(const struct common_req_info *req_info,
++				  const struct get_request_ops *ops,
++				  struct net_device *dev)
 +{
 +	memset(req_info->reply_data, '\0',
 +	       ops->data_size - ops->repdata_offset);
 +	req_info->reply_data->dev = dev;
 +}
 +
- /* create skb for a reply and fill device identification
-  * payload: payload length (without netlink and genetlink header)
-  * dev:     device the reply is about (may be null)
-@@ -124,6 +159,257 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
- 	return NULL;
- }
- 
++/* generic ->doit() handler for GET type requests */
 +int ethnl_get_doit(struct sk_buff *skb, struct genl_info *info)
 +{
 +	const u8 cmd = info->genlhdr->cmd;
@@ -83,7 +108,7 @@ index ee3424cd1f90..8cdb6f52cb4a 100644
 +	ops = get_requests[cmd];
 +	if (WARN_ONCE(!ops, "cmd %u has no get_request_ops\n", cmd))
 +		return -EOPNOTSUPP;
-+	req_info = alloc_get_data(ops);
++	req_info = ethnl_alloc_get_data(ops);
 +	if (!req_info)
 +		return -ENOMEM;
 +	ret = ops->parse_request(req_info, skb, info, info->nlhdr);
@@ -93,7 +118,7 @@ index ee3424cd1f90..8cdb6f52cb4a 100644
 +	}
 +	if (ret < 0)
 +		goto err_dev;
-+	init_reply_data(req_info, ops, req_info->dev);
++	ethnl_init_reply_data(req_info, ops, req_info->dev);
 +
 +	rtnl_lock();
 +	ret = ops->prepare_data(req_info, info);
@@ -115,7 +140,7 @@ index ee3424cd1f90..8cdb6f52cb4a 100644
 +	genlmsg_end(rskb, reply_payload);
 +	if (req_info->dev)
 +		dev_put(req_info->dev);
-+	free_get_data(ops, req_info);
++	ethnl_free_get_data(ops, req_info);
 +	return genlmsg_reply(rskb, info);
 +
 +err:
@@ -123,7 +148,7 @@ index ee3424cd1f90..8cdb6f52cb4a 100644
 +		  "calculated message payload length (%d) not sufficient\n",
 +		  reply_len);
 +	nlmsg_free(rskb);
-+	free_get_data(ops, req_info);
++	ethnl_free_get_data(ops, req_info);
 +err_rtnl:
 +	rtnl_unlock();
 +err_dev:
@@ -139,7 +164,7 @@ index ee3424cd1f90..8cdb6f52cb4a 100644
 +{
 +	int ret;
 +
-+	init_reply_data(req_info, ops, dev);
++	ethnl_init_reply_data(req_info, ops, dev);
 +	rtnl_lock();
 +	ret = ops->prepare_data(req_info, NULL);
 +	if (ret < 0)
@@ -154,7 +179,8 @@ index ee3424cd1f90..8cdb6f52cb4a 100644
 +	return ret;
 +}
 +
-+/* generic ->dumpit() handler; device iteration copied from rtnl_dump_ifinfo()
++/* generic ->dumpit() handler for GET requests; device iteration copied from
++ * rtnl_dump_ifinfo()
 + * cb->args[0]: pointer to struct get_request_ops
 + * cb->args[1]: pointer to request data
 + * cb->args[2]: iteration position - hashbucket
@@ -223,7 +249,7 @@ index ee3424cd1f90..8cdb6f52cb4a 100644
 +	ops = get_requests[ghdr->cmd];
 +	if (WARN_ONCE(!ops, "cmd %u has no get_request_ops\n", ghdr->cmd))
 +		return -EOPNOTSUPP;
-+	req_info = alloc_get_data(ops);
++	req_info = ethnl_alloc_get_data(ops);
 +	if (!req_info)
 +		return -ENOMEM;
 +
@@ -250,8 +276,8 @@ index ee3424cd1f90..8cdb6f52cb4a 100644
 +/* generic ->done() handler for GET requests */
 +static int ethnl_get_done(struct netlink_callback *cb)
 +{
-+	free_get_data((const struct get_request_ops *)cb->args[0],
-+		      (struct common_req_info *)cb->args[1]);
++	ethnl_free_get_data((const struct get_request_ops *)cb->args[0],
++			    (struct common_req_info *)cb->args[1]);
 +
 +	return 0;
 +}
@@ -280,14 +306,14 @@ index ee3424cd1f90..8cdb6f52cb4a 100644
 +		      ops->reply_cmd, cmd))
 +		return;
 +
-+	req_info = alloc_get_data(ops);
++	req_info = ethnl_alloc_get_data(ops);
 +	if (!req_info)
 +		return;
 +	req_info->dev = dev;
 +	req_info->req_mask = req_mask;
 +	req_info->compact = true;
 +
-+	init_reply_data(req_info, ops, dev);
++	ethnl_init_reply_data(req_info, ops, dev);
 +	ret = ops->prepare_data(req_info, NULL);
 +	if (ret < 0)
 +		goto err_data;
@@ -308,7 +334,7 @@ index ee3424cd1f90..8cdb6f52cb4a 100644
 +	ret = ops->fill_reply(skb, req_info);
 +	if (ret < 0)
 +		goto err_skb;
-+	free_get_data(ops, req_info);
++	ethnl_free_get_data(ops, req_info);
 +	genlmsg_end(skb, reply_payload);
 +
 +	genlmsg_multicast(&ethtool_genl_family, skb, 0, ETHNL_MCGRP_MONITOR,
@@ -318,17 +344,17 @@ index ee3424cd1f90..8cdb6f52cb4a 100644
 +err_skb:
 +	nlmsg_free(skb);
 +err_data:
-+	free_get_data(ops, req_info);
++	ethnl_free_get_data(ops, req_info);
 +}
 +
  /* notifications */
  
  typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 78385baeaec0..7141ec71a6d3 100644
+index 78385baeaec0..6bbbad2f7c4c 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -155,4 +155,88 @@ static inline unsigned int dev_ident_size(void)
+@@ -155,4 +155,115 @@ static inline unsigned int dev_ident_size(void)
  			      nla_total_size(IFNAMSIZ));
  }
  
@@ -336,18 +362,23 @@ index 78385baeaec0..7141ec71a6d3 100644
 +
 +struct common_reply_data;
 +
-+/* Structure holding data for unified processing a GET request consists of two
-+ * parts: request info and reply data. Request info starts at offset 0 with
-+ * embedded struct common_req_info, is usually filled by ->parse_request()
-+ * and is common for all reply messages to one request. Reply data start with
++/* The structure holding data for unified processing a GET request consists of
++ * two parts: request info and reply data. Request info starts at offset 0 with
++ * embedded struct common_req_info, is usually filled by ->parse_request() and
++ * is common for all reply messages to one request. Reply data start with
 + * embedded struct common_reply_data and contain data specific to a reply
 + * message (usually one per device for dump requests); this part is filled by
 + * ->prepare_data()
++ */
++
++/**
++ * struct common_req_info - base type of request information for GET requests
++ * @reply_data: pointer to reply data within the same block
++ * @dev:        network device the request is for (may be null)
++ * @req_mask:   request mask, bitmap of requested information
++ * @compact:    true if compact format of bitsets in reply is requested
 + *
-+ * @reply_data: pointer to corresponding struct common_reply_data
-+ * @dev: requested device; may be null (dumps), if not, reference is held
-+ * @req_mask: bit mask of parts of information requested
-+ * @compact: use compact format for bitsets
++ * This is a common base, additional members may follow after this structure.
 + */
 +struct common_req_info {
 +	struct common_reply_data	*reply_data;
@@ -356,8 +387,17 @@ index 78385baeaec0..7141ec71a6d3 100644
 +	bool				compact;
 +};
 +
-+/* @dev: device for current reply message
-+ * @info_mask: subset of req_mask (without information which is not available)
++/**
++ * struct common_reply_data - base type of reply data for GET requests
++ * @dev:       device for current reply message; in single shot requests it is
++ *             equal to &common_req_info.dev; in dumps it's different for each
++ *             reply message
++ * @info_mask: bitmap of information actually provided in reply; it is a subset
++ *             of &common_req_info.req_mask with cleared bits corresponding to
++ *             information which cannot be provided
++ *
++ * This structure is usually followed by additional members filled by
++ * ->prepare_data() and used by ->cleanup().
 + */
 +struct common_reply_data {
 +	struct net_device		*dev;
@@ -378,24 +418,37 @@ index 78385baeaec0..7141ec71a6d3 100644
 +		dev->ethtool_ops->complete(dev);
 +}
 +
-+/* parameters and callbacks for unified handling of GET requests
-+ * @request_cmd: command id for request (GET)
-+ * @reply_cmd: command id for reply (SET)
-+ * @dev_attr: attr type for device specification
-+ * @data_size: total length of data structure
++/**
++ * struct get_request_ops - unified handling of GET requests
++ * @request_cmd:    command id for request (GET)
++ * @reply_cmd:      command id for reply (SET)
++ * @dev_attr:       attribute type for device specification
++ * @data_size:      total length of data structure
 + * @repdata_offset: offset of "reply data" part (struct common_reply_data)
 + * @allow_nodev_do: do not fail if device is not specified for non-dump request
-+ * @parse_request: parse request message and fill request info; request info
-+ *     is zero initialized on entry except reply_data pointer (which is set)
-+ * @prepare_data: retrieve data needed to compose a reply message; reply data
-+ *     is zero initialized on entry except @dev
-+ * @reply_size: return size of reply message payload without device
-+ *     specification; reported size may be slightly bigger than actual reply
-+ *     but must not be smaller
-+ * @fill_reply: fill reply message payload
-+ * @cleanup: (optional) called when data are no longer needed; use e.g. to free
-+ *           any additional data allocated in prepare_data() which are not part
-+ *           of the main structure
++ * @parse_request:
++ *	parse request message and fill request info; request info is zero
++ *	initialized on entry except reply_data pointer (which is initialized)
++ * @prepare_data:
++ *	retrieve data needed to compose a reply message; reply data are zero
++ *	initialized on entry except for @dev
++ * @reply_size:
++ *	return size of reply message payload without device specification;
++ *	returned size may be bigger than actual reply size but it must suffice
++ *	to hold the reply
++ * @fill_reply:
++ *	fill reply message payload using the data prepared by @prepare_data()
++ * @cleanup
++ *	(optional) called when data are no longer needed; use e.g. to free
++ *	any additional data structures allocated in prepare_data() which are
++ *	not part of the main structure
++ *
++ * Description of variable parts of GET request handling when using the unified
++ * infrastructure. When used, a pointer to an instance of this structure is to
++ * be added to &get_requests array, generic handlers ethnl_get_doit(),
++ * ethnl_get_dumpit(), ethnl_get_start() and ethnl_get_done() used in
++ * @ethnl_genl_ops and (optionally) ethnl_std_notify() as notification handler
++ * in &ethnl_notify_handlers.
 + */
 +struct get_request_ops {
 +	u8			request_cmd;

@@ -1,4 +1,4 @@
-From 30bfdbfa7e8a7c6eedabcda0aea41c4e2e78a4fe Mon Sep 17 00:00:00 2001
+From 3578764d4459d3213aba919255d2118cd59b36b2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
 Subject: [PATCH 25/33] ethtool: implement GET_PARAMS message
@@ -319,10 +319,10 @@ index 6a7a182e1568..95e93c153cf6 100644
 -ethtool_nl-y	:= netlink.o bitset.o strset.o info.o settings.o
 +ethtool_nl-y	:= netlink.o bitset.o strset.o info.o settings.o params.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 740a0caa6c4d..6983b1faf3d2 100644
+index 4336d65a7e01..2891abb137b5 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -144,11 +144,13 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype)
+@@ -209,11 +209,13 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops info_request_ops;
  extern const struct get_request_ops settings_request_ops;
@@ -335,8 +335,8 @@ index 740a0caa6c4d..6983b1faf3d2 100644
 +	[ETHNL_CMD_GET_PARAMS]		= &params_request_ops,
  };
  
- static struct common_req_info *alloc_get_data(const struct get_request_ops *ops)
-@@ -598,6 +600,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+ /**
+@@ -656,6 +658,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_settings,
  	},
@@ -351,10 +351,10 @@ index 740a0caa6c4d..6983b1faf3d2 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 230d7f7b4fa6..30afc45b3a76 100644
+index 9727069f9a47..f64048a79f65 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -252,5 +252,6 @@ struct get_request_ops {
+@@ -279,5 +279,6 @@ struct get_request_ops {
  /* request handlers */
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);

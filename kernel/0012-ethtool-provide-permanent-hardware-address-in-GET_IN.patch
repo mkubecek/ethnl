@@ -1,4 +1,4 @@
-From 4e5879e36289c526dc79db37e55e5fc7d89d15fe Mon Sep 17 00:00:00 2001
+From 5eb7930691d8972ea49e9f98823a2e3267b4eec9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:06:56 +0100
 Subject: [PATCH 12/33] ethtool: provide permanent hardware address in GET_INFO
@@ -84,7 +84,7 @@ index fdae12b6c6b6..fb756b6a8592 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
-index 1a2e78d238e3..05dbd87ebc41 100644
+index 93d78aaa5626..e90f47222645 100644
 --- a/net/ethtool/info.c
 +++ b/net/ethtool/info.c
 @@ -18,6 +18,7 @@ static const struct nla_policy get_info_policy[ETHA_INFO_MAX + 1] = {
@@ -94,8 +94,8 @@ index 1a2e78d238e3..05dbd87ebc41 100644
 +	[ETHA_INFO_PERMADDR]		= { .type = NLA_REJECT },
  };
  
- static int parse_info(struct common_req_info *req_info, struct sk_buff *skb,
-@@ -86,16 +87,29 @@ static int drvinfo_size(const struct ethtool_drvinfo *drvinfo)
+ /* parse_request() handler */
+@@ -88,17 +89,30 @@ static int drvinfo_size(const struct ethtool_drvinfo *drvinfo)
  	return nla_total_size(len);
  }
  
@@ -109,6 +109,7 @@ index 1a2e78d238e3..05dbd87ebc41 100644
 +	return nla_total_size(len);
 +}
 +
+ /* reply_size() handler */
  static int info_size(const struct common_req_info *req_info)
  {
  	const struct info_data *data =
@@ -125,7 +126,7 @@ index 1a2e78d238e3..05dbd87ebc41 100644
  
  	return len;
  }
-@@ -124,6 +138,26 @@ static int fill_drvinfo(struct sk_buff *skb,
+@@ -127,6 +141,26 @@ static int fill_drvinfo(struct sk_buff *skb,
  	return ret;
  }
  
@@ -149,10 +150,10 @@ index 1a2e78d238e3..05dbd87ebc41 100644
 +	return ret;
 +}
 +
+ /* fill_reply() handler */
  static int fill_info(struct sk_buff *skb,
  		     const struct common_req_info *req_info)
- {
-@@ -137,6 +171,11 @@ static int fill_info(struct sk_buff *skb,
+@@ -141,6 +175,11 @@ static int fill_info(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}

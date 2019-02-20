@@ -1,4 +1,4 @@
-From 5c30f393886b9e33ccc9787727e7e1d8990f5b20 Mon Sep 17 00:00:00 2001
+From 3dcf4e771a6fb4b34a605b1d2837b292960a3d4e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 30/33] ethtool: implement ACT_RESET message
@@ -402,10 +402,10 @@ index 1827e5074b16..a2adaab72c91 100644
  	if (copy_to_user(useraddr, &reset, sizeof(reset)))
  		return -EFAULT;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index de9ee5a3938e..c9cdc7c99387 100644
+index 498ff9be476f..7a388e8e9e25 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -486,6 +486,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -544,6 +544,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
  	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,
  	[ETHNL_CMD_ACT_PHYS_ID]		= ethnl_physid_notify,
@@ -413,7 +413,7 @@ index de9ee5a3938e..c9cdc7c99387 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -625,6 +626,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -683,6 +684,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_act_phys_id,
  	},
@@ -426,7 +426,7 @@ index de9ee5a3938e..c9cdc7c99387 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index f07308d6d8b4..3505efaa0713 100644
+index 55780af93d75..f5ff99b59e87 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -24,6 +24,7 @@ extern const char *const so_timestamping_labels[];
@@ -437,7 +437,7 @@ index f07308d6d8b4..3505efaa0713 100644
  
  struct net_device *ethnl_dev_get(struct genl_info *info, struct nlattr *nest);
  int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
-@@ -255,6 +256,7 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
+@@ -282,6 +283,7 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
@@ -445,7 +445,7 @@ index f07308d6d8b4..3505efaa0713 100644
  
  /* notify handlers */
  
-@@ -263,5 +265,7 @@ void ethnl_nwayrst_notify(struct net_device *dev,
+@@ -290,5 +292,7 @@ void ethnl_nwayrst_notify(struct net_device *dev,
  			  u32 req_mask, const void *data);
  void ethnl_physid_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  			 unsigned int cmd, u32 req_mask, const void *data);
@@ -454,7 +454,7 @@ index f07308d6d8b4..3505efaa0713 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index dd87d7db8b61..a009b35b44bb 100644
+index 81c59bfd0a13..54cb9e4d030f 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -91,6 +91,12 @@ static const struct strset_info info_template[] = {
