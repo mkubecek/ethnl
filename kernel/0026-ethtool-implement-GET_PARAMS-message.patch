@@ -1,0 +1,851 @@
+From 444f529afa5ea03afa9346b79be355f5155f2687 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Fri, 8 Dec 2017 14:56:35 +0100
+Subject: [PATCH 26/34] ethtool: implement GET_PARAMS message
+
+Requests the information provide by ETHTOOL_GCOALESCE, ETHTOOL_GRINGPARAM,
+ETHTOOL_GPAUSEPARAM, ETHTOOL_GCHANNELS, ETHTOOL_GEEE and ETHTOOL_GFECPARAM.
+Flags in info_mask allow selecting only some (or on) of these categories.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ Documentation/networking/ethtool-netlink.txt | 107 ++++-
+ include/uapi/linux/ethtool_netlink.h         | 119 +++++
+ net/ethtool/Makefile                         |   2 +-
+ net/ethtool/netlink.c                        |   9 +
+ net/ethtool/netlink.h                        |   1 +
+ net/ethtool/params.c                         | 479 +++++++++++++++++++
+ 6 files changed, 710 insertions(+), 7 deletions(-)
+ create mode 100644 net/ethtool/params.c
+
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index 18554717681b..53ef817b08c9 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -132,6 +132,8 @@ List of message types
+     ETHNL_CMD_SET_INFO			response only
+     ETHNL_CMD_GET_SETTINGS
+     ETHNL_CMD_SET_SETTINGS
++    ETHNL_CMD_GET_PARAMS
++    ETHNL_CMD_SET_PARAMS		response only (for now)
+ 
+ All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
+ to indicate the type.
+@@ -400,6 +402,99 @@ the operation); mask shows bits which have been changed and value their new
+ values.
+ 
+ 
++GET_PARAMS
++----------
++
++GET_PARAMS request retrieves information provided by legacy comands
++ETHTOOL_GCOALESCE (coalescing setting), ETHTOOL_GRINGPARAM (ring parameters),
++ETHTOOL_GPAUSEPARAM (pause parameters), ETHTOOL_GCHANNELS (channel settings),
++ETHTOOL_GEEE (EEE settings) and ETHTOOL_GFECPARAM (FEC parameters). For each
++of these, there is a bit in header info_mask so that only one type of
++information can be requested.
++
++Request contents:
++
++    ETHA_PARAMS_DEV		(nested)	device identification
++    ETHA_PARAMS_INFOMASK	(u32)		info mask
++    ETHA_PARAMS_COMPACT		(flag)		request compact bitsets
++
++Info mask bits:
++
++    ETH_PARAMS_IM_COALESCE		coalescing settings
++    ETH_PARAMS_IM_RING			ring parameters
++    ETH_PARAMS_IM_PAUSE			pause parameters
++    ETH_PARAMS_IM_CHANNELS		channel settings
++    ETH_PARAMS_IM_EEE			EEE settings
++    ETH_PARAMS_IM_FEC			FEC parameters
++
++Response contents: On top level, there is one attribute for each of the
++information categories, the information is nested in it.
++
++    ETHA_PARAMS_DEV		(nested)	device identification
++    ETHA_PARAMS_COALESCE	(nested)	coalescing
++        ETHA_COALESCE_RX_USECS			(u32)
++        ETHA_COALESCE_RX_MAXFRM			(u32)
++        ETHA_COALESCE_RX_USECS_IRQ		(u32)
++        ETHA_COALESCE_RX_MAXFRM_IRQ		(u32)
++        ETHA_COALESCE_RX_USECS_LOW		(u32)
++        ETHA_COALESCE_RX_MAXFRM_LOW		(u32)
++        ETHA_COALESCE_RX_USECS_HIGH		(u32)
++        ETHA_COALESCE_RX_MAXFRM_HIGH		(u32)
++        ETHA_COALESCE_TX_USECS			(u32)
++        ETHA_COALESCE_TX_MAXFRM			(u32)
++        ETHA_COALESCE_TX_USECS_IRQ		(u32)
++        ETHA_COALESCE_TX_MAXFRM_IRQ		(u32)
++        ETHA_COALESCE_TX_USECS_LOW		(u32)
++        ETHA_COALESCE_TX_MAXFRM_LOW		(u32)
++        ETHA_COALESCE_TX_USECS_HIGH		(u32)
++        ETHA_COALESCE_TX_MAXFRM_HIGH		(u32)
++        ETHA_COALESCE_PKT_RATE_LOW		(u32)
++        ETHA_COALESCE_PKT_RATE_HIGH		(u32)
++        ETHA_COALESCE_RX_USE_ADAPTIVE		(bool)
++        ETHA_COALESCE_TX_USE_ADAPTIVE		(bool)
++        ETHA_COALESCE_RATE_SAMPLE_INTERVAL	(u32)
++        ETHA_COALESCE_STATS_BLOCK_USECS		(u32)
++    ETHA_PARAMS_RING		(nested)	ring parameters
++        ETHA_RING_RX_MAX_PENDING		(u32)
++        ETHA_RING_RX_MINI_MAX_PENDING		(u32)
++        ETHA_RING_RX_JUMBO_MAX_PENDING		(u32)
++        ETHA_RING_TX_MAX_PENDING		(u32)
++        ETHA_RING_RX_PENDING			(u32)
++        ETHA_RING_RX_MINI_PENDING		(u32)
++        ETHA_RING_RX_JUMBO_PENDING		(u32)
++        ETHA_RING_TX_PENDING			(u32)
++    ETHA_PARAMS_PAUSE		(nested)	pause parameters
++        ETHA_PAUSE_AUTONEG			(bool)
++        ETHA_PAUSE_RX				(bool)
++        ETHA_PAUSE_TX				(bool)
++    ETHA_PARAMS_CHANNELS	(nested)	channel settings
++        ETHA_CHANNELS_MAX_RX			(u32)
++        ETHA_CHANNELS_MAX_TX			(u32)
++        ETHA_CHANNELS_MAX_OTHER			(u32)
++        ETHA_CHANNELS_MAX_COMBINED		(u32)
++        ETHA_CHANNELS_RX_COUNT			(u32)
++        ETHA_CHANNELS_TX_COUNT			(u32)
++        ETHA_CHANNELS_OTHER_COUNT		(u32)
++        ETHA_CHANNELS_COMBINED_COUNT		(u32)
++    ETHA_PARAMS_EEE		(nested)	EEE settings
++        ETHA_EEE_LINK_MODES			(bitset)
++		- modes for which EEE is advertised (value) or supported (mask)
++        ETHA_EEE_PEER_MODES			(bitset)
++		- modes for which link partner advertises EEE
++        ETHA_EEE_ACTIVE				(bool)
++        ETHA_EEE_ENABLED			(bool)
++        ETHA_EEE_TX_LPI_ENABLED			(bool)
++        ETHA_EEE_TX_LPI_TIMER			(u32)
++    ETHA_PARAMS_FEC		(nested)	FEC parameters
++        ETHA_FEC_MODES				(bitfield32)
++		- active (value) and configured (selector) FEC encodings
++
++GET_PARAMS requests allow dumps and messages in the same format as response
++to them are broadcasted as notifications on change of these settings using
++netlink or ioctl ethtool interface.
++
++
++
+ Request translation
+ -------------------
+ 
+@@ -421,11 +516,11 @@ ETHTOOL_NWAY_RST		n/a
+ ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_GEEPROM			n/a
+ ETHTOOL_SEEPROM			n/a
+-ETHTOOL_GCOALESCE		n/a
++ETHTOOL_GCOALESCE		ETHNL_CMD_GET_PARAMS
+ ETHTOOL_SCOALESCE		n/a
+-ETHTOOL_GRINGPARAM		n/a
++ETHTOOL_GRINGPARAM		ETHNL_CMD_GET_PARAMS
+ ETHTOOL_SRINGPARAM		n/a
+-ETHTOOL_GPAUSEPARAM		n/a
++ETHTOOL_GPAUSEPARAM		ETHNL_CMD_GET_PARAMS
+ ETHTOOL_SPAUSEPARAM		n/a
+ ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_SRXCSUM			ETHNL_CMD_SET_SETTINGS
+@@ -467,7 +562,7 @@ ETHTOOL_GRXFHINDIR		n/a
+ ETHTOOL_SRXFHINDIR		n/a
+ ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
+-ETHTOOL_GCHANNELS		n/a
++ETHTOOL_GCHANNELS		ETHNL_CMD_GET_PARAMS
+ ETHTOOL_SCHANNELS		n/a
+ ETHTOOL_SET_DUMP		n/a
+ ETHTOOL_GET_DUMP_FLAG		n/a
+@@ -475,7 +570,7 @@ ETHTOOL_GET_DUMP_DATA		n/a
+ ETHTOOL_GET_TS_INFO		ETHNL_CMD_GET_INFO
+ ETHTOOL_GMODULEINFO		n/a
+ ETHTOOL_GMODULEEEPROM		n/a
+-ETHTOOL_GEEE			n/a
++ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
+ ETHTOOL_SEEE			n/a
+ ETHTOOL_GRSSH			n/a
+ ETHTOOL_SRSSH			n/a
+@@ -487,5 +582,5 @@ ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
+ ETHTOOL_PHY_GTUNABLE		n/a
+ ETHTOOL_PHY_STUNABLE		n/a
+-ETHTOOL_GFECPARAM		n/a
++ETHTOOL_GFECPARAM		ETHNL_CMD_GET_PARAMS
+ ETHTOOL_SFECPARAM		n/a
+diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
+index 910b8aa28915..e3fa1003f31e 100644
+--- a/include/uapi/linux/ethtool_netlink.h
++++ b/include/uapi/linux/ethtool_netlink.h
+@@ -14,6 +14,8 @@ enum {
+ 	ETHNL_CMD_SET_INFO,		/* only for reply */
+ 	ETHNL_CMD_GET_SETTINGS,
+ 	ETHNL_CMD_SET_SETTINGS,
++	ETHNL_CMD_GET_PARAMS,
++	ETHNL_CMD_SET_PARAMS,
+ 
+ 	__ETHNL_CMD_CNT,
+ 	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
+@@ -257,6 +259,123 @@ enum {
+ 	ETHA_WOL_MAX = (__ETHA_WOL_CNT - 1)
+ };
+ 
++/* GET_PARAMS / SET_PARAMS */
++
++enum {
++	ETHA_PARAMS_UNSPEC,
++	ETHA_PARAMS_DEV,			/* nest - ETHA_DEV_* */
++	ETHA_PARAMS_INFOMASK,			/* u32 */
++	ETHA_PARAMS_COMPACT,			/* flag */
++	ETHA_PARAMS_COALESCE,			/* nest - ETHA_COALESCE_* */
++	ETHA_PARAMS_RING,			/* nest - ETHA_RING_* */
++	ETHA_PARAMS_PAUSE,			/* nest - ETHA_PAUSE_* */
++	ETHA_PARAMS_CHANNELS,			/* nest - ETHA_CHANNELS_* */
++	ETHA_PARAMS_EEE,			/* nest - ETHA_EEE_* */
++	ETHA_PARAMS_FEC,			/* nest - ETHA_FEC_* */
++
++	__ETHA_PARAMS_CNT,
++	ETHA_PARAMS_MAX = (__ETHA_PARAMS_CNT - 1)
++};
++
++#define ETH_PARAMS_IM_COALESCE			0x01
++#define ETH_PARAMS_IM_RING			0x02
++#define ETH_PARAMS_IM_PAUSE			0x04
++#define ETH_PARAMS_IM_CHANNELS			0x08
++#define ETH_PARAMS_IM_EEE			0x10
++#define ETH_PARAMS_IM_FEC			0x20
++
++#define ETH_PARAMS_IM_ALL			0x3f
++
++enum {
++	ETHA_COALESCE_UNSPEC,
++	ETHA_COALESCE_RX_USECS,			/* u32 */
++	ETHA_COALESCE_RX_MAXFRM,		/* u32 */
++	ETHA_COALESCE_RX_USECS_IRQ,		/* u32 */
++	ETHA_COALESCE_RX_MAXFRM_IRQ,		/* u32 */
++	ETHA_COALESCE_RX_USECS_LOW,		/* u32 */
++	ETHA_COALESCE_RX_MAXFRM_LOW,		/* u32 */
++	ETHA_COALESCE_RX_USECS_HIGH,		/* u32 */
++	ETHA_COALESCE_RX_MAXFRM_HIGH,		/* u32 */
++	ETHA_COALESCE_TX_USECS,			/* u32 */
++	ETHA_COALESCE_TX_MAXFRM,		/* u32 */
++	ETHA_COALESCE_TX_USECS_IRQ,		/* u32 */
++	ETHA_COALESCE_TX_MAXFRM_IRQ,		/* u32 */
++	ETHA_COALESCE_TX_USECS_LOW,		/* u32 */
++	ETHA_COALESCE_TX_MAXFRM_LOW,		/* u32 */
++	ETHA_COALESCE_TX_USECS_HIGH,		/* u32 */
++	ETHA_COALESCE_TX_MAXFRM_HIGH,		/* u32 */
++	ETHA_COALESCE_PKT_RATE_LOW,		/* u32 */
++	ETHA_COALESCE_PKT_RATE_HIGH,		/* u32 */
++	ETHA_COALESCE_RX_USE_ADAPTIVE,		/* u8 */
++	ETHA_COALESCE_TX_USE_ADAPTIVE,		/* u8 */
++	ETHA_COALESCE_RATE_SAMPLE_INTERVAL,	/* u32 */
++	ETHA_COALESCE_STATS_BLOCK_USECS,	/* u32 */
++
++	__ETHA_COALESCE_CNT,
++	ETHA_COALESCE_MAX = (__ETHA_COALESCE_CNT - 1)
++};
++
++enum {
++	ETHA_RING_UNSPEC,
++	ETHA_RING_RX_MAX_PENDING,		/* u32 */
++	ETHA_RING_RX_MINI_MAX_PENDING,		/* u32 */
++	ETHA_RING_RX_JUMBO_MAX_PENDING,		/* u32 */
++	ETHA_RING_TX_MAX_PENDING,		/* u32 */
++	ETHA_RING_RX_PENDING,			/* u32 */
++	ETHA_RING_RX_MINI_PENDING,		/* u32 */
++	ETHA_RING_RX_JUMBO_PENDING,		/* u32 */
++	ETHA_RING_TX_PENDING,			/* u32 */
++
++	__ETHA_RING_CNT,
++	ETHA_RING_MAX = (__ETHA_RING_CNT - 1)
++};
++
++enum {
++	ETHA_PAUSE_UNSPEC,
++	ETHA_PAUSE_AUTONEG,			/* u8 */
++	ETHA_PAUSE_RX,				/* u8 */
++	ETHA_PAUSE_TX,				/* u8 */
++
++	__ETHA_PAUSE_CNT,
++	ETHA_PAUSE_MAX = (__ETHA_PAUSE_CNT - 1)
++};
++
++enum {
++	ETHA_CHANNELS_UNSPEC,
++	ETHA_CHANNELS_MAX_RX,			/* u32 */
++	ETHA_CHANNELS_MAX_TX,			/* u32 */
++	ETHA_CHANNELS_MAX_OTHER,		/* u32 */
++	ETHA_CHANNELS_MAX_COMBINED,		/* u32 */
++	ETHA_CHANNELS_RX_COUNT,			/* u32 */
++	ETHA_CHANNELS_TX_COUNT,			/* u32 */
++	ETHA_CHANNELS_OTHER_COUNT,		/* u32 */
++	ETHA_CHANNELS_COMBINED_COUNT,		/* u32 */
++
++	__ETHA_CHANNELS_CNT,
++	ETHA_CHANNELS_MAX = (__ETHA_CHANNELS_CNT - 1)
++};
++
++enum {
++	ETHA_EEE_UNSPEC,
++	ETHA_EEE_LINK_MODES,			/* bitset */
++	ETHA_EEE_PEER_MODES,			/* bitset */
++	ETHA_EEE_ACTIVE,			/* u8 */
++	ETHA_EEE_ENABLED,			/* u8 */
++	ETHA_EEE_TX_LPI_ENABLED,		/* u8 */
++	ETHA_EEE_TX_LPI_TIMER,			/* u32 */
++
++	__ETHA_EEE_CNT,
++	ETHA_EEE_MAX = (__ETHA_EEE_CNT - 1)
++};
++
++enum {
++	ETHA_FEC_UNSPEC,
++	ETHA_FEC_MODES,				/* bitfield32 */
++
++	__ETHA_FEC_CNT,
++	ETHA_FEC_MAX = (__ETHA_FEC_CNT - 1)
++};
++
+ /* generic netlink info */
+ #define ETHTOOL_GENL_NAME "ethtool"
+ #define ETHTOOL_GENL_VERSION 1
+diff --git a/net/ethtool/Makefile b/net/ethtool/Makefile
+index 6a7a182e1568..95e93c153cf6 100644
+--- a/net/ethtool/Makefile
++++ b/net/ethtool/Makefile
+@@ -4,4 +4,4 @@ obj-y				+= ioctl.o common.o
+ 
+ obj-$(CONFIG_ETHTOOL_NETLINK)	+= ethtool_nl.o
+ 
+-ethtool_nl-y	:= netlink.o bitset.o strset.o info.o settings.o
++ethtool_nl-y	:= netlink.o bitset.o strset.o info.o settings.o params.o
+diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
+index ec6120aa2cc5..0a1beeb03ef5 100644
+--- a/net/ethtool/netlink.c
++++ b/net/ethtool/netlink.c
+@@ -209,11 +209,13 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+ extern const struct get_request_ops strset_request_ops;
+ extern const struct get_request_ops info_request_ops;
+ extern const struct get_request_ops settings_request_ops;
++extern const struct get_request_ops params_request_ops;
+ 
+ const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
+ 	[ETHNL_CMD_GET_STRSET]		= &strset_request_ops,
+ 	[ETHNL_CMD_GET_INFO]		= &info_request_ops,
+ 	[ETHNL_CMD_GET_SETTINGS]	= &settings_request_ops,
++	[ETHNL_CMD_GET_PARAMS]		= &params_request_ops,
+ };
+ 
+ /**
+@@ -656,6 +658,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+ 		.flags	= GENL_UNS_ADMIN_PERM,
+ 		.doit	= ethnl_set_settings,
+ 	},
++	{
++		.cmd	= ETHNL_CMD_GET_PARAMS,
++		.doit	= ethnl_get_doit,
++		.start	= ethnl_get_start,
++		.dumpit	= ethnl_get_dumpit,
++		.done	= ethnl_get_done,
++	},
+ };
+ 
+ static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
+diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
+index 97189776c3c3..a9983fc6d197 100644
+--- a/net/ethtool/netlink.h
++++ b/net/ethtool/netlink.h
+@@ -288,5 +288,6 @@ struct get_request_ops {
+ /* request handlers */
+ 
+ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
++int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
+ 
+ #endif /* _NET_ETHTOOL_NETLINK_H */
+diff --git a/net/ethtool/params.c b/net/ethtool/params.c
+new file mode 100644
+index 000000000000..b5652df274c0
+--- /dev/null
++++ b/net/ethtool/params.c
+@@ -0,0 +1,479 @@
++/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
++
++#include "netlink.h"
++#include "common.h"
++#include "bitset.h"
++
++static const struct nla_policy get_params_policy[ETHA_PARAMS_MAX + 1] = {
++	[ETHA_PARAMS_UNSPEC]		= { .type = NLA_REJECT },
++	[ETHA_PARAMS_DEV]		= { .type = NLA_NESTED },
++	[ETHA_PARAMS_INFOMASK]		= { .type = NLA_U32 },
++	[ETHA_PARAMS_COMPACT]		= { .type = NLA_FLAG },
++	[ETHA_PARAMS_COALESCE]		= { .type = NLA_REJECT },
++	[ETHA_PARAMS_RING]		= { .type = NLA_REJECT },
++	[ETHA_PARAMS_PAUSE]		= { .type = NLA_REJECT },
++	[ETHA_PARAMS_CHANNELS]		= { .type = NLA_REJECT },
++	[ETHA_PARAMS_EEE]		= { .type = NLA_REJECT },
++	[ETHA_PARAMS_FEC]		= { .type = NLA_REJECT },
++};
++
++struct params_data {
++	struct common_req_info		reqinfo_base;
++
++	/* everything below here will be reset for each device in dumps */
++	struct common_reply_data	repdata_base;
++	struct ethtool_coalesce		coalesce;
++	struct ethtool_channels		channels;
++	struct ethtool_pauseparam	pause;
++	struct ethtool_ringparam	ring;
++	struct ethtool_eee		eee;
++	struct ethtool_fecparam		fec;
++};
++
++static int parse_params(struct common_req_info *req_info, struct sk_buff *skb,
++			struct genl_info *info, const struct nlmsghdr *nlhdr)
++{
++	struct nlattr *tb[ETHA_PARAMS_MAX + 1];
++	int ret;
++
++	ret = ethnlmsg_parse(nlhdr, tb, ETHA_PARAMS_MAX, get_params_policy,
++			     info);
++	if (ret < 0)
++		return ret;
++
++	if (tb[ETHA_PARAMS_DEV]) {
++		req_info->dev = ethnl_dev_get(info, tb[ETHA_PARAMS_DEV]);
++		if (IS_ERR(req_info->dev)) {
++			ret = PTR_ERR(req_info->dev);
++			req_info->dev = NULL;
++			return ret;
++		}
++	}
++	if (tb[ETHA_PARAMS_INFOMASK])
++		req_info->req_mask = nla_get_u32(tb[ETHA_PARAMS_INFOMASK]);
++	if (tb[ETHA_PARAMS_COMPACT])
++		req_info->compact = true;
++	if (req_info->req_mask == 0)
++		req_info->req_mask = ETH_PARAMS_IM_ALL;
++
++	return 0;
++}
++
++static int ethnl_get_coalesce(struct net_device *dev,
++			      struct ethtool_coalesce *data)
++{
++	if (!dev->ethtool_ops->get_coalesce)
++		return -EOPNOTSUPP;
++	return dev->ethtool_ops->get_coalesce(dev, data);
++}
++
++static int ethnl_get_ring(struct net_device *dev,
++			  struct ethtool_ringparam *data)
++{
++	if (!dev->ethtool_ops->get_ringparam)
++		return -EOPNOTSUPP;
++	dev->ethtool_ops->get_ringparam(dev, data);
++	return 0;
++}
++
++static int ethnl_get_pause(struct net_device *dev,
++			   struct ethtool_pauseparam *data)
++{
++	if (!dev->ethtool_ops->get_pauseparam)
++		return -EOPNOTSUPP;
++	dev->ethtool_ops->get_pauseparam(dev, data);
++	return 0;
++}
++
++static int ethnl_get_channels(struct net_device *dev,
++			      struct ethtool_channels *data)
++{
++	if (!dev->ethtool_ops->get_channels)
++		return -EOPNOTSUPP;
++	dev->ethtool_ops->get_channels(dev, data);
++	return 0;
++}
++
++static int ethnl_get_eee(struct net_device *dev, struct ethtool_eee *data)
++{
++	if (!dev->ethtool_ops->get_eee)
++		return -EOPNOTSUPP;
++	return dev->ethtool_ops->get_eee(dev, data);
++}
++
++static int ethnl_get_fec(struct net_device *dev, struct ethtool_fecparam *data)
++{
++	if (!dev->ethtool_ops->get_fecparam)
++		return -EOPNOTSUPP;
++	return dev->ethtool_ops->get_fecparam(dev, data);
++}
++
++static int prepare_params(struct common_req_info *req_info,
++			  struct genl_info *info)
++{
++	struct params_data *data =
++		container_of(req_info, struct params_data, reqinfo_base);
++	struct net_device *dev = data->repdata_base.dev;
++	u32 req_mask = req_info->req_mask;
++	int ret;
++
++	ret = ethnl_before_ops(dev);
++	if (ret < 0)
++		return ret;
++	if (req_mask & ETH_PARAMS_IM_COALESCE) {
++		ret = ethnl_get_coalesce(dev, &data->coalesce);
++		if (ret < 0)
++			req_mask &= ~ETH_PARAMS_IM_COALESCE;
++	}
++	if (req_mask & ETH_PARAMS_IM_RING) {
++		ret = ethnl_get_ring(dev, &data->ring);
++		if (ret < 0)
++			req_mask &= ~ETH_PARAMS_IM_RING;
++	}
++	if (req_mask & ETH_PARAMS_IM_PAUSE) {
++		ret = ethnl_get_pause(dev, &data->pause);
++		if (ret < 0)
++			req_mask &= ~ETH_PARAMS_IM_PAUSE;
++	}
++	if (req_mask & ETH_PARAMS_IM_CHANNELS) {
++		ret = ethnl_get_channels(dev, &data->channels);
++		if (ret < 0)
++			req_mask &= ~ETH_PARAMS_IM_CHANNELS;
++	}
++	if (req_mask & ETH_PARAMS_IM_EEE) {
++		ret = ethnl_get_eee(dev, &data->eee);
++		if (ret < 0)
++			req_mask &= ~ETH_PARAMS_IM_EEE;
++	}
++	if (req_mask & ETH_PARAMS_IM_FEC) {
++		ret = ethnl_get_fec(dev, &data->fec);
++		if (ret < 0)
++			req_mask &= ~ETH_PARAMS_IM_FEC;
++	}
++	ethnl_after_ops(dev);
++
++	data->repdata_base.info_mask = req_mask;
++	if (req_info->req_mask & ~req_mask)
++		warn_partial_info(info);
++	return 0;
++}
++
++static int coalesce_size(void)
++{
++	return nla_total_size(20 * nla_total_size(sizeof(u32)) +
++			      2 * nla_total_size(sizeof(u8)));
++}
++
++static int ring_size(void)
++{
++	return nla_total_size(8 * nla_total_size(sizeof(u32)));
++}
++
++static int pause_size(void)
++{
++	return nla_total_size(3 * nla_total_size(sizeof(u8)));
++}
++
++static int channels_size(void)
++{
++	return nla_total_size(8 * nla_total_size(sizeof(u32)));
++}
++
++static int eee_size(const struct ethtool_eee *eee, bool compact)
++{
++	const unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
++	int len = 0;
++	int ret;
++
++	/* link_modes */
++	ret = ethnl_bitset32_size(sizeof(eee->advertised) * BITS_PER_BYTE,
++				  &eee->advertised, &eee->supported,
++				  link_mode_names, flags);
++	if (ret < 0)
++		return ret;
++	len += ret;
++	/* peer_modes */
++	ret = ethnl_bitset32_size(sizeof(eee->lp_advertised) * BITS_PER_BYTE,
++				  &eee->lp_advertised, NULL, link_mode_names,
++				  flags | ETHNL_BITSET_LIST);
++	if (ret < 0)
++		return ret;
++	len += ret;
++	/* active, enabled, tx_lpi_enabled */
++	len += 3 * nla_total_size(sizeof(u8));
++	/* tx_lpi_timer */
++	len += nla_total_size(sizeof(u32));
++
++	/* nest */
++	return nla_total_size(len);
++}
++
++static int fec_size(void)
++{
++	int len = nla_total_size(sizeof(struct nla_bitfield32));
++
++	return nla_total_size(len);
++}
++
++static int params_size(const struct common_req_info *req_info)
++{
++	struct params_data *data =
++		container_of(req_info, struct params_data, reqinfo_base);
++	u32 info_mask = data->repdata_base.info_mask;
++	int len = 0;
++
++	len += dev_ident_size();
++	if (info_mask & ETH_PARAMS_IM_COALESCE)
++		len += coalesce_size();
++	if (info_mask & ETH_PARAMS_IM_RING)
++		len += ring_size();
++	if (info_mask & ETH_PARAMS_IM_PAUSE)
++		len += pause_size();
++	if (info_mask & ETH_PARAMS_IM_CHANNELS)
++		len += channels_size();
++	if (info_mask & ETH_PARAMS_IM_EEE) {
++		int ret = eee_size(&data->eee, req_info->compact);
++
++		if (ret < 0)
++			return ret;
++		len += ret;
++	}
++	if (info_mask & ETH_PARAMS_IM_FEC)
++		len += fec_size();
++
++	return len;
++}
++
++static int fill_coalesce(struct sk_buff *skb, struct ethtool_coalesce *data)
++{
++	struct nlattr *nest = ethnl_nest_start(skb, ETHA_PARAMS_COALESCE);
++
++	if (!nest)
++		return -EMSGSIZE;
++	if (nla_put_u32(skb, ETHA_COALESCE_RX_USECS,
++			data->rx_coalesce_usecs) ||
++	    nla_put_u32(skb, ETHA_COALESCE_RX_MAXFRM,
++			data->rx_max_coalesced_frames) ||
++	    nla_put_u32(skb, ETHA_COALESCE_RX_USECS_IRQ,
++			data->rx_coalesce_usecs_irq) ||
++	    nla_put_u32(skb, ETHA_COALESCE_RX_MAXFRM_IRQ,
++			data->rx_max_coalesced_frames_irq) ||
++	    nla_put_u32(skb, ETHA_COALESCE_RX_USECS_LOW,
++			data->rx_coalesce_usecs_low) ||
++	    nla_put_u32(skb, ETHA_COALESCE_RX_MAXFRM_LOW,
++			data->rx_max_coalesced_frames_low) ||
++	    nla_put_u32(skb, ETHA_COALESCE_RX_USECS_HIGH,
++			data->rx_coalesce_usecs_high) ||
++	    nla_put_u32(skb, ETHA_COALESCE_RX_MAXFRM_HIGH,
++			data->rx_max_coalesced_frames_high) ||
++	    nla_put_u32(skb, ETHA_COALESCE_TX_USECS,
++			data->tx_coalesce_usecs) ||
++	    nla_put_u32(skb, ETHA_COALESCE_TX_MAXFRM,
++			data->tx_max_coalesced_frames) ||
++	    nla_put_u32(skb, ETHA_COALESCE_TX_USECS_IRQ,
++			data->tx_coalesce_usecs_irq) ||
++	    nla_put_u32(skb, ETHA_COALESCE_TX_MAXFRM_IRQ,
++			data->tx_max_coalesced_frames_irq) ||
++	    nla_put_u32(skb, ETHA_COALESCE_TX_USECS_LOW,
++			data->tx_coalesce_usecs_low) ||
++	    nla_put_u32(skb, ETHA_COALESCE_TX_MAXFRM_LOW,
++			data->tx_max_coalesced_frames_low) ||
++	    nla_put_u32(skb, ETHA_COALESCE_TX_USECS_HIGH,
++			data->tx_coalesce_usecs_high) ||
++	    nla_put_u32(skb, ETHA_COALESCE_TX_MAXFRM_HIGH,
++			data->tx_max_coalesced_frames_high) ||
++	    nla_put_u32(skb, ETHA_COALESCE_PKT_RATE_LOW,
++			data->pkt_rate_low) ||
++	    nla_put_u32(skb, ETHA_COALESCE_PKT_RATE_HIGH,
++			data->pkt_rate_high) ||
++	    nla_put_u8(skb, ETHA_COALESCE_RX_USE_ADAPTIVE,
++		       !!data->use_adaptive_rx_coalesce) ||
++	    nla_put_u8(skb, ETHA_COALESCE_TX_USE_ADAPTIVE,
++		       !!data->use_adaptive_tx_coalesce) ||
++	    nla_put_u32(skb, ETHA_COALESCE_RATE_SAMPLE_INTERVAL,
++			data->rate_sample_interval) ||
++	    nla_put_u32(skb, ETHA_COALESCE_STATS_BLOCK_USECS,
++			data->stats_block_coalesce_usecs)) {
++		nla_nest_cancel(skb, nest);
++		return -EMSGSIZE;
++	}
++
++	nla_nest_end(skb, nest);
++	return 0;
++}
++
++static int fill_ring(struct sk_buff *skb, struct ethtool_ringparam *data)
++{
++	struct nlattr *nest = ethnl_nest_start(skb, ETHA_PARAMS_RING);
++
++	if (!nest)
++		return -EMSGSIZE;
++	if (nla_put_u32(skb, ETHA_RING_RX_MAX_PENDING,
++			data->rx_max_pending) ||
++	    nla_put_u32(skb, ETHA_RING_RX_MINI_MAX_PENDING,
++			data->rx_mini_max_pending) ||
++	    nla_put_u32(skb, ETHA_RING_RX_JUMBO_MAX_PENDING,
++			data->rx_jumbo_max_pending) ||
++	    nla_put_u32(skb, ETHA_RING_TX_MAX_PENDING,
++			data->tx_max_pending) ||
++	    nla_put_u32(skb, ETHA_RING_RX_PENDING,
++			data->rx_pending) ||
++	    nla_put_u32(skb, ETHA_RING_RX_MINI_PENDING,
++			data->rx_mini_pending) ||
++	    nla_put_u32(skb, ETHA_RING_RX_JUMBO_PENDING,
++			data->rx_jumbo_pending) ||
++	    nla_put_u32(skb, ETHA_RING_TX_PENDING,
++			data->tx_pending)) {
++		nla_nest_cancel(skb, nest);
++		return -EMSGSIZE;
++	}
++
++	nla_nest_end(skb, nest);
++	return 0;
++}
++
++static int fill_pause(struct sk_buff *skb, struct ethtool_pauseparam *data)
++{
++	struct nlattr *nest = ethnl_nest_start(skb, ETHA_PARAMS_PAUSE);
++
++	if (!nest)
++		return -EMSGSIZE;
++	if (nla_put_u8(skb, ETHA_PAUSE_AUTONEG, !!data->autoneg) ||
++	    nla_put_u8(skb, ETHA_PAUSE_RX, !!data->rx_pause) ||
++	    nla_put_u8(skb, ETHA_PAUSE_TX, !!data->tx_pause)) {
++		nla_nest_cancel(skb, nest);
++		return -EMSGSIZE;
++	}
++
++	nla_nest_end(skb, nest);
++	return 0;
++}
++
++static int fill_channels(struct sk_buff *skb, struct ethtool_channels *data)
++{
++	struct nlattr *nest = ethnl_nest_start(skb, ETHA_PARAMS_CHANNELS);
++
++	if (!nest)
++		return -EMSGSIZE;
++	if (nla_put_u32(skb, ETHA_CHANNELS_MAX_RX, data->max_rx) ||
++	    nla_put_u32(skb, ETHA_CHANNELS_MAX_TX, data->max_tx) ||
++	    nla_put_u32(skb, ETHA_CHANNELS_MAX_OTHER, data->max_other) ||
++	    nla_put_u32(skb, ETHA_CHANNELS_MAX_COMBINED, data->max_combined) ||
++	    nla_put_u32(skb, ETHA_CHANNELS_RX_COUNT, data->rx_count) ||
++	    nla_put_u32(skb, ETHA_CHANNELS_TX_COUNT, data->tx_count) ||
++	    nla_put_u32(skb, ETHA_CHANNELS_OTHER_COUNT, data->other_count) ||
++	    nla_put_u32(skb, ETHA_CHANNELS_COMBINED_COUNT,
++			data->combined_count)) {
++		return -EMSGSIZE;
++	}
++
++	nla_nest_end(skb, nest);
++	return 0;
++}
++
++static int fill_eee(struct sk_buff *skb, struct ethtool_eee *data, bool compact)
++{
++	const unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
++	struct nlattr *nest = ethnl_nest_start(skb, ETHA_PARAMS_EEE);
++	int ret;
++
++	if (!nest)
++		return -EMSGSIZE;
++	ret = ethnl_put_bitset32(skb, ETHA_EEE_LINK_MODES,
++				 sizeof(data->advertised) * BITS_PER_BYTE,
++				 &data->advertised, &data->supported,
++				 link_mode_names, flags);
++	if (ret < 0)
++		goto err;
++	ret = ethnl_put_bitset32(skb, ETHA_EEE_PEER_MODES,
++				 sizeof(data->lp_advertised) * BITS_PER_BYTE,
++				 &data->lp_advertised, &data->lp_advertised,
++				 link_mode_names, flags | ETHNL_BITSET_LIST);
++	if (ret < 0)
++		goto err;
++
++	if (nla_put_u8(skb, ETHA_EEE_ACTIVE, !!data->eee_active) ||
++	    nla_put_u8(skb, ETHA_EEE_ENABLED, !!data->eee_enabled) ||
++	    nla_put_u8(skb, ETHA_EEE_TX_LPI_ENABLED, !!data->tx_lpi_enabled) ||
++	    nla_put_u32(skb, ETHA_EEE_TX_LPI_TIMER, data->tx_lpi_timer)) {
++		ret = -EMSGSIZE;
++		goto err;
++	}
++
++	nla_nest_end(skb, nest);
++	return 0;
++err:
++	nla_nest_cancel(skb, nest);
++	return ret;
++}
++
++static int fill_fec(struct sk_buff *skb, struct ethtool_fecparam *data)
++{
++	struct nlattr *nest = ethnl_nest_start(skb, ETHA_PARAMS_FEC);
++
++	if (!nest)
++		return -EMSGSIZE;
++	if (nla_put_bitfield32(skb, ETHA_FEC_MODES, data->active_fec,
++			       data->fec)) {
++		nla_nest_cancel(skb, nest);
++		return -EMSGSIZE;
++	}
++
++	nla_nest_end(skb, nest);
++	return 0;
++}
++
++static int fill_params(struct sk_buff *skb,
++		       const struct common_req_info *req_info)
++{
++	struct params_data *data =
++		container_of(req_info, struct params_data, reqinfo_base);
++	u32 info_mask = data->repdata_base.info_mask;
++	int ret;
++
++	if (info_mask & ETH_PARAMS_IM_COALESCE) {
++		ret = fill_coalesce(skb, &data->coalesce);
++		if (ret < 0)
++			return ret;
++	}
++	if (info_mask & ETH_PARAMS_IM_RING) {
++		ret = fill_ring(skb, &data->ring);
++		if (ret < 0)
++			return ret;
++	}
++	if (info_mask & ETH_PARAMS_IM_PAUSE) {
++		ret = fill_pause(skb, &data->pause);
++		if (ret < 0)
++			return ret;
++	}
++	if (info_mask & ETH_PARAMS_IM_CHANNELS) {
++		ret = fill_channels(skb, &data->channels);
++		if (ret < 0)
++			return ret;
++	}
++	if (info_mask & ETH_PARAMS_IM_EEE) {
++		ret = fill_eee(skb, &data->eee, req_info->compact);
++		if (ret < 0)
++			return ret;
++	}
++	if (info_mask & ETH_PARAMS_IM_FEC) {
++		ret = fill_fec(skb, &data->fec);
++		if (ret < 0)
++			return ret;
++	}
++
++	return 0;
++}
++
++const struct get_request_ops params_request_ops = {
++	.request_cmd		= ETHNL_CMD_GET_PARAMS,
++	.reply_cmd		= ETHNL_CMD_SET_PARAMS,
++	.dev_attrtype		= ETHA_PARAMS_DEV,
++	.data_size		= sizeof(struct params_data),
++	.repdata_offset		= offsetof(struct params_data, repdata_base),
++
++	.parse_request		= parse_params,
++	.prepare_data		= prepare_params,
++	.reply_size		= params_size,
++	.fill_reply		= fill_params,
++};
+-- 
+2.20.1
+
