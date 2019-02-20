@@ -1,4 +1,4 @@
-From 7d7d3053d043bdb8970138cbce0da04e6719def0 Mon Sep 17 00:00:00 2001
+From 2c2350cee85034aa85355240b87b34439c6e23ff Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 10/33] ethtool: provide string sets with GET_STRSET request
@@ -23,8 +23,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool_netlink.h         |  43 ++
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/netlink.c                        |  10 +
- net/ethtool/strset.c                         | 441 +++++++++++++++++++
- 6 files changed, 541 insertions(+), 3 deletions(-)
+ net/ethtool/strset.c                         | 442 +++++++++++++++++++
+ 6 files changed, 542 insertions(+), 3 deletions(-)
  create mode 100644 net/ethtool/strset.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -220,10 +220,10 @@ index b38a510438ff..793d64ac5e25 100644
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
 new file mode 100644
-index 000000000000..7884b37547f4
+index 000000000000..710025eebcc7
 --- /dev/null
 +++ b/net/ethtool/strset.c
-@@ -0,0 +1,441 @@
+@@ -0,0 +1,442 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include <linux/ethtool.h>
@@ -472,6 +472,7 @@ index 000000000000..7884b37547f4
 +	unsigned int i;
 +	int ret;
 +
++	BUILD_BUG_ON(ARRAY_SIZE(info_template) != ETH_SS_COUNT);
 +	memcpy(&data->info, &info_template, sizeof(data->info));
 +
 +	if (!dev) {

@@ -1,4 +1,4 @@
-From 24ddbe6fca0614be0d85b99e2c41d8f8c4c2456c Mon Sep 17 00:00:00 2001
+From 1661a846b0d95cb0729d3db9b9257e86b880967f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
 Subject: [PATCH 13/33] ethtool: provide timestamping information in GET_INFO
@@ -469,7 +469,7 @@ index 6bbbad2f7c4c..f019b263e21f 100644
  int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
  
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index 7884b37547f4..185165c8ca1b 100644
+index 710025eebcc7..c348ae9308a7 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -67,6 +67,24 @@ static const struct strset_info info_template[] = {

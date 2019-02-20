@@ -1,4 +1,4 @@
-From 5eb7930691d8972ea49e9f98823a2e3267b4eec9 Mon Sep 17 00:00:00 2001
+From 65b7042fd5478d19f6f69b8b37615e24594fe785 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:06:56 +0100
 Subject: [PATCH 12/33] ethtool: provide permanent hardware address in GET_INFO

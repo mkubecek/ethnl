@@ -1,4 +1,4 @@
-From 3dcf4e771a6fb4b34a605b1d2837b292960a3d4e Mon Sep 17 00:00:00 2001
+From fd69e104cc686ffe20d07eff713a1ff31b3fe4dc Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 30/33] ethtool: implement ACT_RESET message
@@ -454,7 +454,7 @@ index 55780af93d75..f5ff99b59e87 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index 81c59bfd0a13..54cb9e4d030f 100644
+index c7cdbecf4cdf..8cd49e2f6c6f 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -91,6 +91,12 @@ static const struct strset_info info_template[] = {
