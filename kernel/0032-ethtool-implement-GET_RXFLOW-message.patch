@@ -1,4 +1,4 @@
-From 39b965f9fce3ef3821275077642e3b63b316f7aa Mon Sep 17 00:00:00 2001
+From 4949db3f4360ed093ca11c64515a5503b6a1379c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 32/34] ethtool: implement GET_RXFLOW message
@@ -314,10 +314,10 @@ index b3e88cf0f4c0..a6ace735f44f 100644
 -		   actions.o
 +		   actions.o rxflow.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 0f843839bef9..97e35259f658 100644
+index 4fbdcd5a9ae9..2521bb0b965f 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -210,12 +210,14 @@ extern const struct get_request_ops strset_request_ops;
+@@ -225,12 +225,14 @@ extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops info_request_ops;
  extern const struct get_request_ops settings_request_ops;
  extern const struct get_request_ops params_request_ops;
@@ -332,7 +332,7 @@ index 0f843839bef9..97e35259f658 100644
  };
  
  /**
-@@ -689,6 +691,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -704,6 +706,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_ADMIN_PERM,
  		.doit	= ethnl_act_reset,
  	},

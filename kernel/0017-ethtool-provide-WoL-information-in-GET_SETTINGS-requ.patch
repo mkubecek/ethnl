@@ -1,4 +1,4 @@
-From 2c13f7f77a4a6e67e81206f4644ec769513ededb Mon Sep 17 00:00:00 2001
+From 0d3ee0619c5b869f3e255d5f0b3ff7c460da4521 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:08:55 +0100
 Subject: [PATCH 17/34] ethtool: provide WoL information in GET_SETTINGS

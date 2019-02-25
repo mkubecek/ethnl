@@ -1,4 +1,4 @@
-From 062e5c913d0bb14164ae1219477bfa8f84c4c848 Mon Sep 17 00:00:00 2001
+From 8f2efb0c9557254dca04687548a7d541924829a9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:50:07 +0100
 Subject: [PATCH 15/34] ethtool: provide link mode names as a string set
@@ -8,14 +8,14 @@ to userspace GET_STRSET requests.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- include/uapi/linux/ethtool.h |  2 ++
- net/ethtool/netlink.c        | 58 ++++++++++++++++++++++++++++++++++++
+ include/uapi/linux/ethtool.h |  2 +
+ net/ethtool/netlink.c        | 73 ++++++++++++++++++++++++++++++++++++
  net/ethtool/netlink.h        |  1 +
- net/ethtool/strset.c         |  6 ++++
- 4 files changed, 67 insertions(+)
+ net/ethtool/strset.c         |  6 +++
+ 4 files changed, 82 insertions(+)
 
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
-index 1b58637d3a4d..ba96a691bfd4 100644
+index 882a542eaaa9..ef1288eb737c 100644
 --- a/include/uapi/linux/ethtool.h
 +++ b/include/uapi/linux/ethtool.h
 @@ -566,6 +566,7 @@ struct ethtool_pauseparam {
@@ -35,10 +35,10 @@ index 1b58637d3a4d..ba96a691bfd4 100644
  	ETH_SS_COUNT
  };
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index e35cf4485795..a74e27c8f0c1 100644
+index e35cf4485795..c0574cc5fcff 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -6,6 +6,61 @@
+@@ -6,6 +6,76 @@
  
  u32 ethnl_bcast_seq;
  
@@ -82,7 +82,7 @@ index e35cf4485795..a74e27c8f0c1 100644
 +	[ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT]	= "100000baseKR4/Full",
 +	[ETHTOOL_LINK_MODE_100000baseSR4_Full_BIT]	= "100000baseSR4/Full",
 +	[ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT]	= "100000baseCR4/Full",
-+	[ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT]	= "100000baseLR4/ER4_Full",
++	[ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT]	= "100000baseLR4_ER4/Full",
 +	[ETHTOOL_LINK_MODE_50000baseSR2_Full_BIT]	= "50000baseSR2/Full",
 +	[ETHTOOL_LINK_MODE_1000baseX_Full_BIT]		= "1000baseX/Full",
 +	[ETHTOOL_LINK_MODE_10000baseCR_Full_BIT]	= "10000baseCR/Full",
@@ -95,12 +95,27 @@ index e35cf4485795..a74e27c8f0c1 100644
 +	[ETHTOOL_LINK_MODE_FEC_NONE_BIT]		= "None",
 +	[ETHTOOL_LINK_MODE_FEC_RS_BIT]			= "RS",
 +	[ETHTOOL_LINK_MODE_FEC_BASER_BIT]		= "BASER",
++	[ETHTOOL_LINK_MODE_50000baseKR_Full_BIT]	= "50000baseKR/Full",
++	[ETHTOOL_LINK_MODE_50000baseSR_Full_BIT]	= "50000baseSR/Full",
++	[ETHTOOL_LINK_MODE_50000baseCR_Full_BIT]	= "50000baseCR/Full",
++	[ETHTOOL_LINK_MODE_50000baseLR_ER_FR_Full_BIT]	= "50000baseLR_ER/Full",
++	[ETHTOOL_LINK_MODE_50000baseDR_Full_BIT]	= "50000baseDR/Full",
++	[ETHTOOL_LINK_MODE_100000baseKR2_Full_BIT]	= "100000baseKR2/Full",
++	[ETHTOOL_LINK_MODE_100000baseSR2_Full_BIT]	= "100000baseSR2/Full",
++	[ETHTOOL_LINK_MODE_100000baseCR2_Full_BIT]	= "100000baseCR2/Full",
++	[ETHTOOL_LINK_MODE_100000baseLR2_ER2_FR2_Full_BIT] = "100000baseLR2_ER2/Full",
++	[ETHTOOL_LINK_MODE_100000baseDR2_Full_BIT]	= "100000baseDR2/Full",
++	[ETHTOOL_LINK_MODE_200000baseKR4_Full_BIT]	= "200000baseKR4/Full",
++	[ETHTOOL_LINK_MODE_200000baseSR4_Full_BIT]	= "200000baseSR4/Full",
++	[ETHTOOL_LINK_MODE_200000baseLR4_ER4_FR4_Full_BIT] = "200000baseLR4_ER4/Full",
++	[ETHTOOL_LINK_MODE_200000baseDR4_Full_BIT]	= "200000baseDR4/Full",
++	[ETHTOOL_LINK_MODE_200000baseCR4_Full_BIT]	= "200000baseCR4/Full",
 +};
 +
  static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
  	[ETHA_DEV_UNSPEC]	= { .type = NLA_REJECT },
  	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -599,6 +654,9 @@ static int __init ethnl_init(void)
+@@ -599,6 +669,9 @@ static int __init ethnl_init(void)
  {
  	int ret;
  

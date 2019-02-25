@@ -1,4 +1,4 @@
-From f64d29e8e2838ec797f92edc658ea263528fca62 Mon Sep 17 00:00:00 2001
+From d80e14843ec4097c70902906fed846b63dfcc42f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 24/34] ethtool: implement SET_SETTINGS request for features
@@ -111,10 +111,10 @@ index afd61d36bcf8..910b8aa28915 100644
  	__ETHA_FEATURES_CNT,
  	ETHA_FEATURES_MAX = (__ETHA_FEATURES_CNT - 1)
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index c59e49b3b4e6..00facca1bb88 100644
+index 46861fc7916b..99e626641cf2 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -801,6 +801,15 @@ static const struct nla_policy set_wol_policy[ETHA_LINKINFO_MAX + 1] = {
+@@ -861,6 +861,15 @@ static const struct nla_policy set_wol_policy[ETHA_LINKINFO_MAX + 1] = {
  					    .len = SOPASS_MAX },
  };
  
@@ -130,7 +130,7 @@ index c59e49b3b4e6..00facca1bb88 100644
  static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
  	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_DEV]		= { .type = NLA_NESTED },
-@@ -813,6 +822,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+@@ -873,6 +882,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
  					    .validation_data = &all_bits },
  	[ETHA_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
@@ -138,7 +138,7 @@ index c59e49b3b4e6..00facca1bb88 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -981,11 +991,147 @@ static int update_wol(struct genl_info *info, struct nlattr *nest,
+@@ -1041,11 +1051,147 @@ static int update_wol(struct genl_info *info, struct nlattr *nest,
  	return ret;
  }
  
@@ -286,7 +286,7 @@ index c59e49b3b4e6..00facca1bb88 100644
  	int ret;
  
  	ret = ethnlmsg_parse(info->nlhdr, tb, ETHA_SETTINGS_MAX,
-@@ -1032,6 +1178,16 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -1092,6 +1238,16 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  			req_mask |= ETH_SETTINGS_IM_MSGLEVEL;
  		}
  	}

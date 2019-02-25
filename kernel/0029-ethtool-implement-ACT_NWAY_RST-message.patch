@@ -1,4 +1,4 @@
-From 12b8a151dab2e37cc33c324677292452b8295319 Mon Sep 17 00:00:00 2001
+From 56210c4c6e7ae48e97a20475e9766bf6f5a45f77 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 29/34] ethtool: implement ACT_NWAY_RST message
@@ -202,10 +202,10 @@ index dede5dcd2757..2cdc2872085b 100644
  
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index c9e5118a640a..ab2ba1ddb10a 100644
+index 66cda2b1be73..8a75cd587e6f 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -542,6 +542,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -557,6 +557,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_SETTINGS]	= ethnl_std_notify,
  	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
@@ -213,7 +213,7 @@ index c9e5118a640a..ab2ba1ddb10a 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -671,6 +672,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -686,6 +687,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_params,
  	},

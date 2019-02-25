@@ -1,4 +1,4 @@
-From 6d12ea9aa1cac6af521d393ed70bad8de6acb642 Mon Sep 17 00:00:00 2001
+From 5ec998915464e67f7692951a1288070ed84d3f11 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 16:19:21 +0100
 Subject: [PATCH 21/34] ethtool: provide private flags in GET_SETTINGS request

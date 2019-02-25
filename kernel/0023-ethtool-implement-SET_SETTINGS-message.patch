@@ -1,4 +1,4 @@
-From 0fb70738828d679782593fe79ce145e3f80c8fad Mon Sep 17 00:00:00 2001
+From 0decf99e015fbe4240757b61de132127765c55f8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 23/34] ethtool: implement SET_SETTINGS message
@@ -14,8 +14,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  45 +-
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   4 +
- net/ethtool/settings.c                       | 488 +++++++++++++++++++
- 4 files changed, 537 insertions(+), 5 deletions(-)
+ net/ethtool/settings.c                       | 548 +++++++++++++++++++
+ 4 files changed, 597 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 290008aaed0a..f4800b9f6daa 100644
@@ -99,10 +99,10 @@ index 290008aaed0a..f4800b9f6daa 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 49993c4768df..ec6120aa2cc5 100644
+index 68a4e989de0e..26b574b27874 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -651,6 +651,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -666,6 +666,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -128,10 +128,10 @@ index 8b29e4262250..97189776c3c3 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index fc71b7e83eff..c59e49b3b4e6 100644
+index fc71b7e83eff..46861fc7916b 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -27,6 +27,228 @@ struct settings_data {
+@@ -27,6 +27,288 @@ struct settings_data {
  	unsigned int			n_priv_flags;
  };
  
@@ -141,213 +141,273 @@ index fc71b7e83eff..c59e49b3b4e6 100644
 +};
 +
 +static const struct link_mode_info link_mode_params[] = {
-+	[ETHTOOL_LINK_MODE_10baseT_Half_BIT]		= {
++	[ETHTOOL_LINK_MODE_10baseT_Half_BIT] = {
 +		.speed	= 10,
 +		.duplex	= DUPLEX_HALF,
 +	},
-+	[ETHTOOL_LINK_MODE_10baseT_Full_BIT]		= {
++	[ETHTOOL_LINK_MODE_10baseT_Full_BIT] = {
 +		.speed	= 10,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_100baseT_Half_BIT]		= {
++	[ETHTOOL_LINK_MODE_100baseT_Half_BIT] = {
 +		.speed	= 100,
 +		.duplex	= DUPLEX_HALF,
 +	},
-+	[ETHTOOL_LINK_MODE_100baseT_Full_BIT]		= {
++	[ETHTOOL_LINK_MODE_100baseT_Full_BIT] = {
 +		.speed	= 100,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_1000baseT_Half_BIT]		= {
++	[ETHTOOL_LINK_MODE_1000baseT_Half_BIT] = {
 +		.speed	= 1000,
 +		.duplex	= DUPLEX_HALF,
 +	},
-+	[ETHTOOL_LINK_MODE_1000baseT_Full_BIT]		= {
++	[ETHTOOL_LINK_MODE_1000baseT_Full_BIT] = {
 +		.speed	= 1000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_Autoneg_BIT]			= {
++	[ETHTOOL_LINK_MODE_Autoneg_BIT] = {
 +		.speed	= SPEED_UNKNOWN,
 +		.duplex	= DUPLEX_UNKNOWN,
 +	},
-+	[ETHTOOL_LINK_MODE_TP_BIT]			= {
++	[ETHTOOL_LINK_MODE_TP_BIT] = {
 +		.speed	= SPEED_UNKNOWN,
 +		.duplex	= DUPLEX_UNKNOWN,
 +	},
-+	[ETHTOOL_LINK_MODE_AUI_BIT]			= {
++	[ETHTOOL_LINK_MODE_AUI_BIT] = {
 +		.speed	= SPEED_UNKNOWN,
 +		.duplex	= DUPLEX_UNKNOWN,
 +	},
-+	[ETHTOOL_LINK_MODE_MII_BIT]			= {
++	[ETHTOOL_LINK_MODE_MII_BIT] = {
 +		.speed	= SPEED_UNKNOWN,
 +		.duplex	= DUPLEX_UNKNOWN,
 +	},
-+	[ETHTOOL_LINK_MODE_FIBRE_BIT]			= {
++	[ETHTOOL_LINK_MODE_FIBRE_BIT] = {
 +		.speed	= SPEED_UNKNOWN,
 +		.duplex	= DUPLEX_UNKNOWN,
 +	},
-+	[ETHTOOL_LINK_MODE_BNC_BIT]			= {
++	[ETHTOOL_LINK_MODE_BNC_BIT] = {
 +		.speed	= SPEED_UNKNOWN,
 +		.duplex	= DUPLEX_UNKNOWN,
 +	},
-+	[ETHTOOL_LINK_MODE_10000baseT_Full_BIT]		= {
++	[ETHTOOL_LINK_MODE_10000baseT_Full_BIT] = {
 +		.speed	= 10000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_Pause_BIT]			= {
++	[ETHTOOL_LINK_MODE_Pause_BIT] = {
 +		.speed	= SPEED_UNKNOWN,
 +		.duplex	= DUPLEX_UNKNOWN,
 +	},
-+	[ETHTOOL_LINK_MODE_Asym_Pause_BIT]		= {
++	[ETHTOOL_LINK_MODE_Asym_Pause_BIT] = {
 +		.speed	= SPEED_UNKNOWN,
 +		.duplex	= DUPLEX_UNKNOWN,
 +	},
-+	[ETHTOOL_LINK_MODE_2500baseX_Full_BIT]		= {
++	[ETHTOOL_LINK_MODE_2500baseX_Full_BIT] = {
 +		.speed	= 2500,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_Backplane_BIT]		= {
++	[ETHTOOL_LINK_MODE_Backplane_BIT] = {
 +		.speed	= SPEED_UNKNOWN,
 +		.duplex	= DUPLEX_UNKNOWN,
 +	},
-+	[ETHTOOL_LINK_MODE_1000baseKX_Full_BIT]		= {
++	[ETHTOOL_LINK_MODE_1000baseKX_Full_BIT] = {
 +		.speed	= 1000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_10000baseKX4_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_10000baseKX4_Full_BIT] = {
 +		.speed	= 10000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_10000baseKR_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_10000baseKR_Full_BIT] = {
 +		.speed	= 10000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_10000baseR_FEC_BIT]		= {
++	[ETHTOOL_LINK_MODE_10000baseR_FEC_BIT] = {
 +		.speed	= 10000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_20000baseMLD2_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_20000baseMLD2_Full_BIT] = {
 +		.speed	= 20000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_20000baseKR2_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_20000baseKR2_Full_BIT] = {
 +		.speed	= 20000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_40000baseKR4_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_40000baseKR4_Full_BIT] = {
 +		.speed	= 40000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_40000baseCR4_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_40000baseCR4_Full_BIT] = {
 +		.speed	= 40000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_40000baseSR4_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_40000baseSR4_Full_BIT] = {
 +		.speed	= 40000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_40000baseLR4_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_40000baseLR4_Full_BIT] = {
 +		.speed	= 40000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_56000baseKR4_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_56000baseKR4_Full_BIT] = {
 +		.speed	= 56000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_56000baseCR4_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_56000baseCR4_Full_BIT] = {
 +		.speed	= 56000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_56000baseSR4_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_56000baseSR4_Full_BIT] = {
 +		.speed	= 56000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_56000baseLR4_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_56000baseLR4_Full_BIT] = {
 +		.speed	= 56000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_25000baseCR_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_25000baseCR_Full_BIT] = {
 +		.speed	= 25000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_25000baseKR_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_25000baseKR_Full_BIT] = {
 +		.speed	= 25000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_25000baseSR_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_25000baseSR_Full_BIT] = {
 +		.speed	= 25000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_50000baseCR2_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_50000baseCR2_Full_BIT] = {
 +		.speed	= 50000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_50000baseKR2_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_50000baseKR2_Full_BIT] = {
 +		.speed	= 50000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT] = {
 +		.speed	= 100000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_100000baseSR4_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_100000baseSR4_Full_BIT] = {
 +		.speed	= 100000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT] = {
 +		.speed	= 100000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT] = {
 +		.speed	= 100000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_50000baseSR2_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_50000baseSR2_Full_BIT] = {
 +		.speed	= 50000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_1000baseX_Full_BIT]		= {
++	[ETHTOOL_LINK_MODE_1000baseX_Full_BIT] = {
 +		.speed	= 1000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_10000baseCR_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_10000baseCR_Full_BIT] = {
 +		.speed	= 10000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_10000baseSR_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_10000baseSR_Full_BIT] = {
 +		.speed	= 10000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_10000baseLR_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_10000baseLR_Full_BIT] = {
 +		.speed	= 10000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_10000baseLRM_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_10000baseLRM_Full_BIT] = {
 +		.speed	= 10000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_10000baseER_Full_BIT]	= {
++	[ETHTOOL_LINK_MODE_10000baseER_Full_BIT] = {
 +		.speed	= 10000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_2500baseT_Full_BIT]		= {
++	[ETHTOOL_LINK_MODE_2500baseT_Full_BIT] = {
 +		.speed	= 2500,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_5000baseT_Full_BIT]		= {
++	[ETHTOOL_LINK_MODE_5000baseT_Full_BIT] = {
 +		.speed	= 5000,
 +		.duplex	= DUPLEX_FULL,
 +	},
-+	[ETHTOOL_LINK_MODE_FEC_NONE_BIT]		= {
++	[ETHTOOL_LINK_MODE_FEC_NONE_BIT] = {
 +		.speed	= SPEED_UNKNOWN,
 +		.duplex	= DUPLEX_UNKNOWN,
 +	},
-+	[ETHTOOL_LINK_MODE_FEC_RS_BIT]			= {
++	[ETHTOOL_LINK_MODE_FEC_RS_BIT] = {
 +		.speed	= SPEED_UNKNOWN,
 +		.duplex	= DUPLEX_UNKNOWN,
 +	},
-+	[ETHTOOL_LINK_MODE_FEC_BASER_BIT]		= {
++	[ETHTOOL_LINK_MODE_FEC_BASER_BIT] = {
 +		.speed	= SPEED_UNKNOWN,
 +		.duplex	= DUPLEX_UNKNOWN,
++	},
++	[ETHTOOL_LINK_MODE_50000baseKR_Full_BIT] = {
++		.speed	= SPEED_50000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_50000baseSR_Full_BIT] = {
++		.speed	= SPEED_50000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_50000baseCR_Full_BIT] = {
++		.speed	= SPEED_50000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_50000baseLR_ER_FR_Full_BIT] = {
++		.speed	= SPEED_50000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_50000baseDR_Full_BIT] = {
++		.speed	= SPEED_50000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_100000baseKR2_Full_BIT] = {
++		.speed	= SPEED_100000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_100000baseSR2_Full_BIT] = {
++		.speed	= SPEED_100000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_100000baseCR2_Full_BIT] = {
++		.speed	= SPEED_100000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_100000baseLR2_ER2_FR2_Full_BIT] = {
++		.speed	= SPEED_100000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_100000baseDR2_Full_BIT] = {
++		.speed	= SPEED_100000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_200000baseKR4_Full_BIT] = {
++		.speed	= SPEED_200000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_200000baseSR4_Full_BIT] = {
++		.speed	= SPEED_200000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_200000baseLR4_ER4_FR4_Full_BIT] = {
++		.speed	= SPEED_200000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_200000baseDR4_Full_BIT] = {
++		.speed	= SPEED_200000,
++		.duplex	= DUPLEX_FULL,
++	},
++	[ETHTOOL_LINK_MODE_200000baseCR4_Full_BIT] = {
++		.speed	= SPEED_200000,
++		.duplex	= DUPLEX_FULL,
 +	},
 +};
 +
@@ -360,7 +420,7 @@ index fc71b7e83eff..c59e49b3b4e6 100644
  static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
  	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_DEV]		= { .type = NLA_NESTED },
-@@ -556,3 +778,269 @@ const struct get_request_ops settings_request_ops = {
+@@ -556,3 +838,269 @@ const struct get_request_ops settings_request_ops = {
  	.fill_reply		= fill_settings,
  	.cleanup		= settings_cleanup,
  };

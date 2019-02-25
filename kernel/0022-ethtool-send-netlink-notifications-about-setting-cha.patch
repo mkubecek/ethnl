@@ -1,4 +1,4 @@
-From 27eb2e4e260ae38a845a893cf78c04270f495462 Mon Sep 17 00:00:00 2001
+From ed1885dde893fb8f8f27783334e45d6bc22ff480 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:36:49 -0400
 Subject: [PATCH 22/34] ethtool: send netlink notifications about setting
@@ -97,10 +97,10 @@ index 6c3b492a88fe..17ccca14f5c3 100644
  	case ETHTOOL_GRXFH:
  	case ETHTOOL_GRXRINGS:
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index f86664c12f21..49993c4768df 100644
+index 6dd9e51790af..68a4e989de0e 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -538,6 +538,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -553,6 +553,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  				       const void *data);
  
  ethnl_notify_handler_t ethnl_notify_handlers[] = {
@@ -108,7 +108,7 @@ index f86664c12f21..49993c4768df 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -592,6 +593,14 @@ static void ethnl_notify_devlist(struct netdev_notifier_info *info,
+@@ -607,6 +608,14 @@ static void ethnl_notify_devlist(struct netdev_notifier_info *info,
  	nlmsg_free(skb);
  }
  
@@ -123,7 +123,7 @@ index f86664c12f21..49993c4768df 100644
  static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
  			      void *ptr)
  {
-@@ -606,6 +615,9 @@ static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
+@@ -621,6 +630,9 @@ static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
  		ethnl_notify_devlist(ptr, ETHA_EVENT_RENAMEDEV,
  				     ETHA_RENAMEDEV_DEV);
  		break;

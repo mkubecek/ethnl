@@ -1,4 +1,4 @@
-From 8b4bd8ed093aabf4075bb9e7b6ed6088f9ab5e6f Mon Sep 17 00:00:00 2001
+From 909ef34d4c32eb79f5405b0779d3bc9c9415c1d7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 28/34] ethtool: implement SET_PARAMS message
@@ -321,10 +321,10 @@ index 4129ee11dd50..dede5dcd2757 100644
  		ethtool_notify(dev, NULL, ETHNL_CMD_SET_PARAMS,
  			       ETH_PARAMS_IM_CHANNELS, NULL);
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index cfa4c7d7116c..c9e5118a640a 100644
+index b6b870b4239d..66cda2b1be73 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -666,6 +666,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -681,6 +681,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},

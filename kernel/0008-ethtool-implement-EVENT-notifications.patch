@@ -1,4 +1,4 @@
-From a13ced50f4b9bab555e643e090beaeee391e5745 Mon Sep 17 00:00:00 2001
+From cfb81a07d67d689f79fb659793d52a4a35844f26 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 08/34] ethtool: implement EVENT notifications

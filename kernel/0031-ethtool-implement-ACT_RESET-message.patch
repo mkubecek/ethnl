@@ -1,4 +1,4 @@
-From f30956e4883cae6462155375ceed77a1caed2ce7 Mon Sep 17 00:00:00 2001
+From 5415dcb5988ef42ace9cb710027f391c63033ace Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 31/34] ethtool: implement ACT_RESET message
@@ -63,7 +63,7 @@ index 30f927b2f505..287f8606dd51 100644
  ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
-index ba96a691bfd4..d9c764994e2c 100644
+index ef1288eb737c..79fb94881c4b 100644
 --- a/include/uapi/linux/ethtool.h
 +++ b/include/uapi/linux/ethtool.h
 @@ -567,6 +567,7 @@ struct ethtool_pauseparam {
@@ -82,7 +82,7 @@ index ba96a691bfd4..d9c764994e2c 100644
  
  	ETH_SS_COUNT
  };
-@@ -1726,6 +1728,7 @@ enum ethtool_reset_flags {
+@@ -1743,6 +1745,7 @@ enum ethtool_reset_flags {
  	ETH_RESET_ALL		= 0xffffffff,	/* All components used by this
  						 * interface, even if shared */
  };
@@ -402,10 +402,10 @@ index 1827e5074b16..a2adaab72c91 100644
  	if (copy_to_user(useraddr, &reset, sizeof(reset)))
  		return -EFAULT;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 0cb41eda1d93..0f843839bef9 100644
+index f399b3430170..4fbdcd5a9ae9 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -544,6 +544,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -559,6 +559,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
  	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,
  	[ETHNL_CMD_ACT_PHYS_ID]		= ethnl_physid_notify,
@@ -413,7 +413,7 @@ index 0cb41eda1d93..0f843839bef9 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -683,6 +684,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -698,6 +699,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_act_phys_id,
  	},

@@ -1,4 +1,4 @@
-From bd4a4be7e587a568041819a473bfeae1fedc2fa7 Mon Sep 17 00:00:00 2001
+From e822f4681d75b6e2695d37e0472e1ffa8d1a1c6b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
 Subject: [PATCH 07/34] ethtool: support for netlink notifications
@@ -37,10 +37,10 @@ index 0412adb4f42f..2a15e64a16f3 100644
  
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index aab4d9f6613d..9a50a67f328f 100644
+index ffbddd03242b..92736cdd9da0 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -4340,6 +4340,18 @@ struct netdev_notifier_bonding_info {
+@@ -4351,6 +4351,18 @@ struct netdev_notifier_bonding_info {
  void netdev_bonding_info_change(struct net_device *dev,
  				struct netdev_bonding_info *bonding_info);
  
