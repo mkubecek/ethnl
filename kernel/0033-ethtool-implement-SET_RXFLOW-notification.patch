@@ -1,4 +1,4 @@
-From ed072924da2bb2f8c2321fdf4a3d2eac197bd41a Mon Sep 17 00:00:00 2001
+From 704f3997cee66cf97bf7b4ff8bb8f57275ea5dad Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
 Subject: [PATCH 33/34] ethtool: implement SET_RXFLOW notification
@@ -41,7 +41,7 @@ index e770e6e9acca..288e90f4dbb9 100644
 +
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index a2adaab72c91..99c792419a75 100644
+index 5c266dea008e..31e3970617f1 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -716,6 +716,7 @@ static noinline_for_stack int ethtool_get_sset_info(struct net_device *dev,
@@ -138,10 +138,10 @@ index a2adaab72c91..99c792419a75 100644
  	if (copy_to_user(useraddr + offsetof(struct ethtool_rxfh, rss_context),
  			 &rxfh.rss_context, sizeof(rxfh.rss_context)))
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 2521bb0b965f..406934348d70 100644
+index a73da54505e6..945c1956d61d 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -562,6 +562,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -570,6 +570,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,
  	[ETHNL_CMD_ACT_PHYS_ID]		= ethnl_physid_notify,
  	[ETHNL_CMD_ACT_RESET]		= ethnl_reset_notify,

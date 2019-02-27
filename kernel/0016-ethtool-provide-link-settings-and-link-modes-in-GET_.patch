@@ -1,4 +1,4 @@
-From 273f6c0c8a899071b535f6818d642635060676da Mon Sep 17 00:00:00 2001
+From f33408f5d7f379f61302b32af6fe515204018318 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 16/34] ethtool: provide link settings and link modes in
@@ -186,10 +186,10 @@ index 96d41dc45d4f..6a7a182e1568 100644
 -ethtool_nl-y	:= netlink.o bitset.o strset.o info.o
 +ethtool_nl-y	:= netlink.o bitset.o strset.o info.o settings.o
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index 4616816861cc..3316e9e403c9 100644
+index 7e846f4151f9..a91a4f00d275 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
-@@ -159,3 +159,51 @@ int __ethtool_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info)
+@@ -157,3 +157,51 @@ int __ethtool_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info)
  
  	return err;
  }
@@ -255,7 +255,7 @@ index 02cbee79da35..7a3e0b10e69a 100644
 +
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 0837849156d3..5e878cf6f418 100644
+index cec2b0531996..70a0b5f6177d 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -356,54 +356,6 @@ bool ethtool_convert_link_mode_to_legacy_u32(u32 *legacy_u32,
@@ -314,10 +314,10 @@ index 0837849156d3..5e878cf6f418 100644
   * set. legacy_settings always updated (best effort)
   */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index c0574cc5fcff..6dd9e51790af 100644
+index 412a03948f57..68744d68328b 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -223,10 +223,12 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -231,10 +231,12 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  
  extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops info_request_ops;
@@ -330,7 +330,7 @@ index c0574cc5fcff..6dd9e51790af 100644
  };
  
  /**
-@@ -645,6 +647,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -653,6 +655,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},

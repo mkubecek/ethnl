@@ -1,4 +1,4 @@
-From 56210c4c6e7ae48e97a20475e9766bf6f5a45f77 Mon Sep 17 00:00:00 2001
+From 8a54b0ed25bb411e0f6899965cd4c6196333a5f5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 29/34] ethtool: implement ACT_NWAY_RST message
@@ -181,7 +181,7 @@ index 000000000000..7cfe0025403a
 +	return ret;
 +}
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index dede5dcd2757..2cdc2872085b 100644
+index 87a345e78a18..b75e64455f15 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1282,10 +1282,15 @@ static int ethtool_set_eee(struct net_device *dev, char __user *useraddr)
@@ -202,10 +202,10 @@ index dede5dcd2757..2cdc2872085b 100644
  
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 66cda2b1be73..8a75cd587e6f 100644
+index 1b54171c16dc..bd84b3a363e2 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -557,6 +557,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -565,6 +565,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_SETTINGS]	= ethnl_std_notify,
  	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
@@ -213,7 +213,7 @@ index 66cda2b1be73..8a75cd587e6f 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -686,6 +687,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -694,6 +695,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_params,
  	},

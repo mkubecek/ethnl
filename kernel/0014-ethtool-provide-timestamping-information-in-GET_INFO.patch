@@ -1,4 +1,4 @@
-From 47f0c7637524e1f433222156be6244c4994eca5a Mon Sep 17 00:00:00 2001
+From 11459181d926713ecdf64dbf4f576e630e03623d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
 Subject: [PATCH 14/34] ethtool: provide timestamping information in GET_INFO
@@ -156,7 +156,7 @@ index e5b39721c6e4..e5b0472c4416 100644
  
  /* SCM_TIMESTAMPING_PKTINFO control message */
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index e0bd7c6c5874..4616816861cc 100644
+index 8da992129321..7e846f4151f9 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
 @@ -1,6 +1,8 @@
@@ -168,7 +168,7 @@ index e0bd7c6c5874..4616816861cc 100644
  #include <net/devlink.h>
  #include "common.h"
  
-@@ -135,3 +137,25 @@ int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info)
+@@ -133,3 +135,25 @@ int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info)
  
  	return 0;
  }
@@ -406,10 +406,10 @@ index 4768bd13ab93..691819555001 100644
  	return 0;
  }
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index c883239001a4..0837849156d3 100644
+index a37f17414758..cec2b0531996 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -2034,28 +2034,12 @@ static int ethtool_get_dump_data(struct net_device *dev,
+@@ -2027,28 +2027,12 @@ static int ethtool_get_dump_data(struct net_device *dev,
  
  static int ethtool_get_ts_info(struct net_device *dev, void __user *useraddr)
  {

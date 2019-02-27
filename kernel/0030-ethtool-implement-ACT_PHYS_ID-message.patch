@@ -1,4 +1,4 @@
-From abb36fc18200cb1ded2d1038f8d0524dbc21d364 Mon Sep 17 00:00:00 2001
+From 996cd2535c34f783d59ab647a0024ee4fef72630 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 30/34] ethtool: implement ACT_PHYS_ID message
@@ -176,7 +176,7 @@ index 7cfe0025403a..a131a92b7957 100644
 +	return ret;
 +}
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index 74dbfca7101c..ba061b5081c4 100644
+index 1e4af095be63..adcbb09863de 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
 @@ -1,5 +1,6 @@
@@ -186,7 +186,7 @@ index 74dbfca7101c..ba061b5081c4 100644
  #include <linux/rtnetlink.h>
  #include <linux/phy.h>
  #include <linux/net_tstamp.h>
-@@ -290,3 +291,67 @@ int __ethtool_set_channels(struct net_device *dev,
+@@ -288,3 +289,67 @@ int __ethtool_set_channels(struct net_device *dev,
  
  	return dev->ethtool_ops->set_channels(dev, channels);
  }
@@ -267,7 +267,7 @@ index d557702d0f78..d80e5a72d401 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 2cdc2872085b..1827e5074b16 100644
+index b75e64455f15..dfe306d7676d 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1639,60 +1639,15 @@ static int ethtool_get_strings(struct net_device *dev, void __user *useraddr)
@@ -333,10 +333,10 @@ index 2cdc2872085b..1827e5074b16 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 8a75cd587e6f..f399b3430170 100644
+index bd84b3a363e2..54e073aa2f2c 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -558,6 +558,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -566,6 +566,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_SETTINGS]	= ethnl_std_notify,
  	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
  	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,
@@ -344,7 +344,7 @@ index 8a75cd587e6f..f399b3430170 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -692,6 +693,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -700,6 +701,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_act_nway_rst,
  	},

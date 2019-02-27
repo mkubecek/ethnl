@@ -1,4 +1,4 @@
-From 909ef34d4c32eb79f5405b0779d3bc9c9415c1d7 Mon Sep 17 00:00:00 2001
+From 8cc8abbb5182a62188f502fc90b9068648608b55 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 28/34] ethtool: implement SET_PARAMS message
@@ -136,7 +136,7 @@ index 53ef817b08c9..227cc56aac17 100644
 -ETHTOOL_SFECPARAM		n/a
 +ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index a188f07bcb4c..74dbfca7101c 100644
+index 84b9258e4c22..1e4af095be63 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
 @@ -4,6 +4,7 @@
@@ -147,7 +147,7 @@ index a188f07bcb4c..74dbfca7101c 100644
  #include "common.h"
  
  const char netdev_features_strings[NETDEV_FEATURE_COUNT][ETH_GSTRING_LEN] = {
-@@ -225,3 +226,67 @@ int __ethtool_get_link(struct net_device *dev)
+@@ -223,3 +224,67 @@ int __ethtool_get_link(struct net_device *dev)
  
  	return netif_running(dev) && dev->ethtool_ops->get_link(dev);
  }
@@ -230,7 +230,7 @@ index cf0b81af2d9f..d557702d0f78 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 4129ee11dd50..dede5dcd2757 100644
+index ebcd44512ff5..87a345e78a18 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -28,7 +28,6 @@
@@ -321,10 +321,10 @@ index 4129ee11dd50..dede5dcd2757 100644
  		ethtool_notify(dev, NULL, ETHNL_CMD_SET_PARAMS,
  			       ETH_PARAMS_IM_CHANNELS, NULL);
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index b6b870b4239d..66cda2b1be73 100644
+index 24a08ffd4eef..1b54171c16dc 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -681,6 +681,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -689,6 +689,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},

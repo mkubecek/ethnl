@@ -1,4 +1,4 @@
-From 8d1aa844ba657d1e2c4cf3234229be8edee1dcd3 Mon Sep 17 00:00:00 2001
+From 3086369522412990c2276a30b299e1bbf8a1fd64 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 14:17:36 +0100
 Subject: [PATCH 01/34] netlink: introduce nla_put_bitfield32()

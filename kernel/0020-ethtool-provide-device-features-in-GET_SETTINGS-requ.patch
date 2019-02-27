@@ -1,4 +1,4 @@
-From 51a6c2c721e7c36e99e234632819526d84cd8fcf Mon Sep 17 00:00:00 2001
+From bc56750a19631d2d5ae07c08b1e3a0ba3c057b8a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 20/34] ethtool: provide device features in GET_SETTINGS
@@ -166,7 +166,7 @@ index e5b5c5c2a4b9..cf0b81af2d9f 100644
  netdev_features_strings[NETDEV_FEATURE_COUNT][ETH_GSTRING_LEN];
  extern const char
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 63662a3fa2ae..6c3b492a88fe 100644
+index b136302a7346..eaf7df6b4ffd 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -58,8 +58,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);

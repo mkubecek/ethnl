@@ -1,4 +1,4 @@
-From 8f2efb0c9557254dca04687548a7d541924829a9 Mon Sep 17 00:00:00 2001
+From d2c065760d1e2b9da18b60466e0fcab4d822f871 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:50:07 +0100
 Subject: [PATCH 15/34] ethtool: provide link mode names as a string set
@@ -8,12 +8,28 @@ to userspace GET_STRSET requests.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
+ include/linux/ethtool.h      |  4 ++
  include/uapi/linux/ethtool.h |  2 +
- net/ethtool/netlink.c        | 73 ++++++++++++++++++++++++++++++++++++
+ net/ethtool/netlink.c        | 81 ++++++++++++++++++++++++++++++++++++
  net/ethtool/netlink.h        |  1 +
  net/ethtool/strset.c         |  6 +++
- 4 files changed, 82 insertions(+)
+ 5 files changed, 94 insertions(+)
 
+diff --git a/include/linux/ethtool.h b/include/linux/ethtool.h
+index e6ebc9761822..ac3612599450 100644
+--- a/include/linux/ethtool.h
++++ b/include/linux/ethtool.h
+@@ -102,6 +102,10 @@ static inline u32 ethtool_rxfh_indir_default(u32 index, u32 n_rx_rings)
+ #define __ETHTOOL_DECLARE_LINK_MODE_MASK(name)		\
+ 	DECLARE_BITMAP(name, __ETHTOOL_LINK_MODE_MASK_NBITS)
+ 
++/* compose link mode index from speed, type and duplex */
++#define ETHTOOL_LINK_MODE(speed, type, duplex) \
++	ETHTOOL_LINK_MODE_ ## speed ## base ## type ## _ ## duplex ## _BIT
++
+ /* drivers must ignore base.cmd and base.link_mode_masks_nwords
+  * fields, but they are allowed to overwrite them (will be ignored).
+  */
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
 index 882a542eaaa9..ef1288eb737c 100644
 --- a/include/uapi/linux/ethtool.h
@@ -35,87 +51,95 @@ index 882a542eaaa9..ef1288eb737c 100644
  	ETH_SS_COUNT
  };
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index e35cf4485795..c0574cc5fcff 100644
+index e35cf4485795..412a03948f57 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -6,6 +6,76 @@
+@@ -6,6 +6,84 @@
  
  u32 ethnl_bcast_seq;
  
++#define __LINK_MODE_NAME(speed, type, duplex) \
++	#speed "base" #type "/" #duplex
++#define __DEFINE_LINK_MODE_NAME(speed, type, duplex) \
++	[ETHTOOL_LINK_MODE(speed, type, duplex)] = \
++	__LINK_MODE_NAME(speed, type, duplex)
++#define __DEFINE_SPECIAL_MODE_NAME(_mode, _name) \
++	[ETHTOOL_LINK_MODE_ ## _mode ## _BIT] = _name
++
 +const char *const link_mode_names[] = {
-+	[ETHTOOL_LINK_MODE_10baseT_Half_BIT]		= "10baseT/Half",
-+	[ETHTOOL_LINK_MODE_10baseT_Full_BIT]		= "10baseT/Full",
-+	[ETHTOOL_LINK_MODE_100baseT_Half_BIT]		= "100baseT/Half",
-+	[ETHTOOL_LINK_MODE_100baseT_Full_BIT]		= "100baseT/Full",
-+	[ETHTOOL_LINK_MODE_1000baseT_Half_BIT]		= "1000baseT/Half",
-+	[ETHTOOL_LINK_MODE_1000baseT_Full_BIT]		= "1000baseT/Full",
-+	[ETHTOOL_LINK_MODE_Autoneg_BIT]			= "Autoneg",
-+	[ETHTOOL_LINK_MODE_TP_BIT]			= "TP",
-+	[ETHTOOL_LINK_MODE_AUI_BIT]			= "AUI",
-+	[ETHTOOL_LINK_MODE_MII_BIT]			= "MII",
-+	[ETHTOOL_LINK_MODE_FIBRE_BIT]			= "FIBRE",
-+	[ETHTOOL_LINK_MODE_BNC_BIT]			= "BNC",
-+	[ETHTOOL_LINK_MODE_10000baseT_Full_BIT]		= "10000baseT/Full",
-+	[ETHTOOL_LINK_MODE_Pause_BIT]			= "Pause",
-+	[ETHTOOL_LINK_MODE_Asym_Pause_BIT]		= "Asym_Pause",
-+	[ETHTOOL_LINK_MODE_2500baseX_Full_BIT]		= "2500baseX/Full",
-+	[ETHTOOL_LINK_MODE_Backplane_BIT]		= "Backplane",
-+	[ETHTOOL_LINK_MODE_1000baseKX_Full_BIT]		= "1000baseKX/Full",
-+	[ETHTOOL_LINK_MODE_10000baseKX4_Full_BIT]	= "10000baseKX4/Full",
-+	[ETHTOOL_LINK_MODE_10000baseKR_Full_BIT]	= "10000baseKR/Full",
-+	[ETHTOOL_LINK_MODE_10000baseR_FEC_BIT]		= "10000baseR/FEC",
-+	[ETHTOOL_LINK_MODE_20000baseMLD2_Full_BIT]	= "20000baseMLD2/Full",
-+	[ETHTOOL_LINK_MODE_20000baseKR2_Full_BIT]	= "20000baseKR2/Full",
-+	[ETHTOOL_LINK_MODE_40000baseKR4_Full_BIT]	= "40000baseKR4/Full",
-+	[ETHTOOL_LINK_MODE_40000baseCR4_Full_BIT]	= "40000baseCR4/Full",
-+	[ETHTOOL_LINK_MODE_40000baseSR4_Full_BIT]	= "40000baseSR4/Full",
-+	[ETHTOOL_LINK_MODE_40000baseLR4_Full_BIT]	= "40000baseLR4/Full",
-+	[ETHTOOL_LINK_MODE_56000baseKR4_Full_BIT]	= "56000baseKR4/Full",
-+	[ETHTOOL_LINK_MODE_56000baseCR4_Full_BIT]	= "56000baseCR4/Full",
-+	[ETHTOOL_LINK_MODE_56000baseSR4_Full_BIT]	= "56000baseSR4/Full",
-+	[ETHTOOL_LINK_MODE_56000baseLR4_Full_BIT]	= "56000baseLR4/Full",
-+	[ETHTOOL_LINK_MODE_25000baseCR_Full_BIT]	= "25000baseCR/Full",
-+	[ETHTOOL_LINK_MODE_25000baseKR_Full_BIT]	= "25000baseKR/Full",
-+	[ETHTOOL_LINK_MODE_25000baseSR_Full_BIT]	= "25000baseSR/Full",
-+	[ETHTOOL_LINK_MODE_50000baseCR2_Full_BIT]	= "50000baseCR2/Full",
-+	[ETHTOOL_LINK_MODE_50000baseKR2_Full_BIT]	= "50000baseKR2/Full",
-+	[ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT]	= "100000baseKR4/Full",
-+	[ETHTOOL_LINK_MODE_100000baseSR4_Full_BIT]	= "100000baseSR4/Full",
-+	[ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT]	= "100000baseCR4/Full",
-+	[ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT]	= "100000baseLR4_ER4/Full",
-+	[ETHTOOL_LINK_MODE_50000baseSR2_Full_BIT]	= "50000baseSR2/Full",
-+	[ETHTOOL_LINK_MODE_1000baseX_Full_BIT]		= "1000baseX/Full",
-+	[ETHTOOL_LINK_MODE_10000baseCR_Full_BIT]	= "10000baseCR/Full",
-+	[ETHTOOL_LINK_MODE_10000baseSR_Full_BIT]	= "10000baseSR/Full",
-+	[ETHTOOL_LINK_MODE_10000baseLR_Full_BIT]	= "10000baseLR/Full",
-+	[ETHTOOL_LINK_MODE_10000baseLRM_Full_BIT]	= "10000baseLRM/Full",
-+	[ETHTOOL_LINK_MODE_10000baseER_Full_BIT]	= "10000baseER/Full",
-+	[ETHTOOL_LINK_MODE_2500baseT_Full_BIT]		= "2500baseT/Full",
-+	[ETHTOOL_LINK_MODE_5000baseT_Full_BIT]		= "5000baseT/Full",
-+	[ETHTOOL_LINK_MODE_FEC_NONE_BIT]		= "None",
-+	[ETHTOOL_LINK_MODE_FEC_RS_BIT]			= "RS",
-+	[ETHTOOL_LINK_MODE_FEC_BASER_BIT]		= "BASER",
-+	[ETHTOOL_LINK_MODE_50000baseKR_Full_BIT]	= "50000baseKR/Full",
-+	[ETHTOOL_LINK_MODE_50000baseSR_Full_BIT]	= "50000baseSR/Full",
-+	[ETHTOOL_LINK_MODE_50000baseCR_Full_BIT]	= "50000baseCR/Full",
-+	[ETHTOOL_LINK_MODE_50000baseLR_ER_FR_Full_BIT]	= "50000baseLR_ER/Full",
-+	[ETHTOOL_LINK_MODE_50000baseDR_Full_BIT]	= "50000baseDR/Full",
-+	[ETHTOOL_LINK_MODE_100000baseKR2_Full_BIT]	= "100000baseKR2/Full",
-+	[ETHTOOL_LINK_MODE_100000baseSR2_Full_BIT]	= "100000baseSR2/Full",
-+	[ETHTOOL_LINK_MODE_100000baseCR2_Full_BIT]	= "100000baseCR2/Full",
-+	[ETHTOOL_LINK_MODE_100000baseLR2_ER2_FR2_Full_BIT] = "100000baseLR2_ER2/Full",
-+	[ETHTOOL_LINK_MODE_100000baseDR2_Full_BIT]	= "100000baseDR2/Full",
-+	[ETHTOOL_LINK_MODE_200000baseKR4_Full_BIT]	= "200000baseKR4/Full",
-+	[ETHTOOL_LINK_MODE_200000baseSR4_Full_BIT]	= "200000baseSR4/Full",
-+	[ETHTOOL_LINK_MODE_200000baseLR4_ER4_FR4_Full_BIT] = "200000baseLR4_ER4/Full",
-+	[ETHTOOL_LINK_MODE_200000baseDR4_Full_BIT]	= "200000baseDR4/Full",
-+	[ETHTOOL_LINK_MODE_200000baseCR4_Full_BIT]	= "200000baseCR4/Full",
++	__DEFINE_LINK_MODE_NAME(10, T, Half),
++	__DEFINE_LINK_MODE_NAME(10, T, Full),
++	__DEFINE_LINK_MODE_NAME(100, T, Half),
++	__DEFINE_LINK_MODE_NAME(100, T, Full),
++	__DEFINE_LINK_MODE_NAME(1000, T, Half),
++	__DEFINE_LINK_MODE_NAME(1000, T, Full),
++	__DEFINE_SPECIAL_MODE_NAME(Autoneg, "Autoneg"),
++	__DEFINE_SPECIAL_MODE_NAME(TP, "TP"),
++	__DEFINE_SPECIAL_MODE_NAME(AUI, "AUI"),
++	__DEFINE_SPECIAL_MODE_NAME(MII, "MII"),
++	__DEFINE_SPECIAL_MODE_NAME(FIBRE, "FIBRE"),
++	__DEFINE_SPECIAL_MODE_NAME(BNC, "BNC"),
++	__DEFINE_LINK_MODE_NAME(10000, T, Full),
++	__DEFINE_SPECIAL_MODE_NAME(Pause, "Pause"),
++	__DEFINE_SPECIAL_MODE_NAME(Asym_Pause, "Asym_Pause"),
++	__DEFINE_LINK_MODE_NAME(2500, X, Full),
++	__DEFINE_SPECIAL_MODE_NAME(Backplane, "Backplane"),
++	__DEFINE_LINK_MODE_NAME(1000, KX, Full),
++	__DEFINE_LINK_MODE_NAME(10000, KX4, Full),
++	__DEFINE_LINK_MODE_NAME(10000, KR, Full),
++	[ETHTOOL_LINK_MODE_10000baseR_FEC_BIT] = "10000baseR_FEC",
++	__DEFINE_LINK_MODE_NAME(20000, MLD2, Full),
++	__DEFINE_LINK_MODE_NAME(20000, KR2, Full),
++	__DEFINE_LINK_MODE_NAME(40000, KR4, Full),
++	__DEFINE_LINK_MODE_NAME(40000, CR4, Full),
++	__DEFINE_LINK_MODE_NAME(40000, SR4, Full),
++	__DEFINE_LINK_MODE_NAME(40000, LR4, Full),
++	__DEFINE_LINK_MODE_NAME(56000, KR4, Full),
++	__DEFINE_LINK_MODE_NAME(56000, CR4, Full),
++	__DEFINE_LINK_MODE_NAME(56000, SR4, Full),
++	__DEFINE_LINK_MODE_NAME(56000, LR4, Full),
++	__DEFINE_LINK_MODE_NAME(25000, CR, Full),
++	__DEFINE_LINK_MODE_NAME(25000, KR, Full),
++	__DEFINE_LINK_MODE_NAME(25000, SR, Full),
++	__DEFINE_LINK_MODE_NAME(50000, CR2, Full),
++	__DEFINE_LINK_MODE_NAME(50000, KR2, Full),
++	__DEFINE_LINK_MODE_NAME(100000, KR4, Full),
++	__DEFINE_LINK_MODE_NAME(100000, SR4, Full),
++	__DEFINE_LINK_MODE_NAME(100000, CR4, Full),
++	__DEFINE_LINK_MODE_NAME(100000, LR4_ER4, Full),
++	__DEFINE_LINK_MODE_NAME(50000, SR2, Full),
++	__DEFINE_LINK_MODE_NAME(1000, X, Full),
++	__DEFINE_LINK_MODE_NAME(10000, CR, Full),
++	__DEFINE_LINK_MODE_NAME(10000, SR, Full),
++	__DEFINE_LINK_MODE_NAME(10000, LR, Full),
++	__DEFINE_LINK_MODE_NAME(10000, LRM, Full),
++	__DEFINE_LINK_MODE_NAME(10000, ER, Full),
++	__DEFINE_LINK_MODE_NAME(2500, T, Full),
++	__DEFINE_LINK_MODE_NAME(5000, T, Full),
++	__DEFINE_SPECIAL_MODE_NAME(FEC_NONE, "None"),
++	__DEFINE_SPECIAL_MODE_NAME(FEC_RS, "RS"),
++	__DEFINE_SPECIAL_MODE_NAME(FEC_BASER, "BASER"),
++	__DEFINE_LINK_MODE_NAME(50000, KR, Full),
++	__DEFINE_LINK_MODE_NAME(50000, SR, Full),
++	__DEFINE_LINK_MODE_NAME(50000, CR, Full),
++	__DEFINE_LINK_MODE_NAME(50000, LR_ER_FR, Full),
++	__DEFINE_LINK_MODE_NAME(50000, DR, Full),
++	__DEFINE_LINK_MODE_NAME(100000, KR2, Full),
++	__DEFINE_LINK_MODE_NAME(100000, SR2, Full),
++	__DEFINE_LINK_MODE_NAME(100000, CR2, Full),
++	__DEFINE_LINK_MODE_NAME(100000, LR2_ER2_FR2, Full),
++	__DEFINE_LINK_MODE_NAME(100000, DR2, Full),
++	__DEFINE_LINK_MODE_NAME(200000, KR4, Full),
++	__DEFINE_LINK_MODE_NAME(200000, SR4, Full),
++	__DEFINE_LINK_MODE_NAME(200000, LR4_ER4_FR4, Full),
++	__DEFINE_LINK_MODE_NAME(200000, DR4, Full),
++	__DEFINE_LINK_MODE_NAME(200000, CR4, Full),
 +};
 +
  static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
  	[ETHA_DEV_UNSPEC]	= { .type = NLA_REJECT },
  	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -599,6 +669,9 @@ static int __init ethnl_init(void)
+@@ -599,6 +677,9 @@ static int __init ethnl_init(void)
  {
  	int ret;
  

@@ -1,4 +1,4 @@
-From d9144cdf422a8889fef0231fc9308052bb615cda Mon Sep 17 00:00:00 2001
+From fa714bb39199a575d2f60589bf19c183104cd18d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 09/34] ethtool: generic handlers for GET requests

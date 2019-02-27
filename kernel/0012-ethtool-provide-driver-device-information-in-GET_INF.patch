@@ -1,4 +1,4 @@
-From 8ff41b915b530d33b6a210c79f0d8096edcdad04 Mon Sep 17 00:00:00 2001
+From 0c637920935d783c455e18a81c7eaa72fab53bc2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 12/34] ethtool: provide driver/device information in GET_INFO
@@ -16,12 +16,12 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  43 ++++-
  include/uapi/linux/ethtool_netlink.h         |  32 ++++
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/common.c                         |  54 +++++++
+ net/ethtool/common.c                         |  52 ++++++
  net/ethtool/common.h                         |   2 +
  net/ethtool/info.c                           | 158 +++++++++++++++++++
- net/ethtool/ioctl.c                          |  52 +-----
+ net/ethtool/ioctl.c                          |  50 +-----
  net/ethtool/netlink.c                        |   9 ++
- 8 files changed, 303 insertions(+), 49 deletions(-)
+ 8 files changed, 301 insertions(+), 47 deletions(-)
  create mode 100644 net/ethtool/info.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -153,7 +153,7 @@ index 11ceb00821b3..96d41dc45d4f 100644
 -ethtool_nl-y	:= netlink.o bitset.o strset.o
 +ethtool_nl-y	:= netlink.o bitset.o strset.o info.o
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index 73f721a1c557..e0bd7c6c5874 100644
+index 73f721a1c557..8da992129321 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
 @@ -1,5 +1,7 @@
@@ -164,7 +164,7 @@ index 73f721a1c557..e0bd7c6c5874 100644
  #include "common.h"
  
  const char netdev_features_strings[NETDEV_FEATURE_COUNT][ETH_GSTRING_LEN] = {
-@@ -81,3 +83,55 @@ phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN] = {
+@@ -81,3 +83,53 @@ phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN] = {
  	[ETHTOOL_ID_UNSPEC]     = "Unspec",
  	[ETHTOOL_PHY_DOWNSHIFT]	= "phy-downshift",
  };
@@ -212,11 +212,9 @@ index 73f721a1c557..e0bd7c6c5874 100644
 +	if (ops->get_eeprom_len)
 +		info->eedump_len = ops->get_eeprom_len(dev);
 +
-+	rtnl_unlock();
 +	if (!info->fw_version[0])
 +		devlink_compat_running_version(dev, info->fw_version,
 +					       sizeof(info->fw_version));
-+	rtnl_lock();
 +
 +	return 0;
 +}
@@ -403,10 +401,10 @@ index 000000000000..cc42993bb05b
 +	.fill_reply		= fill_info,
 +};
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 71a1643adb2b..c883239001a4 100644
+index 1604a77318fe..a37f17414758 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -685,56 +685,14 @@ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
+@@ -685,54 +685,14 @@ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
  						  void __user *useraddr)
  {
  	struct ethtool_drvinfo info;
@@ -452,11 +450,9 @@ index 71a1643adb2b..c883239001a4 100644
 -	if (ops->get_eeprom_len)
 -		info.eedump_len = ops->get_eeprom_len(dev);
 -
--	rtnl_unlock();
 -	if (!info.fw_version[0])
 -		devlink_compat_running_version(dev, info.fw_version,
 -					       sizeof(info.fw_version));
--	rtnl_lock();
 +	int rc;
  
 +	rc = __ethtool_get_drvinfo(dev, &info);

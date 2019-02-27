@@ -1,4 +1,4 @@
-From c370965030863deac487387f6c55abdc74514f6d Mon Sep 17 00:00:00 2001
+From 4540d7a8591314346b13d8045f68b110dae730b8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 04/34] ethtool: introduce ethtool netlink interface
@@ -237,10 +237,10 @@ index 000000000000..d8a8d3c72c2f
 +
 +#endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/Kconfig b/net/Kconfig
-index 62da6148e9f8..383fe04ddf07 100644
+index 1efe1f9ee492..df54939adbc2 100644
 --- a/net/Kconfig
 +++ b/net/Kconfig
-@@ -460,6 +460,14 @@ config FAILOVER
+@@ -451,6 +451,14 @@ config FAILOVER
  	  migration of VMs with direct attached VFs by failing over to the
  	  paravirtual datapath when the VF is unplugged.
  

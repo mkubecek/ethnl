@@ -1,4 +1,4 @@
-From e395f29690abfaae71c9238548f2c264bdb9731e Mon Sep 17 00:00:00 2001
+From c7b9ecdc27f586f203635ba1d9a8dc08bccd194a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 34/34] ethtool: implement SET_RXFLOW message
@@ -113,10 +113,10 @@ index f8a6532b9407..906efc237237 100644
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 406934348d70..d541e113cc63 100644
+index 945c1956d61d..783449b977a7 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -714,6 +714,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -722,6 +722,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
