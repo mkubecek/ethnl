@@ -1,4 +1,4 @@
-From 8a69d57262355ef42ce80d73cc20d03d8b9f594b Mon Sep 17 00:00:00 2001
+From 08819daabb02d92042571a60954003ca8e4d9928 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Aug 2018 23:24:37 +0200
 Subject: [PATCH 08/35] netlink: add netlink handler for permaddr (-P)

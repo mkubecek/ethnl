@@ -1,4 +1,4 @@
-From 3e126aff2e6f76ee88d6ed5442b9731048bc0362 Mon Sep 17 00:00:00 2001
+From 63d15f48c3a66bc47628b051623351dc7f7054d3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 16:43:40 +0200
 Subject: [PATCH 30/35] netlink: add netlink handler for phys_id (-p)

@@ -1,4 +1,4 @@
-From 0606fa200a0cc8832c3742c6263d84090e52fcd3 Mon Sep 17 00:00:00 2001
+From c145bb5f7e1b4044e2f8e3727aec7b9285b439b1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 04/35] netlink: add netlink interface
@@ -1414,7 +1414,7 @@ index 000000000000..bbfa5aa5bc48
 +
 +#endif /* ETHTOOL_NETLINK_INT_H__ */
 diff --git a/uapi/linux/ethtool.h b/uapi/linux/ethtool.h
-index 614996a5ff3a..c519b0952c4a 100644
+index 02b3300a4e28..b22160143599 100644
 --- a/uapi/linux/ethtool.h
 +++ b/uapi/linux/ethtool.h
 @@ -561,6 +561,11 @@ struct ethtool_pauseparam {
@@ -1443,7 +1443,7 @@ index 614996a5ff3a..c519b0952c4a 100644
  };
  
  /**
-@@ -1714,6 +1726,7 @@ enum ethtool_reset_flags {
+@@ -1731,6 +1743,7 @@ enum ethtool_reset_flags {
  	ETH_RESET_ALL		= 0xffffffff,	/* All components used by this
  						 * interface, even if shared */
  };

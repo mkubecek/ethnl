@@ -1,4 +1,4 @@
-From 97d4c88d98ae49f712114bcf2cd234dd55e11835 Mon Sep 17 00:00:00 2001
+From 66ac7182e3844f6f01f61bf64163a9b281ab14bf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:43:19 +0100
 Subject: [PATCH 27/35] netlink: add netlink handler for seee (--set-eee)

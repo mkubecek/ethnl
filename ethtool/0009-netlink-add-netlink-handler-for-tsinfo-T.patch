@@ -1,4 +1,4 @@
-From bcb1d77f2d9d611c0b3bae9cc12676027b86e9b7 Mon Sep 17 00:00:00 2001
+From 54e6deb5557f5b1caffa9ab69c909dad6d7a433e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Aug 2018 23:26:42 +0200
 Subject: [PATCH 09/35] netlink: add netlink handler for tsinfo (-T)
