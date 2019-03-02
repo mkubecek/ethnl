@@ -1,4 +1,4 @@
-From ff97f154c4901dd92037b74bbb1625416f8666a8 Mon Sep 17 00:00:00 2001
+From ebd0a01a23fa0f50d574b6057dc5583355e296b4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
 Subject: [PATCH 17/35] netlink: add netlink handler for gcoalesce (-c)
@@ -17,7 +17,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/params.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 37b54b55d297..017969125b4e 100644
+index 150c367a159d..3ec12cf11591 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -24,7 +24,7 @@ ethtool_SOURCES += \
@@ -30,7 +30,7 @@ index 37b54b55d297..017969125b4e 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index d0328a6cbe07..52e93060741a 100644
+index ecdf9e291e38..00926794c78f 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4847,6 +4847,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -51,7 +51,7 @@ index d0328a6cbe07..52e93060741a 100644
  	{ "-C|--coalesce", 1, do_scoalesce, NULL,
  	  "Set coalesce options",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index ded02da74ff9..93cb69c3c631 100644
+index 4155d1cffc24..3efccb2fda52 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -22,6 +22,7 @@ int nl_gfeatures(struct cmd_context *ctx);

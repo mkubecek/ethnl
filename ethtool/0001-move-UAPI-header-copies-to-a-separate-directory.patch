@@ -1,4 +1,4 @@
-From 161132c76f46557f8df33d1d27c6ec678b180077 Mon Sep 17 00:00:00 2001
+From 6fd654d50a75a5bca142828ecf4a3f419874a888 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 09:02:44 +0100
 Subject: [PATCH 01/35] move UAPI header copies to a separate directory
@@ -13,16 +13,16 @@ including them in the usual way.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Makefile.am                                  | 6 +++---
- internal.h                                   | 4 ++--
- ethtool-copy.h => uapi/linux/ethtool.h       | 0
- net_tstamp-copy.h => uapi/linux/net_tstamp.h | 0
- 4 files changed, 5 insertions(+), 5 deletions(-)
+ Makefile.am                                  | 10 +++++-----
+ internal.h                                   |  4 ++--
+ ethtool-copy.h => uapi/linux/ethtool.h       |  0
+ net_tstamp-copy.h => uapi/linux/net_tstamp.h |  0
+ 4 files changed, 7 insertions(+), 7 deletions(-)
  rename ethtool-copy.h => uapi/linux/ethtool.h (100%)
  rename net_tstamp-copy.h => uapi/linux/net_tstamp.h (100%)
 
 diff --git a/Makefile.am b/Makefile.am
-index 468eed1fdd6b..5175491bf48d 100644
+index 468eed1fdd6b..7452e2600e02 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -1,12 +1,12 @@
@@ -41,6 +41,18 @@ index 468eed1fdd6b..5175491bf48d 100644
  if ETHTOOL_ENABLE_PRETTY_DUMP
  ethtool_SOURCES += \
  		  amd8111e.c de2104x.c dsa.c e100.c e1000.c et131x.c igb.c	\
+@@ -20,9 +20,9 @@ endif
+ TESTS = test-cmdline test-features
+ check_PROGRAMS = test-cmdline test-features
+ test_cmdline_SOURCES = test-cmdline.c test-common.c $(ethtool_SOURCES) 
+-test_cmdline_CFLAGS = -DTEST_ETHTOOL
++test_cmdline_CFLAGS = $(AM_FLAGS) -DTEST_ETHTOOL
+ test_features_SOURCES = test-features.c test-common.c $(ethtool_SOURCES) 
+-test_features_CFLAGS = -DTEST_ETHTOOL
++test_features_CFLAGS = $(AM_FLAGS) -DTEST_ETHTOOL
+ 
+ dist-hook:
+ 	cp $(top_srcdir)/ethtool.spec $(distdir)
 diff --git a/internal.h b/internal.h
 index 84b0f9cef1c0..7217b926c165 100644
 --- a/internal.h

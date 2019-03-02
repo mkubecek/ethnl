@@ -1,4 +1,4 @@
-From 9f74f48b6acc5a9ab94238e6d9902b79c517da90 Mon Sep 17 00:00:00 2001
+From a8d4ea1ddd7d3d49d6010e0cb731b439042cb2d4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 10/35] netlink: add netlink handler for gset (no option)
@@ -12,19 +12,19 @@ into new file common.c.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am        |   2 +-
- common.c           | 285 ++++++++++++++++++++++++++++++++++++++++++
+ common.c           | 285 +++++++++++++++++++++++++++++++++++++++++
  common.h           |  56 +++++++++
- ethtool.c          | 152 ++---------------------
+ ethtool.c          | 152 ++--------------------
  netlink/extapi.h   |   1 +
  netlink/monitor.c  |  14 +++
  netlink/netlink.c  | 120 ++++++++++++++++++
  netlink/netlink.h  |   4 +
- netlink/settings.c | 304 +++++++++++++++++++++++++++++++++++++++++++++
- 9 files changed, 793 insertions(+), 145 deletions(-)
+ netlink/settings.c | 307 +++++++++++++++++++++++++++++++++++++++++++++
+ 9 files changed, 796 insertions(+), 145 deletions(-)
  create mode 100644 netlink/settings.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 86097948dac8..e91fc09d6e28 100644
+index 6ba0114f4713..0bf01839a3f7 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -23,7 +23,7 @@ if ETHTOOL_ENABLE_NETLINK
@@ -395,7 +395,7 @@ index 7c08ec2d7c2f..37edac765e65 100644
 +
  #endif /* ETHTOOL_COMMON_H__ */
 diff --git a/ethtool.c b/ethtool.c
-index 8a21ad04f318..504017ba881b 100644
+index 1a81014c1325..b79a1c508eb9 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -57,26 +57,6 @@
@@ -610,7 +610,7 @@ index 8a21ad04f318..504017ba881b 100644
  #endif
  
  static const struct option {
-@@ -5361,6 +5224,7 @@ int main(int argc, char **argp)
+@@ -5362,6 +5225,7 @@ int main(int argc, char **argp)
  	}
  	if ((*argp)[0] == '-')
  		exit_bad_args();
@@ -619,10 +619,10 @@ index 8a21ad04f318..504017ba881b 100644
  	want_device = 1;
  
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 0de6cbd653cc..938e71700f97 100644
+index 309c8c64a476..6a382161c3d2 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -16,6 +16,7 @@ int netlink_done(struct cmd_context *ctx);
+@@ -16,6 +16,7 @@ void netlink_done(struct cmd_context *ctx);
  int nl_gdrv(struct cmd_context *ctx);
  int nl_permaddr(struct cmd_context *ctx);
  int nl_tsinfo(struct cmd_context *ctx);
@@ -670,7 +670,7 @@ index e8ad2f59a7c0..7d1dfc3e470d 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 356d850fcbf5..eec98043f33d 100644
+index 2d56efd86d03..ab2bfdad2084 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -4,8 +4,10 @@
@@ -684,7 +684,7 @@ index 356d850fcbf5..eec98043f33d 100644
  
  /* misc helpers */
  
-@@ -535,6 +537,124 @@ int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname)
+@@ -541,6 +543,124 @@ int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname)
  	return 0;
  }
  
@@ -826,10 +826,10 @@ index f09148663856..9460acd2cbad 100644
  int attr_cb(const struct nlattr *attr, void *data);
 diff --git a/netlink/settings.c b/netlink/settings.c
 new file mode 100644
-index 000000000000..0a0905e90bde
+index 000000000000..331f199066ea
 --- /dev/null
 +++ b/netlink/settings.c
-@@ -0,0 +1,304 @@
+@@ -0,0 +1,307 @@
 +#include <errno.h>
 +#include <string.h>
 +#include <stdio.h>
@@ -1128,11 +1128,14 @@ index 000000000000..0a0905e90bde
 +
 +int nl_gset(struct cmd_context *ctx)
 +{
-+	return settings_request(ctx, ETH_SETTINGS_IM_LINKINFO |
-+				     ETH_SETTINGS_IM_LINKMODES |
-+				     ETH_SETTINGS_IM_MSGLEVEL |
-+				     ETH_SETTINGS_IM_WOLINFO |
-+				     ETH_SETTINGS_IM_LINK);
++	int ret;
++
++	ret = settings_request(ctx, ETH_SETTINGS_IM_LINKINFO |
++				    ETH_SETTINGS_IM_LINKMODES |
++				    ETH_SETTINGS_IM_MSGLEVEL |
++				    ETH_SETTINGS_IM_WOLINFO |
++				    ETH_SETTINGS_IM_LINK);
++	return (ret < 0) ? 75 : 0;
 +}
 -- 
 2.20.1

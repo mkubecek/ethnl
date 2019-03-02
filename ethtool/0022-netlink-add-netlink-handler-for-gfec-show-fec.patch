@@ -1,4 +1,4 @@
-From 4af7862db634c5b13b2420cfafc1c2ea6a068428 Mon Sep 17 00:00:00 2001
+From 00be6f00da12375fbf2942e49215f5bb52a0f96d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
 Subject: [PATCH 22/35] netlink: add netlink handler for gfec (--show-fec)
@@ -52,7 +52,7 @@ index 749bf389e9e1..6c238701783f 100644
  
  enum link_mode_class {
 diff --git a/ethtool.c b/ethtool.c
-index 2516d4deb6b7..b5457f3b929c 100644
+index 3961d6095d5c..6afd41989989 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4852,6 +4852,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -73,7 +73,7 @@ index 2516d4deb6b7..b5457f3b929c 100644
  	{ "--set-fec", 1, do_sfec, NULL,
  	  "Set FEC settings",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 321d0279211f..5e1b36cdc2dc 100644
+index 3440940478b9..6ceec5164dae 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -27,6 +27,7 @@ int nl_gring(struct cmd_context *ctx);

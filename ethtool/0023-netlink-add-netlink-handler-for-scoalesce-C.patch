@@ -1,4 +1,4 @@
-From 4238748fb1c1e0d005505d00191c2cf3bf087b10 Mon Sep 17 00:00:00 2001
+From e4f3a1b47a61629cfcbd2a1bd7e384e6bdfb8dfe Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 07:27:00 +0100
 Subject: [PATCH 23/35] netlink: add netlink handler for scoalesce (-C)
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 183 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index b5457f3b929c..e200aa84a3a4 100644
+index 6afd41989989..19194a50cdf9 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4853,6 +4853,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -35,7 +35,7 @@ index b5457f3b929c..e200aa84a3a4 100644
  	  "		[adaptive-rx on|off]\n"
  	  "		[adaptive-tx on|off]\n"
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 5e1b36cdc2dc..472249c3058a 100644
+index 6ceec5164dae..f791d987a300 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -28,6 +28,7 @@ int nl_gpause(struct cmd_context *ctx);

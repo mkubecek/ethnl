@@ -1,4 +1,4 @@
-From 63d15f48c3a66bc47628b051623351dc7f7054d3 Mon Sep 17 00:00:00 2001
+From fd6a3bf894ece18ff4df6e28866e6adfbe5f94a6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 16:43:40 +0200
 Subject: [PATCH 30/35] netlink: add netlink handler for phys_id (-p)
@@ -15,7 +15,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 90 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index a29415b369a6..af70b1c02e9a 100644
+index 5c8848683f33..a7922f5aff4e 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4860,6 +4860,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -122,7 +122,7 @@ index d1bbcd163549..160352ea8df3 100644
 +	return ret;
 +}
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 24cf96776d3e..a65946772537 100644
+index c4381c92104f..7ce5c2aea641 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -35,6 +35,7 @@ int nl_schannels(struct cmd_context *ctx);

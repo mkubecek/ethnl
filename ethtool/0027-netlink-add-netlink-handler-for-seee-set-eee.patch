@@ -1,4 +1,4 @@
-From 66ac7182e3844f6f01f61bf64163a9b281ab14bf Mon Sep 17 00:00:00 2001
+From f2b08600eacb48ce643432f28045905a525b253d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:43:19 +0100
 Subject: [PATCH 27/35] netlink: add netlink handler for seee (--set-eee)
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 37 insertions(+), 2 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 3b132f0bb938..3145e6d568f1 100644
+index 945d87b095ac..190ae1f68885 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4857,6 +4857,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -39,7 +39,7 @@ index 3b132f0bb938..3145e6d568f1 100644
  	  "		[ tx-timer %d ]\n"},
  	{ "--set-phy-tunable", 1, do_set_phy_tunable, NULL,
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index d1b56e7f923a..31eb97c6240d 100644
+index 93b58d62a9a1..2a8b3f39558b 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -32,6 +32,7 @@ int nl_scoalesce(struct cmd_context *ctx);

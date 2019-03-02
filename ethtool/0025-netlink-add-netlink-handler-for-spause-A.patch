@@ -1,4 +1,4 @@
-From 30a31ecf9591ced8dbda5ce50a88a63be374e77a Mon Sep 17 00:00:00 2001
+From ce42c6b5ffa89dc021b03c5223c2d53297c79a38 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:17:41 +0100
 Subject: [PATCH 25/35] netlink: add netlink handler for spause (-A)
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 30 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index ccde1f8a31e2..1d9f250d01cd 100644
+index 7b580d9af0d5..c3840538c759 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4855,6 +4855,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -35,7 +35,7 @@ index ccde1f8a31e2..1d9f250d01cd 100644
  	  "		[ autoneg on|off ]\n"
  	  "		[ rx on|off ]\n"
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 8079fb7cf4dc..c37e4df4d6a7 100644
+index 066a66d313d6..8e9244c0315b 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -30,6 +30,7 @@ int nl_geee(struct cmd_context *ctx);

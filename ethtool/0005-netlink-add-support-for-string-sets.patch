@@ -1,4 +1,4 @@
-From 86b4bb2281ed442d05c18537c20e550710c4af0b Mon Sep 17 00:00:00 2001
+From d4dc4e07d4a9ecb7c54493b1be202c1e7f085bcd Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 14:09:19 +0200
 Subject: [PATCH 05/35] netlink: add support for string sets
@@ -14,14 +14,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Makefile.am       |   1 +
  netlink/netlink.c |   3 +-
  netlink/netlink.h |   4 +-
- netlink/strset.c  | 288 ++++++++++++++++++++++++++++++++++++++++++++++
- netlink/strset.h  |  17 +++
- 5 files changed, 310 insertions(+), 3 deletions(-)
+ netlink/strset.c  | 309 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/strset.h  |  18 +++
+ 5 files changed, 332 insertions(+), 3 deletions(-)
  create mode 100644 netlink/strset.c
  create mode 100644 netlink/strset.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 2e6e30c4fc83..758d71868b59 100644
+index fbffc306eeec..7b570d550477 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -22,6 +22,7 @@ endif
@@ -33,7 +33,7 @@ index 2e6e30c4fc83..758d71868b59 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 7da8d7c43ee6..5f7bc88e41c5 100644
+index 97e36bbf7091..a251d8297852 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -162,7 +162,7 @@ err:
@@ -77,10 +77,10 @@ index bbfa5aa5bc48..2e5c0ae0f8dc 100644
  int msg_init(struct nl_context *nlctx, int cmd, unsigned int flags);
 diff --git a/netlink/strset.c b/netlink/strset.c
 new file mode 100644
-index 000000000000..db1c86b9e563
+index 000000000000..2b7f1fb74166
 --- /dev/null
 +++ b/netlink/strset.c
-@@ -0,0 +1,288 @@
+@@ -0,0 +1,309 @@
 +#include <errno.h>
 +#include <string.h>
 +
@@ -107,6 +107,9 @@ index 000000000000..db1c86b9e563
 +
 +static void drop_stringset(struct stringset *set)
 +{
++	if (!set)
++		return;
++
 +	free(set->strings);
 +	free(set->raw_data);
 +	set->count = 0;
@@ -142,7 +145,7 @@ index 000000000000..db1c86b9e563
 +	if (!dest[idx].raw_data)
 +		goto err;
 +	memcpy(dest[idx].raw_data, tb_stringset[ETHA_STRINGSET_STRINGS], size);
-+	dest[idx].strings = malloc(count * sizeof(dest[idx].strings[0]));
++	dest[idx].strings = calloc(count, sizeof(dest[idx].strings[0]));
 +	if (!dest[idx].strings)
 +		goto err;
 +	dest[idx].count = count;
@@ -369,12 +372,30 @@ index 000000000000..db1c86b9e563
 +	copy_devname(perdev->devname, newname);
 +	return 0;
 +}
++
++void cleanup_all_strings(void)
++{
++	struct perdev_strings *perdev;
++	unsigned int i;
++
++	for (i = 0; i < ETH_SS_COUNT; i++)
++		drop_stringset(&global_strings[i]);
++
++	perdev = device_strings;
++	while (perdev) {
++		device_strings = perdev->next;
++		for (i = 0; i < ETH_SS_COUNT; i++)
++			drop_stringset(&perdev->strings[i]);
++		free(perdev);
++		perdev = device_strings;
++	}
++}
 diff --git a/netlink/strset.h b/netlink/strset.h
 new file mode 100644
-index 000000000000..c21859b7e594
+index 000000000000..1fd75ebd351b
 --- /dev/null
 +++ b/netlink/strset.h
-@@ -0,0 +1,17 @@
+@@ -0,0 +1,18 @@
 +#ifndef ETHTOOL_NETLINK_STRSET_H__
 +#define ETHTOOL_NETLINK_STRSET_H__
 +
@@ -390,6 +411,7 @@ index 000000000000..c21859b7e594
 +int load_perdev_strings(struct nl_context *nlctx, const char *dev);
 +void free_perdev_strings(const char *devname);
 +int rename_perdev_strings(int ifindex, const char *newname, char *oldname);
++void cleanup_all_strings(void);
 +
 +#endif /* ETHTOOL_NETLINK_STRSET_H__ */
 -- 

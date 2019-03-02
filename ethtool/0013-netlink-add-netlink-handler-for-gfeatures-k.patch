@@ -1,4 +1,4 @@
-From 8caa9cb6d093d6ee6459df1207d121bc1a4c5d7d Mon Sep 17 00:00:00 2001
+From 138e7dd560a5da1f624e65b8242321c59e243e31 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
 Subject: [PATCH 13/35] netlink: add netlink handler for gfeatures (-k)
@@ -90,7 +90,7 @@ index 37edac765e65..749bf389e9e1 100644
  extern const unsigned int link_modes_count;
  
 diff --git a/ethtool.c b/ethtool.c
-index be7e9ec659df..6cab361c92db 100644
+index ff9bff669efc..b1bc80134d18 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -102,51 +102,6 @@ struct cmdline_info {
@@ -246,7 +246,7 @@ index be7e9ec659df..6cab361c92db 100644
  	{ "-K|--features|--offload", 1, do_sfeatures, NULL,
  	  "Set protocol offload and other features",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index e3b8c6949f36..d955966da72d 100644
+index c8709ccfca48..f581a7b7e7d1 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -18,6 +18,7 @@ int nl_permaddr(struct cmd_context *ctx);
@@ -275,7 +275,7 @@ index 7d1dfc3e470d..f1c25f1449f6 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 6485241f39ff..ff0ac57deb00 100644
+index afa0f65cbb1f..c9c11fb39622 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -138,6 +138,219 @@ static int dump_wol_info(struct nl_context *nlctx, const struct nlattr *nest,
@@ -514,8 +514,8 @@ index 6485241f39ff..ff0ac57deb00 100644
  
  	if (allfail && !nlctx->is_monitor && !nlctx->is_dump) {
  		fputs("No data available\n", stdout);
-@@ -304,6 +526,11 @@ int nl_gset(struct cmd_context *ctx)
- 				     ETH_SETTINGS_IM_LINK);
+@@ -307,6 +529,11 @@ int nl_gset(struct cmd_context *ctx)
+ 	return (ret < 0) ? 75 : 0;
  }
  
 +int nl_gfeatures(struct cmd_context *ctx)

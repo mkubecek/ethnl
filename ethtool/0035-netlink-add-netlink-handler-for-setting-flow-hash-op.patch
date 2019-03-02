@@ -1,4 +1,4 @@
-From af9b07f9bdd7adfc1655d017d6bdbaf9fdc45473 Mon Sep 17 00:00:00 2001
+From 47c3cad2175a9dc4db5d728f07d3ec52d5dc636f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 2 Nov 2018 19:41:56 +0100
 Subject: [PATCH 35/35] netlink: add netlink handler for setting flow hash
@@ -15,7 +15,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 114 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 907f3ea12faf..403cd09dadd1 100644
+index b988421aafad..0dc78aeb3c7e 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4865,6 +4865,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -36,7 +36,7 @@ index 907f3ea12faf..403cd09dadd1 100644
  	  "		rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 m|v|t|s|d|f|n|r... [context %d] |\n"
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 102317b4feae..e065c63d7368 100644
+index daac8d199b03..2e8a8cfe8fd1 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -40,6 +40,7 @@ int nl_reset(struct cmd_context *ctx);
@@ -48,10 +48,10 @@ index 102317b4feae..e065c63d7368 100644
  
  void monitor_usage();
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
-index c02c62253b01..0d3d8b60ebed 100644
+index 55ed350210c2..8a44447cc3e4 100644
 --- a/netlink/rxflow.c
 +++ b/netlink/rxflow.c
-@@ -798,3 +798,114 @@ out_free:
+@@ -800,3 +800,114 @@ out_free:
  	free(data.weight.weights);
  	return ret;
  }

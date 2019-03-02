@@ -1,4 +1,4 @@
-From 08819daabb02d92042571a60954003ca8e4d9928 Mon Sep 17 00:00:00 2001
+From 8474df7204b080826fd6d1d965e1341ed8da829e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Aug 2018 23:24:37 +0200
 Subject: [PATCH 08/35] netlink: add netlink handler for permaddr (-P)
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 69 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 55221f000857..b945855e8755 100644
+index 61ccc78a5eda..e2c09a286ee2 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -5063,6 +5063,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -35,11 +35,11 @@ index 55221f000857..b945855e8755 100644
  	{ "-w|--get-dump", 1, do_getfwdump, NULL,
  	  "Get dump flag, data",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 546090a02a0d..3e3a03894e99 100644
+index 2612f1752b56..de426ae6f563 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -14,6 +14,7 @@ int netlink_init(struct cmd_context *ctx);
- int netlink_done(struct cmd_context *ctx);
+ void netlink_done(struct cmd_context *ctx);
  
  int nl_gdrv(struct cmd_context *ctx);
 +int nl_permaddr(struct cmd_context *ctx);

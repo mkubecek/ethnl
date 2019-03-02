@@ -1,4 +1,4 @@
-From 865c9d892da4ec26a17ebcfbc3216160ec6feb4e Mon Sep 17 00:00:00 2001
+From afa9c297766fb0ccc5a8a93ae68465d73f2fcb75 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 12/35] netlink: add netlink handler for sset (-s)
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  7 files changed, 223 insertions(+), 4 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 504017ba881b..be7e9ec659df 100644
+index b79a1c508eb9..ff9bff669efc 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4887,6 +4887,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -57,7 +57,7 @@ index 504017ba881b..be7e9ec659df 100644
  	  "Show pause options" },
  	{ "-A|--pause", 1, do_spause, NULL,
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 938e71700f97..e3b8c6949f36 100644
+index 6a382161c3d2..c8709ccfca48 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -17,6 +17,7 @@ int nl_gdrv(struct cmd_context *ctx);
@@ -69,10 +69,10 @@ index 938e71700f97..e3b8c6949f36 100644
  
  void monitor_usage();
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index eec98043f33d..7e946d804453 100644
+index ab2bfdad2084..3defa951cf8b 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -764,6 +764,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
+@@ -770,6 +770,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
  	return (nlctx->ethnl_fam ? 0 : -EADDRNOTAVAIL);
  }
  
@@ -101,7 +101,7 @@ index c586feeeeb67..21214d3c393b 100644
  
  /* put data wrappers */
 diff --git a/netlink/parser.c b/netlink/parser.c
-index 832693063b37..0250c0b25cf1 100644
+index 3fe05bd642a9..b303e59458ea 100644
 --- a/netlink/parser.c
 +++ b/netlink/parser.c
 @@ -831,6 +831,42 @@ err:
@@ -161,7 +161,7 @@ index c654d55d46f6..59f88145a61d 100644
  int nl_parser(struct nl_context *nlctx, const struct param_parser *params,
  	      void *dest);
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 0a0905e90bde..6485241f39ff 100644
+index 331f199066ea..afa0f65cbb1f 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -6,6 +6,7 @@
@@ -172,9 +172,9 @@ index 0a0905e90bde..6485241f39ff 100644
  
  /* GET_SETTINGS */
  
-@@ -302,3 +303,171 @@ int nl_gset(struct cmd_context *ctx)
- 				     ETH_SETTINGS_IM_WOLINFO |
- 				     ETH_SETTINGS_IM_LINK);
+@@ -305,3 +306,171 @@ int nl_gset(struct cmd_context *ctx)
+ 				    ETH_SETTINGS_IM_LINK);
+ 	return (ret < 0) ? 75 : 0;
  }
 +
 +/* SET_SETTINGS */

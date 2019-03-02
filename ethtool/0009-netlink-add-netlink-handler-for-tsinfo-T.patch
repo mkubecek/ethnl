@@ -1,4 +1,4 @@
-From 54e6deb5557f5b1caffa9ab69c909dad6d7a433e Mon Sep 17 00:00:00 2001
+From 461cbff630d417cde72a19cacc7f41eb9ab70527 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Aug 2018 23:26:42 +0200
 Subject: [PATCH 09/35] netlink: add netlink handler for tsinfo (-T)
@@ -74,7 +74,7 @@ index 286c2055f2d7..7c08ec2d7c2f 100644
 +
  #endif /* ETHTOOL_COMMON_H__ */
 diff --git a/ethtool.c b/ethtool.c
-index b945855e8755..8a21ad04f318 100644
+index e2c09a286ee2..1a81014c1325 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -1612,47 +1612,6 @@ static void dump_fec(u32 fec)
@@ -143,10 +143,10 @@ index b945855e8755..8a21ad04f318 100644
  	{ "-x|--show-rxfh-indir|--show-rxfh", 1, do_grxfh, NULL,
  	  "Show Rx flow hash indirection table and/or RSS hash key",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 3e3a03894e99..0de6cbd653cc 100644
+index de426ae6f563..309c8c64a476 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -15,6 +15,7 @@ int netlink_done(struct cmd_context *ctx);
+@@ -15,6 +15,7 @@ void netlink_done(struct cmd_context *ctx);
  
  int nl_gdrv(struct cmd_context *ctx);
  int nl_permaddr(struct cmd_context *ctx);

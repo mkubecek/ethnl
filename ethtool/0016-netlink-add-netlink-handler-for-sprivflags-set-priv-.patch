@@ -1,4 +1,4 @@
-From 10788ffdc962ac5f6584d706c2f75687cfcc9592 Mon Sep 17 00:00:00 2001
+From f359cf79898201dd619e342bdd342d3b757d03ec Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:23:10 +0200
 Subject: [PATCH 16/35] netlink: add netlink handler for sprivflags
@@ -15,7 +15,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 36 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index cc3d0e3c166e..d0328a6cbe07 100644
+index b68836b778e8..ecdf9e291e38 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4846,6 +4846,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -36,7 +36,7 @@ index cc3d0e3c166e..d0328a6cbe07 100644
  	  "		FLAG on|off ...\n" },
  	{ "-m|--dump-module-eeprom|--module-info", 1, do_getmodule, NULL,
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 3a09597056d2..ded02da74ff9 100644
+index 8457efffec48..4155d1cffc24 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -21,6 +21,7 @@ int nl_sset(struct cmd_context *ctx);
@@ -48,10 +48,10 @@ index 3a09597056d2..ded02da74ff9 100644
  
  void monitor_usage();
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 41dcc0493602..50417e4f3c7c 100644
+index bda2ac2120b0..d7020ed8bf71 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -1051,3 +1051,36 @@ int nl_sfeatures(struct cmd_context *ctx)
+@@ -1054,3 +1054,36 @@ int nl_sfeatures(struct cmd_context *ctx)
  		return 0;
  	return nlctx->exit_code ?: 92;
  }

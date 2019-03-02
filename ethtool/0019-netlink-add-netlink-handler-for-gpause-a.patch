@@ -1,4 +1,4 @@
-From 25654f2cc3c5f311bf8c25bda2d5a9411ace7479 Mon Sep 17 00:00:00 2001
+From 025261fd50a96132d319c927453efb7fadfe311a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:04:09 +0100
 Subject: [PATCH 19/35] netlink: add netlink handler for gpause (-a)
@@ -15,7 +15,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 44 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 7fe04b7bff8c..a1a58ddab74a 100644
+index d2f9103339a8..5e2d71016f29 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4849,6 +4849,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -36,7 +36,7 @@ index 7fe04b7bff8c..a1a58ddab74a 100644
  	{ "-A|--pause", 1, do_spause, NULL,
  	  "Set pause options",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 808188c6d8b8..01e5b6d7b621 100644
+index 28ba759561a5..96d698c7ceff 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -24,6 +24,7 @@ int nl_gprivflags(struct cmd_context *ctx);

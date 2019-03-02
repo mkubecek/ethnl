@@ -1,4 +1,4 @@
-From 1eea16ed8c0892aa6acd42ddad628d79b7d23a48 Mon Sep 17 00:00:00 2001
+From 784e788802b8c5ffc8b1f362de6fd173d8dc3490 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 08:43:44 +0200
 Subject: [PATCH 31/35] netlink: add netlink handler for reset (--reset)
@@ -15,7 +15,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 255 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index af70b1c02e9a..c2f317009728 100644
+index a7922f5aff4e..13d7bc1b7960 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4861,6 +4861,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -294,7 +294,7 @@ index 160352ea8df3..316004a8d786 100644
 +	return ret;
 +}
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index a65946772537..ea779afb527a 100644
+index 7ce5c2aea641..bec82d9dd4a4 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -36,6 +36,7 @@ int nl_seee(struct cmd_context *ctx);

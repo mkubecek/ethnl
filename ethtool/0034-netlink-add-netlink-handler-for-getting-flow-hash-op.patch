@@ -1,4 +1,4 @@
-From 34be75eea1c46318fbce961488fc5322f54d67e7 Mon Sep 17 00:00:00 2001
+From 51c76f51e0145d247d12223f9507ae7ddb502831 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 7 Oct 2018 19:50:11 +0200
 Subject: [PATCH 34/35] netlink: add netlink handler for getting flow hash
@@ -12,11 +12,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c        |   3 +-
  netlink/extapi.h |   1 +
- netlink/rxflow.c | 187 +++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 190 insertions(+), 1 deletion(-)
+ netlink/rxflow.c | 189 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 192 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index cc73abe22fd0..907f3ea12faf 100644
+index 422f448f1225..b988421aafad 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4864,6 +4864,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -37,7 +37,7 @@ index cc73abe22fd0..907f3ea12faf 100644
  	  "		[ rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 [context %d] |\n"
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 4a25677892b0..102317b4feae 100644
+index 1262c53cfed8..daac8d199b03 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -39,6 +39,7 @@ int nl_phys_id(struct cmd_context *ctx);
@@ -49,7 +49,7 @@ index 4a25677892b0..102317b4feae 100644
  
  void monitor_usage();
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
-index 81b4ff032e04..c02c62253b01 100644
+index 81b4ff032e04..55ed350210c2 100644
 --- a/netlink/rxflow.c
 +++ b/netlink/rxflow.c
 @@ -8,6 +8,33 @@
@@ -168,7 +168,7 @@ index 81b4ff032e04..c02c62253b01 100644
  
  	return MNL_CB_OK;
  }
-@@ -283,6 +378,98 @@ int nl_grxfh(struct cmd_context *ctx)
+@@ -283,6 +378,100 @@ int nl_grxfh(struct cmd_context *ctx)
  	return ethnl_send_get_request(nlctx, rxflow_reply_cb);
  }
  
@@ -236,7 +236,9 @@ index 81b4ff032e04..c02c62253b01 100644
 +	if (params.flow_type)
 +		nlctx->cmd_private = &params.flow_type;
 +
-+	return ethnl_send_get_request(nlctx, rxflow_reply_cb);
++	ret = ethnl_send_get_request(nlctx, rxflow_reply_cb);
++	nlctx->cmd_private = NULL;
++	return ret;
 +}
 +
 +int nl_grxclass(struct cmd_context *ctx)

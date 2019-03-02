@@ -1,4 +1,4 @@
-From 3190f5383d740f58495e95b2ee55b2d143adec28 Mon Sep 17 00:00:00 2001
+From 7b3b12d936366aaa9d4130c273617c4aff89a7d0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:46:58 +0200
 Subject: [PATCH 32/35] netlink: add netlink handler for grxfh (-x)
@@ -16,7 +16,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/rxflow.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 5a0e63322fa5..8a01ed3a4949 100644
+index 80b973c7f04c..51b6957bd1af 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -25,7 +25,7 @@ ethtool_SOURCES += \
@@ -29,7 +29,7 @@ index 5a0e63322fa5..8a01ed3a4949 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index c2f317009728..9160ec95fc0a 100644
+index 13d7bc1b7960..57acd93fcf4d 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4862,6 +4862,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -50,7 +50,7 @@ index c2f317009728..9160ec95fc0a 100644
  	  "		[ context %d ]\n" },
  	{ "-X|--set-rxfh-indir|--rxfh", 1, do_srxfh, NULL,
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index ea779afb527a..468f70014d79 100644
+index bec82d9dd4a4..4e818f791dd8 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -37,6 +37,7 @@ int nl_sfec(struct cmd_context *ctx);

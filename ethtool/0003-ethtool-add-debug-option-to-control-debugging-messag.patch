@@ -1,4 +1,4 @@
-From c992e5193ce76758dd1ac8f812db1e2c74555e01 Mon Sep 17 00:00:00 2001
+From 42af0e03f53fdcbbc38e2689f6aa224f7772b5b2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Aug 2018 18:06:30 +0200
 Subject: [PATCH 03/35] ethtool: add --debug option to control debugging

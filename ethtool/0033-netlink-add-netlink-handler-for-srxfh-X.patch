@@ -1,4 +1,4 @@
-From b49c384ed0ecaf75e408e10edd4b65837b9e2e4a Mon Sep 17 00:00:00 2001
+From 5dca3921ee4ac3242914386c8846eaf8046c25d6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:24:40 +0200
 Subject: [PATCH 33/35] netlink: add netlink handler for srxfh (-X)
@@ -15,7 +15,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 341 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 9160ec95fc0a..cc73abe22fd0 100644
+index 57acd93fcf4d..422f448f1225 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4863,6 +4863,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -36,7 +36,7 @@ index 9160ec95fc0a..cc73abe22fd0 100644
  	  "		[ context %d|new ]\n"
  	  "		[ equal N | weight W0 W1 ... | default ]\n"
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 468f70014d79..4a25677892b0 100644
+index 4e818f791dd8..1262c53cfed8 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -38,6 +38,7 @@ int nl_nway_rst(struct cmd_context *ctx);

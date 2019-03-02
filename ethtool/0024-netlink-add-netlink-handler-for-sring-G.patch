@@ -1,4 +1,4 @@
-From 0509f091526e978ad4a3ba6baf38ad197db621d9 Mon Sep 17 00:00:00 2001
+From 31364716be4d3bd480dbc26d50c8bfddd7f46329 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:04:49 +0100
 Subject: [PATCH 24/35] netlink: add netlink handler for sring (-G)
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 36 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index e200aa84a3a4..ccde1f8a31e2 100644
+index 19194a50cdf9..7b580d9af0d5 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4854,6 +4854,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -35,7 +35,7 @@ index e200aa84a3a4..ccde1f8a31e2 100644
  	  "		[ rx N ]\n"
  	  "		[ rx-mini N ]\n"
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 472249c3058a..8079fb7cf4dc 100644
+index f791d987a300..066a66d313d6 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -29,6 +29,7 @@ int nl_gchannels(struct cmd_context *ctx);

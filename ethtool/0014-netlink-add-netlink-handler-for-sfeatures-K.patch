@@ -1,4 +1,4 @@
-From 05f686aae1c280983eeb98bc0b8a2587f30c4bb2 Mon Sep 17 00:00:00 2001
+From 76f395077400c8722350be643380298350bf1032 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:25:31 +0200
 Subject: [PATCH 14/35] netlink: add netlink handler for sfeatures (-K)
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 295 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 6cab361c92db..e6ed1e7d5e3c 100644
+index b1bc80134d18..2f5fe5540e0c 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -4844,6 +4844,7 @@ static int show_usage(struct cmd_context *ctx);
@@ -42,7 +42,7 @@ index 6cab361c92db..e6ed1e7d5e3c 100644
  	  "		FEATURE on|off ...\n" },
  	{ "-i|--driver", 1, do_gdrv, nl_gdrv,
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index d955966da72d..ed526cf60142 100644
+index f581a7b7e7d1..9e41f94ff000 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -19,6 +19,7 @@ int nl_tsinfo(struct cmd_context *ctx);
@@ -54,10 +54,10 @@ index d955966da72d..ed526cf60142 100644
  
  void monitor_usage();
 diff --git a/netlink/settings.c b/netlink/settings.c
-index ff0ac57deb00..cd2f5ae3f16a 100644
+index c9c11fb39622..209817c7c288 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -698,3 +698,295 @@ int nl_sset(struct cmd_context *ctx)
+@@ -701,3 +701,295 @@ int nl_sset(struct cmd_context *ctx)
  		return 0;
  	return nlctx->exit_code ?: 75;
  }

@@ -1,4 +1,4 @@
-From c145bb5f7e1b4044e2f8e3727aec7b9285b439b1 Mon Sep 17 00:00:00 2001
+From a9292cc03df5f231b6f46daec858f05dec5cd070 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 04/35] netlink: add netlink interface
@@ -18,21 +18,21 @@ completely.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Makefile.am                  |  13 +-
+ Makefile.am                  |  19 +-
  common.c                     |   2 +
  common.h                     |   6 +
  configure.ac                 |  14 +-
- ethtool.c                    | 181 ++++++---
+ ethtool.c                    | 187 ++++++---
  internal.h                   |  11 +
  netlink/extapi.h             |  16 +
- netlink/netlink.c            | 715 +++++++++++++++++++++++++++++++++++
+ netlink/netlink.c            | 721 +++++++++++++++++++++++++++++++++++
  netlink/netlink.h            | 158 ++++++++
  uapi/linux/ethtool.h         |  13 +
  uapi/linux/ethtool_netlink.h | 521 +++++++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 +++++
  uapi/linux/net_tstamp.h      |  13 +
  uapi/linux/netlink.h         | 248 ++++++++++++
- 14 files changed, 1940 insertions(+), 60 deletions(-)
+ 14 files changed, 1954 insertions(+), 64 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
  create mode 100644 netlink/extapi.h
@@ -43,7 +43,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 uapi/linux/netlink.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 5175491bf48d..2e6e30c4fc83 100644
+index 7452e2600e02..fbffc306eeec 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -6,7 +6,9 @@ EXTRA_DIST = LICENSE ethtool.8 ethtool.spec.in aclocal.m4 ChangeLog autogen.sh
@@ -52,12 +52,12 @@ index 5175491bf48d..2e6e30c4fc83 100644
  ethtool_SOURCES = ethtool.c uapi/linux/ethtool.h internal.h \
 -		  uapi/linux/net_tstamp.h rxclass.c
 +		  uapi/linux/net_tstamp.h rxclass.c common.c common.h
-+ethtool_CFLAGS = -I./uapi -Wall
-+ethtool_LDADD =  -lm
++ethtool_CFLAGS = $(AM_CFLAGS)
++ethtool_LDADD = $(LDADD)
  if ETHTOOL_ENABLE_PRETTY_DUMP
  ethtool_SOURCES += \
  		  amd8111e.c de2104x.c dsa.c e100.c e1000.c et131x.c igb.c	\
-@@ -17,6 +19,15 @@ ethtool_SOURCES += \
+@@ -17,12 +19,23 @@ ethtool_SOURCES += \
  		  ixgbevf.c tse.c vmxnet3.c qsfp.c qsfp.h fjes.c lan78xx.c
  endif
  
@@ -73,6 +73,16 @@ index 5175491bf48d..2e6e30c4fc83 100644
  TESTS = test-cmdline test-features
  check_PROGRAMS = test-cmdline test-features
  test_cmdline_SOURCES = test-cmdline.c test-common.c $(ethtool_SOURCES) 
+-test_cmdline_CFLAGS = $(AM_FLAGS) -DTEST_ETHTOOL
++test_cmdline_CFLAGS = $(ethtool_CFLAGS) -DTEST_ETHTOOL
++test_cmdline_LDADD = $(ethtool_LDADD)
+ test_features_SOURCES = test-features.c test-common.c $(ethtool_SOURCES) 
+-test_features_CFLAGS = $(AM_FLAGS) -DTEST_ETHTOOL
++test_features_CFLAGS = $(ethtool_CFLAGS) -DTEST_ETHTOOL
++test_features_LDADD = $(ethtool_LDADD)
+ 
+ dist-hook:
+ 	cp $(top_srcdir)/ethtool.spec $(distdir)
 diff --git a/common.c b/common.c
 new file mode 100644
 index 000000000000..1428b9b674f9
@@ -125,7 +135,7 @@ index 5073a3420dab..4a0be9178cf9 100644
  AC_CONFIG_FILES([Makefile ethtool.spec ethtool.8])
  AC_OUTPUT
 diff --git a/ethtool.c b/ethtool.c
-index a858a664076f..74bd7f84f3e1 100644
+index a858a664076f..90e6ce21469e 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -30,6 +30,7 @@
@@ -374,7 +384,7 @@ index a858a664076f..74bd7f84f3e1 100644
  	{}
  };
  
-@@ -5268,11 +5304,35 @@ static int show_usage(struct cmd_context *ctx)
+@@ -5268,14 +5304,39 @@ static int show_usage(struct cmd_context *ctx)
  	return 0;
  }
  
@@ -410,7 +420,11 @@ index a858a664076f..74bd7f84f3e1 100644
  	int k;
  
  	init_global_link_mode_masks();
-@@ -5312,6 +5372,7 @@ int main(int argc, char **argp)
++	ctx.nlctx = NULL;
+ 
+ 	/* Skip command name */
+ 	argp++;
+@@ -5312,6 +5373,7 @@ int main(int argc, char **argp)
  				argp++;
  				argc--;
  				func = args[k].func;
@@ -418,7 +432,7 @@ index a858a664076f..74bd7f84f3e1 100644
  				want_device = args[k].want_device;
  				goto opt_found;
  			}
-@@ -5326,6 +5387,15 @@ int main(int argc, char **argp)
+@@ -5326,33 +5388,38 @@ int main(int argc, char **argp)
  	want_device = 1;
  
  opt_found:
@@ -434,9 +448,12 @@ index a858a664076f..74bd7f84f3e1 100644
  	if (want_device) {
  		ctx.devname = *argp++;
  		argc--;
-@@ -5334,25 +5404,20 @@ opt_found:
- 			exit_bad_args();
- 		if (strlen(ctx.devname) >= IFNAMSIZ)
+ 
+-		if (ctx.devname == NULL)
+-			exit_bad_args();
+-		if (strlen(ctx.devname) >= IFNAMSIZ)
++		if (ctx.devname == NULL || strlen(ctx.devname) >= IFNAMSIZ) {
++			netlink_done(&ctx);
  			exit_bad_args();
 -
 -		/* Setup our control structures. */
@@ -450,7 +467,7 @@ index a858a664076f..74bd7f84f3e1 100644
 -		if (ctx.fd < 0) {
 -			perror("Cannot get control socket");
 -			return 70;
--		}
+ 		}
 -	} else {
 -		ctx.fd = -1;
  	}
@@ -460,6 +477,7 @@ index a858a664076f..74bd7f84f3e1 100644
  
 +	if (nl_func) {
 +		ret = nl_func(&ctx);
++		netlink_done(&ctx);
 +		if ((ret != -EOPNOTSUPP) || !func)
 +			return (ret >= 0) ? ret : 1;
 +	}
@@ -508,7 +526,7 @@ index d144890ddc2d..6532a6c154f0 100644
  #ifdef TEST_ETHTOOL
 diff --git a/netlink/extapi.h b/netlink/extapi.h
 new file mode 100644
-index 000000000000..05ab083d9b9c
+index 000000000000..6fe8ad200e24
 --- /dev/null
 +++ b/netlink/extapi.h
 @@ -0,0 +1,16 @@
@@ -525,15 +543,15 @@ index 000000000000..05ab083d9b9c
 +struct nl_context;
 +
 +int netlink_init(struct cmd_context *ctx);
-+int netlink_done(struct cmd_context *ctx);
++void netlink_done(struct cmd_context *ctx);
 +
 +#endif /* ETHTOOL_EXTAPI_H__ */
 diff --git a/netlink/netlink.c b/netlink/netlink.c
 new file mode 100644
-index 000000000000..7da8d7c43ee6
+index 000000000000..97e36bbf7091
 --- /dev/null
 +++ b/netlink/netlink.c
-@@ -0,0 +1,715 @@
+@@ -0,0 +1,721 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -762,16 +780,49 @@ index 000000000000..7da8d7c43ee6
 +	return 0;
 +}
 +
++static int msg_realloc(struct nl_context *nlctx, unsigned int new_size)
++{
++	unsigned int nlhdr_offset = (char *)nlctx->nlhdr - nlctx->buff;
++	unsigned int gnlhdr_offset = (char *)nlctx->gnlhdr - nlctx->buff;
++	unsigned int msg_offset = (char *)nlctx->msg - nlctx->buff;
++	unsigned int old_size = nlctx->buffsize;
++	char *new_buff;
++
++	if (!new_size)
++		new_size = old_size + MNL_SOCKET_BUFFER_SIZE;
++	if (new_size <= old_size)
++		return 0;
++	if (new_size > MAX_MSG_SIZE)
++		return -EMSGSIZE;
++	new_buff = realloc(nlctx->buff, new_size);
++	if (!new_buff) {
++		nlctx->buff = NULL;
++		nlctx->buffsize = 0;
++		return -ENOMEM;
++	}
++	if (new_buff != nlctx->buff) {
++		if (new_size > old_size)
++			memset(new_buff + old_size, '\0', new_size - old_size);
++		nlctx->nlhdr = (struct nlmsghdr *)(new_buff + nlhdr_offset);
++		nlctx->gnlhdr = (struct genlmsghdr *)(new_buff + gnlhdr_offset);
++		nlctx->msg = new_buff + msg_offset;
++		nlctx->buff = new_buff;
++	}
++	nlctx->buffsize = new_size;
++
++	return 0;
++}
++
 +static int __msg_init(struct nl_context *nlctx, int family, int cmd,
 +		      unsigned int flags, int version)
 +{
 +	struct nlmsghdr *nlhdr;
 +	struct genlmsghdr *gnlhdr;
++	int ret;
 +
-+	nlctx->buff = malloc(MNL_SOCKET_BUFFER_SIZE);
-+	if (!nlctx->buff)
-+		return -ENOMEM;
-+	nlctx->buffsize = MNL_SOCKET_BUFFER_SIZE;
++	ret = msg_realloc(nlctx, MNL_SOCKET_BUFFER_SIZE);
++	if (ret < 0)
++		return ret;
 +	nlctx->seq++;
 +	memset(nlctx->buff, '\0', NLMSG_HDRLEN + GENL_HDRLEN);
 +
@@ -785,33 +836,6 @@ index 000000000000..7da8d7c43ee6
 +	gnlhdr->cmd = cmd;
 +	gnlhdr->version = version;
 +	nlctx->gnlhdr = gnlhdr;
-+
-+	return 0;
-+}
-+
-+static int msg_realloc(struct nl_context *nlctx, unsigned int new_size)
-+{
-+	unsigned int nlhdr_offset = (char *)nlctx->nlhdr - nlctx->buff;
-+	unsigned int gnlhdr_offset = (char *)nlctx->gnlhdr - nlctx->buff;
-+	unsigned int msg_offset = (char *)nlctx->msg - nlctx->buff;
-+	unsigned int old_size = nlctx->buffsize;
-+	char *new_buff;
-+
-+	if (!new_size)
-+		new_size = old_size + MNL_SOCKET_BUFFER_SIZE;
-+	if (new_size > MAX_MSG_SIZE)
-+		return -EMSGSIZE;
-+	new_buff = realloc(nlctx->buff, new_size);
-+	if (!new_buff)
-+		return -ENOMEM;
-+	if (new_buff != nlctx->buff) {
-+		memset(new_buff + old_size, '\0', new_size - old_size);
-+		nlctx->nlhdr = (struct nlmsghdr *)(new_buff + nlhdr_offset);
-+		nlctx->gnlhdr = (struct genlmsghdr *)(new_buff + gnlhdr_offset);
-+		nlctx->msg = new_buff + msg_offset;
-+		nlctx->buff = new_buff;
-+	}
-+	nlctx->buffsize = new_size;
 +
 +	return 0;
 +}
@@ -1239,15 +1263,15 @@ index 000000000000..7da8d7c43ee6
 +	return ret;
 +}
 +
-+int netlink_done(struct cmd_context *ctx)
++void netlink_done(struct cmd_context *ctx)
 +{
-+	if (ctx->nlctx) {
-+		nlctx_done(ctx->nlctx);
-+		free(ctx->nlctx);
-+		ctx->nlctx = NULL;
-+	}
++	if (!ctx->nlctx)
++		return;
 +
-+	return 0;
++	nlctx_done(ctx->nlctx);
++	free(ctx->nlctx);
++	ctx->nlctx = NULL;
++	cleanup_all_strings();
 +}
 diff --git a/netlink/netlink.h b/netlink/netlink.h
 new file mode 100644
