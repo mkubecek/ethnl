@@ -1,4 +1,4 @@
-From e04975f3f5617ee79e10bd4faa3e1912a54ff24b Mon Sep 17 00:00:00 2001
+From 5ac6e8863a9e2263f89a2af592a7166ad79a6e97 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 24/34] ethtool: implement SET_SETTINGS request for features
@@ -99,10 +99,10 @@ index aecfbcbafb85..70ffc69ea83a 100644
  ETHTOOL_SCHANNELS		n/a
  ETHTOOL_SET_DUMP		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 06956150886a..087b7b167581 100644
+index 24d4287ccd79..bd92a2624ad6 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -222,6 +222,7 @@ enum {
+@@ -253,6 +253,7 @@ enum {
  	ETHA_FEATURES_WANTED,			/* bitset */
  	ETHA_FEATURES_ACTIVE,			/* bitset */
  	ETHA_FEATURES_NOCHANGE,			/* bitset */

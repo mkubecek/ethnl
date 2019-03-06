@@ -1,4 +1,4 @@
-From b6e9dbc8fe7211283fb454df9f03cbe7d61ee060 Mon Sep 17 00:00:00 2001
+From 42622654be227f2527d09fc4c64a4db06750e0d0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
 Subject: [PATCH 14/34] ethtool: provide timestamping information in GET_INFO
@@ -15,7 +15,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  10 +-
  include/uapi/linux/ethtool.h                 |   6 +
- include/uapi/linux/ethtool_netlink.h         |  15 +-
+ include/uapi/linux/ethtool_netlink.h         |  16 ++-
  include/uapi/linux/net_tstamp.h              |  13 ++
  net/ethtool/common.c                         |  24 ++++
  net/ethtool/common.h                         |   2 +
@@ -23,7 +23,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/ioctl.c                          |  20 +--
  net/ethtool/netlink.h                        |   9 ++
  net/ethtool/strset.c                         |  18 +++
- 10 files changed, 235 insertions(+), 20 deletions(-)
+ 10 files changed, 236 insertions(+), 20 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 3918a695f272..bb2d67ee1ffd 100644
@@ -85,10 +85,10 @@ index eaea804972f6..882a542eaaa9 100644
  	ETH_SS_COUNT
  };
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 2fcbd7c98876..c2511854d45b 100644
+index 386d4273ac44..e7a6e813150b 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -151,14 +151,16 @@ enum {
+@@ -151,14 +151,17 @@ enum {
  	ETHA_INFO_INFOMASK,			/* u32 */
  	ETHA_INFO_COMPACT,			/* flag */
  	ETHA_INFO_DRVINFO,			/* nest - ETHA_DRVINFO_* */
@@ -98,15 +98,16 @@ index 2fcbd7c98876..c2511854d45b 100644
  	ETHA_INFO_MAX = (__ETHA_INFO_CNT - 1)
  };
  
- #define ETH_INFO_IM_DRVINFO			0x01
-+#define ETH_INFO_IM_TSINFO			0x02
+ #define ETH_INFO_IM_DRVINFO			(1U << 0)
++#define ETH_INFO_IM_TSINFO			(1U << 1)
  
--#define ETH_INFO_IM_ALL				0x01
-+#define ETH_INFO_IM_ALL				0x03
+-#define ETH_INFO_IM_ALL (ETH_INFO_IM_DRVINFO)
++#define ETH_INFO_IM_ALL (ETH_INFO_IM_DRVINFO | \
++			 ETH_INFO_IM_TSINFO)
  
  enum {
  	ETHA_DRVINFO_UNSPEC,
-@@ -171,6 +173,17 @@ enum {
+@@ -171,6 +174,17 @@ enum {
  	ETHA_DRVINFO_MAX = (__ETHA_DRVINFO_CNT - 1)
  };
  

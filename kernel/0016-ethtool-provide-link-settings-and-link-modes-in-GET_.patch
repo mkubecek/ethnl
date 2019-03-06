@@ -1,4 +1,4 @@
-From 7a62199650944fc5a68935b1bd1edb19f10e9298 Mon Sep 17 00:00:00 2001
+From d6afdc4f8631009cc3151ee995c9d166940b3441 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 16/34] ethtool: provide link settings and link modes in
@@ -15,14 +15,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  49 +++-
  include/linux/ethtool_netlink.h              |   3 +
- include/uapi/linux/ethtool_netlink.h         |  37 +++
+ include/uapi/linux/ethtool_netlink.h         |  38 +++
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/common.c                         |  48 ++++
  net/ethtool/common.h                         |   4 +
  net/ethtool/ioctl.c                          |  48 ----
  net/ethtool/netlink.c                        |   9 +
  net/ethtool/settings.c                       | 264 +++++++++++++++++++
- 9 files changed, 413 insertions(+), 51 deletions(-)
+ 9 files changed, 414 insertions(+), 51 deletions(-)
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -121,7 +121,7 @@ index 2a15e64a16f3..e770e6e9acca 100644
  	ETHNL_MCGRP_MONITOR,
  };
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index c2511854d45b..cf6ed9dd269b 100644
+index e7a6e813150b..9b6291fb3f09 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -18,6 +18,8 @@ enum {
@@ -133,7 +133,7 @@ index c2511854d45b..cf6ed9dd269b 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -184,6 +186,41 @@ enum {
+@@ -185,6 +187,42 @@ enum {
  	ETHA_TSINFO_MAX = (__ETHA_TSINFO_CNT - 1)
  };
  
@@ -152,10 +152,11 @@ index c2511854d45b..cf6ed9dd269b 100644
 +	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
 +};
 +
-+#define ETH_SETTINGS_IM_LINKINFO		0x01
-+#define ETH_SETTINGS_IM_LINKMODES		0x02
++#define ETH_SETTINGS_IM_LINKINFO		(1U << 0)
++#define ETH_SETTINGS_IM_LINKMODES		(1U << 1)
 +
-+#define ETH_SETTINGS_IM_ALL			0x03
++#define ETH_SETTINGS_IM_ALL (ETH_SETTINGS_IM_LINKINFO | \
++			     ETH_SETTINGS_IM_LINKMODES)
 +
 +enum {
 +	ETHA_LINKINFO_UNSPEC,

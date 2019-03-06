@@ -1,4 +1,4 @@
-From a73daf00a0b61b594f9bbaab4382a17937b3eaf5 Mon Sep 17 00:00:00 2001
+From ea9e9f91c12bdf69d77ac9cb4192d92199707f96 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:19:02 +0100
 Subject: [PATCH 18/34] ethtool: provide message level in GET_SETTINGS request
@@ -11,9 +11,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  7 ++++++-
  include/linux/netdevice.h                    |  2 ++
- include/uapi/linux/ethtool_netlink.h         |  4 +++-
+ include/uapi/linux/ethtool_netlink.h         |  5 ++++-
  net/ethtool/settings.c                       | 16 ++++++++++++++++
- 4 files changed, 27 insertions(+), 2 deletions(-)
+ 4 files changed, 28 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 699d9781edb8..41f5d2cec13a 100644
@@ -68,10 +68,10 @@ index eafc7974fc6c..27084ac4a2d2 100644
  
  #define netif_msg_drv(p)	((p)->msg_enable & NETIF_MSG_DRV)
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 7436522cbc49..1875aa6d5750 100644
+index d4cd7cd4c895..e424be06fab6 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -197,6 +197,7 @@ enum {
+@@ -198,6 +198,7 @@ enum {
  	ETHA_SETTINGS_LINK_MODES,		/* bitset */
  	ETHA_SETTINGS_PEER_MODES,		/* bitset */
  	ETHA_SETTINGS_WOL,			/* nested */
@@ -79,14 +79,17 @@ index 7436522cbc49..1875aa6d5750 100644
  
  	__ETHA_SETTINGS_CNT,
  	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
-@@ -205,8 +206,9 @@ enum {
- #define ETH_SETTINGS_IM_LINKINFO		0x01
- #define ETH_SETTINGS_IM_LINKMODES		0x02
- #define ETH_SETTINGS_IM_WOLINFO			0x04
-+#define ETH_SETTINGS_IM_MSGLEVEL		0x08
+@@ -206,10 +207,12 @@ enum {
+ #define ETH_SETTINGS_IM_LINKINFO		(1U << 0)
+ #define ETH_SETTINGS_IM_LINKMODES		(1U << 1)
+ #define ETH_SETTINGS_IM_WOLINFO			(1U << 2)
++#define ETH_SETTINGS_IM_MSGLEVEL		(1U << 3)
  
--#define ETH_SETTINGS_IM_ALL			0x07
-+#define ETH_SETTINGS_IM_ALL			0x0f
+ #define ETH_SETTINGS_IM_ALL (ETH_SETTINGS_IM_LINKINFO | \
+ 			     ETH_SETTINGS_IM_LINKMODES | \
+-			     ETH_SETTINGS_IM_WOLINFO)
++			     ETH_SETTINGS_IM_WOLINFO | \
++			     ETH_SETTINGS_IM_MSGLEVEL)
  
  enum {
  	ETHA_LINKINFO_UNSPEC,

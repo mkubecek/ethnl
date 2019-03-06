@@ -1,4 +1,4 @@
-From 7ce363ad231675d39d0ec8e38fc81cc2c6ee4d65 Mon Sep 17 00:00:00 2001
+From 81ab4b583c6c2d7f63f5e7fd8745123d07e63e54 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 34/34] ethtool: implement SET_RXFLOW message
@@ -100,7 +100,7 @@ index ad58c8f9e366..0948e0824b95 100644
  ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index c7f0a2543174..99d8a2d252f3 100644
+index 6c627266d1d7..fa4285854aa4 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -26,7 +26,7 @@ enum {

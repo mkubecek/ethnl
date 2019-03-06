@@ -1,4 +1,4 @@
-From d71faa2b7fe67250aea31ae3f8938a38f5234903 Mon Sep 17 00:00:00 2001
+From 37c7cc6391f0b3a79cb45a26df37f58983413553 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 28/34] ethtool: implement SET_PARAMS message

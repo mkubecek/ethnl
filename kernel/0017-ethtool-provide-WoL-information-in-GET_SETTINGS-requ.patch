@@ -1,4 +1,4 @@
-From f865fde00517ad4bcc4e7afceb6688dd2d380af1 Mon Sep 17 00:00:00 2001
+From 96976bbecc3b7a6672b319b9403d21918e486476 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:08:55 +0100
 Subject: [PATCH 17/34] ethtool: provide WoL information in GET_SETTINGS
@@ -13,12 +13,12 @@ such case the SecureOn password (if any) is not included in the reply.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt | 13 ++++-
- include/uapi/linux/ethtool_netlink.h         | 13 ++++-
+ include/uapi/linux/ethtool_netlink.h         | 14 ++++-
  net/ethtool/common.c                         | 10 ++++
  net/ethtool/common.h                         |  1 +
  net/ethtool/ioctl.c                          |  8 +--
  net/ethtool/settings.c                       | 61 ++++++++++++++++++++
- 6 files changed, 100 insertions(+), 6 deletions(-)
+ 6 files changed, 101 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 89174531cfa4..699d9781edb8 100644
@@ -65,10 +65,10 @@ index 89174531cfa4..699d9781edb8 100644
  ETHTOOL_GMSGLVL			n/a
  ETHTOOL_SMSGLVL			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index cf6ed9dd269b..7436522cbc49 100644
+index 9b6291fb3f09..d4cd7cd4c895 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -196,6 +196,7 @@ enum {
+@@ -197,6 +197,7 @@ enum {
  	ETHA_SETTINGS_LINK_INFO,		/* nested */
  	ETHA_SETTINGS_LINK_MODES,		/* bitset */
  	ETHA_SETTINGS_PEER_MODES,		/* bitset */
@@ -76,18 +76,20 @@ index cf6ed9dd269b..7436522cbc49 100644
  
  	__ETHA_SETTINGS_CNT,
  	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
-@@ -203,8 +204,9 @@ enum {
+@@ -204,9 +205,11 @@ enum {
  
- #define ETH_SETTINGS_IM_LINKINFO		0x01
- #define ETH_SETTINGS_IM_LINKMODES		0x02
-+#define ETH_SETTINGS_IM_WOLINFO			0x04
+ #define ETH_SETTINGS_IM_LINKINFO		(1U << 0)
+ #define ETH_SETTINGS_IM_LINKMODES		(1U << 1)
++#define ETH_SETTINGS_IM_WOLINFO			(1U << 2)
  
--#define ETH_SETTINGS_IM_ALL			0x03
-+#define ETH_SETTINGS_IM_ALL			0x07
+ #define ETH_SETTINGS_IM_ALL (ETH_SETTINGS_IM_LINKINFO | \
+-			     ETH_SETTINGS_IM_LINKMODES)
++			     ETH_SETTINGS_IM_LINKMODES | \
++			     ETH_SETTINGS_IM_WOLINFO)
  
  enum {
  	ETHA_LINKINFO_UNSPEC,
-@@ -221,6 +223,15 @@ enum {
+@@ -223,6 +226,15 @@ enum {
  	ETHA_LINKINFO_MAX = (__ETHA_LINKINFO_CNT - 1)
  };
  

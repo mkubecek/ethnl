@@ -1,4 +1,4 @@
-From acbfa03f015fcc1a503cf45868adb172d6b33302 Mon Sep 17 00:00:00 2001
+From fb37305e2d523fe2aa11a7b8d08852b41b9293f3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 20/34] ethtool: provide device features in GET_SETTINGS
@@ -15,11 +15,11 @@ ETHTOOL_GFLAGS and ETHTOOL_GGRO ioctl commands.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  36 +++++--
- include/uapi/linux/ethtool_netlink.h         |  15 ++-
+ include/uapi/linux/ethtool_netlink.h         |  16 ++-
  net/ethtool/common.h                         |   2 +
  net/ethtool/ioctl.c                          |   2 -
  net/ethtool/settings.c                       | 108 +++++++++++++++++++
- 5 files changed, 150 insertions(+), 13 deletions(-)
+ 5 files changed, 151 insertions(+), 13 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 8ffb721e6cc5..c4073a856ce0 100644
@@ -119,10 +119,10 @@ index 8ffb721e6cc5..c4073a856ce0 100644
  ETHTOOL_GCHANNELS		n/a
  ETHTOOL_SCHANNELS		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 439b1964fce8..a020a14f34db 100644
+index c4a38266bb57..8cc5108ce66c 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -199,6 +199,7 @@ enum {
+@@ -200,6 +200,7 @@ enum {
  	ETHA_SETTINGS_WOL,			/* nested */
  	ETHA_SETTINGS_MSGLEVEL,			/* bitfield32 */
  	ETHA_SETTINGS_LINK,			/* u8 */
@@ -130,15 +130,26 @@ index 439b1964fce8..a020a14f34db 100644
  
  	__ETHA_SETTINGS_CNT,
  	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
-@@ -209,8 +210,20 @@ enum {
- #define ETH_SETTINGS_IM_WOLINFO			0x04
- #define ETH_SETTINGS_IM_MSGLEVEL		0x08
- #define ETH_SETTINGS_IM_LINK			0x10
-+#define ETH_SETTINGS_IM_FEATURES		0x20
+@@ -210,12 +211,14 @@ enum {
+ #define ETH_SETTINGS_IM_WOLINFO			(1U << 2)
+ #define ETH_SETTINGS_IM_MSGLEVEL		(1U << 3)
+ #define ETH_SETTINGS_IM_LINK			(1U << 4)
++#define ETH_SETTINGS_IM_FEATURES		(1U << 5)
  
--#define ETH_SETTINGS_IM_ALL			0x1f
-+#define ETH_SETTINGS_IM_ALL			0x3f
-+
+ #define ETH_SETTINGS_IM_ALL (ETH_SETTINGS_IM_LINKINFO | \
+ 			     ETH_SETTINGS_IM_LINKMODES | \
+ 			     ETH_SETTINGS_IM_WOLINFO | \
+ 			     ETH_SETTINGS_IM_MSGLEVEL | \
+-			     ETH_SETTINGS_IM_LINK)
++			     ETH_SETTINGS_IM_LINK | \
++			     ETH_SETTINGS_IM_FEATURES)
+ 
+ enum {
+ 	ETHA_LINKINFO_UNSPEC,
+@@ -241,6 +244,17 @@ enum {
+ 	ETHA_WOL_MAX = (__ETHA_WOL_CNT - 1)
+ };
+ 
 +enum {
 +	ETHA_FEATURES_UNSPEC,
 +	ETHA_FEATURES_HW,			/* bitset */
@@ -149,9 +160,10 @@ index 439b1964fce8..a020a14f34db 100644
 +	__ETHA_FEATURES_CNT,
 +	ETHA_FEATURES_MAX = (__ETHA_FEATURES_CNT - 1)
 +};
- 
- enum {
- 	ETHA_LINKINFO_UNSPEC,
++
+ /* generic netlink info */
+ #define ETHTOOL_GENL_NAME "ethtool"
+ #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
 index e5b5c5c2a4b9..cf0b81af2d9f 100644
 --- a/net/ethtool/common.h

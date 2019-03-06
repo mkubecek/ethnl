@@ -1,4 +1,4 @@
-From 7244305079ec3309149be93902cbf868a61bbf70 Mon Sep 17 00:00:00 2001
+From 0c055510a07eba5bba747c0377b51174eaa0cf5b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 13/34] ethtool: provide driver/device information in GET_INFO
@@ -93,7 +93,7 @@ index 665337312bd0..3918a695f272 100644
  ETHTOOL_GWOL			n/a
  ETHTOOL_SWOL			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 66aeb436b822..2fcbd7c98876 100644
+index 66aeb436b822..386d4273ac44 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -16,6 +16,8 @@ enum {
@@ -122,9 +122,9 @@ index 66aeb436b822..2fcbd7c98876 100644
 +	ETHA_INFO_MAX = (__ETHA_INFO_CNT - 1)
 +};
 +
-+#define ETH_INFO_IM_DRVINFO			0x01
++#define ETH_INFO_IM_DRVINFO			(1U << 0)
 +
-+#define ETH_INFO_IM_ALL				0x01
++#define ETH_INFO_IM_ALL (ETH_INFO_IM_DRVINFO)
 +
 +enum {
 +	ETHA_DRVINFO_UNSPEC,

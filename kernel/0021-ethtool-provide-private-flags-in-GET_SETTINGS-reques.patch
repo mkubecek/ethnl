@@ -1,4 +1,4 @@
-From 8fc54beff8bdc8e68268119d023bfe52f05ab83d Mon Sep 17 00:00:00 2001
+From 7486d8269bd856b8fcaca496ea218decf81f5b88 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 16:19:21 +0100
 Subject: [PATCH 21/34] ethtool: provide private flags in GET_SETTINGS request
@@ -10,9 +10,9 @@ ETH_SETTINGS_IM_PRIVFLAGS flag is set in the request.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  9 +-
- include/uapi/linux/ethtool_netlink.h         |  4 +-
+ include/uapi/linux/ethtool_netlink.h         |  5 +-
  net/ethtool/settings.c                       | 98 ++++++++++++++++++++
- 3 files changed, 109 insertions(+), 2 deletions(-)
+ 3 files changed, 110 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index c4073a856ce0..3efdbd47117a 100644
@@ -56,10 +56,10 @@ index c4073a856ce0..3efdbd47117a 100644
  ETHTOOL_GRXFH			n/a
  ETHTOOL_SRXFH			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index a020a14f34db..06956150886a 100644
+index 8cc5108ce66c..24d4287ccd79 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -200,6 +200,7 @@ enum {
+@@ -201,6 +201,7 @@ enum {
  	ETHA_SETTINGS_MSGLEVEL,			/* bitfield32 */
  	ETHA_SETTINGS_LINK,			/* u8 */
  	ETHA_SETTINGS_FEATURES,			/* nest - ETHA_FEATURES_* */
@@ -67,17 +67,23 @@ index a020a14f34db..06956150886a 100644
  
  	__ETHA_SETTINGS_CNT,
  	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
-@@ -211,8 +212,9 @@ enum {
- #define ETH_SETTINGS_IM_MSGLEVEL		0x08
- #define ETH_SETTINGS_IM_LINK			0x10
- #define ETH_SETTINGS_IM_FEATURES		0x20
-+#define ETH_SETTINGS_IM_PRIVFLAGS		0x40
+@@ -212,13 +213,15 @@ enum {
+ #define ETH_SETTINGS_IM_MSGLEVEL		(1U << 3)
+ #define ETH_SETTINGS_IM_LINK			(1U << 4)
+ #define ETH_SETTINGS_IM_FEATURES		(1U << 5)
++#define ETH_SETTINGS_IM_PRIVFLAGS		(1U << 6)
  
--#define ETH_SETTINGS_IM_ALL			0x3f
-+#define ETH_SETTINGS_IM_ALL			0x7f
+ #define ETH_SETTINGS_IM_ALL (ETH_SETTINGS_IM_LINKINFO | \
+ 			     ETH_SETTINGS_IM_LINKMODES | \
+ 			     ETH_SETTINGS_IM_WOLINFO | \
+ 			     ETH_SETTINGS_IM_MSGLEVEL | \
+ 			     ETH_SETTINGS_IM_LINK | \
+-			     ETH_SETTINGS_IM_FEATURES)
++			     ETH_SETTINGS_IM_FEATURES | \
++			     ETH_SETTINGS_IM_PRIVFLAGS)
  
  enum {
- 	ETHA_FEATURES_UNSPEC,
+ 	ETHA_LINKINFO_UNSPEC,
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 index a3d734de4062..fc71b7e83eff 100644
 --- a/net/ethtool/settings.c

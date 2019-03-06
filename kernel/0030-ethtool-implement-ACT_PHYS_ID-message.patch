@@ -1,4 +1,4 @@
-From aa9abe0ab7f42b93b46e272398527c4ffec9e7af Mon Sep 17 00:00:00 2001
+From 78be0ade559d14e47e025eaef8d24ccc72a0814b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 30/34] ethtool: implement ACT_PHYS_ID message
@@ -63,7 +63,7 @@ index a458e1ce2459..5544f83fcd80 100644
  ETHTOOL_GTSO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_STSO			ETHNL_CMD_SET_SETTINGS
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 55f933262539..13a570134dd4 100644
+index cdddf6ab497f..a2e765df2c5d 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -23,6 +23,7 @@ enum {
@@ -74,7 +74,7 @@ index 55f933262539..13a570134dd4 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -382,6 +383,17 @@ enum {
+@@ -394,6 +395,17 @@ enum {
  	ETHA_NWAYRST_MAX = (__ETHA_NWAYRST_CNT - 1)
  };
  

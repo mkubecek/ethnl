@@ -1,4 +1,4 @@
-From 0a7174c58ccf95dae5ee0ef7b4a99a5df60a4fb3 Mon Sep 17 00:00:00 2001
+From 09b4f9b5d310c0c7d59980653916e493e0881019 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 32/34] ethtool: implement GET_RXFLOW message
@@ -17,11 +17,11 @@ for a device and potentially also RSS context.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt | 122 ++++-
- include/uapi/linux/ethtool_netlink.h         |  97 ++++
+ include/uapi/linux/ethtool_netlink.h         | 101 ++++
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/netlink.c                        |   9 +
  net/ethtool/rxflow.c                         | 463 +++++++++++++++++++
- 5 files changed, 688 insertions(+), 5 deletions(-)
+ 5 files changed, 692 insertions(+), 5 deletions(-)
  create mode 100644 net/ethtool/rxflow.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -189,7 +189,7 @@ index 7a6cb997b39f..ad58c8f9e366 100644
  ETHTOOL_GTUNABLE		n/a
  ETHTOOL_STUNABLE		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 4d6d8e0b1340..c7f0a2543174 100644
+index 535e9fff11e7..6c627266d1d7 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -25,6 +25,8 @@ enum {
@@ -201,7 +201,7 @@ index 4d6d8e0b1340..c7f0a2543174 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -410,6 +412,101 @@ enum {
+@@ -422,6 +424,105 @@ enum {
  	ETHA_RESET_MAX = (__ETHA_RESET_CNT - 1)
  };
  
@@ -225,13 +225,17 @@ index 4d6d8e0b1340..c7f0a2543174 100644
 +	ETHA_RXFLOW_MAX = (__ETHA_RXFLOW_CNT - 1)
 +};
 +
-+#define ETH_RXFLOW_IM_INFO			0x01
-+#define ETH_RXFLOW_IM_HASHFN			0x02
-+#define ETH_RXFLOW_IM_HKEY			0x04
-+#define ETH_RXFLOW_IM_HASHOPTS			0x08
-+#define ETH_RXFLOW_IM_INDTBL			0x10
++#define ETH_RXFLOW_IM_INFO			(1U << 0)
++#define ETH_RXFLOW_IM_HASHFN			(1U << 1)
++#define ETH_RXFLOW_IM_HKEY			(1U << 2)
++#define ETH_RXFLOW_IM_HASHOPTS			(1U << 3)
++#define ETH_RXFLOW_IM_INDTBL			(1U << 4)
 +
-+#define ETH_RXFLOW_IM_ALL			0x1f
++#define ETH_RXFLOW_IM_ALL (ETH_RXFLOW_IM_INFO | \
++			   ETH_RXFLOW_IM_HASHFN | \
++			   ETH_RXFLOW_IM_HKEY | \
++			   ETH_RXFLOW_IM_HASHOPTS | \
++			   ETH_RXFLOW_IM_INDTBL)
 +
 +enum {
 +	ETH_RXFLOW_CTXOP_SET,			/* set context data */

@@ -1,4 +1,4 @@
-From c51c953df1b2d44bba9442ca6f06265739d05e19 Mon Sep 17 00:00:00 2001
+From 3a2a43b4df908fa3b1439fd23593a4ab3ae24ffc Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 23/34] ethtool: implement SET_SETTINGS message

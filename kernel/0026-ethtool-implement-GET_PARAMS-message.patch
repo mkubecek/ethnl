@@ -1,4 +1,4 @@
-From 7bd21104cc8500320c1e30993480d5f9f994efe0 Mon Sep 17 00:00:00 2001
+From 8729473c4ef229b74bb6c277c849b060b3547429 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
 Subject: [PATCH 26/34] ethtool: implement GET_PARAMS message
@@ -10,12 +10,12 @@ Flags in info_mask allow selecting only some (or on) of these categories.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt | 107 ++++-
- include/uapi/linux/ethtool_netlink.h         | 119 +++++
+ include/uapi/linux/ethtool_netlink.h         | 124 +++++
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/netlink.c                        |   9 +
  net/ethtool/netlink.h                        |   1 +
  net/ethtool/params.c                         | 479 +++++++++++++++++++
- 6 files changed, 710 insertions(+), 7 deletions(-)
+ 6 files changed, 715 insertions(+), 7 deletions(-)
  create mode 100644 net/ethtool/params.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -172,7 +172,7 @@ index 7393d1bb5606..340f7958fbf1 100644
 +ETHTOOL_GFECPARAM		ETHNL_CMD_GET_PARAMS
  ETHTOOL_SFECPARAM		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 087b7b167581..41ea7f1d3077 100644
+index bd92a2624ad6..9e6b66f61211 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -20,6 +20,8 @@ enum {
@@ -184,8 +184,8 @@ index 087b7b167581..41ea7f1d3077 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -252,6 +254,123 @@ enum {
- 	ETHA_WOL_MAX = (__ETHA_WOL_CNT - 1)
+@@ -259,6 +261,128 @@ enum {
+ 	ETHA_FEATURES_MAX = (__ETHA_FEATURES_CNT - 1)
  };
  
 +/* GET_PARAMS / SET_PARAMS */
@@ -206,14 +206,19 @@ index 087b7b167581..41ea7f1d3077 100644
 +	ETHA_PARAMS_MAX = (__ETHA_PARAMS_CNT - 1)
 +};
 +
-+#define ETH_PARAMS_IM_COALESCE			0x01
-+#define ETH_PARAMS_IM_RING			0x02
-+#define ETH_PARAMS_IM_PAUSE			0x04
-+#define ETH_PARAMS_IM_CHANNELS			0x08
-+#define ETH_PARAMS_IM_EEE			0x10
-+#define ETH_PARAMS_IM_FEC			0x20
++#define ETH_PARAMS_IM_COALESCE			(1U << 0)
++#define ETH_PARAMS_IM_RING			(1U << 1)
++#define ETH_PARAMS_IM_PAUSE			(1U << 2)
++#define ETH_PARAMS_IM_CHANNELS			(1U << 3)
++#define ETH_PARAMS_IM_EEE			(1U << 4)
++#define ETH_PARAMS_IM_FEC			(1U << 5)
 +
-+#define ETH_PARAMS_IM_ALL			0x3f
++#define ETH_PARAMS_IM_ALL (ETH_PARAMS_IM_COALESCE | \
++			   ETH_PARAMS_IM_RING | \
++			   ETH_PARAMS_IM_PAUSE | \
++			   ETH_PARAMS_IM_CHANNELS | \
++			   ETH_PARAMS_IM_EEE | \
++			   ETH_PARAMS_IM_FEC)
 +
 +enum {
 +	ETHA_COALESCE_UNSPEC,

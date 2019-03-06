@@ -1,4 +1,4 @@
-From c147f70161003c90a16a35db680aba12df3d9d5e Mon Sep 17 00:00:00 2001
+From 9f90196244e53495fdf2ebe85e93ced1df6ae3fa Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 29/34] ethtool: implement ACT_NWAY_RST message
@@ -60,7 +60,7 @@ index 80dd756c579f..a458e1ce2459 100644
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 41ea7f1d3077..55f933262539 100644
+index 9e6b66f61211..cdddf6ab497f 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -22,6 +22,7 @@ enum {
@@ -71,7 +71,7 @@ index 41ea7f1d3077..55f933262539 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -371,6 +372,16 @@ enum {
+@@ -383,6 +384,16 @@ enum {
  	ETHA_FEC_MAX = (__ETHA_FEC_CNT - 1)
  };
  
