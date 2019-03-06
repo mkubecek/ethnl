@@ -1,7 +1,7 @@
-From c9b973f56dfadb3d7e52df328e0b1c170997c28b Mon Sep 17 00:00:00 2001
+From c4cfc5b7e8dbd48113167d2b6b3fa12d7dd98023 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:08:21 +0100
-Subject: [PATCH 21/35] netlink: add netlink handler for geee (--show-eee)
+Subject: [PATCH 20/34] netlink: add netlink handler for geee (--show-eee)
 
 Implement "ethtool --show-eee <dev>" subcommand using netlink interface
 command ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_EEE mask.
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 74 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 28d7654a92ef..3961d6095d5c 100644
+index 96b33630448f..015ada5bdd27 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4851,6 +4851,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4850,6 +4850,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gring	NULL
  #define nl_gpause	NULL
  #define nl_gchannels	NULL
@@ -26,7 +26,7 @@ index 28d7654a92ef..3961d6095d5c 100644
  #endif
  
  static const struct option {
-@@ -5021,7 +5022,7 @@ static const struct option {
+@@ -5020,7 +5021,7 @@ static const struct option {
  	  "		[ hex on|off ]\n"
  	  "		[ offset N ]\n"
  	  "		[ length N ]\n" },
@@ -36,10 +36,10 @@ index 28d7654a92ef..3961d6095d5c 100644
  	{ "--set-eee", 1, do_seee, NULL,
  	  "Set EEE settings",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index a4ba6f3fbbac..3440940478b9 100644
+index 2ca01fb4c9ea..2d0ce8649052 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -26,6 +26,7 @@ int nl_gcoalesce(struct cmd_context *ctx);
+@@ -25,6 +25,7 @@ int nl_gcoalesce(struct cmd_context *ctx);
  int nl_gring(struct cmd_context *ctx);
  int nl_gpause(struct cmd_context *ctx);
  int nl_gchannels(struct cmd_context *ctx);
@@ -152,5 +152,5 @@ index 81547492532f..55138b6fdc83 100644
 +	return params_request(ctx, ETH_PARAMS_IM_EEE);
 +}
 -- 
-2.20.1
+2.21.0
 

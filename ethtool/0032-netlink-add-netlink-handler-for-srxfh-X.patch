@@ -1,7 +1,7 @@
-From 5dca3921ee4ac3242914386c8846eaf8046c25d6 Mon Sep 17 00:00:00 2001
+From 68968298ad670aed185d2c73cdafded6b347b68e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:24:40 +0200
-Subject: [PATCH 33/35] netlink: add netlink handler for srxfh (-X)
+Subject: [PATCH 32/34] netlink: add netlink handler for srxfh (-X)
 
 Implement "ethtool -X <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_RXFLOW.
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 341 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 57acd93fcf4d..422f448f1225 100644
+index 83183c106086..26b44182fd51 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4863,6 +4863,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4862,6 +4862,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_phys_id	NULL
  #define nl_reset	NULL
  #define nl_grxfh	NULL
@@ -26,7 +26,7 @@ index 57acd93fcf4d..422f448f1225 100644
  #endif
  
  static const struct option {
-@@ -4996,7 +4997,7 @@ static const struct option {
+@@ -4995,7 +4996,7 @@ static const struct option {
  	{ "-x|--show-rxfh-indir|--show-rxfh", 1, do_grxfh, nl_grxfh,
  	  "Show Rx flow hash indirection table and/or RSS hash key",
  	  "		[ context %d ]\n" },
@@ -36,10 +36,10 @@ index 57acd93fcf4d..422f448f1225 100644
  	  "		[ context %d|new ]\n"
  	  "		[ equal N | weight W0 W1 ... | default ]\n"
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 4e818f791dd8..1262c53cfed8 100644
+index ef4981ce29c8..952a79e92188 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -38,6 +38,7 @@ int nl_nway_rst(struct cmd_context *ctx);
+@@ -37,6 +37,7 @@ int nl_nway_rst(struct cmd_context *ctx);
  int nl_phys_id(struct cmd_context *ctx);
  int nl_reset(struct cmd_context *ctx);
  int nl_grxfh(struct cmd_context *ctx);
@@ -419,5 +419,5 @@ index 55e8c650e4fd..81b4ff032e04 100644
 +	return ret;
 +}
 -- 
-2.20.1
+2.21.0
 

@@ -1,7 +1,7 @@
-From a8d4ea1ddd7d3d49d6010e0cb731b439042cb2d4 Mon Sep 17 00:00:00 2001
+From 9a441b14dc886a08656cc59218f44bfcadaf0625 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
-Subject: [PATCH 10/35] netlink: add netlink handler for gset (no option)
+Subject: [PATCH 09/34] netlink: add netlink handler for gset (no option)
 
 Implement "ethtool <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_SETTINGS.
@@ -395,7 +395,7 @@ index 7c08ec2d7c2f..37edac765e65 100644
 +
  #endif /* ETHTOOL_COMMON_H__ */
 diff --git a/ethtool.c b/ethtool.c
-index 1a81014c1325..b79a1c508eb9 100644
+index 0025b797dc39..f5aced24ce47 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -57,26 +57,6 @@
@@ -602,15 +602,15 @@ index 1a81014c1325..b79a1c508eb9 100644
  		flag_to_cmdline_info(flags_msglvl[i].name,
  				     flags_msglvl[i].value,
  				     &msglvl_wanted, &msglvl_mask,
-@@ -5024,6 +4886,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5023,6 +4885,7 @@ static int show_usage(struct cmd_context *ctx);
+  */
  #define nl_gdrv		NULL
- #define nl_permaddr	NULL
  #define nl_tsinfo	NULL
 +#define nl_gset		NULL
  #endif
  
  static const struct option {
-@@ -5362,6 +5225,7 @@ int main(int argc, char **argp)
+@@ -5361,6 +5224,7 @@ int main(int argc, char **argp)
  	}
  	if ((*argp)[0] == '-')
  		exit_bad_args();
@@ -619,12 +619,12 @@ index 1a81014c1325..b79a1c508eb9 100644
  	want_device = 1;
  
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 309c8c64a476..6a382161c3d2 100644
+index 9e9dfa11aead..5500835372b3 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -16,6 +16,7 @@ void netlink_done(struct cmd_context *ctx);
+@@ -15,6 +15,7 @@ void netlink_done(struct cmd_context *ctx);
+ 
  int nl_gdrv(struct cmd_context *ctx);
- int nl_permaddr(struct cmd_context *ctx);
  int nl_tsinfo(struct cmd_context *ctx);
 +int nl_gset(struct cmd_context *ctx);
  int nl_monitor(struct cmd_context *ctx);
@@ -1138,5 +1138,5 @@ index 000000000000..331f199066ea
 +	return (ret < 0) ? 75 : 0;
 +}
 -- 
-2.20.1
+2.21.0
 

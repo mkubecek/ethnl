@@ -1,7 +1,7 @@
-From 7b3b12d936366aaa9d4130c273617c4aff89a7d0 Mon Sep 17 00:00:00 2001
+From 8b1d0ee4c6a8536c1115d3a43410ab07698cbd82 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:46:58 +0200
-Subject: [PATCH 32/35] netlink: add netlink handler for grxfh (-x)
+Subject: [PATCH 31/34] netlink: add netlink handler for grxfh (-x)
 
 Implement "ethtool -x <dev>" subcommand using netlink interface comand
 ETHNL_CMD_GET_RXFLOW.
@@ -29,10 +29,10 @@ index 80b973c7f04c..51b6957bd1af 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 13d7bc1b7960..57acd93fcf4d 100644
+index bd45d6db8fc1..83183c106086 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4862,6 +4862,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4861,6 +4861,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_nway_rst	NULL
  #define nl_phys_id	NULL
  #define nl_reset	NULL
@@ -40,7 +40,7 @@ index 13d7bc1b7960..57acd93fcf4d 100644
  #endif
  
  static const struct option {
-@@ -4992,7 +4993,7 @@ static const struct option {
+@@ -4991,7 +4992,7 @@ static const struct option {
  	  "		delete %d\n" },
  	{ "-T|--show-time-stamping", 1, do_tsinfo, nl_tsinfo,
  	  "Show time stamping capabilities" },
@@ -50,10 +50,10 @@ index 13d7bc1b7960..57acd93fcf4d 100644
  	  "		[ context %d ]\n" },
  	{ "-X|--set-rxfh-indir|--rxfh", 1, do_srxfh, NULL,
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index bec82d9dd4a4..4e818f791dd8 100644
+index 57f2267da967..ef4981ce29c8 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -37,6 +37,7 @@ int nl_sfec(struct cmd_context *ctx);
+@@ -36,6 +36,7 @@ int nl_sfec(struct cmd_context *ctx);
  int nl_nway_rst(struct cmd_context *ctx);
  int nl_phys_id(struct cmd_context *ctx);
  int nl_reset(struct cmd_context *ctx);
@@ -353,5 +353,5 @@ index 000000000000..55e8c650e4fd
 +}
 +
 -- 
-2.20.1
+2.21.0
 

@@ -1,7 +1,7 @@
-From 6abef4f6a7db44567b54eaee042071c3840b4389 Mon Sep 17 00:00:00 2001
+From d35e6a0e67b87bb3ba742f4526e0eca8a89f83ad Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:20:18 +0200
-Subject: [PATCH 15/35] netlink: add netlink handler for gprivflags
+Subject: [PATCH 14/34] netlink: add netlink handler for gprivflags
  (--show-priv-flags)
 
 Implement "ethtool --show-priv-flags <dev>" subcommand using netlink
@@ -17,10 +17,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 70 insertions(+), 2 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 2f5fe5540e0c..b68836b778e8 100644
+index a9dc1a8001a2..51d86529a23c 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4845,6 +4845,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4844,6 +4844,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sset		NULL
  #define nl_gfeatures	NULL
  #define nl_sfeatures	NULL
@@ -28,7 +28,7 @@ index 2f5fe5540e0c..b68836b778e8 100644
  #endif
  
  static const struct option {
-@@ -5004,7 +5005,7 @@ static const struct option {
+@@ -5003,7 +5004,7 @@ static const struct option {
  	  "               [ tx N ]\n"
  	  "               [ other N ]\n"
  	  "               [ combined N ]\n" },
@@ -38,10 +38,10 @@ index 2f5fe5540e0c..b68836b778e8 100644
  	{ "--set-priv-flags", 1, do_sprivflags, NULL,
  	  "Set private flags",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 9e41f94ff000..8457efffec48 100644
+index d0199cb440f8..ce5fde1ddc35 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -20,6 +20,7 @@ int nl_gset(struct cmd_context *ctx);
+@@ -19,6 +19,7 @@ int nl_gset(struct cmd_context *ctx);
  int nl_sset(struct cmd_context *ctx);
  int nl_gfeatures(struct cmd_context *ctx);
  int nl_sfeatures(struct cmd_context *ctx);
@@ -166,5 +166,5 @@ index 209817c7c288..bda2ac2120b0 100644
  
  enum {
 -- 
-2.20.1
+2.21.0
 

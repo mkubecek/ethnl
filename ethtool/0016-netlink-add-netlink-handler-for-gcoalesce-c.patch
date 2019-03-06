@@ -1,7 +1,7 @@
-From ebd0a01a23fa0f50d574b6057dc5583355e296b4 Mon Sep 17 00:00:00 2001
+From b15c5ccb0863b4fcdf38c7a419fac6ef6a1fde95 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
-Subject: [PATCH 17/35] netlink: add netlink handler for gcoalesce (-c)
+Subject: [PATCH 16/34] netlink: add netlink handler for gcoalesce (-c)
 
 Implement "ethtool -c <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_COALESCE mask.
@@ -30,10 +30,10 @@ index 150c367a159d..3ec12cf11591 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index ecdf9e291e38..00926794c78f 100644
+index 8cdce301e71d..3bd31d01dda7 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4847,6 +4847,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4846,6 +4846,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sfeatures	NULL
  #define nl_gprivflags	NULL
  #define nl_sprivflags	NULL
@@ -41,7 +41,7 @@ index ecdf9e291e38..00926794c78f 100644
  #endif
  
  static const struct option {
-@@ -4877,7 +4878,7 @@ static const struct option {
+@@ -4876,7 +4877,7 @@ static const struct option {
  	  "		[ autoneg on|off ]\n"
  	  "		[ rx on|off ]\n"
  	  "		[ tx on|off ]\n" },
@@ -51,10 +51,10 @@ index ecdf9e291e38..00926794c78f 100644
  	{ "-C|--coalesce", 1, do_scoalesce, NULL,
  	  "Set coalesce options",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 4155d1cffc24..3efccb2fda52 100644
+index f89c6d0e169c..a63f79eee2c8 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -22,6 +22,7 @@ int nl_gfeatures(struct cmd_context *ctx);
+@@ -21,6 +21,7 @@ int nl_gfeatures(struct cmd_context *ctx);
  int nl_sfeatures(struct cmd_context *ctx);
  int nl_gprivflags(struct cmd_context *ctx);
  int nl_sprivflags(struct cmd_context *ctx);
@@ -205,5 +205,5 @@ index 000000000000..30aee5758c42
 +	return params_request(ctx, ETH_PARAMS_IM_COALESCE);
 +}
 -- 
-2.20.1
+2.21.0
 

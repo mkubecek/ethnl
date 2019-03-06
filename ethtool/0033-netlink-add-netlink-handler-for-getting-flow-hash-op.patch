@@ -1,7 +1,7 @@
-From 51c76f51e0145d247d12223f9507ae7ddb502831 Mon Sep 17 00:00:00 2001
+From 753df4a698a241aefab3061713859da978ca4f7f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 7 Oct 2018 19:50:11 +0200
-Subject: [PATCH 34/35] netlink: add netlink handler for getting flow hash
+Subject: [PATCH 33/34] netlink: add netlink handler for getting flow hash
  options (-n rx-flow-hash)
 
 Implement "ethtool -n <dev> rx-flow-hash" subcommand using netlink
@@ -16,10 +16,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 192 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 422f448f1225..b988421aafad 100644
+index 26b44182fd51..1922bef374e7 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4864,6 +4864,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4863,6 +4863,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_reset	NULL
  #define nl_grxfh	NULL
  #define nl_srxfh	NULL
@@ -27,7 +27,7 @@ index 422f448f1225..b988421aafad 100644
  #endif
  
  static const struct option {
-@@ -4962,7 +4963,7 @@ static const struct option {
+@@ -4961,7 +4962,7 @@ static const struct option {
  	  "Show adapter statistics" },
  	{ "--phy-statistics", 1, do_gphystats, NULL,
  	  "Show phy statistics" },
@@ -37,10 +37,10 @@ index 422f448f1225..b988421aafad 100644
  	  "		[ rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 [context %d] |\n"
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 1262c53cfed8..daac8d199b03 100644
+index 952a79e92188..30ec79f0e94e 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -39,6 +39,7 @@ int nl_phys_id(struct cmd_context *ctx);
+@@ -38,6 +38,7 @@ int nl_phys_id(struct cmd_context *ctx);
  int nl_reset(struct cmd_context *ctx);
  int nl_grxfh(struct cmd_context *ctx);
  int nl_srxfh(struct cmd_context *ctx);
@@ -270,5 +270,5 @@ index 81b4ff032e04..55ed350210c2 100644
  
  struct indtbl_weights {
 -- 
-2.20.1
+2.21.0
 

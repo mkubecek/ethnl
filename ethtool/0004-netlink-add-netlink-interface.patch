@@ -1,7 +1,7 @@
-From a9292cc03df5f231b6f46daec858f05dec5cd070 Mon Sep 17 00:00:00 2001
+From af1b2befb425def5dc392b891030beded1b96529 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
-Subject: [PATCH 04/35] netlink: add netlink interface
+Subject: [PATCH 04/34] netlink: add netlink interface
 
 Add basic netlink interface based on genetlink and libmnl. This commit only
 adds the generic infrastructure but does not override any ethtool command
@@ -28,11 +28,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  netlink/netlink.c            | 721 +++++++++++++++++++++++++++++++++++
  netlink/netlink.h            | 158 ++++++++
  uapi/linux/ethtool.h         |  13 +
- uapi/linux/ethtool_netlink.h | 521 +++++++++++++++++++++++++
+ uapi/linux/ethtool_netlink.h | 532 ++++++++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 +++++
  uapi/linux/net_tstamp.h      |  13 +
  uapi/linux/netlink.h         | 248 ++++++++++++
- 14 files changed, 1954 insertions(+), 64 deletions(-)
+ 14 files changed, 1965 insertions(+), 64 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
  create mode 100644 netlink/extapi.h
@@ -1477,11 +1477,17 @@ index 02b3300a4e28..b22160143599 100644
  
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..563ca37e0994
+index 000000000000..a8611a9a5168
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,521 @@
+@@ -0,0 +1,532 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
++/*
++ * include/uapi/linux/ethtool_netlink.h - netlink interface for ethtool
++ *
++ * See Documentation/networking/ethtool-netlink.txt in kernel source tree for
++ * doucumentation of the interface.
++ */
 +
 +#ifndef _LINUX_ETHTOOL_NETLINK_H_
 +#define _LINUX_ETHTOOL_NETLINK_H_
@@ -1637,18 +1643,17 @@ index 000000000000..563ca37e0994
 +	ETHA_INFO_INFOMASK,			/* u32 */
 +	ETHA_INFO_COMPACT,			/* flag */
 +	ETHA_INFO_DRVINFO,			/* nest - ETHA_DRVINFO_* */
-+	ETHA_INFO_PERMADDR,			/* nest - ETHA_PERMADDR_* */
 +	ETHA_INFO_TSINFO,			/* nest - ETHA_TSINFO_* */
 +
 +	__ETHA_INFO_CNT,
 +	ETHA_INFO_MAX = (__ETHA_INFO_CNT - 1)
 +};
 +
-+#define ETH_INFO_IM_DRVINFO			0x01
-+#define ETH_INFO_IM_PERMADDR			0x02
-+#define ETH_INFO_IM_TSINFO			0x04
++#define ETH_INFO_IM_DRVINFO			(1U << 0)
++#define ETH_INFO_IM_TSINFO			(1U << 1)
 +
-+#define ETH_INFO_IM_ALL				0x07
++#define ETH_INFO_IM_ALL (ETH_INFO_IM_DRVINFO | \
++			 ETH_INFO_IM_TSINFO)
 +
 +enum {
 +	ETHA_DRVINFO_UNSPEC,
@@ -1659,15 +1664,6 @@ index 000000000000..563ca37e0994
 +
 +	__ETHA_DRVINFO_CNT,
 +	ETHA_DRVINFO_MAX = (__ETHA_DRVINFO_CNT - 1)
-+};
-+
-+enum {
-+	ETHA_PERMADDR_UNSPEC,
-+	ETHA_PERMADDR_ADDRESS,			/* binary */
-+	ETHA_PERMADDR_TYPE,			/* u16 */
-+
-+	__ETHA_PERMADDR_CNT,
-+	ETHA_PERMADDR_MAX = (__ETHA_PERMADDR_CNT - 1)
 +};
 +
 +enum {
@@ -1701,27 +1697,21 @@ index 000000000000..563ca37e0994
 +	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
 +};
 +
-+#define ETH_SETTINGS_IM_LINKINFO		0x01
-+#define ETH_SETTINGS_IM_LINKMODES		0x02
-+#define ETH_SETTINGS_IM_WOLINFO			0x04
-+#define ETH_SETTINGS_IM_MSGLEVEL		0x08
-+#define ETH_SETTINGS_IM_LINK			0x10
-+#define ETH_SETTINGS_IM_FEATURES		0x20
-+#define ETH_SETTINGS_IM_PRIVFLAGS		0x40
++#define ETH_SETTINGS_IM_LINKINFO		(1U << 0)
++#define ETH_SETTINGS_IM_LINKMODES		(1U << 1)
++#define ETH_SETTINGS_IM_WOLINFO			(1U << 2)
++#define ETH_SETTINGS_IM_MSGLEVEL		(1U << 3)
++#define ETH_SETTINGS_IM_LINK			(1U << 4)
++#define ETH_SETTINGS_IM_FEATURES		(1U << 5)
++#define ETH_SETTINGS_IM_PRIVFLAGS		(1U << 6)
 +
-+#define ETH_SETTINGS_IM_ALL			0x7f
-+
-+enum {
-+	ETHA_FEATURES_UNSPEC,
-+	ETHA_FEATURES_HW,			/* bitset */
-+	ETHA_FEATURES_WANTED,			/* bitset */
-+	ETHA_FEATURES_ACTIVE,			/* bitset */
-+	ETHA_FEATURES_NOCHANGE,			/* bitset */
-+	ETHA_FEATURES_WANT_DIFF,		/* flag */
-+
-+	__ETHA_FEATURES_CNT,
-+	ETHA_FEATURES_MAX = (__ETHA_FEATURES_CNT - 1)
-+};
++#define ETH_SETTINGS_IM_ALL (ETH_SETTINGS_IM_LINKINFO | \
++			     ETH_SETTINGS_IM_LINKMODES | \
++			     ETH_SETTINGS_IM_WOLINFO | \
++			     ETH_SETTINGS_IM_MSGLEVEL | \
++			     ETH_SETTINGS_IM_LINK | \
++			     ETH_SETTINGS_IM_FEATURES | \
++			     ETH_SETTINGS_IM_PRIVFLAGS)
 +
 +enum {
 +	ETHA_LINKINFO_UNSPEC,
@@ -1747,6 +1737,18 @@ index 000000000000..563ca37e0994
 +	ETHA_WOL_MAX = (__ETHA_WOL_CNT - 1)
 +};
 +
++enum {
++	ETHA_FEATURES_UNSPEC,
++	ETHA_FEATURES_HW,			/* bitset */
++	ETHA_FEATURES_WANTED,			/* bitset */
++	ETHA_FEATURES_ACTIVE,			/* bitset */
++	ETHA_FEATURES_NOCHANGE,			/* bitset */
++	ETHA_FEATURES_WANT_DIFF,		/* flag */
++
++	__ETHA_FEATURES_CNT,
++	ETHA_FEATURES_MAX = (__ETHA_FEATURES_CNT - 1)
++};
++
 +/* GET_PARAMS / SET_PARAMS */
 +
 +enum {
@@ -1765,14 +1767,19 @@ index 000000000000..563ca37e0994
 +	ETHA_PARAMS_MAX = (__ETHA_PARAMS_CNT - 1)
 +};
 +
-+#define ETH_PARAMS_IM_COALESCE			0x01
-+#define ETH_PARAMS_IM_RING			0x02
-+#define ETH_PARAMS_IM_PAUSE			0x04
-+#define ETH_PARAMS_IM_CHANNELS			0x08
-+#define ETH_PARAMS_IM_EEE			0x10
-+#define ETH_PARAMS_IM_FEC			0x20
++#define ETH_PARAMS_IM_COALESCE			(1U << 0)
++#define ETH_PARAMS_IM_RING			(1U << 1)
++#define ETH_PARAMS_IM_PAUSE			(1U << 2)
++#define ETH_PARAMS_IM_CHANNELS			(1U << 3)
++#define ETH_PARAMS_IM_EEE			(1U << 4)
++#define ETH_PARAMS_IM_FEC			(1U << 5)
 +
-+#define ETH_PARAMS_IM_ALL			0x3f
++#define ETH_PARAMS_IM_ALL (ETH_PARAMS_IM_COALESCE | \
++			   ETH_PARAMS_IM_RING | \
++			   ETH_PARAMS_IM_PAUSE | \
++			   ETH_PARAMS_IM_CHANNELS | \
++			   ETH_PARAMS_IM_EEE | \
++			   ETH_PARAMS_IM_FEC)
 +
 +enum {
 +	ETHA_COALESCE_UNSPEC,
@@ -1920,13 +1927,17 @@ index 000000000000..563ca37e0994
 +	ETHA_RXFLOW_MAX = (__ETHA_RXFLOW_CNT - 1)
 +};
 +
-+#define ETH_RXFLOW_IM_INFO			0x01
-+#define ETH_RXFLOW_IM_HASHFN			0x02
-+#define ETH_RXFLOW_IM_HKEY			0x04
-+#define ETH_RXFLOW_IM_HASHOPTS			0x08
-+#define ETH_RXFLOW_IM_INDTBL			0x10
++#define ETH_RXFLOW_IM_INFO			(1U << 0)
++#define ETH_RXFLOW_IM_HASHFN			(1U << 1)
++#define ETH_RXFLOW_IM_HKEY			(1U << 2)
++#define ETH_RXFLOW_IM_HASHOPTS			(1U << 3)
++#define ETH_RXFLOW_IM_INDTBL			(1U << 4)
 +
-+#define ETH_RXFLOW_IM_ALL			0x1f
++#define ETH_RXFLOW_IM_ALL (ETH_RXFLOW_IM_INFO | \
++			   ETH_RXFLOW_IM_HASHFN | \
++			   ETH_RXFLOW_IM_HKEY | \
++			   ETH_RXFLOW_IM_HASHOPTS | \
++			   ETH_RXFLOW_IM_INDTBL)
 +
 +enum {
 +	ETH_RXFLOW_CTXOP_SET,			/* set context data */
@@ -2390,5 +2401,5 @@ index 000000000000..2c28d329e595
 +
 +#endif /* __LINUX_NETLINK_H */
 -- 
-2.20.1
+2.21.0
 

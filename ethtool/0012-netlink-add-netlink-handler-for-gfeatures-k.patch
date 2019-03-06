@@ -1,7 +1,7 @@
-From 138e7dd560a5da1f624e65b8242321c59e243e31 Mon Sep 17 00:00:00 2001
+From 445bf225f0f0364327cd934dd57e1bb6aec9b920 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
-Subject: [PATCH 13/35] netlink: add netlink handler for gfeatures (-k)
+Subject: [PATCH 12/34] netlink: add netlink handler for gfeatures (-k)
 
 Implement "ethtool -k <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_SETTINGS with ETH_SETTINGS_IM_FEATURES mask.
@@ -90,7 +90,7 @@ index 37edac765e65..749bf389e9e1 100644
  extern const unsigned int link_modes_count;
  
 diff --git a/ethtool.c b/ethtool.c
-index ff9bff669efc..b1bc80134d18 100644
+index 3def8726df49..f6af98535cec 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -102,51 +102,6 @@ struct cmdline_info {
@@ -228,7 +228,7 @@ index ff9bff669efc..b1bc80134d18 100644
  			if (!off_flag_def[i].set_cmd)
  				continue;
  			if (off_flags_mask & off_flag_def[i].value) {
-@@ -4888,6 +4843,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4887,6 +4842,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_tsinfo	NULL
  #define nl_gset		NULL
  #define nl_sset		NULL
@@ -236,7 +236,7 @@ index ff9bff669efc..b1bc80134d18 100644
  #endif
  
  static const struct option {
-@@ -4952,7 +4908,7 @@ static const struct option {
+@@ -4951,7 +4907,7 @@ static const struct option {
  	  "		[ rx-mini N ]\n"
  	  "		[ rx-jumbo N ]\n"
  	  "		[ tx N ]\n" },
@@ -246,10 +246,10 @@ index ff9bff669efc..b1bc80134d18 100644
  	{ "-K|--features|--offload", 1, do_sfeatures, NULL,
  	  "Set protocol offload and other features",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index c8709ccfca48..f581a7b7e7d1 100644
+index 4f9e60c2fca8..f4bbb0b456ef 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -18,6 +18,7 @@ int nl_permaddr(struct cmd_context *ctx);
+@@ -17,6 +17,7 @@ int nl_gdrv(struct cmd_context *ctx);
  int nl_tsinfo(struct cmd_context *ctx);
  int nl_gset(struct cmd_context *ctx);
  int nl_sset(struct cmd_context *ctx);
@@ -527,5 +527,5 @@ index afa0f65cbb1f..c9c11fb39622 100644
  
  enum {
 -- 
-2.20.1
+2.21.0
 

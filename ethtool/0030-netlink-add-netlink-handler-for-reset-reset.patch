@@ -1,7 +1,7 @@
-From 784e788802b8c5ffc8b1f362de6fd173d8dc3490 Mon Sep 17 00:00:00 2001
+From a772b6ab1768746f73ad6aba1ae96aee60224c77 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 08:43:44 +0200
-Subject: [PATCH 31/35] netlink: add netlink handler for reset (--reset)
+Subject: [PATCH 30/34] netlink: add netlink handler for reset (--reset)
 
 Implement "ethtool --reset <dev>" using netlink interface command
 ETHNL_CMD_ACT_RESET.
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 255 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index a7922f5aff4e..13d7bc1b7960 100644
+index d5292972b7b3..bd45d6db8fc1 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4861,6 +4861,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4860,6 +4860,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sfec		NULL
  #define nl_nway_rst	NULL
  #define nl_phys_id	NULL
@@ -26,7 +26,7 @@ index a7922f5aff4e..13d7bc1b7960 100644
  #endif
  
  static const struct option {
-@@ -5045,7 +5046,7 @@ static const struct option {
+@@ -5044,7 +5045,7 @@ static const struct option {
  	{ "--get-phy-tunable", 1, do_get_phy_tunable, NULL,
  	  "Get PHY tunable",
  	  "		[ downshift ]\n"},
@@ -294,10 +294,10 @@ index 160352ea8df3..316004a8d786 100644
 +	return ret;
 +}
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 7ce5c2aea641..bec82d9dd4a4 100644
+index c8c621ce6c21..57f2267da967 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -36,6 +36,7 @@ int nl_seee(struct cmd_context *ctx);
+@@ -35,6 +35,7 @@ int nl_seee(struct cmd_context *ctx);
  int nl_sfec(struct cmd_context *ctx);
  int nl_nway_rst(struct cmd_context *ctx);
  int nl_phys_id(struct cmd_context *ctx);
@@ -340,5 +340,5 @@ index 25664e192d1c..d9c67c9d9a43 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 -- 
-2.20.1
+2.21.0
 

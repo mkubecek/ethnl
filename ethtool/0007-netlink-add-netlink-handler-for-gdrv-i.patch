@@ -1,7 +1,7 @@
-From bbacb2f238b4ab6f1dc2c86a97864f6b5888f046 Mon Sep 17 00:00:00 2001
+From 88f039f21cf85f4db6119552371f25d99462f16a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
-Subject: [PATCH 07/35] netlink: add netlink handler for gdrv (-i)
+Subject: [PATCH 07/34] netlink: add netlink handler for gdrv (-i)
 
 Implement "-i" subcommand using netlink interface command
 ETHNL_CMD_GET_INFO.
@@ -272,5 +272,5 @@ index d02c0ac5339c..e8ad2f59a7c0 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 -- 
-2.20.1
+2.21.0
 

@@ -1,7 +1,7 @@
-From f359cf79898201dd619e342bdd342d3b757d03ec Mon Sep 17 00:00:00 2001
+From 9f7670a70381f194586ba21ee8b93f3104a0b8d6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:23:10 +0200
-Subject: [PATCH 16/35] netlink: add netlink handler for sprivflags
+Subject: [PATCH 15/34] netlink: add netlink handler for sprivflags
  (--set-priv-flags)
 
 Implement "ethtool --set-priv-flags <dev>" subcommand using netlink
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 36 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index b68836b778e8..ecdf9e291e38 100644
+index 51d86529a23c..8cdce301e71d 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4846,6 +4846,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4845,6 +4845,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gfeatures	NULL
  #define nl_sfeatures	NULL
  #define nl_gprivflags	NULL
@@ -26,7 +26,7 @@ index b68836b778e8..ecdf9e291e38 100644
  #endif
  
  static const struct option {
-@@ -5007,7 +5008,7 @@ static const struct option {
+@@ -5006,7 +5007,7 @@ static const struct option {
  	  "               [ combined N ]\n" },
  	{ "--show-priv-flags", 1, do_gprivflags, nl_gprivflags,
  	  "Query private flags" },
@@ -36,10 +36,10 @@ index b68836b778e8..ecdf9e291e38 100644
  	  "		FLAG on|off ...\n" },
  	{ "-m|--dump-module-eeprom|--module-info", 1, do_getmodule, NULL,
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 8457efffec48..4155d1cffc24 100644
+index ce5fde1ddc35..f89c6d0e169c 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -21,6 +21,7 @@ int nl_sset(struct cmd_context *ctx);
+@@ -20,6 +20,7 @@ int nl_sset(struct cmd_context *ctx);
  int nl_gfeatures(struct cmd_context *ctx);
  int nl_sfeatures(struct cmd_context *ctx);
  int nl_gprivflags(struct cmd_context *ctx);
@@ -89,5 +89,5 @@ index bda2ac2120b0..d7020ed8bf71 100644
 +		return nlctx->exit_code ?: 1;
 +}
 -- 
-2.20.1
+2.21.0
 

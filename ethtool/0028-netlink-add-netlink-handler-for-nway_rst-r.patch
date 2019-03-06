@@ -1,7 +1,7 @@
-From 53f1f2269f2cedaf67d166082a290c710fd35ce9 Mon Sep 17 00:00:00 2001
+From fa670326efbc466f74f2bdb957589f9f658d520d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:29:46 +0200
-Subject: [PATCH 29/35] netlink: add netlink handler for nway_rst (-r)
+Subject: [PATCH 28/34] netlink: add netlink handler for nway_rst (-r)
 
 Implement "ethtool -r <dev>" subcommand using netlink interface command
 ETHNL_CMD_ACT_NWAY_RST.
@@ -29,10 +29,10 @@ index 3ec12cf11591..80b973c7f04c 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 311e61cf49a2..5c8848683f33 100644
+index 4b220b6d61b9..120cbb798461 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4859,6 +4859,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4858,6 +4858,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_schannels	NULL
  #define nl_seee		NULL
  #define nl_sfec		NULL
@@ -40,7 +40,7 @@ index 311e61cf49a2..5c8848683f33 100644
  #endif
  
  static const struct option {
-@@ -4945,7 +4946,7 @@ static const struct option {
+@@ -4944,7 +4945,7 @@ static const struct option {
  	  "		[ offset N ]\n"
  	  "		[ length N ]\n"
  	  "		[ value N ]\n" },
@@ -110,10 +110,10 @@ index 000000000000..d1bbcd163549
 +	return ret;
 +}
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index fe4de28ca31c..c4381c92104f 100644
+index 40715beaf07f..b301964a5cf8 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -34,6 +34,7 @@ int nl_spause(struct cmd_context *ctx);
+@@ -33,6 +33,7 @@ int nl_spause(struct cmd_context *ctx);
  int nl_schannels(struct cmd_context *ctx);
  int nl_seee(struct cmd_context *ctx);
  int nl_sfec(struct cmd_context *ctx);
@@ -156,5 +156,5 @@ index 574ec0321336..6e44838efb34 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 -- 
-2.20.1
+2.21.0
 

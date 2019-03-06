@@ -1,7 +1,7 @@
-From c68b217bd8f35ad02451612f15bea489376376f9 Mon Sep 17 00:00:00 2001
+From 8e33cf8c155ac6410f908beccc841a3b598b5740 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:05:40 +0100
-Subject: [PATCH 20/35] netlink: add netlink handler for gchannels (-l)
+Subject: [PATCH 19/34] netlink: add netlink handler for gchannels (-l)
 
 Implement "ethtool -l <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_CHANNELS mask.
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 50 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 5e2d71016f29..28d7654a92ef 100644
+index 0f4498d0e5ac..96b33630448f 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4850,6 +4850,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4849,6 +4849,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gcoalesce	NULL
  #define nl_gring	NULL
  #define nl_gpause	NULL
@@ -26,7 +26,7 @@ index 5e2d71016f29..28d7654a92ef 100644
  #endif
  
  static const struct option {
-@@ -5001,7 +5002,7 @@ static const struct option {
+@@ -5000,7 +5001,7 @@ static const struct option {
  	{ "-W|--set-dump", 1, do_setfwdump, NULL,
  	  "Set dump flag of the device",
  	  "		N\n"},
@@ -36,10 +36,10 @@ index 5e2d71016f29..28d7654a92ef 100644
  	{ "-L|--set-channels", 1, do_schannels, NULL,
  	  "Set Channels",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 96d698c7ceff..a4ba6f3fbbac 100644
+index 24d19dde5fc3..2ca01fb4c9ea 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -25,6 +25,7 @@ int nl_sprivflags(struct cmd_context *ctx);
+@@ -24,6 +24,7 @@ int nl_sprivflags(struct cmd_context *ctx);
  int nl_gcoalesce(struct cmd_context *ctx);
  int nl_gring(struct cmd_context *ctx);
  int nl_gpause(struct cmd_context *ctx);
@@ -128,5 +128,5 @@ index b45aac166dcd..81547492532f 100644
 +	return params_request(ctx, ETH_PARAMS_IM_CHANNELS);
 +}
 -- 
-2.20.1
+2.21.0
 

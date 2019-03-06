@@ -1,7 +1,7 @@
-From afa9c297766fb0ccc5a8a93ae68465d73f2fcb75 Mon Sep 17 00:00:00 2001
+From 0489ce4135a9b61b2c08b20d6896bf3d9811b3b5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
-Subject: [PATCH 12/35] netlink: add netlink handler for sset (-s)
+Subject: [PATCH 11/34] netlink: add netlink handler for sset (-s)
 
 Implement "ethtool -s <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_SETTINGS.
@@ -21,18 +21,18 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  7 files changed, 223 insertions(+), 4 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index b79a1c508eb9..ff9bff669efc 100644
+index f5aced24ce47..3def8726df49 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4887,6 +4887,7 @@ static int show_usage(struct cmd_context *ctx);
- #define nl_permaddr	NULL
+@@ -4886,6 +4886,7 @@ static int show_usage(struct cmd_context *ctx);
+ #define nl_gdrv		NULL
  #define nl_tsinfo	NULL
  #define nl_gset		NULL
 +#define nl_sset		NULL
  #endif
  
  static const struct option {
-@@ -4897,19 +4898,19 @@ static const struct option {
+@@ -4896,19 +4897,19 @@ static const struct option {
  	char *help;
  	char *opthelp;
  } args[] = {
@@ -57,11 +57,11 @@ index b79a1c508eb9..ff9bff669efc 100644
  	  "Show pause options" },
  	{ "-A|--pause", 1, do_spause, NULL,
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 6a382161c3d2..c8709ccfca48 100644
+index 5500835372b3..4f9e60c2fca8 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -17,6 +17,7 @@ int nl_gdrv(struct cmd_context *ctx);
- int nl_permaddr(struct cmd_context *ctx);
+@@ -16,6 +16,7 @@ void netlink_done(struct cmd_context *ctx);
+ int nl_gdrv(struct cmd_context *ctx);
  int nl_tsinfo(struct cmd_context *ctx);
  int nl_gset(struct cmd_context *ctx);
 +int nl_sset(struct cmd_context *ctx);
@@ -345,5 +345,5 @@ index 331f199066ea..afa0f65cbb1f 100644
 +	return nlctx->exit_code ?: 75;
 +}
 -- 
-2.20.1
+2.21.0
 

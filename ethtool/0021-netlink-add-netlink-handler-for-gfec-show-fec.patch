@@ -1,7 +1,7 @@
-From 00be6f00da12375fbf2942e49215f5bb52a0f96d Mon Sep 17 00:00:00 2001
+From 732a6a83d8c3af2ff5fdb1da27949ccd2c038d34 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
-Subject: [PATCH 22/35] netlink: add netlink handler for gfec (--show-fec)
+Subject: [PATCH 21/34] netlink: add netlink handler for gfec (--show-fec)
 
 Implement "ethtool --show-fec <dev>" subcommand showing Forward Error
 Correction (FEC) settings using netlink interface command
@@ -52,10 +52,10 @@ index 749bf389e9e1..6c238701783f 100644
  
  enum link_mode_class {
 diff --git a/ethtool.c b/ethtool.c
-index 3961d6095d5c..6afd41989989 100644
+index 015ada5bdd27..72f9345d5368 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4852,6 +4852,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4851,6 +4851,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gpause	NULL
  #define nl_gchannels	NULL
  #define nl_geee		NULL
@@ -63,7 +63,7 @@ index 3961d6095d5c..6afd41989989 100644
  #endif
  
  static const struct option {
-@@ -5059,7 +5060,7 @@ static const struct option {
+@@ -5058,7 +5059,7 @@ static const struct option {
  	  "		[ ap-shared ]\n"
  	  "		[ dedicated ]\n"
  	  "		[ all ]\n"},
@@ -73,10 +73,10 @@ index 3961d6095d5c..6afd41989989 100644
  	{ "--set-fec", 1, do_sfec, NULL,
  	  "Set FEC settings",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 3440940478b9..6ceec5164dae 100644
+index 2d0ce8649052..c2676d492c75 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -27,6 +27,7 @@ int nl_gring(struct cmd_context *ctx);
+@@ -26,6 +26,7 @@ int nl_gring(struct cmd_context *ctx);
  int nl_gpause(struct cmd_context *ctx);
  int nl_gchannels(struct cmd_context *ctx);
  int nl_geee(struct cmd_context *ctx);
@@ -166,5 +166,5 @@ index 55138b6fdc83..51c3960d6d5d 100644
 +	return params_request(ctx, ETH_PARAMS_IM_FEC);
 +}
 -- 
-2.20.1
+2.21.0
 

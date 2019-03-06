@@ -1,7 +1,7 @@
-From 76f395077400c8722350be643380298350bf1032 Mon Sep 17 00:00:00 2001
+From bc156930c8f5a40a1a7d87deed14f894e17cdbbe Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:25:31 +0200
-Subject: [PATCH 14/35] netlink: add netlink handler for sfeatures (-K)
+Subject: [PATCH 13/34] netlink: add netlink handler for sfeatures (-K)
 
 Implement "ethtool -K <dev>" subcommand using netlink interface command
 ETHNL_CMD_SET_SETTINGS.
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 295 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index b1bc80134d18..2f5fe5540e0c 100644
+index f6af98535cec..a9dc1a8001a2 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4844,6 +4844,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4843,6 +4843,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gset		NULL
  #define nl_sset		NULL
  #define nl_gfeatures	NULL
@@ -32,7 +32,7 @@ index b1bc80134d18..2f5fe5540e0c 100644
  #endif
  
  static const struct option {
-@@ -4910,7 +4911,7 @@ static const struct option {
+@@ -4909,7 +4910,7 @@ static const struct option {
  	  "		[ tx N ]\n" },
  	{ "-k|--show-features|--show-offload", 1, do_gfeatures, nl_gfeatures,
  	  "Get state of protocol offload and other features" },
@@ -42,10 +42,10 @@ index b1bc80134d18..2f5fe5540e0c 100644
  	  "		FEATURE on|off ...\n" },
  	{ "-i|--driver", 1, do_gdrv, nl_gdrv,
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index f581a7b7e7d1..9e41f94ff000 100644
+index f4bbb0b456ef..d0199cb440f8 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -19,6 +19,7 @@ int nl_tsinfo(struct cmd_context *ctx);
+@@ -18,6 +18,7 @@ int nl_tsinfo(struct cmd_context *ctx);
  int nl_gset(struct cmd_context *ctx);
  int nl_sset(struct cmd_context *ctx);
  int nl_gfeatures(struct cmd_context *ctx);
@@ -354,5 +354,5 @@ index c9c11fb39622..209817c7c288 100644
 +	return nlctx->exit_code ?: 92;
 +}
 -- 
-2.20.1
+2.21.0
 

@@ -1,7 +1,7 @@
-From e1be595e42a088f0f95fb50b5eeb5c97107f9e75 Mon Sep 17 00:00:00 2001
+From ac828c0222faf210311ac125a860d267f23dd487 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:59:50 +0100
-Subject: [PATCH 18/35] netlink: add netlink handler for gring (-g)
+Subject: [PATCH 17/34] netlink: add netlink handler for gring (-g)
 
 Implement "ethtool -g <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_RING mask.
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 50 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 00926794c78f..d2f9103339a8 100644
+index 3bd31d01dda7..1759a85683e6 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4848,6 +4848,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4847,6 +4847,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gprivflags	NULL
  #define nl_sprivflags	NULL
  #define nl_gcoalesce	NULL
@@ -26,7 +26,7 @@ index 00926794c78f..d2f9103339a8 100644
  #endif
  
  static const struct option {
-@@ -4904,7 +4905,7 @@ static const struct option {
+@@ -4903,7 +4904,7 @@ static const struct option {
  	  "		[tx-usecs-high N]\n"
  	  "		[tx-frames-high N]\n"
  	  "		[sample-interval N]\n" },
@@ -36,10 +36,10 @@ index 00926794c78f..d2f9103339a8 100644
  	{ "-G|--set-ring", 1, do_sring, NULL,
  	  "Set RX/TX ring parameters",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 3efccb2fda52..28ba759561a5 100644
+index a63f79eee2c8..deba845b52ae 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -23,6 +23,7 @@ int nl_sfeatures(struct cmd_context *ctx);
+@@ -22,6 +22,7 @@ int nl_sfeatures(struct cmd_context *ctx);
  int nl_gprivflags(struct cmd_context *ctx);
  int nl_sprivflags(struct cmd_context *ctx);
  int nl_gcoalesce(struct cmd_context *ctx);
@@ -128,5 +128,5 @@ index 30aee5758c42..6782d98a6956 100644
 +	return params_request(ctx, ETH_PARAMS_IM_RING);
 +}
 -- 
-2.20.1
+2.21.0
 

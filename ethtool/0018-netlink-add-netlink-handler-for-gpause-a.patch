@@ -1,7 +1,7 @@
-From 025261fd50a96132d319c927453efb7fadfe311a Mon Sep 17 00:00:00 2001
+From ddd43d736445c0f5a9b22e0f8c07ae1b22e1a59d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:04:09 +0100
-Subject: [PATCH 19/35] netlink: add netlink handler for gpause (-a)
+Subject: [PATCH 18/34] netlink: add netlink handler for gpause (-a)
 
 Implement "ethtool -a <dev>" subcommand using netlink interface command
 ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_PAUSE mask.
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 44 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index d2f9103339a8..5e2d71016f29 100644
+index 1759a85683e6..0f4498d0e5ac 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4849,6 +4849,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4848,6 +4848,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sprivflags	NULL
  #define nl_gcoalesce	NULL
  #define nl_gring	NULL
@@ -26,7 +26,7 @@ index d2f9103339a8..5e2d71016f29 100644
  #endif
  
  static const struct option {
-@@ -4872,7 +4873,7 @@ static const struct option {
+@@ -4871,7 +4872,7 @@ static const struct option {
  	  "		[ wol %d[/%d] |  p|u|m|b|a|g|s|f|d...[/p|u|m|b|a|g|s|f|d...] ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
  	  "		[ msglvl %d[/%d] | type on|off ... [--] ]\n" },
@@ -36,10 +36,10 @@ index d2f9103339a8..5e2d71016f29 100644
  	{ "-A|--pause", 1, do_spause, NULL,
  	  "Set pause options",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 28ba759561a5..96d698c7ceff 100644
+index deba845b52ae..24d19dde5fc3 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -24,6 +24,7 @@ int nl_gprivflags(struct cmd_context *ctx);
+@@ -23,6 +23,7 @@ int nl_gprivflags(struct cmd_context *ctx);
  int nl_sprivflags(struct cmd_context *ctx);
  int nl_gcoalesce(struct cmd_context *ctx);
  int nl_gring(struct cmd_context *ctx);
@@ -122,5 +122,5 @@ index 6782d98a6956..b45aac166dcd 100644
 +	return params_request(ctx, ETH_PARAMS_IM_PAUSE);
 +}
 -- 
-2.20.1
+2.21.0
 

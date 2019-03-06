@@ -1,7 +1,7 @@
-From 47c3cad2175a9dc4db5d728f07d3ec52d5dc636f Mon Sep 17 00:00:00 2001
+From 70c9b786972d45cfe6cc7261249f30d7875c6d7a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 2 Nov 2018 19:41:56 +0100
-Subject: [PATCH 35/35] netlink: add netlink handler for setting flow hash
+Subject: [PATCH 34/34] netlink: add netlink handler for setting flow hash
  options (-N rx-flow-hash)
 
 Implement "ethtool -N <dev> rx-flow-hash" subcommand using netlink
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 114 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index b988421aafad..0dc78aeb3c7e 100644
+index 1922bef374e7..d5ae2254ff45 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4865,6 +4865,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4864,6 +4864,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_grxfh	NULL
  #define nl_srxfh	NULL
  #define nl_grxclass	NULL
@@ -26,7 +26,7 @@ index b988421aafad..0dc78aeb3c7e 100644
  #endif
  
  static const struct option {
-@@ -4968,7 +4969,7 @@ static const struct option {
+@@ -4967,7 +4968,7 @@ static const struct option {
  	  "		[ rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 [context %d] |\n"
  	  "		  rule %d ]\n" },
@@ -36,10 +36,10 @@ index b988421aafad..0dc78aeb3c7e 100644
  	  "		rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 m|v|t|s|d|f|n|r... [context %d] |\n"
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index daac8d199b03..2e8a8cfe8fd1 100644
+index 30ec79f0e94e..c86a4c7d0aa3 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -40,6 +40,7 @@ int nl_reset(struct cmd_context *ctx);
+@@ -39,6 +39,7 @@ int nl_reset(struct cmd_context *ctx);
  int nl_grxfh(struct cmd_context *ctx);
  int nl_srxfh(struct cmd_context *ctx);
  int nl_grxclass(struct cmd_context *ctx);
@@ -167,5 +167,5 @@ index 55ed350210c2..8a44447cc3e4 100644
 +	return -EOPNOTSUPP;
 +}
 -- 
-2.20.1
+2.21.0
 

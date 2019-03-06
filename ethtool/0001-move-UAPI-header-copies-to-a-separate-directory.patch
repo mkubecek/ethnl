@@ -1,7 +1,7 @@
 From 6fd654d50a75a5bca142828ecf4a3f419874a888 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 09:02:44 +0100
-Subject: [PATCH 01/35] move UAPI header copies to a separate directory
+Subject: [PATCH 01/34] move UAPI header copies to a separate directory
 
 The upcoming netlink series is going to add more local copies of kernel
 UAPI header files and some of them are going to include others. Keeping
@@ -77,5 +77,5 @@ similarity index 100%
 rename from net_tstamp-copy.h
 rename to uapi/linux/net_tstamp.h
 -- 
-2.20.1
+2.21.0
 

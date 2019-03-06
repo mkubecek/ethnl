@@ -1,7 +1,7 @@
-From 2f1fe4f52bc7917eea00231fede783b3479c08eb Mon Sep 17 00:00:00 2001
+From 11a40dc876559da20883758edb7061e3ef2f74b2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
-Subject: [PATCH 06/35] netlink: add notification monitor
+Subject: [PATCH 06/34] netlink: add notification monitor
 
 With 'ethtool --monitor [ --all | opt ] [dev]', let ethtool listen to
 netlink notification and display them in a format similar to output of
@@ -441,5 +441,5 @@ index 2e5c0ae0f8dc..f09148663856 100644
  
  static inline bool debug_on(unsigned long debug, unsigned int bit)
 -- 
-2.20.1
+2.21.0
 
