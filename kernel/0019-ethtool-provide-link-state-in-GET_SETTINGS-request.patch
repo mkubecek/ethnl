@@ -1,4 +1,4 @@
-From 8e57daf79e56765c4a8426fd1e3301e700d86809 Mon Sep 17 00:00:00 2001
+From 6f77d319543cfe3541adf587a00e0757891fde5b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:26:45 +0100
 Subject: [PATCH 19/34] ethtool: provide link state in GET_SETTINGS request
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 30 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 057eb3213cfe..538dad93009f 100644
+index 41f5d2cec13a..8ffb721e6cc5 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -285,6 +285,7 @@ Info mask bits meaning:
+@@ -278,6 +278,7 @@ Info mask bits meaning:
      ETH_SETTINGS_IM_LINKMODES		link modes from link_ksettings
      ETH_SETTINGS_IM_WOLINFO		struct ethtool_wolinfo
      ETH_SETTINGS_IM_MSGLEVEL		msglevel
@@ -32,7 +32,7 @@ index 057eb3213cfe..538dad93009f 100644
  
  Response contents:
  
-@@ -304,6 +305,7 @@ Response contents:
+@@ -297,6 +298,7 @@ Response contents:
          ETHA_WOL_MODES			(bitfield32)	wake on LAN modes
          ETHA_WOL_SOPASS			(binary)	SecureOn(tm) password
      ETHA_SETTINGS_MSGLEVEL	(bitfield32)	debug level
@@ -40,7 +40,7 @@ index 057eb3213cfe..538dad93009f 100644
  
  Most of the attributes and their values have the same meaning as matching
  members of the corresponding ioctl structures. For ETHA_SETTINGS_LINK_MODES,
-@@ -343,7 +345,7 @@ ETHTOOL_SWOL			n/a
+@@ -336,7 +338,7 @@ ETHTOOL_SWOL			n/a
  ETHTOOL_GMSGLVL			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SMSGLVL			n/a
  ETHTOOL_NWAY_RST		n/a
@@ -50,10 +50,10 @@ index 057eb3213cfe..538dad93009f 100644
  ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 360e20a73f19..06e78d94cacc 100644
+index 1875aa6d5750..439b1964fce8 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -203,6 +203,7 @@ enum {
+@@ -198,6 +198,7 @@ enum {
  	ETHA_SETTINGS_PEER_MODES,		/* bitset */
  	ETHA_SETTINGS_WOL,			/* nested */
  	ETHA_SETTINGS_MSGLEVEL,			/* bitfield32 */
@@ -61,7 +61,7 @@ index 360e20a73f19..06e78d94cacc 100644
  
  	__ETHA_SETTINGS_CNT,
  	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
-@@ -212,8 +213,9 @@ enum {
+@@ -207,8 +208,9 @@ enum {
  #define ETH_SETTINGS_IM_LINKMODES		0x02
  #define ETH_SETTINGS_IM_WOLINFO			0x04
  #define ETH_SETTINGS_IM_MSGLEVEL		0x08
@@ -179,5 +179,5 @@ index a56a0d20b079..18f38b6c2080 100644
  	return 0;
  }
 -- 
-2.20.1
+2.21.0
 

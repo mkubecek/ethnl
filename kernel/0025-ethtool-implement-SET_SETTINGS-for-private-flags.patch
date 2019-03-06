@@ -1,4 +1,4 @@
-From 7a37173e78ebaf942b778edbdb93360f0c98b04b Mon Sep 17 00:00:00 2001
+From 4d7a9cc4715cfe9b586e8606ca0f96e611757761 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 25/34] ethtool: implement SET_SETTINGS for private flags
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 44 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 829a879b00fd..18554717681b 100644
+index 70ffc69ea83a..7393d1bb5606 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -373,6 +373,7 @@ to be passed with SET_SETTINGS request:
+@@ -366,6 +366,7 @@ to be passed with SET_SETTINGS request:
      ETHA_SETTINGS_FEATURES	(nested)	device features
          ETHA_FEATURES_WANTED		(bitset)	wanted features
          ETHA_FEATURES_WANT_DIFF		(flag)		actual diff
@@ -25,7 +25,7 @@ index 829a879b00fd..18554717681b 100644
  
  For both bitfield32 types, value and selector work the usual way, i.e. bits
  set in selector are set to corresponding bits from value and the rest is
-@@ -446,7 +447,7 @@ ETHTOOL_SGSO			ETHNL_CMD_SET_SETTINGS
+@@ -439,7 +440,7 @@ ETHTOOL_SGSO			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFLAGS			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GPFLAGS			ETHNL_CMD_GET_SETTINGS
@@ -102,5 +102,5 @@ index 76f29ddc642e..0b764efb2667 100644
  
  out_ops:
 -- 
-2.20.1
+2.21.0
 

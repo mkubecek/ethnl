@@ -1,4 +1,4 @@
-From 8a54b0ed25bb411e0f6899965cd4c6196333a5f5 Mon Sep 17 00:00:00 2001
+From c147f70161003c90a16a35db680aba12df3d9d5e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 29/34] ethtool: implement ACT_NWAY_RST message
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/actions.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 227cc56aac17..c10351063f58 100644
+index 80dd756c579f..a458e1ce2459 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -134,6 +134,7 @@ List of message types
@@ -31,7 +31,7 @@ index 227cc56aac17..c10351063f58 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -552,6 +553,18 @@ cannot be set by SET_PARAMS request.
+@@ -545,6 +546,18 @@ cannot be set by SET_PARAMS request.
  		- change configured FEC encodings
  
  
@@ -50,7 +50,7 @@ index 227cc56aac17..c10351063f58 100644
  Request translation
  -------------------
  
-@@ -569,7 +582,7 @@ ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
+@@ -562,7 +575,7 @@ ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SWOL			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GMSGLVL			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SMSGLVL			ETHNL_CMD_SET_SETTINGS
@@ -60,10 +60,10 @@ index 227cc56aac17..c10351063f58 100644
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index e3fa1003f31e..11dc4117f36e 100644
+index 41ea7f1d3077..55f933262539 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -16,6 +16,7 @@ enum {
+@@ -22,6 +22,7 @@ enum {
  	ETHNL_CMD_SET_SETTINGS,
  	ETHNL_CMD_GET_PARAMS,
  	ETHNL_CMD_SET_PARAMS,
@@ -71,7 +71,7 @@ index e3fa1003f31e..11dc4117f36e 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -376,6 +377,16 @@ enum {
+@@ -371,6 +372,16 @@ enum {
  	ETHA_FEC_MAX = (__ETHA_FEC_CNT - 1)
  };
  
@@ -243,5 +243,5 @@ index a9983fc6d197..ecd064f7516e 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
-2.20.1
+2.21.0
 

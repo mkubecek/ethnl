@@ -1,4 +1,4 @@
-From b81a39dc51b3de4db63d0d92dc4c96409eaf6b46 Mon Sep 17 00:00:00 2001
+From 8fc54beff8bdc8e68268119d023bfe52f05ab83d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 16:19:21 +0100
 Subject: [PATCH 21/34] ethtool: provide private flags in GET_SETTINGS request
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 109 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 664c922a05eb..290008aaed0a 100644
+index c4073a856ce0..3efdbd47117a 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -287,6 +287,7 @@ Info mask bits meaning:
+@@ -280,6 +280,7 @@ Info mask bits meaning:
      ETH_SETTINGS_IM_MSGLEVEL		msglevel
      ETH_SETTINGS_IM_LINK		link state
      ETH_SETTINGS_IM_FEATURES		features
@@ -26,7 +26,7 @@ index 664c922a05eb..290008aaed0a 100644
  
  Response contents:
  
-@@ -312,6 +313,7 @@ Response contents:
+@@ -305,6 +306,7 @@ Response contents:
          ETHA_FEATURES_WANTED		(bitset)	dev->wanted_features
          ETHA_FEATURES_ACTIVE		(bitset)	dev->features
          ETHA_FEATURES_NOCHANGE		(bitset)	NETIF_F_NEVER_CHANGE
@@ -34,7 +34,7 @@ index 664c922a05eb..290008aaed0a 100644
  
  Most of the attributes and their values have the same meaning as matching
  members of the corresponding ioctl structures. For ETHA_SETTINGS_LINK_MODES,
-@@ -333,6 +335,11 @@ itself. ETHA_FEATURES_HW uses mask consisting of all features recognized by
+@@ -326,6 +328,11 @@ itself. ETHA_FEATURES_HW uses mask consisting of all features recognized by
  kernel (to provide all names when using verbose bitmap format), remaining
  three use mask equal to value (to save space).
  
@@ -46,7 +46,7 @@ index 664c922a05eb..290008aaed0a 100644
  GET_SETTINGS request is allowed for unprivileged user but ETHA_SETTINGS_SOPASS
  is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
  requests.
-@@ -389,7 +396,7 @@ ETHTOOL_GGSO			ETHNL_CMD_GET_SETTINGS
+@@ -382,7 +389,7 @@ ETHTOOL_GGSO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SGSO			n/a
  ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFLAGS			n/a
@@ -56,10 +56,10 @@ index 664c922a05eb..290008aaed0a 100644
  ETHTOOL_GRXFH			n/a
  ETHTOOL_SRXFH			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 154d7e6a59dd..afd61d36bcf8 100644
+index a020a14f34db..06956150886a 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -205,6 +205,7 @@ enum {
+@@ -200,6 +200,7 @@ enum {
  	ETHA_SETTINGS_MSGLEVEL,			/* bitfield32 */
  	ETHA_SETTINGS_LINK,			/* u8 */
  	ETHA_SETTINGS_FEATURES,			/* nest - ETHA_FEATURES_* */
@@ -67,7 +67,7 @@ index 154d7e6a59dd..afd61d36bcf8 100644
  
  	__ETHA_SETTINGS_CNT,
  	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
-@@ -216,8 +217,9 @@ enum {
+@@ -211,8 +212,9 @@ enum {
  #define ETH_SETTINGS_IM_MSGLEVEL		0x08
  #define ETH_SETTINGS_IM_LINK			0x10
  #define ETH_SETTINGS_IM_FEATURES		0x20
@@ -239,5 +239,5 @@ index a3d734de4062..fc71b7e83eff 100644
 +	.cleanup		= settings_cleanup,
  };
 -- 
-2.20.1
+2.21.0
 

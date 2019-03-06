@@ -1,4 +1,4 @@
-From 189c67194331b647f90e381047a65ecf7af3083c Mon Sep 17 00:00:00 2001
+From a73daf00a0b61b594f9bbaab4382a17937b3eaf5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:19:02 +0100
 Subject: [PATCH 18/34] ethtool: provide message level in GET_SETTINGS request
@@ -16,10 +16,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 27 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 913df35cb762..057eb3213cfe 100644
+index 699d9781edb8..41f5d2cec13a 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -284,6 +284,7 @@ Info mask bits meaning:
+@@ -277,6 +277,7 @@ Info mask bits meaning:
      ETH_SETTINGS_IM_LINKINFO		link_ksettings except link modes
      ETH_SETTINGS_IM_LINKMODES		link modes from link_ksettings
      ETH_SETTINGS_IM_WOLINFO		struct ethtool_wolinfo
@@ -27,7 +27,7 @@ index 913df35cb762..057eb3213cfe 100644
  
  Response contents:
  
-@@ -302,6 +303,7 @@ Response contents:
+@@ -295,6 +296,7 @@ Response contents:
      ETHA_SETTINGS_WOL		(nested)	wake on LAN settings
          ETHA_WOL_MODES			(bitfield32)	wake on LAN modes
          ETHA_WOL_SOPASS			(binary)	SecureOn(tm) password
@@ -35,7 +35,7 @@ index 913df35cb762..057eb3213cfe 100644
  
  Most of the attributes and their values have the same meaning as matching
  members of the corresponding ioctl structures. For ETHA_SETTINGS_LINK_MODES,
-@@ -311,6 +313,9 @@ ETHA_SETTINGS_PEER_MODES in the reply is a bit list.
+@@ -304,6 +306,9 @@ ETHA_SETTINGS_PEER_MODES in the reply is a bit list.
  For ETHA_WOL_MODES, selector reports wake on LAN modes supported by the
  device and value enabled modes.
  
@@ -45,7 +45,7 @@ index 913df35cb762..057eb3213cfe 100644
  GET_SETTINGS request is allowed for unprivileged user but ETHA_SETTINGS_SOPASS
  is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
  requests.
-@@ -335,7 +340,7 @@ ETHTOOL_GDRVINFO		ETHNL_CMD_GET_INFO
+@@ -328,7 +333,7 @@ ETHTOOL_GDRVINFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GREGS			n/a
  ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SWOL			n/a
@@ -55,10 +55,10 @@ index 913df35cb762..057eb3213cfe 100644
  ETHTOOL_NWAY_RST		n/a
  ETHTOOL_GLINK			n/a
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index 6bdf33f96205..77c5bdca840b 100644
+index eafc7974fc6c..27084ac4a2d2 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -3864,6 +3864,8 @@ enum {
+@@ -3861,6 +3861,8 @@ enum {
  	NETIF_MSG_PKTDATA	= 0x1000,
  	NETIF_MSG_HW		= 0x2000,
  	NETIF_MSG_WOL		= 0x4000,
@@ -68,10 +68,10 @@ index 6bdf33f96205..77c5bdca840b 100644
  
  #define netif_msg_drv(p)	((p)->msg_enable & NETIF_MSG_DRV)
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index ce9d6b48f814..360e20a73f19 100644
+index 7436522cbc49..1875aa6d5750 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -202,6 +202,7 @@ enum {
+@@ -197,6 +197,7 @@ enum {
  	ETHA_SETTINGS_LINK_MODES,		/* bitset */
  	ETHA_SETTINGS_PEER_MODES,		/* bitset */
  	ETHA_SETTINGS_WOL,			/* nested */
@@ -79,7 +79,7 @@ index ce9d6b48f814..360e20a73f19 100644
  
  	__ETHA_SETTINGS_CNT,
  	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
-@@ -210,8 +211,9 @@ enum {
+@@ -205,8 +206,9 @@ enum {
  #define ETH_SETTINGS_IM_LINKINFO		0x01
  #define ETH_SETTINGS_IM_LINKMODES		0x02
  #define ETH_SETTINGS_IM_WOLINFO			0x04
@@ -153,5 +153,5 @@ index 7468658a8952..a56a0d20b079 100644
  	return 0;
  }
 -- 
-2.20.1
+2.21.0
 

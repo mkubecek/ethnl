@@ -1,4 +1,4 @@
-From e39203b41c1d2ee56cc6ccd5920b03f0ce3a7bc7 Mon Sep 17 00:00:00 2001
+From c51c953df1b2d44bba9442ca6f06265739d05e19 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 21 Nov 2017 14:32:32 +0100
 Subject: [PATCH 23/34] ethtool: implement SET_SETTINGS message
@@ -18,7 +18,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 412 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 290008aaed0a..f4800b9f6daa 100644
+index 3efdbd47117a..aecfbcbafb85 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -131,7 +131,7 @@ List of message types
@@ -30,7 +30,7 @@ index 290008aaed0a..f4800b9f6daa 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -350,6 +350,41 @@ netlink or ioctl ethtool interface; feature notifications are also sent
+@@ -343,6 +343,41 @@ netlink or ioctl ethtool interface; feature notifications are also sent
  whenever netdev_update_features() or netdev_change_features() is called.
  
  
@@ -72,7 +72,7 @@ index 290008aaed0a..f4800b9f6daa 100644
  Request translation
  -------------------
  
-@@ -360,13 +395,13 @@ have their netlink replacement yet.
+@@ -353,13 +388,13 @@ have their netlink replacement yet.
  ioctl command			netlink command
  ---------------------------------------------------------------------
  ETHTOOL_GSET			ETHNL_CMD_GET_SETTINGS
@@ -89,7 +89,7 @@ index 290008aaed0a..f4800b9f6daa 100644
  ETHTOOL_NWAY_RST		n/a
  ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
-@@ -434,7 +469,7 @@ ETHTOOL_STUNABLE		n/a
+@@ -427,7 +462,7 @@ ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
  ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
@@ -506,5 +506,5 @@ index fc71b7e83eff..8f649b7638a4 100644
 +	return ret;
 +}
 -- 
-2.20.1
+2.21.0
 

@@ -1,4 +1,4 @@
-From 996cd2535c34f783d59ab647a0024ee4fef72630 Mon Sep 17 00:00:00 2001
+From aa9abe0ab7f42b93b46e272398527c4ffec9e7af Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 30/34] ethtool: implement ACT_PHYS_ID message
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 186 insertions(+), 47 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index c10351063f58..30f927b2f505 100644
+index a458e1ce2459..5544f83fcd80 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -565,6 +565,28 @@ Request contents:
+@@ -558,6 +558,28 @@ Request contents:
  If successful, a notification in the same format is sent.
  
  
@@ -53,7 +53,7 @@ index c10351063f58..30f927b2f505 100644
  Request translation
  -------------------
  
-@@ -600,7 +622,7 @@ ETHTOOL_GSG			ETHNL_CMD_GET_SETTINGS
+@@ -593,7 +615,7 @@ ETHTOOL_GSG			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SSG			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_TEST			n/a
  ETHTOOL_GSTRINGS		ETHNL_CMD_GET_STRSET
@@ -63,10 +63,10 @@ index c10351063f58..30f927b2f505 100644
  ETHTOOL_GTSO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_STSO			ETHNL_CMD_SET_SETTINGS
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 11dc4117f36e..250b1c7c0789 100644
+index 55f933262539..13a570134dd4 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -17,6 +17,7 @@ enum {
+@@ -23,6 +23,7 @@ enum {
  	ETHNL_CMD_GET_PARAMS,
  	ETHNL_CMD_SET_PARAMS,
  	ETHNL_CMD_ACT_NWAY_RST,
@@ -74,7 +74,7 @@ index 11dc4117f36e..250b1c7c0789 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -387,6 +388,17 @@ enum {
+@@ -382,6 +383,17 @@ enum {
  	ETHA_NWAYRST_MAX = (__ETHA_NWAYRST_CNT - 1)
  };
  
@@ -376,5 +376,5 @@ index ecd064f7516e..2a3d762911e2 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
-2.20.1
+2.21.0
 

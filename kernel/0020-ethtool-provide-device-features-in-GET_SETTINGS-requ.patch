@@ -1,4 +1,4 @@
-From bc56750a19631d2d5ae07c08b1e3a0ba3c057b8a Mon Sep 17 00:00:00 2001
+From acbfa03f015fcc1a503cf45868adb172d6b33302 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 20/34] ethtool: provide device features in GET_SETTINGS
@@ -22,10 +22,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 150 insertions(+), 13 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 538dad93009f..664c922a05eb 100644
+index 8ffb721e6cc5..c4073a856ce0 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -286,6 +286,7 @@ Info mask bits meaning:
+@@ -279,6 +279,7 @@ Info mask bits meaning:
      ETH_SETTINGS_IM_WOLINFO		struct ethtool_wolinfo
      ETH_SETTINGS_IM_MSGLEVEL		msglevel
      ETH_SETTINGS_IM_LINK		link state
@@ -33,7 +33,7 @@ index 538dad93009f..664c922a05eb 100644
  
  Response contents:
  
-@@ -306,6 +307,11 @@ Response contents:
+@@ -299,6 +300,11 @@ Response contents:
          ETHA_WOL_SOPASS			(binary)	SecureOn(tm) password
      ETHA_SETTINGS_MSGLEVEL	(bitfield32)	debug level
      ETHA_SETTINGS_LINK		(u8)		link state
@@ -45,7 +45,7 @@ index 538dad93009f..664c922a05eb 100644
  
  Most of the attributes and their values have the same meaning as matching
  members of the corresponding ioctl structures. For ETHA_SETTINGS_LINK_MODES,
-@@ -318,13 +324,23 @@ device and value enabled modes.
+@@ -311,13 +317,23 @@ device and value enabled modes.
  For ETHA_SETTINGS_MSGLEVEL, selector reports all flags supported by kernel and
  value flags enabled for the device.
  
@@ -70,7 +70,7 @@ index 538dad93009f..664c922a05eb 100644
  
  
  Request translation
-@@ -354,30 +370,30 @@ ETHTOOL_GRINGPARAM		n/a
+@@ -347,30 +363,30 @@ ETHTOOL_GRINGPARAM		n/a
  ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
  ETHTOOL_SPAUSEPARAM		n/a
@@ -90,7 +90,7 @@ index 538dad93009f..664c922a05eb 100644
 -ETHTOOL_GTSO			n/a
 +ETHTOOL_GTSO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_STSO			n/a
- ETHTOOL_GPERMADDR		ETHNL_CMD_GET_INFO
+ ETHTOOL_GPERMADDR		rtnetlink RTM_GETLINK
 -ETHTOOL_GUFO			n/a
 +ETHTOOL_GUFO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SUFO			n/a
@@ -109,7 +109,7 @@ index 538dad93009f..664c922a05eb 100644
  ETHTOOL_SGRO			n/a
  ETHTOOL_GRXRINGS		n/a
  ETHTOOL_GRXCLSRLCNT		n/a
-@@ -392,7 +408,7 @@ ETHTOOL_GRXNTUPLE		n/a
+@@ -385,7 +401,7 @@ ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
  ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
@@ -119,10 +119,10 @@ index 538dad93009f..664c922a05eb 100644
  ETHTOOL_GCHANNELS		n/a
  ETHTOOL_SCHANNELS		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 06e78d94cacc..154d7e6a59dd 100644
+index 439b1964fce8..a020a14f34db 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -204,6 +204,7 @@ enum {
+@@ -199,6 +199,7 @@ enum {
  	ETHA_SETTINGS_WOL,			/* nested */
  	ETHA_SETTINGS_MSGLEVEL,			/* bitfield32 */
  	ETHA_SETTINGS_LINK,			/* u8 */
@@ -130,7 +130,7 @@ index 06e78d94cacc..154d7e6a59dd 100644
  
  	__ETHA_SETTINGS_CNT,
  	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
-@@ -214,8 +215,20 @@ enum {
+@@ -209,8 +210,20 @@ enum {
  #define ETH_SETTINGS_IM_WOLINFO			0x04
  #define ETH_SETTINGS_IM_MSGLEVEL		0x08
  #define ETH_SETTINGS_IM_LINK			0x10
@@ -347,5 +347,5 @@ index 18f38b6c2080..a3d734de4062 100644
  	return 0;
  }
 -- 
-2.20.1
+2.21.0
 

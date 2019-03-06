@@ -1,7 +1,7 @@
-From fa714bb39199a575d2f60589bf19c183104cd18d Mon Sep 17 00:00:00 2001
+From 5c25db617af1b4367eab50de42f93fb29759ede3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
-Subject: [PATCH 09/34] ethtool: generic handlers for GET requests
+Subject: [PATCH 10/34] ethtool: generic handlers for GET requests
 
 Some parts of processing GET type requests and related notifications are
 independent of a command. Provide universal functions so that only four
@@ -471,5 +471,5 @@ index 5f2299548915..625f912144b1 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
-2.20.1
+2.21.0
 

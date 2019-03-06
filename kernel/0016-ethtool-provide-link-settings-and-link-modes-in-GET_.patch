@@ -1,4 +1,4 @@
-From f33408f5d7f379f61302b32af6fe515204018318 Mon Sep 17 00:00:00 2001
+From 7a62199650944fc5a68935b1bd1edb19f10e9298 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 16/34] ethtool: provide link settings and link modes in
@@ -26,7 +26,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index c6c7475340e2..0ea7d89c6052 100644
+index bb2d67ee1ffd..89174531cfa4 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -130,6 +130,8 @@ List of message types
@@ -38,7 +38,7 @@ index c6c7475340e2..0ea7d89c6052 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -264,6 +266,49 @@ if no PHC is associated, the attribute is not present.
+@@ -257,6 +259,49 @@ if no PHC is associated, the attribute is not present.
  GET_INFO requests allow dumps.
  
  
@@ -88,7 +88,7 @@ index c6c7475340e2..0ea7d89c6052 100644
  Request translation
  -------------------
  
-@@ -273,7 +318,7 @@ have their netlink replacement yet.
+@@ -266,7 +311,7 @@ have their netlink replacement yet.
  
  ioctl command			netlink command
  ---------------------------------------------------------------------
@@ -97,7 +97,7 @@ index c6c7475340e2..0ea7d89c6052 100644
  ETHTOOL_SSET			n/a
  ETHTOOL_GDRVINFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GREGS			n/a
-@@ -347,7 +392,7 @@ ETHTOOL_GTUNABLE		n/a
+@@ -340,7 +385,7 @@ ETHTOOL_GTUNABLE		n/a
  ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
@@ -121,10 +121,10 @@ index 2a15e64a16f3..e770e6e9acca 100644
  	ETHNL_MCGRP_MONITOR,
  };
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 8ab2b7454e81..4e1fa4a06aac 100644
+index c2511854d45b..cf6ed9dd269b 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -12,6 +12,8 @@ enum {
+@@ -18,6 +18,8 @@ enum {
  	ETHNL_CMD_SET_STRSET,		/* only for reply */
  	ETHNL_CMD_GET_INFO,
  	ETHNL_CMD_SET_INFO,		/* only for reply */
@@ -133,7 +133,7 @@ index 8ab2b7454e81..4e1fa4a06aac 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -189,6 +191,41 @@ enum {
+@@ -184,6 +186,41 @@ enum {
  	ETHA_TSINFO_MAX = (__ETHA_TSINFO_CNT - 1)
  };
  
@@ -615,5 +615,5 @@ index 000000000000..4994224b5113
 +	.fill_reply		= fill_settings,
 +};
 -- 
-2.20.1
+2.21.0
 

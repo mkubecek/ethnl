@@ -1,7 +1,7 @@
-From 41295d0dfeee7e18d5dea16235caa2e2aabdc322 Mon Sep 17 00:00:00 2001
+From 3c6cb6fce59867b59f97faac90f4d180b2143d61 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
-Subject: [PATCH 11/34] ethtool: provide string sets with GET_STRSET request
+Subject: [PATCH 12/34] ethtool: provide string sets with GET_STRSET request
 
 Requests a contents of one or more string sets, i.e. indexed arrays of
 strings; this information is provided by ETHTOOL_GSSET_INFO and
@@ -28,7 +28,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/strset.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index b79c26b5e92b..f0fe4f50db9f 100644
+index 095d76921ff6..665337312bd0 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -126,6 +126,8 @@ List of message types
@@ -119,10 +119,10 @@ index 3652b239dad1..eaea804972f6 100644
  
  /**
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 7e192ad8ce3a..630b66732dc9 100644
+index 988519bc6e37..66aeb436b822 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -8,6 +8,8 @@
+@@ -14,6 +14,8 @@
  enum {
  	ETHNL_CMD_NOOP,
  	ETHNL_CMD_EVENT,		/* only for notifications */
@@ -131,7 +131,7 @@ index 7e192ad8ce3a..630b66732dc9 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -92,6 +94,47 @@ enum {
+@@ -98,6 +100,47 @@ enum {
  	ETHA_EVENT_MAX = (__ETHA_EVENT_CNT - 1)
  };
  
@@ -672,5 +672,5 @@ index 000000000000..808ab6b4b387
 +	.fill_reply		= fill_strset,
 +};
 -- 
-2.20.1
+2.21.0
 

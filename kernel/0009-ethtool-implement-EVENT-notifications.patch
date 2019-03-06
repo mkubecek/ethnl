@@ -1,7 +1,7 @@
-From 6dd9a2b7fdbf47ba1f5ffbcbe733d2a29390b961 Mon Sep 17 00:00:00 2001
+From 2569607c54218dbf6184e87747af918a993de94a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
-Subject: [PATCH 08/34] ethtool: implement EVENT notifications
+Subject: [PATCH 09/34] ethtool: implement EVENT notifications
 
 Three types of netlink notifications are introduced:
 
@@ -24,7 +24,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 129 insertions(+)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 205ae4462e9e..b79c26b5e92b 100644
+index 13d4053ab499..095d76921ff6 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -125,6 +125,8 @@ which the request applies.
@@ -72,10 +72,10 @@ index 205ae4462e9e..b79c26b5e92b 100644
  -------------------
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index b662d75a0636..7e192ad8ce3a 100644
+index 91e4d117957b..988519bc6e37 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -7,6 +7,7 @@
+@@ -13,6 +13,7 @@
  
  enum {
  	ETHNL_CMD_NOOP,
@@ -83,7 +83,7 @@ index b662d75a0636..7e192ad8ce3a 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -55,6 +56,42 @@ enum {
+@@ -61,6 +62,42 @@ enum {
  	ETHA_BITSET_MAX = (__ETHA_BITSET_CNT - 1)
  };
  
@@ -210,5 +210,5 @@ index 0a77de4f339a..9ab23eaea029 100644
  }
  
 -- 
-2.20.1
+2.21.0
 

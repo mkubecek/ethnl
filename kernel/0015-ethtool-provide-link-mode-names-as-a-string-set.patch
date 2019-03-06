@@ -1,4 +1,4 @@
-From d2c065760d1e2b9da18b60466e0fcab4d822f871 Mon Sep 17 00:00:00 2001
+From 118190e19f815d8b6c6ef8f41a43733a0ac3545b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:50:07 +0100
 Subject: [PATCH 15/34] ethtool: provide link mode names as a string set
@@ -179,5 +179,5 @@ index e1b831097ca7..577d1309ba6f 100644
  
  struct strset_data {
 -- 
-2.20.1
+2.21.0
 

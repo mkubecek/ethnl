@@ -1,4 +1,4 @@
-From 11459181d926713ecdf64dbf4f576e630e03623d Mon Sep 17 00:00:00 2001
+From b6e9dbc8fe7211283fb454df9f03cbe7d61ee060 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
 Subject: [PATCH 14/34] ethtool: provide timestamping information in GET_INFO
@@ -15,7 +15,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  10 +-
  include/uapi/linux/ethtool.h                 |   6 +
- include/uapi/linux/ethtool_netlink.h         |  14 +-
+ include/uapi/linux/ethtool_netlink.h         |  15 +-
  include/uapi/linux/net_tstamp.h              |  13 ++
  net/ethtool/common.c                         |  24 ++++
  net/ethtool/common.h                         |   2 +
@@ -23,16 +23,16 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/ioctl.c                          |  20 +--
  net/ethtool/netlink.h                        |   9 ++
  net/ethtool/strset.c                         |  18 +++
- 10 files changed, 234 insertions(+), 20 deletions(-)
+ 10 files changed, 235 insertions(+), 20 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 1e615e111262..c6c7475340e2 100644
+index 3918a695f272..bb2d67ee1ffd 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -242,6 +242,11 @@ Kernel response contents:
-     ETHA_INFO_PERMADDR		(nested)
-         ETHA_PERMADDR_ADDRESS		(binary)	permanent HW address
-         ETHA_PERMADDR_TYPE		(u16)		dev->type
+@@ -239,6 +239,11 @@ Kernel response contents:
+         ETHA_DRVINFO_FWVERSION		(string)	firmware version
+         ETHA_DRVINFO_BUSINFO		(string)	device bus address
+         ETHA_DRVINFO_EROM_VER		(string)	expansion ROM version
 +    ETHA_INFO_TSINFO		(nested)	timestamping information
 +        ETHA_TSINFO_TIMESTAMPING	(bitset)	supported flags
 +        ETHA_TSINFO_PHC_INDEX		(u32)		associated PHC
@@ -41,9 +41,9 @@ index 1e615e111262..c6c7475340e2 100644
  
  The meaning of DRVINFO attributes follows the corresponding fields of
  ETHTOOL_GDRVINFO response. Second part with various counts and sizes is
-@@ -253,6 +258,9 @@ There is no separate attribute for permanent address length as the length can
- be determined from attribute length (nla_len()). ETHA_PERMADDR_TYPE provides
- net_device::type value to give a hint about what kind of address device has.
+@@ -246,6 +251,9 @@ omitted as these are not really needed (and if they are, they can be easily
+ found by different means). Driver version is also omitted as it is rather
+ misleading in most cases.
  
 +ETHA_TSINFO_PHC_INDEX can be unsigned as there is no need for special value;
 +if no PHC is associated, the attribute is not present.
@@ -51,7 +51,7 @@ index 1e615e111262..c6c7475340e2 100644
  GET_INFO requests allow dumps.
  
  
-@@ -328,7 +336,7 @@ ETHTOOL_SCHANNELS		n/a
+@@ -321,7 +329,7 @@ ETHTOOL_SCHANNELS		n/a
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
  ETHTOOL_GET_DUMP_DATA		n/a
@@ -85,22 +85,29 @@ index eaea804972f6..882a542eaaa9 100644
  	ETH_SS_COUNT
  };
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index fb756b6a8592..8ab2b7454e81 100644
+index 2fcbd7c98876..c2511854d45b 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -154,8 +154,9 @@ enum {
+@@ -151,14 +151,16 @@ enum {
+ 	ETHA_INFO_INFOMASK,			/* u32 */
+ 	ETHA_INFO_COMPACT,			/* flag */
+ 	ETHA_INFO_DRVINFO,			/* nest - ETHA_DRVINFO_* */
++	ETHA_INFO_TSINFO,			/* nest - ETHA_TSINFO_* */
+ 
+ 	__ETHA_INFO_CNT,
+ 	ETHA_INFO_MAX = (__ETHA_INFO_CNT - 1)
+ };
  
  #define ETH_INFO_IM_DRVINFO			0x01
- #define ETH_INFO_IM_PERMADDR			0x02
-+#define ETH_INFO_IM_TSINFO			0x04
++#define ETH_INFO_IM_TSINFO			0x02
  
--#define ETH_INFO_IM_ALL				0x03
-+#define ETH_INFO_IM_ALL				0x07
+-#define ETH_INFO_IM_ALL				0x01
++#define ETH_INFO_IM_ALL				0x03
  
  enum {
  	ETHA_DRVINFO_UNSPEC,
-@@ -177,6 +178,17 @@ enum {
- 	ETHA_PERMADDR_MAX = (__ETHA_PERMADDR_CNT - 1)
+@@ -171,6 +173,17 @@ enum {
+ 	ETHA_DRVINFO_MAX = (__ETHA_DRVINFO_CNT - 1)
  };
  
 +enum {
@@ -206,7 +213,7 @@ index e87e58b3a274..02cbee79da35 100644
 +
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
-index 4768bd13ab93..691819555001 100644
+index cc42993bb05b..68de78533ec7 100644
 --- a/net/ethtool/info.c
 +++ b/net/ethtool/info.c
 @@ -1,15 +1,61 @@
@@ -271,15 +278,15 @@ index 4768bd13ab93..691819555001 100644
  };
  
  static const struct nla_policy get_info_policy[ETHA_INFO_MAX + 1] = {
-@@ -19,6 +65,7 @@ static const struct nla_policy get_info_policy[ETHA_INFO_MAX + 1] = {
+@@ -18,6 +64,7 @@ static const struct nla_policy get_info_policy[ETHA_INFO_MAX + 1] = {
+ 	[ETHA_INFO_INFOMASK]		= { .type = NLA_U32 },
  	[ETHA_INFO_COMPACT]		= { .type = NLA_FLAG },
  	[ETHA_INFO_DRVINFO]		= { .type = NLA_REJECT },
- 	[ETHA_INFO_PERMADDR]		= { .type = NLA_REJECT },
 +	[ETHA_INFO_TSINFO]		= { .type = NLA_REJECT },
  };
  
  /* parse_request() handler */
-@@ -68,6 +115,11 @@ static int prepare_info(struct common_req_info *req_info,
+@@ -67,6 +114,11 @@ static int prepare_info(struct common_req_info *req_info,
  		if (ret < 0)
  			req_mask &= ~ETH_INFO_IM_DRVINFO;
  	}
@@ -291,7 +298,7 @@ index 4768bd13ab93..691819555001 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -98,6 +150,42 @@ static int permaddr_size(const struct net_device *dev)
+@@ -87,6 +139,42 @@ static int drvinfo_size(const struct ethtool_drvinfo *drvinfo)
  	return nla_total_size(len);
  }
  
@@ -334,10 +341,10 @@ index 4768bd13ab93..691819555001 100644
  /* reply_size() handler */
  static int info_size(const struct common_req_info *req_info)
  {
-@@ -112,6 +200,13 @@ static int info_size(const struct common_req_info *req_info)
+@@ -98,6 +186,13 @@ static int info_size(const struct common_req_info *req_info)
+ 	len += dev_ident_size();
+ 	if (info_mask & ETH_INFO_IM_DRVINFO)
  		len += drvinfo_size(&data->drvinfo);
- 	if (info_mask & ETH_INFO_IM_PERMADDR)
- 		len += permaddr_size(dev);
 +	if (info_mask & ETH_INFO_IM_TSINFO) {
 +		int ret = tsinfo_size(&data->tsinfo, req_info->compact);
 +
@@ -348,7 +355,7 @@ index 4768bd13ab93..691819555001 100644
  
  	return len;
  }
-@@ -160,6 +255,44 @@ static int fill_permaddr(struct sk_buff *skb, const struct net_device *dev)
+@@ -126,6 +221,44 @@ static int fill_drvinfo(struct sk_buff *skb,
  	return ret;
  }
  
@@ -393,7 +400,7 @@ index 4768bd13ab93..691819555001 100644
  /* fill_reply() handler */
  static int fill_info(struct sk_buff *skb,
  		     const struct common_req_info *req_info)
-@@ -179,6 +312,11 @@ static int fill_info(struct sk_buff *skb,
+@@ -140,6 +273,11 @@ static int fill_info(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -498,5 +505,5 @@ index 808ab6b4b387..e1b831097ca7 100644
  
  struct strset_data {
 -- 
-2.20.1
+2.21.0
 

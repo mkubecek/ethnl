@@ -1,4 +1,4 @@
-From e741714afc92b555c4150ef048759786c27915b7 Mon Sep 17 00:00:00 2001
+From 6f7bf15c7585afa03e6e7050aa90cf232e3a31e3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:36:49 -0400
 Subject: [PATCH 22/34] ethtool: send netlink notifications about setting
@@ -134,5 +134,5 @@ index 68744d68328b..8558e23e08fc 100644
  
  	return NOTIFY_DONE;
 -- 
-2.20.1
+2.21.0
 

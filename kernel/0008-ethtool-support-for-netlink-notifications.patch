@@ -1,7 +1,7 @@
-From 176fb038ce79f079baa8c6a8078a19c228083200 Mon Sep 17 00:00:00 2001
+From ce3ef81ccc513d3e24ef4a2f377b51a6e126c654 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
-Subject: [PATCH 07/34] ethtool: support for netlink notifications
+Subject: [PATCH 08/34] ethtool: support for netlink notifications
 
 Add infrastructure for ethtool netlink notifications. There is only one
 multicast group "monitor" which is used to notify userspace about changes.
@@ -37,10 +37,10 @@ index 0412adb4f42f..2a15e64a16f3 100644
  
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index 58e83bd7a861..6bdf33f96205 100644
+index 26f69cf763f4..eafc7974fc6c 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -4358,6 +4358,18 @@ struct netdev_notifier_bonding_info {
+@@ -4355,6 +4355,18 @@ struct netdev_notifier_bonding_info {
  void netdev_bonding_info_change(struct net_device *dev,
  				struct netdev_bonding_info *bonding_info);
  
@@ -60,10 +60,10 @@ index 58e83bd7a861..6bdf33f96205 100644
  struct sk_buff *skb_gso_segment(struct sk_buff *skb, netdev_features_t features)
  {
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 7f3d401977b4..b662d75a0636 100644
+index de18e076ed69..91e4d117957b 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -59,4 +59,6 @@ enum {
+@@ -65,4 +65,6 @@ enum {
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
  
@@ -146,5 +146,5 @@ index b8a6cd3dc3e3..5f2299548915 100644
  
  struct net_device *ethnl_dev_get(struct genl_info *info, struct nlattr *nest);
 -- 
-2.20.1
+2.21.0
 

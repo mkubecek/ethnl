@@ -1,4 +1,4 @@
-From 8cc8abbb5182a62188f502fc90b9068648608b55 Mon Sep 17 00:00:00 2001
+From d71faa2b7fe67250aea31ae3f8938a38f5234903 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
 Subject: [PATCH 28/34] ethtool: implement SET_PARAMS message
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 584 insertions(+), 65 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 53ef817b08c9..227cc56aac17 100644
+index 340f7958fbf1..80dd756c579f 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -133,7 +133,7 @@ List of message types
@@ -32,7 +32,7 @@ index 53ef817b08c9..227cc56aac17 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -494,6 +494,63 @@ to them are broadcasted as notifications on change of these settings using
+@@ -487,6 +487,63 @@ to them are broadcasted as notifications on change of these settings using
  netlink or ioctl ethtool interface.
  
  
@@ -96,7 +96,7 @@ index 53ef817b08c9..227cc56aac17 100644
  
  Request translation
  -------------------
-@@ -517,11 +574,11 @@ ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
+@@ -510,11 +567,11 @@ ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		ETHNL_CMD_GET_PARAMS
@@ -111,7 +111,7 @@ index 53ef817b08c9..227cc56aac17 100644
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SRXCSUM			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GTXCSUM			ETHNL_CMD_GET_SETTINGS
-@@ -563,7 +620,7 @@ ETHTOOL_SRXFHINDIR		n/a
+@@ -556,7 +613,7 @@ ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GCHANNELS		ETHNL_CMD_GET_PARAMS
@@ -120,7 +120,7 @@ index 53ef817b08c9..227cc56aac17 100644
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
  ETHTOOL_GET_DUMP_DATA		n/a
-@@ -571,7 +628,7 @@ ETHTOOL_GET_TS_INFO		ETHNL_CMD_GET_INFO
+@@ -564,7 +621,7 @@ ETHTOOL_GET_TS_INFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
@@ -129,7 +129,7 @@ index 53ef817b08c9..227cc56aac17 100644
  ETHTOOL_GRSSH			n/a
  ETHTOOL_SRSSH			n/a
  ETHTOOL_GTUNABLE		n/a
-@@ -583,4 +640,4 @@ ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
+@@ -576,4 +633,4 @@ ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		ETHNL_CMD_GET_PARAMS
@@ -791,5 +791,5 @@ index b5652df274c0..cc0952c269f1 100644
 +	return ret;
 +}
 -- 
-2.20.1
+2.21.0
 

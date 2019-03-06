@@ -1,7 +1,7 @@
-From 4540d7a8591314346b13d8045f68b110dae730b8 Mon Sep 17 00:00:00 2001
+From fe5597f9d7af622880b32ba139c0263261003368 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
-Subject: [PATCH 04/34] ethtool: introduce ethtool netlink interface
+Subject: [PATCH 05/34] ethtool: introduce ethtool netlink interface
 
 Basic genetlink and init infrastructure for the netlink interface, register
 genetlink family "ethtool". Introduce CONFIG_ETHTOOL_NETLINK Kconfig
@@ -11,12 +11,12 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt | 167 +++++++++++++++++++
  include/linux/ethtool_netlink.h              |   9 +
- include/uapi/linux/ethtool_netlink.h         |  19 +++
+ include/uapi/linux/ethtool_netlink.h         |  25 +++
  net/Kconfig                                  |   8 +
  net/ethtool/Makefile                         |   6 +-
  net/ethtool/netlink.c                        |  34 ++++
  net/ethtool/netlink.h                        |  12 ++
- 7 files changed, 254 insertions(+), 1 deletion(-)
+ 7 files changed, 260 insertions(+), 1 deletion(-)
  create mode 100644 Documentation/networking/ethtool-netlink.txt
  create mode 100644 include/linux/ethtool_netlink.h
  create mode 100644 include/uapi/linux/ethtool_netlink.h
@@ -25,7 +25,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 new file mode 100644
-index 000000000000..09c36e0392a8
+index 000000000000..22c78ff5247a
 --- /dev/null
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -0,0 +1,167 @@
@@ -146,7 +146,7 @@ index 000000000000..09c36e0392a8
 +ETHTOOL_GSTATS			n/a
 +ETHTOOL_GTSO			n/a
 +ETHTOOL_STSO			n/a
-+ETHTOOL_GPERMADDR		n/a
++ETHTOOL_GPERMADDR		rtnetlink RTM_GETLINK
 +ETHTOOL_GUFO			n/a
 +ETHTOOL_SUFO			n/a
 +ETHTOOL_GGSO			n/a
@@ -213,11 +213,17 @@ index 000000000000..0412adb4f42f
 +#endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..d8a8d3c72c2f
+index 000000000000..6aa267451542
 --- /dev/null
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,19 @@
+@@ -0,0 +1,25 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
++/*
++ * include/uapi/linux/ethtool_netlink.h - netlink interface for ethtool
++ *
++ * See Documentation/networking/ethtool-netlink.txt in kernel source tree for
++ * doucumentation of the interface.
++ */
 +
 +#ifndef _UAPI_LINUX_ETHTOOL_NETLINK_H_
 +#define _UAPI_LINUX_ETHTOOL_NETLINK_H_
@@ -327,5 +333,5 @@ index 000000000000..63063b582ca2
 +
 +#endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
-2.20.1
+2.21.0
 

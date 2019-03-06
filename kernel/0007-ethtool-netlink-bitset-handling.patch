@@ -1,7 +1,7 @@
-From 43d19082982ae35d2c26eb9788ade9ed24425438 Mon Sep 17 00:00:00 2001
+From 97dc6b6b59376f7b30a92461714a9a9427cd8d41 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
-Subject: [PATCH 06/34] ethtool: netlink bitset handling
+Subject: [PATCH 07/34] ethtool: netlink bitset handling
 
 Declare attribute type constants and add helper functions to generate and
 parse arbitrary length bit sets.
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/bitset.h
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 09c36e0392a8..205ae4462e9e 100644
+index 22c78ff5247a..13d4053ab499 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -59,6 +59,69 @@ provided by kernel. In dump requests, device is not specified and kernel
@@ -93,10 +93,10 @@ index 09c36e0392a8..205ae4462e9e 100644
  ---------------------
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 01896a1ee21a..7f3d401977b4 100644
+index 59240a2cda56..de18e076ed69 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -23,6 +23,38 @@ enum {
+@@ -29,6 +29,38 @@ enum {
  	ETHA_DEV_MAX = (__ETHA_DEV_CNT - 1)
  };
  
@@ -815,5 +815,5 @@ index db90d95410b1..b8a6cd3dc3e3 100644
  {
  	return nla_total_size(strlen(s) + 1);
 -- 
-2.20.1
+2.21.0
 
