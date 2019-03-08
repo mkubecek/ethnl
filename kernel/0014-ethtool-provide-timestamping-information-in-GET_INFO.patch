@@ -1,7 +1,7 @@
 From 42622654be227f2527d09fc4c64a4db06750e0d0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
-Subject: [PATCH 14/34] ethtool: provide timestamping information in GET_INFO
+Subject: [PATCH 14/36] ethtool: provide timestamping information in GET_INFO
  request
 
 Add timestamping information as provided by ETHTOOL_GET_TS_INFO ioctl

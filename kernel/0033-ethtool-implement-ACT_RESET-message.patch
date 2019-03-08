@@ -1,7 +1,7 @@
-From f0472d710cd8922f6fc6044af7247126182a7539 Mon Sep 17 00:00:00 2001
+From a0415a42cfa95828d718582658aa3d250498b9ff Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
-Subject: [PATCH 31/34] ethtool: implement ACT_RESET message
+Subject: [PATCH 33/36] ethtool: implement ACT_RESET message
 
 Request reset of a NIC or its part(s), equivalent of ETHTOOL_RESET.
 
@@ -20,10 +20,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 300 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 5544f83fcd80..7a6cb997b39f 100644
+index 55e4999efdc2..95ce8975644f 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -580,6 +580,29 @@ other ACT_PHYS_ID requests for any device fail with EBUSY. The same holds for
+@@ -585,6 +585,29 @@ other ACT_PHYS_ID requests for any device fail with EBUSY. The same holds for
  requests using ETHTOOL_PHYS_ID ioctl command.
  
  
@@ -53,7 +53,7 @@ index 5544f83fcd80..7a6cb997b39f 100644
  Request translation
  -------------------
  
-@@ -639,7 +662,7 @@ ETHTOOL_GRXCLSRLALL		n/a
+@@ -644,7 +667,7 @@ ETHTOOL_GRXCLSRLALL		n/a
  ETHTOOL_SRXCLSRLDEL		n/a
  ETHTOOL_SRXCLSRLINS		n/a
  ETHTOOL_FLASHDEV		n/a

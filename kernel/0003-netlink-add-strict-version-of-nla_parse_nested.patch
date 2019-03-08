@@ -1,7 +1,7 @@
 From 310b9bd3b96bb64f2950df79fc84353cc145a5c0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 20 Feb 2019 18:11:53 +0100
-Subject: [PATCH 03/34] netlink: add strict version of nla_parse_nested()
+Subject: [PATCH 03/36] netlink: add strict version of nla_parse_nested()
 
 Similar to nla_parse_strict() and nlmsg_parse_strict(), add also
 nla_parse_nested_strict() as a version of nla_parse_nested() with strict

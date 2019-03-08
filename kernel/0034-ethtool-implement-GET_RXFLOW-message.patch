@@ -1,7 +1,7 @@
-From 09b4f9b5d310c0c7d59980653916e493e0881019 Mon Sep 17 00:00:00 2001
+From a4e0b527e62d75db11f9a97948240f529c24f377 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
-Subject: [PATCH 32/34] ethtool: implement GET_RXFLOW message
+Subject: [PATCH 34/36] ethtool: implement GET_RXFLOW message
 
 Request the information provided by ETHTOOL_GRSSH, ETHTOOL_GRXRINGS,
 ETHTOOL_GRXFH and ETHTOOL_GRXFHINDIR ioctl commands. This allows to query
@@ -25,7 +25,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/rxflow.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 7a6cb997b39f..ad58c8f9e366 100644
+index 95ce8975644f..8dee85f940cc 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -135,6 +135,8 @@ List of message types
@@ -37,7 +37,7 @@ index 7a6cb997b39f..ad58c8f9e366 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -603,6 +605,118 @@ indicating which components _were_ actually reset (this is different from
+@@ -608,6 +610,118 @@ indicating which components _were_ actually reset (this is different from
  ioctl interface). The same message is also broadcasted as a notification.
  
  
@@ -156,7 +156,7 @@ index 7a6cb997b39f..ad58c8f9e366 100644
  Request translation
  -------------------
  
-@@ -651,11 +765,11 @@ ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
+@@ -656,11 +770,11 @@ ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFLAGS			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GPFLAGS			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SPFLAGS			ETHNL_CMD_SET_SETTINGS
@@ -170,7 +170,7 @@ index 7a6cb997b39f..ad58c8f9e366 100644
  ETHTOOL_GRXCLSRLCNT		n/a
  ETHTOOL_GRXCLSRULE		n/a
  ETHTOOL_GRXCLSRLALL		n/a
-@@ -666,7 +780,7 @@ ETHTOOL_RESET			ETHNL_CMD_ACT_RESET
+@@ -671,7 +785,7 @@ ETHTOOL_RESET			ETHNL_CMD_ACT_RESET
  ETHTOOL_SRXNTUPLE		n/a
  ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
@@ -179,7 +179,7 @@ index 7a6cb997b39f..ad58c8f9e366 100644
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
-@@ -680,7 +794,7 @@ ETHTOOL_GMODULEINFO		n/a
+@@ -685,7 +799,7 @@ ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
  ETHTOOL_SEEE			ETHNL_CMD_SET_PARAMS

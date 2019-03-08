@@ -1,7 +1,7 @@
-From 8729473c4ef229b74bb6c277c849b060b3547429 Mon Sep 17 00:00:00 2001
+From 9b85b452edf6dc2cf2538e44fb35d887992fc8ee Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
-Subject: [PATCH 26/34] ethtool: implement GET_PARAMS message
+Subject: [PATCH 28/36] ethtool: implement GET_PARAMS message
 
 Requests the information provide by ETHTOOL_GCOALESCE, ETHTOOL_GRINGPARAM,
 ETHTOOL_GPAUSEPARAM, ETHTOOL_GCHANNELS, ETHTOOL_GEEE and ETHTOOL_GFECPARAM.
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/params.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 7393d1bb5606..340f7958fbf1 100644
+index 835b30021126..05784ba3cde1 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -132,6 +132,8 @@ List of message types
@@ -31,7 +31,7 @@ index 7393d1bb5606..340f7958fbf1 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -393,6 +395,99 @@ the operation); mask shows bits which have been changed and value their new
+@@ -398,6 +400,99 @@ the operation); mask shows bits which have been changed and value their new
  values.
  
  
@@ -131,7 +131,7 @@ index 7393d1bb5606..340f7958fbf1 100644
  Request translation
  -------------------
  
-@@ -414,11 +509,11 @@ ETHTOOL_NWAY_RST		n/a
+@@ -419,11 +514,11 @@ ETHTOOL_NWAY_RST		n/a
  ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
@@ -146,7 +146,7 @@ index 7393d1bb5606..340f7958fbf1 100644
  ETHTOOL_SPAUSEPARAM		n/a
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SRXCSUM			ETHNL_CMD_SET_SETTINGS
-@@ -460,7 +555,7 @@ ETHTOOL_GRXFHINDIR		n/a
+@@ -465,7 +560,7 @@ ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
@@ -155,7 +155,7 @@ index 7393d1bb5606..340f7958fbf1 100644
  ETHTOOL_SCHANNELS		n/a
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
-@@ -468,7 +563,7 @@ ETHTOOL_GET_DUMP_DATA		n/a
+@@ -473,7 +568,7 @@ ETHTOOL_GET_DUMP_DATA		n/a
  ETHTOOL_GET_TS_INFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a
@@ -164,7 +164,7 @@ index 7393d1bb5606..340f7958fbf1 100644
  ETHTOOL_SEEE			n/a
  ETHTOOL_GRSSH			n/a
  ETHTOOL_SRSSH			n/a
-@@ -480,5 +575,5 @@ ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
+@@ -485,5 +580,5 @@ ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a

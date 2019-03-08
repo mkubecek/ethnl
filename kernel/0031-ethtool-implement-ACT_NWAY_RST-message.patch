@@ -1,7 +1,7 @@
-From 9f90196244e53495fdf2ebe85e93ced1df6ae3fa Mon Sep 17 00:00:00 2001
+From d1690a4ff3ceafd4563dd0a92e439668f159a5e6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
-Subject: [PATCH 29/34] ethtool: implement ACT_NWAY_RST message
+Subject: [PATCH 31/36] ethtool: implement ACT_NWAY_RST message
 
 Requests autonegotiation restart, equivalent of ETHTOOL_NWAY_RST.
 
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/actions.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 80dd756c579f..a458e1ce2459 100644
+index 43fabf47b1c2..367d6ef8aeb3 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -134,6 +134,7 @@ List of message types
@@ -31,7 +31,7 @@ index 80dd756c579f..a458e1ce2459 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -545,6 +546,18 @@ cannot be set by SET_PARAMS request.
+@@ -550,6 +551,18 @@ cannot be set by SET_PARAMS request.
  		- change configured FEC encodings
  
  
@@ -50,7 +50,7 @@ index 80dd756c579f..a458e1ce2459 100644
  Request translation
  -------------------
  
-@@ -562,7 +575,7 @@ ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
+@@ -567,7 +580,7 @@ ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SWOL			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GMSGLVL			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SMSGLVL			ETHNL_CMD_SET_SETTINGS

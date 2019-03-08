@@ -1,0 +1,87 @@
+From f33ad38f612605b0fe6ff27d3dbce7b95c6c9c02 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Fri, 8 Mar 2019 18:01:46 +0100
+Subject: [PATCH 25/36] ethtool: setting debug level with SET_SETTINGS request
+
+Allow setting device debug level using ETHA_SETTINGS_MSGLEVEL bitfield in
+SET_SETTINGS request.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ Documentation/networking/ethtool-netlink.txt |  7 +++++--
+ net/ethtool/settings.c                       | 20 +++++++++++++++++++-
+ 2 files changed, 24 insertions(+), 3 deletions(-)
+
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index a27f4febe443..d71475373a71 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -362,6 +362,7 @@ to be passed with SET_SETTINGS request:
+     ETHA_SETTINGS_WOL		(nested)	wake on LAN settings
+         ETHA_WOL_MODES			(bitfield32)	wake on LAN modes
+         ETHA_WOL_SOPASS			(binary)	SecureOn(tm) password
++    ETHA_SETTINGS_MSGLEVEL	(bitfield32)	debug level
+ 
+ ETHA_SETTINGS_LINK_MODES bit set allows setting advertised link modes.
+ If autonegotiation is on (either set now or kept from before), advertised
+@@ -377,7 +378,9 @@ selector are set to 0 or 1 according to value. To allow the semantics of the
+ ioctl interface where the whole bitmap is set rather than only modified,
+ selectors may have also bits not supported by device set and an error is only
+ issued if any of them is also set in the value (i.e. if userspace tries to
+-enable mode not supported by device).
++enable mode not supported by device). ETHA_SETTINGS_MSGLEVEL bitfield also
++allows bits not recognized by kernel in selector as long as the request does
++not attempt to enable them.
+ 
+ 
+ Request translation
+@@ -396,7 +399,7 @@ ETHTOOL_GREGS			n/a
+ ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_SWOL			ETHNL_CMD_SET_SETTINGS
+ ETHTOOL_GMSGLVL			ETHNL_CMD_GET_SETTINGS
+-ETHTOOL_SMSGLVL			n/a
++ETHTOOL_SMSGLVL			ETHNL_CMD_SET_SETTINGS
+ ETHTOOL_NWAY_RST		n/a
+ ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
+ ETHTOOL_GEEPROM			n/a
+diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
+index 0618abf9a572..1dd39f9b1191 100644
+--- a/net/ethtool/settings.c
++++ b/net/ethtool/settings.c
+@@ -685,7 +685,8 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
+ 	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_REJECT },
+ 	[ETHA_SETTINGS_WOL]		= { .type = NLA_NESTED },
+-	[ETHA_SETTINGS_MSGLEVEL]	= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_MSGLEVEL]	= { .type = NLA_BITFIELD32,
++					    .validation_data = &all_bits },
+ 	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
+ 	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_REJECT },
+ 	[ETHA_SETTINGS_PRIV_FLAGS]	= { .type = NLA_REJECT },
+@@ -891,6 +892,23 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+ 		if (ret)
+ 			req_mask |= ETH_SETTINGS_IM_WOLINFO;
+ 	}
++	if (tb[ETHA_SETTINGS_MSGLEVEL]) {
++		u32 msglevel;
++
++		ret = -EOPNOTSUPP;
++		if (!dev->ethtool_ops->get_msglevel ||
++		    !dev->ethtool_ops->set_msglevel) {
++			ETHNL_SET_ERRMSG(info,
++					 "device does not provide msglvl access");
++			goto out_ops;
++		}
++		msglevel = dev->ethtool_ops->get_msglevel(dev);
++		if (ethnl_update_bitfield32(&msglevel,
++					    tb[ETHA_SETTINGS_MSGLEVEL])) {
++			dev->ethtool_ops->set_msglevel(dev, msglevel);
++			req_mask |= ETH_SETTINGS_IM_MSGLEVEL;
++		}
++	}
+ 	ret = 0;
+ 
+ out_ops:
+-- 
+2.21.0
+

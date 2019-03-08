@@ -1,7 +1,7 @@
-From 78be0ade559d14e47e025eaef8d24ccc72a0814b Mon Sep 17 00:00:00 2001
+From 1cc7fdbe947cb3f69e629b73ccf2d64d7924ad67 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
-Subject: [PATCH 30/34] ethtool: implement ACT_PHYS_ID message
+Subject: [PATCH 32/36] ethtool: implement ACT_PHYS_ID message
 
 Request physical NIC identification (by blinking a LED), equivalent of
 ETHTOOL_PHYS_ID.
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 186 insertions(+), 47 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index a458e1ce2459..5544f83fcd80 100644
+index 367d6ef8aeb3..55e4999efdc2 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -558,6 +558,28 @@ Request contents:
+@@ -563,6 +563,28 @@ Request contents:
  If successful, a notification in the same format is sent.
  
  
@@ -53,7 +53,7 @@ index a458e1ce2459..5544f83fcd80 100644
  Request translation
  -------------------
  
-@@ -593,7 +615,7 @@ ETHTOOL_GSG			ETHNL_CMD_GET_SETTINGS
+@@ -598,7 +620,7 @@ ETHTOOL_GSG			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SSG			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_TEST			n/a
  ETHTOOL_GSTRINGS		ETHNL_CMD_GET_STRSET

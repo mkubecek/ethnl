@@ -1,7 +1,7 @@
 From 3120706a76b97ccadba22083d60b890acca7b758 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 6 Mar 2019 08:20:31 +0100
-Subject: [PATCH 01/34] rtnetlink: provide permanent hardware address in
+Subject: [PATCH 01/36] rtnetlink: provide permanent hardware address in
  RTM_NEWLINK
 
 Permanent hardware address of a network device was traditionally provided

@@ -1,7 +1,7 @@
 From d6afdc4f8631009cc3151ee995c9d166940b3441 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
-Subject: [PATCH 16/34] ethtool: provide link settings and link modes in
+Subject: [PATCH 16/36] ethtool: provide link settings and link modes in
  GET_SETTINGS request
 
 Implement GET_SETTINGS netlink request to get link settings and link mode

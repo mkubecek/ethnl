@@ -1,7 +1,7 @@
 From b915dc3aa38e4d36b58ca22d37a611d622b23997 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 14:17:36 +0100
-Subject: [PATCH 02/34] netlink: introduce nla_put_bitfield32()
+Subject: [PATCH 02/36] netlink: introduce nla_put_bitfield32()
 
 Similar to other data types, this helper puts NLA_BITFIELD32 attribute into
 a netlink message. It takes separate value and selector arguments, if there
