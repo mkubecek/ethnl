@@ -1,7 +1,7 @@
-From 0f7a27db7d99eaef60ad4ed5f143c5193182eb0c Mon Sep 17 00:00:00 2001
+From a6577b11be9900aaa37e33f48c444d6ac2f37656 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 09:41:35 +0100
-Subject: [PATCH 30/36] ethtool: implement SET_PARAMS message
+Subject: [PATCH 29/35] ethtool: implement SET_PARAMS message
 
 Sets the information provided by ETHTOOL_SCOALESCE, ETHTOOL_SRINGPARAM,
 ETHTOOL_SPAUSEPARAM, ETHTOOL_SCHANNELS, ETHTOOL_SEEE and ETHTOOL_SFECPARAM.

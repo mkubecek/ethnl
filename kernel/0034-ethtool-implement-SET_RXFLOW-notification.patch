@@ -1,7 +1,7 @@
-From 18eabd1a2361fd806548cf19ac18b5cba3901e19 Mon Sep 17 00:00:00 2001
+From f04af49380691e08fd64c389a95ff394744a2dce Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
-Subject: [PATCH 35/36] ethtool: implement SET_RXFLOW notification
+Subject: [PATCH 34/35] ethtool: implement SET_RXFLOW notification
 
 SET_RXFLOW notification message uses the same format as response to
 GET_RXFLOW request except for ETHA_RXFLOW_CTXOP attribute which may be

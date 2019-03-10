@@ -1,7 +1,7 @@
-From 9b85b452edf6dc2cf2538e44fb35d887992fc8ee Mon Sep 17 00:00:00 2001
+From a276fc3c4ca82a1fdf703b4596a57f4f26d694bb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 14:56:35 +0100
-Subject: [PATCH 28/36] ethtool: implement GET_PARAMS message
+Subject: [PATCH 27/35] ethtool: implement GET_PARAMS message
 
 Requests the information provide by ETHTOOL_GCOALESCE, ETHTOOL_GRINGPARAM,
 ETHTOOL_GPAUSEPARAM, ETHTOOL_GCHANNELS, ETHTOOL_GEEE and ETHTOOL_GFECPARAM.

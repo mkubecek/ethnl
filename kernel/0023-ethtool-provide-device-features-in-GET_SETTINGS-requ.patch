@@ -1,7 +1,7 @@
-From fb37305e2d523fe2aa11a7b8d08852b41b9293f3 Mon Sep 17 00:00:00 2001
+From 2a9025810ad62effb2c73664f6283457f09ae99e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
-Subject: [PATCH 20/36] ethtool: provide device features in GET_SETTINGS
+Subject: [PATCH 23/35] ethtool: provide device features in GET_SETTINGS
  request
 
 Add information about network device features (as provided by
@@ -12,17 +12,22 @@ This request also provides information provided by ETHTOOL_GRXCSUM,
 ETHTOOL_GTXCSUM, ETHTOOL_GSG, ETHTOOL_GTSO, ETHTOOL_GUFO, ETHTOOL_GGSO,
 ETHTOOL_GFLAGS and ETHTOOL_GGRO ioctl commands.
 
+Send notification in the same format as reply when device features are
+modified using ethtool ioctl intefrace or when some other code calls
+netdev_update_features() or netdev_change_features().
+
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  36 +++++--
+ Documentation/networking/ethtool-netlink.txt |  36 ++++--
  include/uapi/linux/ethtool_netlink.h         |  16 ++-
  net/ethtool/common.h                         |   2 +
  net/ethtool/ioctl.c                          |   2 -
- net/ethtool/settings.c                       | 108 +++++++++++++++++++
- 5 files changed, 151 insertions(+), 13 deletions(-)
+ net/ethtool/netlink.c                        |  11 ++
+ net/ethtool/settings.c                       | 109 +++++++++++++++++++
+ 6 files changed, 163 insertions(+), 13 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 8ffb721e6cc5..c4073a856ce0 100644
+index fb8312a62e0c..a3dbcfbff21d 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -279,6 +279,7 @@ Info mask bits meaning:
@@ -69,8 +74,8 @@ index 8ffb721e6cc5..c4073a856ce0 100644
 +whenever netdev_update_features() or netdev_change_features() is called.
  
  
- Request translation
-@@ -347,30 +363,30 @@ ETHTOOL_GRINGPARAM		n/a
+ SET_SETTINGS
+@@ -387,30 +403,30 @@ ETHTOOL_GRINGPARAM		n/a
  ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
  ETHTOOL_SPAUSEPARAM		n/a
@@ -109,7 +114,7 @@ index 8ffb721e6cc5..c4073a856ce0 100644
  ETHTOOL_SGRO			n/a
  ETHTOOL_GRXRINGS		n/a
  ETHTOOL_GRXCLSRLCNT		n/a
-@@ -385,7 +401,7 @@ ETHTOOL_GRXNTUPLE		n/a
+@@ -425,7 +441,7 @@ ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
  ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
@@ -178,10 +183,10 @@ index e5b5c5c2a4b9..cf0b81af2d9f 100644
  netdev_features_strings[NETDEV_FEATURE_COUNT][ETH_GSTRING_LEN];
  extern const char
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index b136302a7346..eaf7df6b4ffd 100644
+index 9503f109fc5f..1afb27590cc3 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -58,8 +58,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
+@@ -59,8 +59,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
  
  /* Handlers for each ethtool command */
  
@@ -190,8 +195,37 @@ index b136302a7346..eaf7df6b4ffd 100644
  static int ethtool_get_features(struct net_device *dev, void __user *useraddr)
  {
  	struct ethtool_gfeatures cmd = {
+diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
+index f65c7de2c817..53a405b1aa97 100644
+--- a/net/ethtool/netlink.c
++++ b/net/ethtool/netlink.c
+@@ -616,6 +616,14 @@ static void ethnl_notify_devlist(struct netdev_notifier_info *info,
+ 	nlmsg_free(skb);
+ }
+ 
++static void ethnl_notify_features(struct netdev_notifier_info *info)
++{
++	struct net_device *dev = netdev_notifier_info_to_dev(info);
++
++	ethtool_notify(dev, NULL, ETHNL_CMD_SET_SETTINGS,
++		       ETH_SETTINGS_IM_FEATURES, NULL);
++}
++
+ static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
+ 			      void *ptr)
+ {
+@@ -630,6 +638,9 @@ static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
+ 		ethnl_notify_devlist(ptr, ETHA_EVENT_RENAMEDEV,
+ 				     ETHA_RENAMEDEV_DEV);
+ 		break;
++	case NETDEV_FEAT_CHANGE:
++		ethnl_notify_features(ptr);
++		break;
+ 	}
+ 
+ 	return NOTIFY_DONE;
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 18f38b6c2080..a3d734de4062 100644
+index 7eec3b2c61b6..a792e9adc784 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -16,6 +16,12 @@ struct settings_data {
@@ -206,8 +240,8 @@ index 18f38b6c2080..a3d734de4062 100644
 +	} features;
  };
  
- static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
-@@ -29,6 +35,7 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ struct link_mode_info {
+@@ -126,6 +132,7 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
  	[ETHA_SETTINGS_WOL]		= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_MSGLEVEL]	= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
@@ -215,7 +249,7 @@ index 18f38b6c2080..a3d734de4062 100644
  };
  
  static int parse_settings(struct common_req_info *req_info,
-@@ -88,6 +95,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
+@@ -185,6 +192,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
  	return ret;
  }
  
@@ -240,7 +274,7 @@ index 18f38b6c2080..a3d734de4062 100644
  static int prepare_settings(struct common_req_info *req_info,
  			    struct genl_info *info)
  {
-@@ -135,6 +160,8 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -232,6 +257,8 @@ static int prepare_settings(struct common_req_info *req_info,
  	}
  	if (req_mask & ETH_SETTINGS_IM_LINK)
  		data->link = __ethtool_get_link(dev);
@@ -249,7 +283,7 @@ index 18f38b6c2080..a3d734de4062 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -188,6 +215,38 @@ static int wol_size(void)
+@@ -285,6 +312,38 @@ static int wol_size(void)
  			      nla_total_size(SOPASS_MAX));
  }
  
@@ -288,7 +322,7 @@ index 18f38b6c2080..a3d734de4062 100644
  /* To keep things simple, reserve space for some attributes which may not
   * be added to the message (e.g. ETHA_SETTINGS_SOPASS); therefore the length
   * returned may be bigger than the actual length of the message sent
-@@ -215,6 +274,12 @@ static int settings_size(const struct common_req_info *req_info)
+@@ -312,6 +371,12 @@ static int settings_size(const struct common_req_info *req_info)
  		len += nla_total_size(sizeof(struct nla_bitfield32));
  	if (info_mask & ETH_SETTINGS_IM_LINK)
  		len += nla_total_size(sizeof(u32));
@@ -301,7 +335,7 @@ index 18f38b6c2080..a3d734de4062 100644
  
  	return len;
  }
-@@ -300,6 +365,44 @@ static int fill_wolinfo(struct sk_buff *skb,
+@@ -397,6 +462,44 @@ static int fill_wolinfo(struct sk_buff *skb,
  	return -EMSGSIZE;
  }
  
@@ -346,7 +380,7 @@ index 18f38b6c2080..a3d734de4062 100644
  static int fill_settings(struct sk_buff *skb,
  			 const struct common_req_info *req_info)
  {
-@@ -334,6 +437,11 @@ static int fill_settings(struct sk_buff *skb,
+@@ -431,6 +534,11 @@ static int fill_settings(struct sk_buff *skb,
  		if (nla_put_u8(skb, ETHA_SETTINGS_LINK, data->link))
  			return -EMSGSIZE;
  	}
@@ -358,6 +392,14 @@ index 18f38b6c2080..a3d734de4062 100644
  
  	return 0;
  }
+@@ -482,6 +590,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_MSGLEVEL]	= { .type = NLA_BITFIELD32,
+ 					    .validation_data = &all_bits },
+ 	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
++	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_REJECT },
+ };
+ 
+ static int ethnl_set_link_ksettings(struct genl_info *info,
 -- 
 2.21.0
 

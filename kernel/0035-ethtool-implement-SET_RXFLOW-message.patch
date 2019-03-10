@@ -1,7 +1,7 @@
-From 19ecebd66a090f90d6a5171e167acbe40910acaa Mon Sep 17 00:00:00 2001
+From 1c8eb479c72e02c799da3df915abd132fba24d62 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
-Subject: [PATCH 36/36] ethtool: implement SET_RXFLOW message
+Subject: [PATCH 35/35] ethtool: implement SET_RXFLOW message
 
 Request to set data updated by ETHTOOL_SRSSH, ETHTOOL_SRXFH and
 ETHTOOL_SRXFHINDIR ioctl commands. This allows to set

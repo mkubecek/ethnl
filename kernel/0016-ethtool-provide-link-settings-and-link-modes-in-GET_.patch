@@ -1,15 +1,20 @@
-From d6afdc4f8631009cc3151ee995c9d166940b3441 Mon Sep 17 00:00:00 2001
+From c3bcd42a79fd20a980bf1090ce20675a8cc7abb0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
-Subject: [PATCH 16/36] ethtool: provide link settings and link modes in
+Subject: [PATCH 16/35] ethtool: provide link settings and link modes in
  GET_SETTINGS request
 
 Implement GET_SETTINGS netlink request to get link settings and link mode
 information provided by ETHTOOL_GLINKSETTINGS ioctl command.
 
-The information is divided into two parts: supported, advertised and peer
-advertised link modes when ETH_SETTINGS_IM_LINKMODES flag is set in the
-request and other settings when ETH_SETTINGS_IM_LINKINFO is set.
+The information in SET_SETTINGS message sent as reply is divided into
+two parts: supported, advertised and peer advertised link modes when
+ETH_SETTINGS_IM_LINKMODES flag is set in the request and other settings
+when ETH_SETTINGS_IM_LINKINFO is set.
+
+Send notification in the same format as the reply message when relevant
+fields are modified using the ioctl interface (ETHTOOL_SLINKSETTINGS or
+ETHTOOL_SSET command).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -19,10 +24,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/common.c                         |  48 ++++
  net/ethtool/common.h                         |   4 +
- net/ethtool/ioctl.c                          |  48 ----
- net/ethtool/netlink.c                        |   9 +
+ net/ethtool/ioctl.c                          |  64 +----
+ net/ethtool/netlink.c                        |  10 +
  net/ethtool/settings.c                       | 264 +++++++++++++++++++
- 9 files changed, 414 insertions(+), 51 deletions(-)
+ 9 files changed, 429 insertions(+), 53 deletions(-)
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -256,10 +261,18 @@ index 02cbee79da35..7a3e0b10e69a 100644
 +
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index cec2b0531996..70a0b5f6177d 100644
+index cec2b0531996..6cd211c42c3f 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -356,54 +356,6 @@ bool ethtool_convert_link_mode_to_legacy_u32(u32 *legacy_u32,
+@@ -30,6 +30,7 @@
+ #include <net/devlink.h>
+ #include <net/xdp_sock.h>
+ #include <net/flow_offload.h>
++#include <linux/ethtool_netlink.h>
+ 
+ #include "common.h"
+ 
+@@ -356,54 +357,6 @@ bool ethtool_convert_link_mode_to_legacy_u32(u32 *legacy_u32,
  }
  EXPORT_SYMBOL(ethtool_convert_link_mode_to_legacy_u32);
  
@@ -314,8 +327,44 @@ index cec2b0531996..70a0b5f6177d 100644
  /* return false if ksettings link modes had higher bits
   * set. legacy_settings always updated (best effort)
   */
+@@ -617,7 +570,12 @@ static int ethtool_set_link_ksettings(struct net_device *dev,
+ 	    != link_ksettings.base.link_mode_masks_nwords)
+ 		return -EINVAL;
+ 
+-	return dev->ethtool_ops->set_link_ksettings(dev, &link_ksettings);
++	err = dev->ethtool_ops->set_link_ksettings(dev, &link_ksettings);
++	if (err >= 0)
++		ethtool_notify(dev, NULL, ETHNL_CMD_SET_SETTINGS,
++			       ETH_SETTINGS_IM_LINKINFO |
++			       ETH_SETTINGS_IM_LINKMODES, NULL);
++	return err;
+ }
+ 
+ /* Query device for its ethtool_cmd settings.
+@@ -666,6 +624,7 @@ static int ethtool_set_settings(struct net_device *dev, void __user *useraddr)
+ {
+ 	struct ethtool_link_ksettings link_ksettings;
+ 	struct ethtool_cmd cmd;
++	int ret;
+ 
+ 	ASSERT_RTNL();
+ 
+@@ -678,7 +637,12 @@ static int ethtool_set_settings(struct net_device *dev, void __user *useraddr)
+ 		return -EINVAL;
+ 	link_ksettings.base.link_mode_masks_nwords =
+ 		__ETHTOOL_LINK_MODE_MASK_NU32;
+-	return dev->ethtool_ops->set_link_ksettings(dev, &link_ksettings);
++	ret = dev->ethtool_ops->set_link_ksettings(dev, &link_ksettings);
++	if (ret >= 0)
++		ethtool_notify(dev, NULL, ETHNL_CMD_SET_SETTINGS,
++			       ETH_SETTINGS_IM_LINKINFO |
++			       ETH_SETTINGS_IM_LINKMODES, NULL);
++	return ret;
+ }
+ 
+ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 412a03948f57..68744d68328b 100644
+index 412a03948f57..f5a453882d08 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -231,10 +231,12 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
@@ -331,7 +380,15 @@ index 412a03948f57..68744d68328b 100644
  };
  
  /**
-@@ -653,6 +655,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -559,6 +561,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+ 				       const void *data);
+ 
+ ethnl_notify_handler_t ethnl_notify_handlers[] = {
++	[ETHNL_CMD_SET_SETTINGS]	= ethnl_std_notify,
+ };
+ 
+ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
+@@ -653,6 +656,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},

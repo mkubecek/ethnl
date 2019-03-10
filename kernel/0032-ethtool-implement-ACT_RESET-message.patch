@@ -1,7 +1,7 @@
-From a0415a42cfa95828d718582658aa3d250498b9ff Mon Sep 17 00:00:00 2001
+From 4c0000e362eb5f19eb39e7315e787939c702ccd8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
-Subject: [PATCH 33/36] ethtool: implement ACT_RESET message
+Subject: [PATCH 32/35] ethtool: implement ACT_RESET message
 
 Request reset of a NIC or its part(s), equivalent of ETHTOOL_RESET.
 

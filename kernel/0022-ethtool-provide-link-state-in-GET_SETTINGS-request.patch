@@ -1,7 +1,7 @@
-From f7eb7576574f5a2137280f03586b7ee88061c0a2 Mon Sep 17 00:00:00 2001
+From 9babd1630f935a3183a1d55f069a05dfe688de7a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:26:45 +0100
-Subject: [PATCH 19/36] ethtool: provide link state in GET_SETTINGS request
+Subject: [PATCH 22/35] ethtool: provide link state in GET_SETTINGS request
 
 Add information about device link state (as provided by ETHTOOL_GLINK ioctl
 command) into the GET_SETTINGS reply when ETH_SETTINGS_IM_LINK flag is set
@@ -17,11 +17,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/common.c                         |  8 ++++++++
  net/ethtool/common.h                         |  1 +
  net/ethtool/ioctl.c                          |  8 ++++----
- net/ethtool/settings.c                       | 11 +++++++++++
- 6 files changed, 31 insertions(+), 6 deletions(-)
+ net/ethtool/settings.c                       | 12 ++++++++++++
+ 6 files changed, 32 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 41f5d2cec13a..8ffb721e6cc5 100644
+index dac2a05f9329..fb8312a62e0c 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -278,6 +278,7 @@ Info mask bits meaning:
@@ -40,9 +40,9 @@ index 41f5d2cec13a..8ffb721e6cc5 100644
  
  Most of the attributes and their values have the same meaning as matching
  members of the corresponding ioctl structures. For ETHA_SETTINGS_LINK_MODES,
-@@ -336,7 +338,7 @@ ETHTOOL_SWOL			n/a
+@@ -376,7 +378,7 @@ ETHTOOL_SWOL			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GMSGLVL			ETHNL_CMD_GET_SETTINGS
- ETHTOOL_SMSGLVL			n/a
+ ETHTOOL_SMSGLVL			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_NWAY_RST		n/a
 -ETHTOOL_GLINK			n/a
 +ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
@@ -105,10 +105,10 @@ index ed3f1ca54660..e5b5c5c2a4b9 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 8351606e3d2f..b136302a7346 100644
+index 1095961e7ab3..9503f109fc5f 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -1306,12 +1306,12 @@ static int ethtool_nway_reset(struct net_device *dev)
+@@ -1320,12 +1320,12 @@ static int ethtool_nway_reset(struct net_device *dev)
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
  {
  	struct ethtool_value edata = { .cmd = ETHTOOL_GLINK };
@@ -126,7 +126,7 @@ index 8351606e3d2f..b136302a7346 100644
  		return -EFAULT;
  	return 0;
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index a56a0d20b079..18f38b6c2080 100644
+index 7d111f5096d9..7eec3b2c61b6 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,7 @@ struct settings_data {
@@ -137,7 +137,7 @@ index a56a0d20b079..18f38b6c2080 100644
  	bool				lpm_empty;
  };
  
-@@ -27,6 +28,7 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+@@ -124,6 +125,7 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
  	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_WOL]		= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_MSGLEVEL]	= { .type = NLA_REJECT },
@@ -145,7 +145,7 @@ index a56a0d20b079..18f38b6c2080 100644
  };
  
  static int parse_settings(struct common_req_info *req_info,
-@@ -98,6 +100,7 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -195,6 +197,7 @@ static int prepare_settings(struct common_req_info *req_info,
  
  	data->lsettings = &data->ksettings.base;
  	data->lpm_empty = true;
@@ -153,7 +153,7 @@ index a56a0d20b079..18f38b6c2080 100644
  
  	ret = ethnl_before_ops(dev);
  	if (ret < 0)
-@@ -130,6 +133,8 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -227,6 +230,8 @@ static int prepare_settings(struct common_req_info *req_info,
  		else
  			req_mask &= ~ETH_SETTINGS_IM_MSGLEVEL;
  	}
@@ -162,7 +162,7 @@ index a56a0d20b079..18f38b6c2080 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -208,6 +213,8 @@ static int settings_size(const struct common_req_info *req_info)
+@@ -305,6 +310,8 @@ static int settings_size(const struct common_req_info *req_info)
  		len += wol_size();
  	if (info_mask & ETH_SETTINGS_IM_MSGLEVEL)
  		len += nla_total_size(sizeof(struct nla_bitfield32));
@@ -171,7 +171,7 @@ index a56a0d20b079..18f38b6c2080 100644
  
  	return len;
  }
-@@ -323,6 +330,10 @@ static int fill_settings(struct sk_buff *skb,
+@@ -420,6 +427,10 @@ static int fill_settings(struct sk_buff *skb,
  				       data->msglevel, NETIF_MSG_ALL))
  			return -EMSGSIZE;
  	}
@@ -182,6 +182,14 @@ index a56a0d20b079..18f38b6c2080 100644
  
  	return 0;
  }
+@@ -470,6 +481,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_WOL]		= { .type = NLA_NESTED },
+ 	[ETHA_SETTINGS_MSGLEVEL]	= { .type = NLA_BITFIELD32,
+ 					    .validation_data = &all_bits },
++	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
+ };
+ 
+ static int ethnl_set_link_ksettings(struct genl_info *info,
 -- 
 2.21.0
 

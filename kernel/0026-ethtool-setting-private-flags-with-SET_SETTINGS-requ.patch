@@ -1,7 +1,7 @@
-From 57097f60dd279e1e43fba2641526dd5d15155800 Mon Sep 17 00:00:00 2001
+From 3403afb8e1ef1b3f198ee55e2f3ddd2956afdf47 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
-Subject: [PATCH 27/36] ethtool: setting private flags with  SET_SETTINGS
+Subject: [PATCH 26/35] ethtool: setting private flags with  SET_SETTINGS
  request
 
 Add support for setting device private flags using ETHNL_CMD_SET_SETTINGS

@@ -1,7 +1,7 @@
-From d1690a4ff3ceafd4563dd0a92e439668f159a5e6 Mon Sep 17 00:00:00 2001
+From ef7c216e7153a7477c160b6a008e1519cd0fa4ff Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
-Subject: [PATCH 31/36] ethtool: implement ACT_NWAY_RST message
+Subject: [PATCH 30/35] ethtool: implement ACT_NWAY_RST message
 
 Requests autonegotiation restart, equivalent of ETHTOOL_NWAY_RST.
 

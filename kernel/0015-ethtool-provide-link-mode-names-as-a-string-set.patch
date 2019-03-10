@@ -1,7 +1,7 @@
 From 34a7d7255831c77be44aa0ca9892affecc057fe7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:50:07 +0100
-Subject: [PATCH 15/36] ethtool: provide link mode names as a string set
+Subject: [PATCH 15/35] ethtool: provide link mode names as a string set
 
 Add table of ethernet link mode names and make it available as a string set
 to userspace GET_STRSET requests.

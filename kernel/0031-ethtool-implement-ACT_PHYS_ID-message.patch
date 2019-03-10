@@ -1,7 +1,7 @@
-From 1cc7fdbe947cb3f69e629b73ccf2d64d7924ad67 Mon Sep 17 00:00:00 2001
+From f9d288a4aa92f4e0be542206f1c4ab98ccba7cd4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
-Subject: [PATCH 32/36] ethtool: implement ACT_PHYS_ID message
+Subject: [PATCH 31/35] ethtool: implement ACT_PHYS_ID message
 
 Request physical NIC identification (by blinking a LED), equivalent of
 ETHTOOL_PHYS_ID.

@@ -1,7 +1,7 @@
 From 97dc6b6b59376f7b30a92461714a9a9427cd8d41 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
-Subject: [PATCH 07/36] ethtool: netlink bitset handling
+Subject: [PATCH 07/35] ethtool: netlink bitset handling
 
 Declare attribute type constants and add helper functions to generate and
 parse arbitrary length bit sets.

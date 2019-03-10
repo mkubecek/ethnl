@@ -1,7 +1,7 @@
-From a4e0b527e62d75db11f9a97948240f529c24f377 Mon Sep 17 00:00:00 2001
+From d3adb8f940a23f029446273f3da26a033a89c13d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
-Subject: [PATCH 34/36] ethtool: implement GET_RXFLOW message
+Subject: [PATCH 33/35] ethtool: implement GET_RXFLOW message
 
 Request the information provided by ETHTOOL_GRSSH, ETHTOOL_GRXRINGS,
 ETHTOOL_GRXFH and ETHTOOL_GRXFHINDIR ioctl commands. This allows to query

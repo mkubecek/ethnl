@@ -1,7 +1,7 @@
 From 0c055510a07eba5bba747c0377b51174eaa0cf5b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
-Subject: [PATCH 13/36] ethtool: provide driver/device information in GET_INFO
+Subject: [PATCH 13/35] ethtool: provide driver/device information in GET_INFO
  request
 
 Implement GET_INFO request to get basic driver and device information as

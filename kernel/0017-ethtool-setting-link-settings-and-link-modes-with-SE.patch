@@ -1,7 +1,7 @@
-From 4c59e55d90a0907c9ffdf99794929f8c5d1a2cfb Mon Sep 17 00:00:00 2001
+From 9ddf783bbbdc733909d184a5b8cc3e6ed25bf3f1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
-Subject: [PATCH 23/36] ethtool: setting link settings and link modes with
+Subject: [PATCH 17/35] ethtool: setting link settings and link modes with
  SET_SETTINGS request
 
 Implement SET_SETTINGS netlink request allowing to set link settings and
@@ -16,11 +16,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  33 ++-
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   4 +
- net/ethtool/settings.c                       | 289 +++++++++++++++++++
- 4 files changed, 328 insertions(+), 3 deletions(-)
+ net/ethtool/settings.c                       | 284 +++++++++++++++++++
+ 4 files changed, 323 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 3efdbd47117a..b12149eee949 100644
+index 89174531cfa4..e35e1071e978 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -131,7 +131,7 @@ List of message types
@@ -32,8 +32,8 @@ index 3efdbd47117a..b12149eee949 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -343,6 +343,33 @@ netlink or ioctl ethtool interface; feature notifications are also sent
- whenever netdev_update_features() or netdev_change_features() is called.
+@@ -302,6 +302,33 @@ to them are broadcasted as notifications on change of these settings using
+ netlink or ioctl ethtool interface.
  
  
 +SET_SETTINGS
@@ -66,7 +66,7 @@ index 3efdbd47117a..b12149eee949 100644
  Request translation
  -------------------
  
-@@ -353,7 +380,7 @@ have their netlink replacement yet.
+@@ -312,7 +339,7 @@ have their netlink replacement yet.
  ioctl command			netlink command
  ---------------------------------------------------------------------
  ETHTOOL_GSET			ETHNL_CMD_GET_SETTINGS
@@ -74,8 +74,8 @@ index 3efdbd47117a..b12149eee949 100644
 +ETHTOOL_SSET			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GDRVINFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GREGS			n/a
- ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
-@@ -427,7 +454,7 @@ ETHTOOL_STUNABLE		n/a
+ ETHTOOL_GWOL			n/a
+@@ -386,7 +413,7 @@ ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
  ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
@@ -85,10 +85,10 @@ index 3efdbd47117a..b12149eee949 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 8558e23e08fc..53a405b1aa97 100644
+index f5a453882d08..f65c7de2c817 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -674,6 +674,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -663,6 +663,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -114,11 +114,11 @@ index 8b29e4262250..97189776c3c3 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index fc71b7e83eff..e89b89d13f88 100644
+index 4994224b5113..683e7c8e89a3 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -27,6 +27,97 @@ struct settings_data {
- 	unsigned int			n_priv_flags;
+@@ -14,6 +14,97 @@ struct settings_data {
+ 	bool				lpm_empty;
  };
  
 +struct link_mode_info {
@@ -215,9 +215,9 @@ index fc71b7e83eff..e89b89d13f88 100644
  static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
  	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_DEV]		= { .type = NLA_NESTED },
-@@ -556,3 +647,201 @@ const struct get_request_ops settings_request_ops = {
+@@ -262,3 +353,196 @@ const struct get_request_ops settings_request_ops = {
+ 	.reply_size		= settings_size,
  	.fill_reply		= fill_settings,
- 	.cleanup		= settings_cleanup,
  };
 +
 +/* SET_SETTINGS */
@@ -242,11 +242,6 @@ index fc71b7e83eff..e89b89d13f88 100644
 +	[ETHA_SETTINGS_LINK_INFO]	= { .type = NLA_NESTED },
 +	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
 +	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_WOL]		= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_MSGLEVEL]	= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_PRIV_FLAGS]	= { .type = NLA_REJECT },
 +};
 +
 +static int ethnl_set_link_ksettings(struct genl_info *info,
