@@ -1,8 +1,7 @@
-From b9305b6804b984ca683af480f871b5786bd06aa8 Mon Sep 17 00:00:00 2001
+From d89ebbf673fc911813cb20fc09f4590427d98cbd Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 18:01:46 +0100
-Subject: [PATCH 21/35] ethtool: setting message level with SET_SETTINGS
- request
+Subject: [PATCH 21/44] ethtool: set message level with SET_SETTINGS request
 
 Allow setting device message level using ETHA_SETTINGS_MSGLEVEL bitfield in
 SET_SETTINGS request.

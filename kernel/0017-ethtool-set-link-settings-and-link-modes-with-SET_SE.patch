@@ -1,7 +1,7 @@
-From 9ddf783bbbdc733909d184a5b8cc3e6ed25bf3f1 Mon Sep 17 00:00:00 2001
+From e0de95caa84ae5a74d6728b8721eb5d6036eba72 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
-Subject: [PATCH 17/35] ethtool: setting link settings and link modes with
+Subject: [PATCH 17/44] ethtool: set link settings and link modes with
  SET_SETTINGS request
 
 Implement SET_SETTINGS netlink request allowing to set link settings and

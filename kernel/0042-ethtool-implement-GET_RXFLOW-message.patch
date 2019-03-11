@@ -1,7 +1,7 @@
-From d3adb8f940a23f029446273f3da26a033a89c13d Mon Sep 17 00:00:00 2001
+From db34e88662f6d4adc84344ecb0016429f7254dec Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
-Subject: [PATCH 33/35] ethtool: implement GET_RXFLOW message
+Subject: [PATCH 42/44] ethtool: implement GET_RXFLOW message
 
 Request the information provided by ETHTOOL_GRSSH, ETHTOOL_GRXRINGS,
 ETHTOOL_GRXFH and ETHTOOL_GRXFHINDIR ioctl commands. This allows to query
@@ -25,7 +25,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/rxflow.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 95ce8975644f..8dee85f940cc 100644
+index e459aa68782c..14973e7c5c01 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -135,6 +135,8 @@ List of message types

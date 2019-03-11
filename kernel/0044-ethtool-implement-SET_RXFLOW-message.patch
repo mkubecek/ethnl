@@ -1,7 +1,7 @@
-From 1c8eb479c72e02c799da3df915abd132fba24d62 Mon Sep 17 00:00:00 2001
+From 53279bc96a30005394b40b1e6dfb3cf0a1b8b44a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
-Subject: [PATCH 35/35] ethtool: implement SET_RXFLOW message
+Subject: [PATCH 44/44] ethtool: implement SET_RXFLOW message
 
 Request to set data updated by ETHTOOL_SRSSH, ETHTOOL_SRXFH and
 ETHTOOL_SRXFHINDIR ioctl commands. This allows to set
@@ -25,7 +25,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 663 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 8dee85f940cc..e66bf89ec5b7 100644
+index 14973e7c5c01..9eca20b20d6b 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -136,7 +136,7 @@ List of message types

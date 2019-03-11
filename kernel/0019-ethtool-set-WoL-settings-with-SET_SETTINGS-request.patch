@@ -1,7 +1,7 @@
-From 60db14d3d2ecd556b10afaa3453318defbe2c922 Mon Sep 17 00:00:00 2001
+From 4a937756d154f148e96a85efb39e369be3fe954d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:50:30 +0100
-Subject: [PATCH 19/35] ethtool: setting WoL settings with SET_SETTINGS request
+Subject: [PATCH 19/44] ethtool: set WoL settings with SET_SETTINGS request
 
 Allow enabling and disabling wake on LAN modes using SET_SETTINGS
 request.

@@ -1,8 +1,7 @@
-From 3403afb8e1ef1b3f198ee55e2f3ddd2956afdf47 Mon Sep 17 00:00:00 2001
+From 2f59f3ad2dcb2bd8289be123ab9586593c1c9270 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
-Subject: [PATCH 26/35] ethtool: setting private flags with  SET_SETTINGS
- request
+Subject: [PATCH 26/44] ethtool: set private flags with SET_SETTINGS request
 
 Add support for setting device private flags using ETHNL_CMD_SET_SETTINGS
 message. ETHA_SETTINGS_PRIV_FLAGS nested attribute is a bit set used to

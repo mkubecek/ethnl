@@ -1,7 +1,7 @@
-From 2a9025810ad62effb2c73664f6283457f09ae99e Mon Sep 17 00:00:00 2001
+From c824fb6f1f2c204e00d800a0f13f22208fa1907f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
-Subject: [PATCH 23/35] ethtool: provide device features in GET_SETTINGS
+Subject: [PATCH 23/44] ethtool: provide device features in GET_SETTINGS
  request
 
 Add information about network device features (as provided by

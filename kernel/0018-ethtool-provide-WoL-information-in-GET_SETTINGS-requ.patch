@@ -1,7 +1,7 @@
-From 47bef87ccf6c258f06b51d9cc4557f003fb9303e Mon Sep 17 00:00:00 2001
+From be5e28f5d72331d5f8c4e43f6ec6ee334c64640e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:08:55 +0100
-Subject: [PATCH 18/35] ethtool: provide WoL information in GET_SETTINGS
+Subject: [PATCH 18/44] ethtool: provide WoL information in GET_SETTINGS
  request
 
 Add information about supported and enabled wake on LAN modes into the

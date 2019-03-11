@@ -1,0 +1,150 @@
+From 023dccb49cf4065e263bb31cf9357e2885fb6d6d Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Mon, 11 Mar 2019 08:47:45 +0100
+Subject: [PATCH 36/44] ethtool: set EEE settings with SET_PARAMS request
+
+Add support for setting EEE settings using SET_PARAMS request with
+ETHA_PARAMS_EEE nested attribute. This is a replacement for ETHTOOL_SEEE
+ioctl command.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ Documentation/networking/ethtool-netlink.txt | 18 ++++--
+ net/ethtool/params.c                         | 64 +++++++++++++++++++-
+ 2 files changed, 75 insertions(+), 7 deletions(-)
+
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index a2ccf9242b62..61dd545c495f 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -491,11 +491,11 @@ SET_PARAMS
+ ----------
+ 
+ SET_PARAMS request modifies the settings retrieved by GET_PARAMS, i.e. it
+-replaces ETHTOOL_SCOALESCE, ETHTOOL_SRINGPARAM, ETHTOOL_SPAUSEPARAM and
+-ETHTOOL_SCHANNELS ioctl commands. For each of these, relevant data attributes
+-are contained in a corresponding nest attribute. Some of the attributes
+-provided by GET_SETPARAMS are read only and cannot be set by SET_PARAMS
+-request.
++replaces ETHTOOL_SCOALESCE, ETHTOOL_SRINGPARAM, ETHTOOL_SPAUSEPARAM,
++ETHTOOL_SCHANNELS and ETHTOOL_SEEE ioctl commands. For each of these, relevant
++data attributes are contained in a corresponding nest attribute. Some of the
++attributes provided by GET_SETPARAMS are read only and cannot be set by
++SET_PARAMS request.
+ 
+     ETHA_PARAMS_COALESCE	(nested)	coalescing parameters
+         ETHA_COALESCE_RX_USECS			(u32)
+@@ -534,6 +534,12 @@ request.
+         ETHA_CHANNELS_TX_COUNT			(u32)
+         ETHA_CHANNELS_OTHER_COUNT		(u32)
+         ETHA_CHANNELS_COMBINED_COUNT		(u32)
++    ETHA_PARAMS_EEE		(nested)	EEE settings
++        ETHA_EEE_LINK_MODES			(bitset)
++		- change modes for which EEE is advertised
++        ETHA_EEE_ENABLED			(bool)
++        ETHA_EEE_TX_LPI_ENABLED			(bool)
++        ETHA_EEE_TX_LPI_TIMER			(u32)
+ 
+ 
+ Request translation
+@@ -612,7 +618,7 @@ ETHTOOL_GET_TS_INFO		ETHNL_CMD_GET_INFO
+ ETHTOOL_GMODULEINFO		n/a
+ ETHTOOL_GMODULEEEPROM		n/a
+ ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
+-ETHTOOL_SEEE			n/a
++ETHTOOL_SEEE			ETHNL_CMD_SET_PARAMS
+ ETHTOOL_GRSSH			n/a
+ ETHTOOL_SRSSH			n/a
+ ETHTOOL_GTUNABLE		n/a
+diff --git a/net/ethtool/params.c b/net/ethtool/params.c
+index 1ec17d1c32cf..1af93a7a5b15 100644
+--- a/net/ethtool/params.c
++++ b/net/ethtool/params.c
+@@ -445,7 +445,7 @@ static const struct nla_policy set_params_policy[ETHA_PARAMS_MAX + 1] = {
+ 	[ETHA_PARAMS_RING]		= { .type = NLA_NESTED },
+ 	[ETHA_PARAMS_PAUSE]		= { .type = NLA_NESTED },
+ 	[ETHA_PARAMS_CHANNELS]		= { .type = NLA_NESTED },
+-	[ETHA_PARAMS_EEE]		= { .type = NLA_REJECT },
++	[ETHA_PARAMS_EEE]		= { .type = NLA_NESTED },
+ };
+ 
+ static const struct nla_policy coalesce_policy[ETHA_COALESCE_MAX + 1] = {
+@@ -725,6 +725,63 @@ static int update_channels(struct genl_info *info, struct net_device *dev,
+ 	return (ret < 0) ? ret : 1;
+ }
+ 
++static const struct nla_policy eee_policy[ETHA_EEE_MAX + 1] = {
++	[ETHA_EEE_UNSPEC]		= { .type = NLA_REJECT },
++	[ETHA_EEE_LINK_MODES]		= { .type = NLA_NESTED },
++	[ETHA_EEE_PEER_MODES]		= { .type = NLA_NESTED },
++	[ETHA_EEE_ACTIVE]		= { .type = NLA_U8 },
++	[ETHA_EEE_ENABLED]		= { .type = NLA_U8 },
++	[ETHA_EEE_TX_LPI_ENABLED]	= { .type = NLA_U8 },
++	[ETHA_EEE_TX_LPI_TIMER]		= { .type = NLA_U32 },
++};
++
++static int update_eee(struct genl_info *info, struct net_device *dev,
++		      struct nlattr *nest)
++{
++	struct nlattr *tb[ETHA_EEE_MAX + 1];
++	struct ethtool_eee data = {};
++	bool mod = false;
++	int ret;
++
++	if (!nest)
++		return 0;
++	if (!dev->ethtool_ops->get_eee ||
++	    !dev->ethtool_ops->set_eee)
++		return -EOPNOTSUPP;
++	ret = dev->ethtool_ops->get_eee(dev, &data);
++	if (ret < 0)
++		return ret;
++
++	ret = nla_parse_nested_strict(tb, ETHA_EEE_MAX, nest, eee_policy,
++				      info->extack);
++	if (ret < 0)
++		return ret;
++	/* read only attributes */
++	if (tb[ETHA_EEE_PEER_MODES] || tb[ETHA_EEE_ACTIVE]) {
++		ETHNL_SET_ERRMSG(info, "attempt to set a read only attribute");
++		return -EINVAL;
++	}
++
++	if (ethnl_update_bitset32(&data.advertised, NULL, 32,
++				  tb[ETHA_EEE_LINK_MODES], &ret,
++				  link_mode_names, false, info))
++		mod = true;
++	if (ret < 0)
++		return ret;
++	if (ethnl_update_bool32(&data.eee_enabled, tb[ETHA_EEE_ENABLED]))
++		mod = true;
++	if (ethnl_update_bool32(&data.tx_lpi_enabled,
++				tb[ETHA_EEE_TX_LPI_ENABLED]))
++		mod = true;
++	if (ethnl_update_u32(&data.tx_lpi_timer, tb[ETHA_EEE_TX_LPI_TIMER]))
++		mod = true;
++
++	if (!mod)
++		return 0;
++	ret = dev->ethtool_ops->set_eee(dev, &data);
++	return (ret < 0) ? ret : 1;
++}
++
+ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+ {
+ 	struct nlattr *tb[ETHA_PARAMS_MAX + 1];
+@@ -764,6 +821,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+ 		goto out_ops;
+ 	if (ret)
+ 		req_mask |= ETH_PARAMS_IM_CHANNELS;
++	ret = update_eee(info, dev, tb[ETHA_PARAMS_EEE]);
++	if (ret < 0)
++		goto out_ops;
++	if (ret)
++		req_mask |= ETH_PARAMS_IM_EEE;
+ 
+ 	ret = 0;
+ out_ops:
+-- 
+2.21.0
+

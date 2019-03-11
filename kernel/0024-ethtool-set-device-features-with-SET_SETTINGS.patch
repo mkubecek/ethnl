@@ -1,15 +1,17 @@
-From b5ad3ba681191750f9f0de3d99bd6c7f9f61b860 Mon Sep 17 00:00:00 2001
+From 5351a4d3b86c9d9fa313363a6c7ee5619ab94665 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
-Subject: [PATCH 24/35] ethtool: setting device features with SET_SETTINGS
+Subject: [PATCH 24/44] ethtool: set device features with SET_SETTINGS
 
-Using ETHNL_SETTINGS_FEATURES attribute, userspace can modify device
-features. Actual change is subject to netdev_change_features() sanity
-checks so that it can differ from what was requested. Unlike with most
-other requests, kernel can reply (if ETHA_FEATURES_WANT_DIFF flag is used)
-with a message in the same format but with different semantics: information
-about difference between user request and actual result and difference
-between old and new state of dev->features.
+Allow setting network device features using SET_SETTINGS request with
+ETHA_SETTINGS_FEATURES nested attribute.
+
+Actual change is subject to netdev_change_features() sanity checks so that
+it can differ from what was requested. Unlike with most other GET requests,
+kernel can reply (if ETHA_FEATURES_WANT_DIFF flag is used) with a message
+in the same format but with different semantics: information about
+difference between user request and actual result and difference between
+old and new state of dev->features.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---

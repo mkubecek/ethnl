@@ -1,7 +1,7 @@
-From 11cf968b59213bbb911e139c68c1f2a27109f4e0 Mon Sep 17 00:00:00 2001
+From c6c73240e55e133939d5b760af59c936544b883f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:19:02 +0100
-Subject: [PATCH 20/35] ethtool: provide message level in GET_SETTINGS request
+Subject: [PATCH 20/44] ethtool: provide message level in GET_SETTINGS request
 
 Add information about supported and enabled message levels to the
 GET_SETTINGS reply when ETH_SETTINGS_IM_MSGLEVEL flag is set in the
