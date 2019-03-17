@@ -1,4 +1,4 @@
-From 88f039f21cf85f4db6119552371f25d99462f16a Mon Sep 17 00:00:00 2001
+From 51b78cad0fa10ce73f7c1157831858f87ac174ff Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
 Subject: [PATCH 07/34] netlink: add netlink handler for gdrv (-i)
@@ -17,7 +17,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/info.c
 
 diff --git a/Makefile.am b/Makefile.am
-index bc16c5ecd3d0..6ba0114f4713 100644
+index c620cbdf0981..42ea94138543 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -23,6 +23,7 @@ if ETHTOOL_ENABLE_NETLINK
@@ -29,10 +29,10 @@ index bc16c5ecd3d0..6ba0114f4713 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 6d7c83c6929f..61ccc78a5eda 100644
+index 89d5c850fff3..63fd99bdff08 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -5062,6 +5062,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5143,6 +5143,7 @@ static int show_usage(struct cmd_context *ctx);
  /* Just define all netlink handlers as null when building without netlink
   * support so that we do not get unresolved symbols in args array below
   */
@@ -40,7 +40,7 @@ index 6d7c83c6929f..61ccc78a5eda 100644
  #endif
  
  static const struct option {
-@@ -5131,7 +5132,7 @@ static const struct option {
+@@ -5212,7 +5213,7 @@ static const struct option {
  	{ "-K|--features|--offload", 1, do_sfeatures, NULL,
  	  "Set protocol offload and other features",
  	  "		FEATURE on|off ...\n" },

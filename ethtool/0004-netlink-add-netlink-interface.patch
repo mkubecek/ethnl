@@ -1,4 +1,4 @@
-From af1b2befb425def5dc392b891030beded1b96529 Mon Sep 17 00:00:00 2001
+From f3609160afc3dffc174403a800398b2b6c6a2402 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 04/34] netlink: add netlink interface
@@ -22,7 +22,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  common.c                     |   2 +
  common.h                     |   6 +
  configure.ac                 |  14 +-
- ethtool.c                    | 187 ++++++---
+ ethtool.c                    | 190 ++++++---
  internal.h                   |  11 +
  netlink/extapi.h             |  16 +
  netlink/netlink.c            | 721 +++++++++++++++++++++++++++++++++++
@@ -32,7 +32,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  uapi/linux/genetlink.h       |  89 +++++
  uapi/linux/net_tstamp.h      |  13 +
  uapi/linux/netlink.h         | 248 ++++++++++++
- 14 files changed, 1965 insertions(+), 64 deletions(-)
+ 14 files changed, 1967 insertions(+), 65 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
  create mode 100644 netlink/extapi.h
@@ -43,7 +43,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 uapi/linux/netlink.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 7452e2600e02..fbffc306eeec 100644
+index 09105fe83819..f6a567459157 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -6,7 +6,9 @@ EXTRA_DIST = LICENSE ethtool.8 ethtool.spec.in aclocal.m4 ChangeLog autogen.sh
@@ -104,11 +104,11 @@ index 000000000000..286c2055f2d7
 +
 +#endif /* ETHTOOL_COMMON_H__ */
 diff --git a/configure.ac b/configure.ac
-index 5073a3420dab..4a0be9178cf9 100644
+index 4e5477aa9a2b..456ab31777db 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
- AC_INIT(ethtool, 4.19, netdev@vger.kernel.org)
+ AC_INIT(ethtool, 5.0, netdev@vger.kernel.org)
  AC_PREREQ(2.52)
  AC_CONFIG_SRCDIR([ethtool.c])
 -AM_INIT_AUTOMAKE([gnu])
@@ -135,7 +135,7 @@ index 5073a3420dab..4a0be9178cf9 100644
  AC_CONFIG_FILES([Makefile ethtool.spec ethtool.8])
  AC_OUTPUT
 diff --git a/ethtool.c b/ethtool.c
-index a858a664076f..90e6ce21469e 100644
+index afd406cce130..deac45dbfbd2 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -30,6 +30,7 @@
@@ -166,7 +166,7 @@ index a858a664076f..90e6ce21469e 100644
  static void exit_bad_args(void) __attribute__((noreturn));
  
  static void exit_bad_args(void)
-@@ -5055,14 +5058,22 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
+@@ -5136,14 +5139,22 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
  
  static int show_usage(struct cmd_context *ctx);
  
@@ -190,7 +190,7 @@ index a858a664076f..90e6ce21469e 100644
  	  "		[ speed %d ]\n"
  	  "		[ duplex half|full ]\n"
  	  "		[ port tp|aui|bnc|mii|fibre ]\n"
-@@ -5074,13 +5085,17 @@ static const struct option {
+@@ -5155,13 +5166,17 @@ static const struct option {
  	  "		[ wol p|u|m|b|a|g|s|f|d... ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
  	  "		[ msglvl %d | msglvl type on|off ... ]\n" },
@@ -212,7 +212,7 @@ index a858a664076f..90e6ce21469e 100644
  	  "		[adaptive-rx on|off]\n"
  	  "		[adaptive-tx on|off]\n"
  	  "		[rx-usecs N]\n"
-@@ -5103,46 +5118,54 @@ static const struct option {
+@@ -5184,46 +5199,54 @@ static const struct option {
  	  "		[tx-usecs-high N]\n"
  	  "		[tx-frames-high N]\n"
  	  "		[sample-interval N]\n" },
@@ -282,7 +282,7 @@ index a858a664076f..90e6ce21469e 100644
  	  "Configure Rx network flow classification options or rules",
  	  "		rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 m|v|t|s|d|f|n|r... [context %d] |\n"
-@@ -5167,55 +5190,64 @@ static const struct option {
+@@ -5248,55 +5271,64 @@ static const struct option {
  	  "			[ context %d ]\n"
  	  "			[ loc %d]] |\n"
  	  "		delete %d\n" },
@@ -364,7 +364,7 @@ index a858a664076f..90e6ce21469e 100644
  	  "		[ flags %x ]\n"
  	  "		[ mgmt ]\n"
  	  "		[ mgmt-shared ]\n"
-@@ -5237,11 +5269,15 @@ static const struct option {
+@@ -5318,14 +5350,19 @@ static const struct option {
  	  "		[ ap-shared ]\n"
  	  "		[ dedicated ]\n"
  	  "		[ all ]\n"},
@@ -375,6 +375,11 @@ index a858a664076f..90e6ce21469e 100644
 +	{ "--set-fec", 1, do_sfec, NULL,
 +	  "Set FEC settings",
  	  "		[ encoding auto|off|rs|baser [...]]\n"},
+-	{ "-Q|--per-queue", 1, do_perqueue, "Apply per-queue command."
++	{ "-Q|--per-queue", 1, do_perqueue, NULL,
++	  "Apply per-queue command. "
+ 	  "The supported sub commands include --show-coalesce, --coalesce",
+ 	  "             [queue_mask %x] SUB_COMMAND\n"},
 -	{ "-h|--help", 0, show_usage, "Show this help" },
 -	{ "--version", 0, do_version, "Show version number" },
 +	{ "-h|--help", 0, show_usage, NULL,
@@ -384,7 +389,7 @@ index a858a664076f..90e6ce21469e 100644
  	{}
  };
  
-@@ -5268,14 +5304,39 @@ static int show_usage(struct cmd_context *ctx)
+@@ -5544,14 +5581,39 @@ static int do_perqueue(struct cmd_context *ctx)
  	return 0;
  }
  
@@ -424,15 +429,15 @@ index a858a664076f..90e6ce21469e 100644
  
  	/* Skip command name */
  	argp++;
-@@ -5312,6 +5373,7 @@ int main(int argc, char **argp)
- 				argp++;
- 				argc--;
- 				func = args[k].func;
-+				nl_func = args[k].nl_func;
- 				want_device = args[k].want_device;
- 				goto opt_found;
- 			}
-@@ -5326,33 +5388,38 @@ int main(int argc, char **argp)
+@@ -5583,6 +5645,7 @@ int main(int argc, char **argp)
+ 		argp++;
+ 		argc--;
+ 		func = args[k].func;
++		nl_func = args[k].nl_func;
+ 		want_device = args[k].want_device;
+ 		goto opt_found;
+ 	}
+@@ -5592,33 +5655,38 @@ int main(int argc, char **argp)
  	want_device = 1;
  
  opt_found:
@@ -489,7 +494,7 @@ index a858a664076f..90e6ce21469e 100644
  	return func(&ctx);
  }
 diff --git a/internal.h b/internal.h
-index d144890ddc2d..6532a6c154f0 100644
+index f9e8df28fa50..95ba0c2b2db4 100644
 --- a/internal.h
 +++ b/internal.h
 @@ -23,6 +23,11 @@

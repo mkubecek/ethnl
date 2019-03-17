@@ -1,4 +1,4 @@
-From 11a40dc876559da20883758edb7061e3ef2f74b2 Mon Sep 17 00:00:00 2001
+From 21dac0c7535baa922818759d3b86ada402366aad Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
 Subject: [PATCH 06/34] netlink: add notification monitor
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/monitor.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 7b570d550477..bc16c5ecd3d0 100644
+index 21cde638a6b6..c620cbdf0981 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -22,7 +22,7 @@ endif
@@ -34,10 +34,10 @@ index 7b570d550477..bc16c5ecd3d0 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 90e6ce21469e..6d7c83c6929f 100644
+index deac45dbfbd2..89d5c850fff3 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -5300,6 +5300,9 @@ static int show_usage(struct cmd_context *ctx)
+@@ -5385,6 +5385,9 @@ static int show_usage(struct cmd_context *ctx)
  		if (args[i].opthelp)
  			fputs(args[i].opthelp, stdout);
  	}
@@ -47,7 +47,7 @@ index 90e6ce21469e..6d7c83c6929f 100644
  
  	return 0;
  }
-@@ -5355,6 +5358,19 @@ int main(int argc, char **argp)
+@@ -5632,6 +5635,19 @@ int main(int argc, char **argp)
  		argp += 2;
  		argc -= 2;
  	}

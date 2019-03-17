@@ -1,4 +1,4 @@
-From 922f0a7e0e745020d5fc041760800b997de33939 Mon Sep 17 00:00:00 2001
+From 23d9918a77fe314ec21812d368ca096410659a59 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Aug 2018 23:26:42 +0200
 Subject: [PATCH 08/34] netlink: add netlink handler for tsinfo (-T)
@@ -74,10 +74,10 @@ index 286c2055f2d7..7c08ec2d7c2f 100644
 +
  #endif /* ETHTOOL_COMMON_H__ */
 diff --git a/ethtool.c b/ethtool.c
-index 61ccc78a5eda..0025b797dc39 100644
+index 63fd99bdff08..5fb6e739faf2 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -1612,47 +1612,6 @@ static void dump_fec(u32 fec)
+@@ -1685,47 +1685,6 @@ static void dump_fec(u32 fec)
  		fprintf(stdout, " RS");
  }
  
@@ -125,7 +125,7 @@ index 61ccc78a5eda..0025b797dc39 100644
  static int dump_tsinfo(const struct ethtool_ts_info *info)
  {
  	int i;
-@@ -5063,6 +5022,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5144,6 +5103,7 @@ static int show_usage(struct cmd_context *ctx);
   * support so that we do not get unresolved symbols in args array below
   */
  #define nl_gdrv		NULL
@@ -133,7 +133,7 @@ index 61ccc78a5eda..0025b797dc39 100644
  #endif
  
  static const struct option {
-@@ -5191,7 +5151,7 @@ static const struct option {
+@@ -5272,7 +5232,7 @@ static const struct option {
  	  "			[ context %d ]\n"
  	  "			[ loc %d]] |\n"
  	  "		delete %d\n" },

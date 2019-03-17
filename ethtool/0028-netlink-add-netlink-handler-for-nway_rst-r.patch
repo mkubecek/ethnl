@@ -1,4 +1,4 @@
-From fa670326efbc466f74f2bdb957589f9f658d520d Mon Sep 17 00:00:00 2001
+From be747cad837bbf3e7923b91ebf6bf2ff6863c3be Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:29:46 +0200
 Subject: [PATCH 28/34] netlink: add netlink handler for nway_rst (-r)
@@ -17,7 +17,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/actions.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 3ec12cf11591..80b973c7f04c 100644
+index 85bf889ad46d..1a513840a7a6 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -25,6 +25,7 @@ ethtool_SOURCES += \
@@ -29,10 +29,10 @@ index 3ec12cf11591..80b973c7f04c 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 4b220b6d61b9..120cbb798461 100644
+index 8b4b7a1ed4f1..60d701506cbf 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4858,6 +4858,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4939,6 +4939,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_schannels	NULL
  #define nl_seee		NULL
  #define nl_sfec		NULL
@@ -40,7 +40,7 @@ index 4b220b6d61b9..120cbb798461 100644
  #endif
  
  static const struct option {
-@@ -4944,7 +4945,7 @@ static const struct option {
+@@ -5025,7 +5026,7 @@ static const struct option {
  	  "		[ offset N ]\n"
  	  "		[ length N ]\n"
  	  "		[ value N ]\n" },

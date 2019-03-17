@@ -1,4 +1,4 @@
-From ddd43d736445c0f5a9b22e0f8c07ae1b22e1a59d Mon Sep 17 00:00:00 2001
+From b3c44ab411a59487349dfa7222cc5d0fee1f514f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:04:09 +0100
 Subject: [PATCH 18/34] netlink: add netlink handler for gpause (-a)
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 44 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 1759a85683e6..0f4498d0e5ac 100644
+index 1dda9a9922af..ce0b6533c320 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4848,6 +4848,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4929,6 +4929,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sprivflags	NULL
  #define nl_gcoalesce	NULL
  #define nl_gring	NULL
@@ -26,7 +26,7 @@ index 1759a85683e6..0f4498d0e5ac 100644
  #endif
  
  static const struct option {
-@@ -4871,7 +4872,7 @@ static const struct option {
+@@ -4952,7 +4953,7 @@ static const struct option {
  	  "		[ wol %d[/%d] |  p|u|m|b|a|g|s|f|d...[/p|u|m|b|a|g|s|f|d...] ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
  	  "		[ msglvl %d[/%d] | type on|off ... [--] ]\n" },

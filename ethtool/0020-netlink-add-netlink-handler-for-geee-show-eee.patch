@@ -1,4 +1,4 @@
-From c4cfc5b7e8dbd48113167d2b6b3fa12d7dd98023 Mon Sep 17 00:00:00 2001
+From 03246ef386c55b44c02a327db7b54262b108d4ec Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:08:21 +0100
 Subject: [PATCH 20/34] netlink: add netlink handler for geee (--show-eee)
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 74 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 96b33630448f..015ada5bdd27 100644
+index d14ba034b0f5..dc0fc2717322 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4850,6 +4850,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4931,6 +4931,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gring	NULL
  #define nl_gpause	NULL
  #define nl_gchannels	NULL
@@ -26,7 +26,7 @@ index 96b33630448f..015ada5bdd27 100644
  #endif
  
  static const struct option {
-@@ -5020,7 +5021,7 @@ static const struct option {
+@@ -5101,7 +5102,7 @@ static const struct option {
  	  "		[ hex on|off ]\n"
  	  "		[ offset N ]\n"
  	  "		[ length N ]\n" },

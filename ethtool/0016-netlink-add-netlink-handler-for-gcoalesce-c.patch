@@ -1,4 +1,4 @@
-From b15c5ccb0863b4fcdf38c7a419fac6ef6a1fde95 Mon Sep 17 00:00:00 2001
+From 5ce937739e3caadba01ed6b6e564fc087e223c36 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
 Subject: [PATCH 16/34] netlink: add netlink handler for gcoalesce (-c)
@@ -17,7 +17,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/params.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 150c367a159d..3ec12cf11591 100644
+index dbb9369a1a95..85bf889ad46d 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -24,7 +24,7 @@ ethtool_SOURCES += \
@@ -30,10 +30,10 @@ index 150c367a159d..3ec12cf11591 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 8cdce301e71d..3bd31d01dda7 100644
+index 97f512a96f64..9ec6e647e766 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4846,6 +4846,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4927,6 +4927,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sfeatures	NULL
  #define nl_gprivflags	NULL
  #define nl_sprivflags	NULL
@@ -41,7 +41,7 @@ index 8cdce301e71d..3bd31d01dda7 100644
  #endif
  
  static const struct option {
-@@ -4876,7 +4877,7 @@ static const struct option {
+@@ -4957,7 +4958,7 @@ static const struct option {
  	  "		[ autoneg on|off ]\n"
  	  "		[ rx on|off ]\n"
  	  "		[ tx on|off ]\n" },

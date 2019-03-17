@@ -1,4 +1,4 @@
-From a772b6ab1768746f73ad6aba1ae96aee60224c77 Mon Sep 17 00:00:00 2001
+From a68cd7a3225fc334de9b5b555ae5f20af0332a67 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 08:43:44 +0200
 Subject: [PATCH 30/34] netlink: add netlink handler for reset (--reset)
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 255 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index d5292972b7b3..bd45d6db8fc1 100644
+index 349bd2837c2a..96028041764f 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4860,6 +4860,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4941,6 +4941,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sfec		NULL
  #define nl_nway_rst	NULL
  #define nl_phys_id	NULL
@@ -26,7 +26,7 @@ index d5292972b7b3..bd45d6db8fc1 100644
  #endif
  
  static const struct option {
-@@ -5044,7 +5045,7 @@ static const struct option {
+@@ -5125,7 +5126,7 @@ static const struct option {
  	{ "--get-phy-tunable", 1, do_get_phy_tunable, NULL,
  	  "Get PHY tunable",
  	  "		[ downshift ]\n"},

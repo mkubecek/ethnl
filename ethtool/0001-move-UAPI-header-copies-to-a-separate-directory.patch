@@ -1,4 +1,4 @@
-From 6fd654d50a75a5bca142828ecf4a3f419874a888 Mon Sep 17 00:00:00 2001
+From d5893b93ce0303ea156ca6eafd9b075195774c12 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 09:02:44 +0100
 Subject: [PATCH 01/34] move UAPI header copies to a separate directory
@@ -22,7 +22,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  rename net_tstamp-copy.h => uapi/linux/net_tstamp.h (100%)
 
 diff --git a/Makefile.am b/Makefile.am
-index 468eed1fdd6b..7452e2600e02 100644
+index 0a2fd2917df6..09105fe83819 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -1,12 +1,12 @@
@@ -54,7 +54,7 @@ index 468eed1fdd6b..7452e2600e02 100644
  dist-hook:
  	cp $(top_srcdir)/ethtool.spec $(distdir)
 diff --git a/internal.h b/internal.h
-index 84b0f9cef1c0..7217b926c165 100644
+index aecf1ce60923..060c5994360e 100644
 --- a/internal.h
 +++ b/internal.h
 @@ -42,8 +42,8 @@ typedef int32_t s32;

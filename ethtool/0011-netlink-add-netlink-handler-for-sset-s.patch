@@ -1,4 +1,4 @@
-From 0489ce4135a9b61b2c08b20d6896bf3d9811b3b5 Mon Sep 17 00:00:00 2001
+From 0a6acbfe7e8d5e5d28768f7b53ff55e3e43f6d5b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 11/34] netlink: add netlink handler for sset (-s)
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  7 files changed, 223 insertions(+), 4 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index f5aced24ce47..3def8726df49 100644
+index 229106c1135c..d14d60e65ece 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4886,6 +4886,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4967,6 +4967,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gdrv		NULL
  #define nl_tsinfo	NULL
  #define nl_gset		NULL
@@ -32,7 +32,7 @@ index f5aced24ce47..3def8726df49 100644
  #endif
  
  static const struct option {
-@@ -4896,19 +4897,19 @@ static const struct option {
+@@ -4977,19 +4978,19 @@ static const struct option {
  	char *help;
  	char *opthelp;
  } args[] = {

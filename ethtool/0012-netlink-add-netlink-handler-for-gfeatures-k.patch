@@ -1,4 +1,4 @@
-From 445bf225f0f0364327cd934dd57e1bb6aec9b920 Mon Sep 17 00:00:00 2001
+From 20511936289fc8e8a1fe74f53a73313cd403b042 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
 Subject: [PATCH 12/34] netlink: add netlink handler for gfeatures (-k)
@@ -90,7 +90,7 @@ index 37edac765e65..749bf389e9e1 100644
  extern const unsigned int link_modes_count;
  
 diff --git a/ethtool.c b/ethtool.c
-index 3def8726df49..f6af98535cec 100644
+index d14d60e65ece..de2b9e69b3ca 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -102,51 +102,6 @@ struct cmdline_info {
@@ -154,7 +154,7 @@ index 3def8726df49..f6af98535cec 100644
  	/* Name and offload flag index for each feature */
  	struct feature_def def[0];
  };
-@@ -1327,7 +1282,7 @@ static void dump_features(const struct feature_defs *defs,
+@@ -1400,7 +1355,7 @@ static void dump_features(const struct feature_defs *defs,
  	int indent;
  	int i, j;
  
@@ -163,7 +163,7 @@ index 3def8726df49..f6af98535cec 100644
  		/* Don't show features whose state is unknown on this
  		 * kernel version
  		 */
-@@ -1603,7 +1558,7 @@ static struct feature_defs *get_feature_defs(struct cmd_context *ctx)
+@@ -1676,7 +1631,7 @@ static struct feature_defs *get_feature_defs(struct cmd_context *ctx)
  		defs->def[i].off_flag_index = -1;
  
  		for (j = 0;
@@ -172,7 +172,7 @@ index 3def8726df49..f6af98535cec 100644
  			     defs->def[i].off_flag_index < 0;
  		     j++) {
  			const char *pattern =
-@@ -2045,7 +2000,7 @@ get_features(struct cmd_context *ctx, const struct feature_defs *defs)
+@@ -2124,7 +2079,7 @@ get_features(struct cmd_context *ctx, const struct feature_defs *defs)
  
  	state->off_flags = 0;
  
@@ -181,7 +181,7 @@ index 3def8726df49..f6af98535cec 100644
  		value = off_flag_def[i].value;
  		if (!off_flag_def[i].get_cmd)
  			continue;
-@@ -2161,14 +2116,14 @@ static int do_sfeatures(struct cmd_context *ctx)
+@@ -2240,14 +2195,14 @@ static int do_sfeatures(struct cmd_context *ctx)
  	/* Generate cmdline_info for legacy flags and kernel-named
  	 * features, and parse our arguments.
  	 */
@@ -198,7 +198,7 @@ index 3def8726df49..f6af98535cec 100644
  		flag_to_cmdline_info(off_flag_def[i].short_name,
  				     off_flag_def[i].value,
  				     &off_flags_wanted, &off_flags_mask,
-@@ -2178,9 +2133,9 @@ static int do_sfeatures(struct cmd_context *ctx)
+@@ -2257,9 +2212,9 @@ static int do_sfeatures(struct cmd_context *ctx)
  			defs->def[i].name, FEATURE_FIELD_FLAG(i),
  			&FEATURE_WORD(efeatures->features, i, requested),
  			&FEATURE_WORD(efeatures->features, i, valid),
@@ -210,7 +210,7 @@ index 3def8726df49..f6af98535cec 100644
  	free(cmdline_features);
  
  	if (!any_changed) {
-@@ -2200,7 +2155,7 @@ static int do_sfeatures(struct cmd_context *ctx)
+@@ -2279,7 +2234,7 @@ static int do_sfeatures(struct cmd_context *ctx)
  		 * related features that the user did not specify and that
  		 * are not fixed.  Warn if all related features are fixed.
  		 */
@@ -219,7 +219,7 @@ index 3def8726df49..f6af98535cec 100644
  			int fixed = 1;
  
  			if (!(off_flags_mask & off_flag_def[i].value))
-@@ -2241,7 +2196,7 @@ static int do_sfeatures(struct cmd_context *ctx)
+@@ -2320,7 +2275,7 @@ static int do_sfeatures(struct cmd_context *ctx)
  			goto err;
  		}
  	} else {
@@ -228,7 +228,7 @@ index 3def8726df49..f6af98535cec 100644
  			if (!off_flag_def[i].set_cmd)
  				continue;
  			if (off_flags_mask & off_flag_def[i].value) {
-@@ -4887,6 +4842,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4968,6 +4923,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_tsinfo	NULL
  #define nl_gset		NULL
  #define nl_sset		NULL
@@ -236,7 +236,7 @@ index 3def8726df49..f6af98535cec 100644
  #endif
  
  static const struct option {
-@@ -4951,7 +4907,7 @@ static const struct option {
+@@ -5032,7 +4988,7 @@ static const struct option {
  	  "		[ rx-mini N ]\n"
  	  "		[ rx-jumbo N ]\n"
  	  "		[ tx N ]\n" },

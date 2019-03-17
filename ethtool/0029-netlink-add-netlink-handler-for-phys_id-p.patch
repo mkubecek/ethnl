@@ -1,4 +1,4 @@
-From b7af0ad82c966402717e0b3d545b932be9d5b4a9 Mon Sep 17 00:00:00 2001
+From a074ccc4898aa9bd704cb5863ca6b8e8296b1c6a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 16:43:40 +0200
 Subject: [PATCH 29/34] netlink: add netlink handler for phys_id (-p)
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 90 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 120cbb798461..d5292972b7b3 100644
+index 60d701506cbf..349bd2837c2a 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4859,6 +4859,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4940,6 +4940,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_seee		NULL
  #define nl_sfec		NULL
  #define nl_nway_rst	NULL
@@ -26,7 +26,7 @@ index 120cbb798461..d5292972b7b3 100644
  #endif
  
  static const struct option {
-@@ -4947,7 +4948,7 @@ static const struct option {
+@@ -5028,7 +5029,7 @@ static const struct option {
  	  "		[ value N ]\n" },
  	{ "-r|--negotiate", 1, do_nway_rst, nl_nway_rst,
  	  "Restart N-WAY negotiation" },

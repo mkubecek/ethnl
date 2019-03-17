@@ -1,4 +1,4 @@
-From 8b1d0ee4c6a8536c1115d3a43410ab07698cbd82 Mon Sep 17 00:00:00 2001
+From 3446eb3f3877d25f46cb8cd7eb4f242fb1037a08 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:46:58 +0200
 Subject: [PATCH 31/34] netlink: add netlink handler for grxfh (-x)
@@ -16,7 +16,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/rxflow.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 80b973c7f04c..51b6957bd1af 100644
+index 1a513840a7a6..8f24b8aa00a1 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -25,7 +25,7 @@ ethtool_SOURCES += \
@@ -29,10 +29,10 @@ index 80b973c7f04c..51b6957bd1af 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index bd45d6db8fc1..83183c106086 100644
+index 96028041764f..0e68e0622ecb 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4861,6 +4861,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4942,6 +4942,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_nway_rst	NULL
  #define nl_phys_id	NULL
  #define nl_reset	NULL
@@ -40,7 +40,7 @@ index bd45d6db8fc1..83183c106086 100644
  #endif
  
  static const struct option {
-@@ -4991,7 +4992,7 @@ static const struct option {
+@@ -5072,7 +5073,7 @@ static const struct option {
  	  "		delete %d\n" },
  	{ "-T|--show-time-stamping", 1, do_tsinfo, nl_tsinfo,
  	  "Show time stamping capabilities" },

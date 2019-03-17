@@ -1,4 +1,4 @@
-From 68968298ad670aed185d2c73cdafded6b347b68e Mon Sep 17 00:00:00 2001
+From 5b5fbe3009655691a533b1e39955ebfcf50b074b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:24:40 +0200
 Subject: [PATCH 32/34] netlink: add netlink handler for srxfh (-X)
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 341 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 83183c106086..26b44182fd51 100644
+index 0e68e0622ecb..3e16e6c6023f 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4862,6 +4862,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4943,6 +4943,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_phys_id	NULL
  #define nl_reset	NULL
  #define nl_grxfh	NULL
@@ -26,7 +26,7 @@ index 83183c106086..26b44182fd51 100644
  #endif
  
  static const struct option {
-@@ -4995,7 +4996,7 @@ static const struct option {
+@@ -5076,7 +5077,7 @@ static const struct option {
  	{ "-x|--show-rxfh-indir|--show-rxfh", 1, do_grxfh, nl_grxfh,
  	  "Show Rx flow hash indirection table and/or RSS hash key",
  	  "		[ context %d ]\n" },

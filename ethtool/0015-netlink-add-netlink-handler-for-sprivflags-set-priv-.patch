@@ -1,4 +1,4 @@
-From 9f7670a70381f194586ba21ee8b93f3104a0b8d6 Mon Sep 17 00:00:00 2001
+From 4a76eeb403f0286b21ef82dfe4880239ad4efb41 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:23:10 +0200
 Subject: [PATCH 15/34] netlink: add netlink handler for sprivflags
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 36 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 51d86529a23c..8cdce301e71d 100644
+index dbf26486071f..97f512a96f64 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4845,6 +4845,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4926,6 +4926,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gfeatures	NULL
  #define nl_sfeatures	NULL
  #define nl_gprivflags	NULL
@@ -26,7 +26,7 @@ index 51d86529a23c..8cdce301e71d 100644
  #endif
  
  static const struct option {
-@@ -5006,7 +5007,7 @@ static const struct option {
+@@ -5087,7 +5088,7 @@ static const struct option {
  	  "               [ combined N ]\n" },
  	{ "--show-priv-flags", 1, do_gprivflags, nl_gprivflags,
  	  "Query private flags" },

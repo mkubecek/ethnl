@@ -1,4 +1,4 @@
-From 0c87af83571a8dd53c6ab4487ede24fa5e9026cc Mon Sep 17 00:00:00 2001
+From 91ba41b91b747cbb8ce3f0a68abe5abe8c62859d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:51:36 +0100
 Subject: [PATCH 27/34] netlink: add netlink handler for sfec (--set-fec)
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 19 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 167a19ccc7fd..4b220b6d61b9 100644
+index 9a296ea5f2ab..8b4b7a1ed4f1 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4857,6 +4857,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4938,6 +4938,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_spause	NULL
  #define nl_schannels	NULL
  #define nl_seee		NULL
@@ -25,7 +25,7 @@ index 167a19ccc7fd..4b220b6d61b9 100644
  #endif
  
  static const struct option {
-@@ -5066,7 +5067,7 @@ static const struct option {
+@@ -5147,7 +5148,7 @@ static const struct option {
  	  "		[ all ]\n"},
  	{ "--show-fec", 1, do_gfec, nl_gfec,
  	  "Show FEC settings"},
@@ -33,7 +33,7 @@ index 167a19ccc7fd..4b220b6d61b9 100644
 +	{ "--set-fec", 1, do_sfec, nl_sfec,
  	  "Set FEC settings",
  	  "		[ encoding auto|off|rs|baser [...]]\n"},
- 	{ "-h|--help", 0, show_usage, NULL,
+ 	{ "-Q|--per-queue", 1, do_perqueue, NULL,
 diff --git a/netlink/extapi.h b/netlink/extapi.h
 index 3f19931b699f..40715beaf07f 100644
 --- a/netlink/extapi.h
