@@ -1,4 +1,4 @@
-From 4a76eeb403f0286b21ef82dfe4880239ad4efb41 Mon Sep 17 00:00:00 2001
+From a594d82cee4cec53cfcccc7b98b690c9a49b24c4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:23:10 +0200
 Subject: [PATCH 15/34] netlink: add netlink handler for sprivflags
@@ -48,10 +48,10 @@ index ce5fde1ddc35..f89c6d0e169c 100644
  
  void monitor_usage();
 diff --git a/netlink/settings.c b/netlink/settings.c
-index bda2ac2120b0..d7020ed8bf71 100644
+index 34689dd4a607..befcf83fe598 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -1054,3 +1054,36 @@ int nl_sfeatures(struct cmd_context *ctx)
+@@ -1138,3 +1138,36 @@ int nl_sfeatures(struct cmd_context *ctx)
  		return 0;
  	return nlctx->exit_code ?: 92;
  }

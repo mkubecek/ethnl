@@ -1,4 +1,4 @@
-From 5ce937739e3caadba01ed6b6e564fc087e223c36 Mon Sep 17 00:00:00 2001
+From 97557164faf94972a9b016ea6850040c28e4d726 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
 Subject: [PATCH 16/34] netlink: add netlink handler for gcoalesce (-c)
@@ -63,7 +63,7 @@ index f89c6d0e169c..a63f79eee2c8 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index c01dc7813c9e..927b60c598e8 100644
+index bdf914f9abde..707d975a0d9b 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -96,6 +96,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)

@@ -1,4 +1,4 @@
-From 20511936289fc8e8a1fe74f53a73313cd403b042 Mon Sep 17 00:00:00 2001
+From cfa165e1d9a89604b0716824fe96d58d4106b48c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
 Subject: [PATCH 12/34] netlink: add netlink handler for gfeatures (-k)
@@ -18,8 +18,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.c          |  68 +++-----------
  netlink/extapi.h   |   1 +
  netlink/monitor.c  |   6 ++
- netlink/settings.c | 227 +++++++++++++++++++++++++++++++++++++++++++++
- 6 files changed, 295 insertions(+), 56 deletions(-)
+ netlink/settings.c | 228 +++++++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 296 insertions(+), 56 deletions(-)
 
 diff --git a/common.c b/common.c
 index 962f3f9c318c..f52a1ba5f04c 100644
@@ -258,12 +258,12 @@ index 4f9e60c2fca8..f4bbb0b456ef 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 7d1dfc3e470d..f1c25f1449f6 100644
+index 43d82ed4a0ff..ece096c6ba58 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -155,6 +155,12 @@ static struct monitor_option monitor_opts[] = {
- 				  ETH_SETTINGS_IM_WOLINFO |
- 				  ETH_SETTINGS_IM_LINK,
+ 				  ETH_SETTINGS_IM_DEBUG |
+ 				  ETH_SETTINGS_IM_WOL,
  	},
 +	{
 +		.pattern	= "-k|--show-features|--show-offload|"
@@ -275,11 +275,19 @@ index 7d1dfc3e470d..f1c25f1449f6 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/settings.c b/netlink/settings.c
-index afa0f65cbb1f..c9c11fb39622 100644
+index ab80c34f2ef4..9767613c5e59 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -138,6 +138,219 @@ static int dump_wol_info(struct nl_context *nlctx, const struct nlattr *nest,
+@@ -251,6 +251,7 @@ static int dump_wol_info(struct nl_context *nlctx, const struct nlattr *nest,
  	return dump_wol(&wolinfo) ? -EFAULT : 0;
+ }
+ 
++
+ static int dump_debug(struct nl_context *nlctx, const struct nlattr *nest,
+ 		      bool *first)
+ {
+@@ -302,6 +303,219 @@ static int dump_link_state(struct nl_context *nlctx, const struct nlattr *nest,
+ 	return 0;
  }
  
 +uint32_t *get_compact_bitset_value(const struct nlattr *bitset)
@@ -498,9 +506,9 @@ index afa0f65cbb1f..c9c11fb39622 100644
  int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHA_SETTINGS_MAX + 1] = {};
-@@ -267,6 +480,15 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
- 		printf("\tLink detected: %s\n", link ? "yes" : "no");
- 		allfail = false;
+@@ -348,6 +562,15 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ 		if (ret == 0)
+ 			allfail = false;
  	};
 +	if (tb[ETHA_SETTINGS_FEATURES] &&
 +	    mask_ok(nlctx, ETH_SETTINGS_IM_FEATURES)) {
@@ -514,7 +522,7 @@ index afa0f65cbb1f..c9c11fb39622 100644
  
  	if (allfail && !nlctx->is_monitor && !nlctx->is_dump) {
  		fputs("No data available\n", stdout);
-@@ -307,6 +529,11 @@ int nl_gset(struct cmd_context *ctx)
+@@ -388,6 +611,11 @@ int nl_gset(struct cmd_context *ctx)
  	return (ret < 0) ? 75 : 0;
  }
  

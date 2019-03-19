@@ -1,4 +1,4 @@
-From f3609160afc3dffc174403a800398b2b6c6a2402 Mon Sep 17 00:00:00 2001
+From 9f558d1f8354f5082a3784699f52adb6f69337d6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 04/34] netlink: add netlink interface
@@ -28,11 +28,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  netlink/netlink.c            | 721 +++++++++++++++++++++++++++++++++++
  netlink/netlink.h            | 158 ++++++++
  uapi/linux/ethtool.h         |  13 +
- uapi/linux/ethtool_netlink.h | 532 ++++++++++++++++++++++++++
+ uapi/linux/ethtool_netlink.h | 556 +++++++++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 +++++
  uapi/linux/net_tstamp.h      |  13 +
  uapi/linux/netlink.h         | 248 ++++++++++++
- 14 files changed, 1967 insertions(+), 65 deletions(-)
+ 14 files changed, 1991 insertions(+), 65 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
  create mode 100644 netlink/extapi.h
@@ -1482,10 +1482,10 @@ index 02b3300a4e28..b22160143599 100644
  
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..a8611a9a5168
+index 000000000000..344c86a60244
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,532 @@
+@@ -0,0 +1,556 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +/*
 + * include/uapi/linux/ethtool_netlink.h - netlink interface for ethtool
@@ -1689,14 +1689,13 @@ index 000000000000..a8611a9a5168
 +	ETHA_SETTINGS_DEV,			/* nest - ETHA_DEV_* */
 +	ETHA_SETTINGS_INFOMASK,			/* u32 */
 +	ETHA_SETTINGS_COMPACT,			/* flag */
-+	ETHA_SETTINGS_LINK_INFO,		/* nested */
-+	ETHA_SETTINGS_LINK_MODES,		/* bitset */
-+	ETHA_SETTINGS_PEER_MODES,		/* bitset */
-+	ETHA_SETTINGS_WOL,			/* nested */
-+	ETHA_SETTINGS_MSGLEVEL,			/* bitfield32 */
-+	ETHA_SETTINGS_LINK,			/* u8 */
++	ETHA_SETTINGS_LINK_INFO,		/* nest - ETHA_LINKINFO_* */
++	ETHA_SETTINGS_LINK_MODES,		/* nest - ETHA_LINKMODES_* */
++	ETHA_SETTINGS_LINK_STATE,		/* nest - ETHA_LINKSTATE_* */
++	ETHA_SETTINGS_WOL,			/* nest - ETHA_WOL_* */
++	ETHA_SETTINGS_DEBUG,			/* nest - ETHA_DEBUG_* */
 +	ETHA_SETTINGS_FEATURES,			/* nest - ETHA_FEATURES_* */
-+	ETHA_SETTINGS_PRIV_FLAGS,		/* nest - ETHA_BITSET_* */
++	ETHA_SETTINGS_PRIV_FLAGS,		/* bitset */
 +
 +	__ETHA_SETTINGS_CNT,
 +	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
@@ -1704,27 +1703,24 @@ index 000000000000..a8611a9a5168
 +
 +#define ETH_SETTINGS_IM_LINKINFO		(1U << 0)
 +#define ETH_SETTINGS_IM_LINKMODES		(1U << 1)
-+#define ETH_SETTINGS_IM_WOLINFO			(1U << 2)
-+#define ETH_SETTINGS_IM_MSGLEVEL		(1U << 3)
-+#define ETH_SETTINGS_IM_LINK			(1U << 4)
++#define ETH_SETTINGS_IM_LINKSTATE		(1U << 2)
++#define ETH_SETTINGS_IM_WOL			(1U << 3)
++#define ETH_SETTINGS_IM_DEBUG			(1U << 4)
 +#define ETH_SETTINGS_IM_FEATURES		(1U << 5)
 +#define ETH_SETTINGS_IM_PRIVFLAGS		(1U << 6)
 +
 +#define ETH_SETTINGS_IM_ALL (ETH_SETTINGS_IM_LINKINFO | \
 +			     ETH_SETTINGS_IM_LINKMODES | \
-+			     ETH_SETTINGS_IM_WOLINFO | \
-+			     ETH_SETTINGS_IM_MSGLEVEL | \
-+			     ETH_SETTINGS_IM_LINK | \
++			     ETH_SETTINGS_IM_LINKSTATE | \
++			     ETH_SETTINGS_IM_WOL | \
++			     ETH_SETTINGS_IM_DEBUG | \
 +			     ETH_SETTINGS_IM_FEATURES | \
 +			     ETH_SETTINGS_IM_PRIVFLAGS)
 +
 +enum {
 +	ETHA_LINKINFO_UNSPEC,
-+	ETHA_LINKINFO_SPEED,			/* u32 */
-+	ETHA_LINKINFO_DUPLEX,			/* u8 */
 +	ETHA_LINKINFO_PORT,			/* u8 */
 +	ETHA_LINKINFO_PHYADDR,			/* u8 */
-+	ETHA_LINKINFO_AUTONEG,			/* u8 */
 +	ETHA_LINKINFO_TP_MDIX,			/* u8 */
 +	ETHA_LINKINFO_TP_MDIX_CTRL,		/* u8 */
 +	ETHA_LINKINFO_TRANSCEIVER,		/* u8 */
@@ -1734,12 +1730,40 @@ index 000000000000..a8611a9a5168
 +};
 +
 +enum {
++	ETHA_LINKMODES_UNSPEC,
++	ETHA_LINKMODES_AUTONEG,			/* u8 */
++	ETHA_LINKMODES_OURS,			/* bitset */
++	ETHA_LINKMODES_PEER,			/* bitset */
++	ETHA_LINKMODES_SPEED,			/* u32 */
++	ETHA_LINKMODES_DUPLEX,			/* u8 */
++
++	__ETHA_LINKMODES_CNT,
++	ETHA_LINKMODES_MAX = (__ETHA_LINKMODES_CNT - 1)
++};
++
++enum {
++	ETHA_LINKSTATE_UNSPEC,
++	ETHA_LINKSTATE_LINK,			/* u8 */
++
++	__ETHA_LINKSTATE_CNT,
++	ETHA_LINKSTATE_MAX = (__ETHA_LINKSTATE_CNT - 1)
++};
++
++enum {
 +	ETHA_WOL_UNSPEC,
 +	ETHA_WOL_MODES,				/* bitfield32 */
 +	ETHA_WOL_SOPASS,			/* binary */
 +
 +	__ETHA_WOL_CNT,
 +	ETHA_WOL_MAX = (__ETHA_WOL_CNT - 1)
++};
++
++enum {
++	ETHA_DEBUG_UNSPEC,
++	ETHA_DEBUG_MSG_MASK,			/* bitfield32 */
++
++	__ETHA_DEBUG_CNT,
++	ETHA_DEBUG_MAX = (__ETHA_DEBUG_CNT - 1)
 +};
 +
 +enum {

@@ -1,4 +1,4 @@
-From 03246ef386c55b44c02a327db7b54262b108d4ec Mon Sep 17 00:00:00 2001
+From 6c1398677bf936fd24c8385c073d520d89fcb65f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:08:21 +0100
 Subject: [PATCH 20/34] netlink: add netlink handler for geee (--show-eee)
@@ -48,7 +48,7 @@ index 2ca01fb4c9ea..2d0ce8649052 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index b89f6dc1a8b8..e555c3f6d622 100644
+index 97b4fe0aabd2..12ceda8654dd 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -191,6 +191,11 @@ static struct monitor_option monitor_opts[] = {

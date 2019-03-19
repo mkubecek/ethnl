@@ -1,4 +1,4 @@
-From e3cbd7e13178de5c7e9c8d59084de53ba13844a9 Mon Sep 17 00:00:00 2001
+From 5130e9187a2031c5614adb5300513b0d8ff46bf2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:20:18 +0200
 Subject: [PATCH 14/34] netlink: add netlink handler for gprivflags
@@ -50,7 +50,7 @@ index d0199cb440f8..ce5fde1ddc35 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index f1c25f1449f6..c01dc7813c9e 100644
+index ece096c6ba58..bdf914f9abde 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -161,6 +161,11 @@ static struct monitor_option monitor_opts[] = {
@@ -66,10 +66,10 @@ index f1c25f1449f6..c01dc7813c9e 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 209817c7c288..bda2ac2120b0 100644
+index ced13997042c..34689dd4a607 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -351,6 +351,53 @@ out_free:
+@@ -516,6 +516,53 @@ out_free:
  	return 0;
  }
  
@@ -123,7 +123,7 @@ index 209817c7c288..bda2ac2120b0 100644
  int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHA_SETTINGS_MAX + 1] = {};
-@@ -489,6 +536,12 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -571,6 +618,12 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  		if (ret == 0)
  			allfail = false;
  	}
@@ -136,7 +136,7 @@ index 209817c7c288..bda2ac2120b0 100644
  
  	if (allfail && !nlctx->is_monitor && !nlctx->is_dump) {
  		fputs("No data available\n", stdout);
-@@ -500,12 +553,15 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -582,12 +635,15 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  
  int settings_request(struct cmd_context *ctx, uint32_t info_mask)
  {
@@ -153,7 +153,7 @@ index 209817c7c288..bda2ac2120b0 100644
  
  	ret = ethnl_prep_get_request(ctx, ETHNL_CMD_GET_SETTINGS,
  				     ETHA_SETTINGS_DEV);
-@@ -534,6 +590,11 @@ int nl_gfeatures(struct cmd_context *ctx)
+@@ -616,6 +672,11 @@ int nl_gfeatures(struct cmd_context *ctx)
  	return settings_request(ctx, ETH_SETTINGS_IM_FEATURES);
  }
  

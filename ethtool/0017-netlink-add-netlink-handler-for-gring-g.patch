@@ -1,4 +1,4 @@
-From e7a8aa22b3f5f636651fa4a01f100871f1b1310c Mon Sep 17 00:00:00 2001
+From 6896d15f53b9a21b9b22ddc07eb1aaa5e73336c3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:59:50 +0100
 Subject: [PATCH 17/34] netlink: add netlink handler for gring (-g)
@@ -48,7 +48,7 @@ index a63f79eee2c8..deba845b52ae 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 927b60c598e8..108286ed45b9 100644
+index 707d975a0d9b..2fb0e81cd7e8 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -176,6 +176,11 @@ static struct monitor_option monitor_opts[] = {

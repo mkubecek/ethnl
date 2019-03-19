@@ -1,4 +1,4 @@
-From 7b789aae9a511b01684004be9adb502e8635b7ad Mon Sep 17 00:00:00 2001
+From 8266dc643e00b1725267f2ebcf644687ab2d7208 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 09/34] netlink: add netlink handler for gset (no option)
@@ -12,15 +12,15 @@ into new file common.c.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am        |   2 +-
- common.c           | 285 +++++++++++++++++++++++++++++++++++++++++
- common.h           |  56 +++++++++
- ethtool.c          | 152 ++--------------------
+ common.c           | 285 +++++++++++++++++++++++++++++++++
+ common.h           |  56 +++++++
+ ethtool.c          | 152 +-----------------
  netlink/extapi.h   |   1 +
- netlink/monitor.c  |  14 +++
- netlink/netlink.c  | 120 ++++++++++++++++++
+ netlink/monitor.c  |  14 ++
+ netlink/netlink.c  | 120 ++++++++++++++
  netlink/netlink.h  |   4 +
- netlink/settings.c | 307 +++++++++++++++++++++++++++++++++++++++++++++
- 9 files changed, 796 insertions(+), 145 deletions(-)
+ netlink/settings.c | 388 +++++++++++++++++++++++++++++++++++++++++++++
+ 9 files changed, 877 insertions(+), 145 deletions(-)
  create mode 100644 netlink/settings.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -631,7 +631,7 @@ index 9e9dfa11aead..5500835372b3 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index e8ad2f59a7c0..7d1dfc3e470d 100644
+index e8ad2f59a7c0..43d82ed4a0ff 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -95,6 +95,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -662,9 +662,9 @@ index e8ad2f59a7c0..7d1dfc3e470d 100644
 +		.cmd		= ETHNL_CMD_SET_SETTINGS,
 +		.info_mask	= ETH_SETTINGS_IM_LINKINFO |
 +				  ETH_SETTINGS_IM_LINKMODES |
-+				  ETH_SETTINGS_IM_MSGLEVEL |
-+				  ETH_SETTINGS_IM_WOLINFO |
-+				  ETH_SETTINGS_IM_LINK,
++				  ETH_SETTINGS_IM_LINKSTATE |
++				  ETH_SETTINGS_IM_DEBUG |
++				  ETH_SETTINGS_IM_WOL,
 +	},
  };
  
@@ -826,10 +826,10 @@ index f09148663856..9460acd2cbad 100644
  int attr_cb(const struct nlattr *attr, void *data);
 diff --git a/netlink/settings.c b/netlink/settings.c
 new file mode 100644
-index 000000000000..331f199066ea
+index 000000000000..8f4c288dbb3d
 --- /dev/null
 +++ b/netlink/settings.c
-@@ -0,0 +1,307 @@
+@@ -0,0 +1,388 @@
 +#include <errno.h>
 +#include <string.h>
 +#include <stdio.h>
@@ -874,12 +874,95 @@ index 000000000000..331f199066ea
 +	*first = false;
 +}
 +
-+static int dump_link_info(struct nl_context *nlctx, const struct nlattr *nest,
++static int dump_our_modes(struct nl_context *nlctx, const struct nlattr *attr,
++			  bool *first)
++{
++	bool autoneg;
++	int ret;
++
++	print_banner(nlctx, first);
++	ret = dump_link_modes(attr, true, LM_CLASS_PORT, "Supported ports: [ ",
++			      " ", " ]\n", NULL);
++	if (ret < 0)
++		return ret;
++
++	ret = dump_link_modes(attr, true, LM_CLASS_REAL,
++			      "Supported link modes:   ", NULL, "\n",
++			      "Not reported");
++	if (ret < 0)
++		return ret;
++	ret = dump_pause(attr, true, "Supported pause frame use: ");
++	if (ret < 0)
++		return ret;
++
++	autoneg = bitset_get_bit(attr, true, ETHTOOL_LINK_MODE_Autoneg_BIT,
++				 &ret);
++	if (ret < 0)
++		return ret;
++	printf("\tSupports auto-negotiation: %s\n", autoneg ? "Yes" : "No");
++
++	ret = dump_link_modes(attr, true, LM_CLASS_FEC, "Supported FEC modes: ",
++			      " ", "\n", "Not reported");
++	if (ret < 0)
++		return ret;
++
++	ret = dump_link_modes(attr, false, LM_CLASS_REAL,
++			      "Advertised link modes:  ", NULL, "\n",
++			      "Not reported");
++	if (ret < 0)
++		return ret;
++
++	ret = dump_pause(attr, false, "Advertised pause frame use: ");
++	if (ret < 0)
++		return ret;
++	autoneg = bitset_get_bit(attr, false, ETHTOOL_LINK_MODE_Autoneg_BIT,
++				 &ret);
++	if (ret < 0)
++		return ret;
++	printf("\tAdvertised auto-negotiation: %s\n", autoneg ? "Yes" : "No");
++
++	ret = dump_link_modes(attr, true, LM_CLASS_FEC,
++			      "Advertised FEC modes: ", " ", "\n",
++			      "Not reported");
++	return ret;
++}
++
++static int dump_peer_modes(struct nl_context *nlctx, const struct nlattr *attr,
 +			   bool *first)
 +{
-+	const struct nlattr *tb[ETHA_LINKINFO_MAX + 1] = {};
++	bool autoneg;
++	int ret;
++
++	print_banner(nlctx, first);
++	ret = dump_link_modes(attr, false, LM_CLASS_REAL,
++			      "Link partner advertised link modes:  ",
++			      NULL, "\n", "Not reported");
++	if (ret < 0)
++		return ret;
++
++	ret = dump_pause(attr, false,
++			 "Link partner advertised pause frame use: ");
++	if (ret < 0)
++		return ret;
++
++	autoneg = bitset_get_bit(attr, false,
++				 ETHTOOL_LINK_MODE_Autoneg_BIT, &ret);
++	if (ret < 0)
++		return ret;
++	printf("\tLink partner advertised auto-negotiation: %s\n",
++	       autoneg ? "Yes" : "No");
++
++	ret = dump_link_modes(attr, true, LM_CLASS_FEC,
++			      "Link partner advertised FEC modes: ",
++			      " ", "\n", "No");
++	return ret;
++}
++
++static int dump_modes(struct nl_context *nlctx, const struct nlattr *nest,
++		      bool *first, int *lm_autoneg)
++{
++	const struct nlattr *tb[ETHA_LINKMODES_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
-+	int port = -1;
 +	int ret;
 +
 +	if (!nest)
@@ -888,8 +971,18 @@ index 000000000000..331f199066ea
 +	if (ret < 0)
 +		return ret;
 +
-+	if (tb[ETHA_LINKINFO_SPEED]) {
-+		uint32_t val = mnl_attr_get_u32(tb[ETHA_LINKINFO_SPEED]);
++	if (tb[ETHA_LINKMODES_OURS]) {
++	    ret = dump_our_modes(nlctx, tb[ETHA_LINKMODES_OURS], first);
++	    if (ret < 0)
++		    return ret;
++	}
++	if (tb[ETHA_LINKMODES_PEER]) {
++	    ret = dump_peer_modes(nlctx, tb[ETHA_LINKMODES_PEER], first);
++	    if (ret < 0)
++		    return ret;
++	}
++	if (tb[ETHA_LINKMODES_SPEED]) {
++		uint32_t val = mnl_attr_get_u32(tb[ETHA_LINKMODES_SPEED]);
 +
 +		print_banner(nlctx, first);
 +		if (val == 0 || val == (uint16_t)(-1) || val == (uint32_t)(-1))
@@ -897,12 +990,34 @@ index 000000000000..331f199066ea
 +		else
 +			printf("\tSpeed: %uMb/s\n", val);
 +	}
-+	if (tb[ETHA_LINKINFO_DUPLEX]) {
-+		uint8_t val = mnl_attr_get_u8(tb[ETHA_LINKINFO_DUPLEX]);
++	if (tb[ETHA_LINKMODES_DUPLEX]) {
++		uint8_t val = mnl_attr_get_u8(tb[ETHA_LINKMODES_DUPLEX]);
 +
 +		print_banner(nlctx, first);
 +		print_enum(names_duplex, val, "\tDuplex: ", "Unknown! (%i)");
 +	}
++	if (tb[ETHA_LINKMODES_AUTONEG])
++		*lm_autoneg = mnl_attr_get_u8(tb[ETHA_LINKMODES_AUTONEG]);
++	else
++		*lm_autoneg = -1;
++
++	return 0;
++}
++
++static int dump_link_info(struct nl_context *nlctx, const struct nlattr *nest,
++			   bool *first, int lm_autoneg)
++{
++	const struct nlattr *tb[ETHA_LINKINFO_MAX + 1] = {};
++	DECLARE_ATTR_TB_INFO(tb);
++	int port = -1;
++	int ret;
++
++	if (!nest)
++		return 0;
++	ret = mnl_attr_parse_nested(nest, attr_cb, &tb_info);
++	if (ret < 0)
++		return ret;
++
 +	if (tb[ETHA_LINKINFO_PORT]) {
 +		uint8_t val = mnl_attr_get_u8(tb[ETHA_LINKINFO_PORT]);
 +
@@ -923,12 +1038,10 @@ index 000000000000..331f199066ea
 +		print_enum(names_transceiver, val, "\tTransceiver: ",
 +			   "Unknown!");
 +	}
-+	if (tb[ETHA_LINKINFO_AUTONEG]) {
-+		uint8_t val = mnl_attr_get_u8(tb[ETHA_LINKINFO_AUTONEG]);
-+
++	if (lm_autoneg >= 0) {
 +		print_banner(nlctx, first);
 +		printf("\tAuto-negotiation: %s\n",
-+		       (val == AUTONEG_DISABLE) ? "off" : "on");
++		       (lm_autoneg == AUTONEG_DISABLE) ? "off" : "on");
 +	}
 +	if (tb[ETHA_LINKINFO_TP_MDIX] && tb[ETHA_LINKINFO_TP_MDIX] &&
 +	    port == PORT_TP) {
@@ -969,11 +1082,63 @@ index 000000000000..331f199066ea
 +	return dump_wol(&wolinfo) ? -EFAULT : 0;
 +}
 +
++static int dump_debug(struct nl_context *nlctx, const struct nlattr *nest,
++		      bool *first)
++{
++	const struct nlattr *tb[ETHA_DEBUG_MAX + 1] = {};
++	DECLARE_ATTR_TB_INFO(tb);
++	struct nla_bitfield32 *val;
++	uint32_t msglvl;
++	int ret;
++
++	if (!nest)
++		return -EFAULT;
++	ret = mnl_attr_parse_nested(nest, attr_cb, &tb_info);
++	if (ret < 0)
++		return ret;
++
++	val = mnl_attr_get_payload(tb[ETHA_DEBUG_MSG_MASK]);
++	msglvl = val->value;
++
++	print_banner(nlctx, first);
++	printf("	Current message level: 0x%08x (%d)\n"
++	       "			       ",
++	       msglvl, msglvl);
++	print_flags(flags_msglvl, n_flags_msglvl, msglvl);
++	fputc('\n', stdout);
++
++	return 0;
++}
++
++static int dump_link_state(struct nl_context *nlctx, const struct nlattr *nest,
++			   bool *first)
++{
++	const struct nlattr *tb[ETHA_LINKSTATE_MAX + 1] = {};
++	DECLARE_ATTR_TB_INFO(tb);
++	int ret;
++
++	if (!nest)
++		return -EFAULT;
++	ret = mnl_attr_parse_nested(nest, attr_cb, &tb_info);
++	if (ret < 0)
++		return ret;
++
++	if (tb[ETHA_LINKSTATE_LINK]) {
++		uint8_t val = mnl_attr_get_u8(tb[ETHA_LINKSTATE_LINK]);
++
++		print_banner(nlctx, first);
++		printf("\tLink detected: %s\n", val ? "yes" : "no");
++	}
++
++	return 0;
++}
++
 +int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
 +{
 +	const struct nlattr *tb[ETHA_SETTINGS_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	struct nl_context *nlctx = data;
++	int lm_autoneg = -1;
 +	bool allfail = true;
 +	bool first = true;
 +	int ret;
@@ -985,118 +1150,34 @@ index 000000000000..331f199066ea
 +	if (!dev_ok(nlctx))
 +		return MNL_CB_OK;
 +
-+	if (tb[ETHA_SETTINGS_LINK_MODES] &&
-+	    mask_ok(nlctx, ETH_SETTINGS_IM_LINKMODES)) {
-+		const struct nlattr *attr = tb[ETHA_SETTINGS_LINK_MODES];
-+		bool autoneg;
-+
-+		print_banner(nlctx, &first);
-+		ret = dump_link_modes(attr, true, LM_CLASS_PORT,
-+				      "Supported ports: [ ", " ", " ]\n", NULL);
-+		if (ret < 0)
-+			return ret;
-+		ret = dump_link_modes(attr, true, LM_CLASS_REAL,
-+				      "Supported link modes:   ", NULL, "\n",
-+				      "Not reported");
-+		if (ret < 0)
-+			return ret;
-+		ret = dump_pause(attr, true, "Supported pause frame use: ");
-+		if (ret < 0)
-+			return ret;
-+		autoneg = bitset_get_bit(attr, true,
-+					 ETHTOOL_LINK_MODE_Autoneg_BIT, &ret);
-+		if (ret < 0)
-+			return ret;
-+		printf("\tSupports auto-negotiation: %s\n",
-+		       autoneg ? "Yes" : "No");
-+		ret = dump_link_modes(attr, true, LM_CLASS_FEC,
-+				      "Supported FEC modes: ", " ", "\n",
-+				      "No");
-+		if (ret < 0)
-+			return ret;
-+
-+		ret = dump_link_modes(attr, false, LM_CLASS_REAL,
-+				      "Advertised link modes:  ", NULL, "\n",
-+				      "Not reported");
-+		if (ret < 0)
-+			return ret;
-+		ret = dump_pause(attr, false, "Advertised pause frame use: ");
-+		if (ret < 0)
-+			return ret;
-+		autoneg = bitset_get_bit(attr, false,
-+					 ETHTOOL_LINK_MODE_Autoneg_BIT, &ret);
-+		if (ret < 0)
-+			return ret;
-+		printf("\tAdvertised auto-negotiation: %s\n",
-+		       autoneg ? "Yes" : "No");
-+		if (first) {
-+			printf("Settings for %s:\n", nlctx->devname);
-+			first = false;
-+		}
-+		ret = dump_link_modes(attr, true, LM_CLASS_FEC,
-+				      "Advertised FEC modes: ", " ", "\n",
-+				      "No");
-+		if (ret < 0)
-+			return ret;
-+	}
-+	if (tb[ETHA_SETTINGS_PEER_MODES] &&
-+	    mask_ok(nlctx, ETH_SETTINGS_IM_LINKMODES)) {
-+		const struct nlattr *attr = tb[ETHA_SETTINGS_PEER_MODES];
-+		bool autoneg;
-+
-+		print_banner(nlctx, &first);
-+		ret = dump_link_modes(attr, false, LM_CLASS_REAL,
-+				      "Link partner advertised link modes:  ",
-+				      NULL, "\n", "Not reported");
-+		if (ret < 0)
-+			return ret;
-+		ret = dump_pause(attr, false,
-+				 "Link partner advertised pause frame use: ");
-+		if (ret < 0)
-+			return ret;
-+		autoneg = bitset_get_bit(attr, false,
-+					 ETHTOOL_LINK_MODE_Autoneg_BIT, &ret);
-+		if (ret < 0)
-+			return ret;
-+		printf("\tLink partner advertised auto-negotiation: %s\n",
-+		       autoneg ? "Yes" : "No");
-+		ret = dump_link_modes(attr, true, LM_CLASS_FEC,
-+				      "Link partner advertised FEC modes: ",
-+				      " ", "\n", "No");
-+		if (ret < 0)
-+			return ret;
-+	}
-+	if (mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
-+		ret = dump_link_info(nlctx, tb[ETHA_SETTINGS_LINK_INFO],
-+				     &first);
++	if (mask_ok(nlctx, ETH_SETTINGS_IM_LINKMODES)) {
++		ret = dump_modes(nlctx, tb[ETHA_SETTINGS_LINK_MODES], &first,
++				 &lm_autoneg);
 +		if (ret == 0)
 +			allfail = false;
 +	}
-+	if (tb[ETHA_SETTINGS_WOL] && mask_ok(nlctx, ETH_SETTINGS_IM_WOLINFO)) {
++	if (mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
++		ret = dump_link_info(nlctx, tb[ETHA_SETTINGS_LINK_INFO],
++				     &first, lm_autoneg);
++		if (ret == 0)
++			allfail = false;
++	}
++	if (tb[ETHA_SETTINGS_WOL] && mask_ok(nlctx, ETH_SETTINGS_IM_WOL)) {
 +		ret = dump_wol_info(nlctx, tb[ETHA_SETTINGS_WOL], &first);
 +		if (ret == 0)
 +			allfail = false;
 +	}
-+	if (tb[ETHA_SETTINGS_MSGLEVEL] &&
-+	    mask_ok(nlctx, ETH_SETTINGS_IM_MSGLEVEL)) {
-+		struct nla_bitfield32 *val =
-+			mnl_attr_get_payload(tb[ETHA_SETTINGS_MSGLEVEL]);
-+		uint32_t msglvl = val->value;
-+
-+		print_banner(nlctx, &first);
-+		printf("	Current message level: 0x%08x (%d)\n"
-+			"			       ",
-+				msglvl, msglvl);
-+		print_flags(flags_msglvl, n_flags_msglvl, msglvl);
-+		fputc('\n', stdout);
-+		allfail = false;
++	if (tb[ETHA_SETTINGS_DEBUG] && mask_ok(nlctx, ETH_SETTINGS_IM_DEBUG)) {
++		ret = dump_debug(nlctx, tb[ETHA_SETTINGS_DEBUG], &first);
++		if (ret == 0)
++			allfail = false;
 +	}
-+	if (tb[ETHA_SETTINGS_LINK] && mask_ok(nlctx, ETH_SETTINGS_IM_LINK)) {
-+		uint32_t link = mnl_attr_get_u8(tb[ETHA_SETTINGS_LINK]);
-+
-+		print_banner(nlctx, &first);
-+		printf("\tLink detected: %s\n", link ? "yes" : "no");
-+		allfail = false;
++	if (tb[ETHA_SETTINGS_LINK_STATE] &&
++	    mask_ok(nlctx, ETH_SETTINGS_IM_LINKSTATE)) {
++		ret = dump_link_state(nlctx, tb[ETHA_SETTINGS_LINK_STATE],
++				      &first);
++		if (ret == 0)
++			allfail = false;
 +	};
 +
 +	if (allfail && !nlctx->is_monitor && !nlctx->is_dump) {
@@ -1132,9 +1213,9 @@ index 000000000000..331f199066ea
 +
 +	ret = settings_request(ctx, ETH_SETTINGS_IM_LINKINFO |
 +				    ETH_SETTINGS_IM_LINKMODES |
-+				    ETH_SETTINGS_IM_MSGLEVEL |
-+				    ETH_SETTINGS_IM_WOLINFO |
-+				    ETH_SETTINGS_IM_LINK);
++				    ETH_SETTINGS_IM_LINKSTATE |
++				    ETH_SETTINGS_IM_DEBUG |
++				    ETH_SETTINGS_IM_WOL);
 +	return (ret < 0) ? 75 : 0;
 +}
 -- 

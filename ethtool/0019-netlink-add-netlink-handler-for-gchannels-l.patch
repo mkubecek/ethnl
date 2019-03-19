@@ -1,4 +1,4 @@
-From ce3c4ab8f34cada5f343e0fa34469e5e357c2ad8 Mon Sep 17 00:00:00 2001
+From 9e9a7f20b81aa4636c66bf000570243ee3f61b02 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:05:40 +0100
 Subject: [PATCH 19/34] netlink: add netlink handler for gchannels (-l)
@@ -48,7 +48,7 @@ index 24d19dde5fc3..2ca01fb4c9ea 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index e340a9fbe123..b89f6dc1a8b8 100644
+index 9132d4a58b0c..97b4fe0aabd2 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -186,6 +186,11 @@ static struct monitor_option monitor_opts[] = {

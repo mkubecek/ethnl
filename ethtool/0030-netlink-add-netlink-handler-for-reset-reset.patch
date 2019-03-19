@@ -1,4 +1,4 @@
-From a68cd7a3225fc334de9b5b555ae5f20af0332a67 Mon Sep 17 00:00:00 2001
+From 66912a99e444e8e931dd2f8d36c03510465c5119 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 08:43:44 +0200
 Subject: [PATCH 30/34] netlink: add netlink handler for reset (--reset)
@@ -306,7 +306,7 @@ index c8c621ce6c21..57f2267da967 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 25664e192d1c..d9c67c9d9a43 100644
+index 841e4c91cda4..4e6ea0143256 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -99,6 +99,7 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);

@@ -1,4 +1,4 @@
-From be747cad837bbf3e7923b91ebf6bf2ff6863c3be Mon Sep 17 00:00:00 2001
+From aca34ceaaf734db1abfa9c4e1bed33f2909f808c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:29:46 +0200
 Subject: [PATCH 28/34] netlink: add netlink handler for nway_rst (-r)
@@ -122,7 +122,7 @@ index 40715beaf07f..b301964a5cf8 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 574ec0321336..6e44838efb34 100644
+index fabaa169c277..43d32d4fa26f 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -97,6 +97,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)

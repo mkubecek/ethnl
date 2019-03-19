@@ -1,4 +1,4 @@
-From 5b5fbe3009655691a533b1e39955ebfcf50b074b Mon Sep 17 00:00:00 2001
+From 0755cc19e67e6a72dccc588a3eeafc1126689001 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:24:40 +0200
 Subject: [PATCH 32/34] netlink: add netlink handler for srxfh (-X)
@@ -48,7 +48,7 @@ index ef4981ce29c8..952a79e92188 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index d9c67c9d9a43..4d485831a6ae 100644
+index 4e6ea0143256..e36b9e0fee2a 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -100,6 +100,7 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data);

@@ -1,4 +1,4 @@
-From 2b7b502a5c8ea23a1349de41102442fc187edc30 Mon Sep 17 00:00:00 2001
+From e230931af9d200d49f0b592c73c93487dfed6e45 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
 Subject: [PATCH 21/34] netlink: add netlink handler for gfec (--show-fec)
@@ -85,7 +85,7 @@ index 2d0ce8649052..c2676d492c75 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index e555c3f6d622..574ec0321336 100644
+index 12ceda8654dd..fabaa169c277 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -196,6 +196,11 @@ static struct monitor_option monitor_opts[] = {
