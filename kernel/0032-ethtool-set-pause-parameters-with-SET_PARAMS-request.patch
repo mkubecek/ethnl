@@ -1,4 +1,4 @@
-From 9fcd219add2883ff1c1a5dd5ef72532855078321 Mon Sep 17 00:00:00 2001
+From 85bd9f6c5781ae77171c5637aa3cacbd0c747ce6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:07:38 +0100
 Subject: [PATCH 32/44] ethtool: set pause parameters with SET_PARAMS request
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 55 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 0d82eeb378f1..9bd339a1256a 100644
+index 110c16dceb2f..da142cba4a63 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -470,10 +470,10 @@ SET_PARAMS
+@@ -477,10 +477,10 @@ SET_PARAMS
  ----------
  
  SET_PARAMS request modifies the settings retrieved by GET_PARAMS, i.e. it
@@ -32,7 +32,7 @@ index 0d82eeb378f1..9bd339a1256a 100644
  
      ETHA_PARAMS_COALESCE	(nested)	coalescing parameters
          ETHA_COALESCE_RX_USECS			(u32)
-@@ -503,6 +503,10 @@ cannot be set by SET_PARAMS request.
+@@ -510,6 +510,10 @@ cannot be set by SET_PARAMS request.
          ETHA_RING_RX_MINI_PENDING		(u32)
          ETHA_RING_RX_JUMBO_PENDING		(u32)
          ETHA_RING_TX_PENDING			(u32)
@@ -43,7 +43,7 @@ index 0d82eeb378f1..9bd339a1256a 100644
  
  
  Request translation
-@@ -531,7 +535,7 @@ ETHTOOL_SCOALESCE		ETHNL_CMD_SET_PARAMS
+@@ -538,7 +542,7 @@ ETHTOOL_SCOALESCE		ETHNL_CMD_SET_PARAMS
  ETHTOOL_GRINGPARAM		ETHNL_CMD_GET_PARAMS
  ETHTOOL_SRINGPARAM		ETHNL_CMD_SET_PARAMS
  ETHTOOL_GPAUSEPARAM		ETHNL_CMD_GET_PARAMS

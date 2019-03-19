@@ -1,4 +1,4 @@
-From 43028ce17ccb2a8d9f63fb8e1f4b3405e7bef5cc Mon Sep 17 00:00:00 2001
+From f1e852cb518dd3baf790279e45535ef02959d4ca Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:02:27 +0100
 Subject: [PATCH 31/44] ethtool: provide pause parameters in GET_PARAMS request
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 75 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index a9e1dfef5a1c..0d82eeb378f1 100644
+index 3c26883e98c2..110c16dceb2f 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -404,9 +404,9 @@ GET_PARAMS
+@@ -411,9 +411,9 @@ GET_PARAMS
  ----------
  
  GET_PARAMS request retrieves information provided by ioctl comands
@@ -35,7 +35,7 @@ index a9e1dfef5a1c..0d82eeb378f1 100644
  
  Request contents:
  
-@@ -418,6 +418,7 @@ Info mask bits:
+@@ -425,6 +425,7 @@ Info mask bits:
  
      ETH_PARAMS_IM_COALESCE		coalescing parameters
      ETH_PARAMS_IM_RING			ring sizes
@@ -43,7 +43,7 @@ index a9e1dfef5a1c..0d82eeb378f1 100644
  
  Response contents: On top level, there is one attribute for each of the
  information categories, the information is nested in it.
-@@ -455,6 +456,10 @@ information categories, the information is nested in it.
+@@ -462,6 +463,10 @@ information categories, the information is nested in it.
          ETHA_RING_RX_MINI_PENDING		(u32)
          ETHA_RING_RX_JUMBO_PENDING		(u32)
          ETHA_RING_TX_PENDING			(u32)
@@ -54,7 +54,7 @@ index a9e1dfef5a1c..0d82eeb378f1 100644
  
  GET_PARAMS requests allow dumps and messages in the same format as response
  to them are broadcasted as notifications on change of these settings using
-@@ -525,7 +530,7 @@ ETHTOOL_GCOALESCE		ETHNL_CMD_GET_PARAMS
+@@ -532,7 +537,7 @@ ETHTOOL_GCOALESCE		ETHNL_CMD_GET_PARAMS
  ETHTOOL_SCOALESCE		ETHNL_CMD_SET_PARAMS
  ETHTOOL_GRINGPARAM		ETHNL_CMD_GET_PARAMS
  ETHTOOL_SRINGPARAM		ETHNL_CMD_SET_PARAMS
@@ -64,10 +64,10 @@ index a9e1dfef5a1c..0d82eeb378f1 100644
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SRXCSUM			ETHNL_CMD_SET_SETTINGS
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 4588e2fcd0b9..282378c98f00 100644
+index ac2624013829..ce8e08f73576 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -270,6 +270,7 @@ enum {
+@@ -294,6 +294,7 @@ enum {
  	ETHA_PARAMS_COMPACT,			/* flag */
  	ETHA_PARAMS_COALESCE,			/* nest - ETHA_COALESCE_* */
  	ETHA_PARAMS_RING,			/* nest - ETHA_RING_* */
@@ -75,7 +75,7 @@ index 4588e2fcd0b9..282378c98f00 100644
  
  	__ETHA_PARAMS_CNT,
  	ETHA_PARAMS_MAX = (__ETHA_PARAMS_CNT - 1)
-@@ -277,9 +278,11 @@ enum {
+@@ -301,9 +302,11 @@ enum {
  
  #define ETH_PARAMS_IM_COALESCE			(1U << 0)
  #define ETH_PARAMS_IM_RING			(1U << 1)
@@ -88,7 +88,7 @@ index 4588e2fcd0b9..282378c98f00 100644
  
  enum {
  	ETHA_COALESCE_UNSPEC,
-@@ -325,6 +328,16 @@ enum {
+@@ -349,6 +352,16 @@ enum {
  	ETHA_RING_MAX = (__ETHA_RING_CNT - 1)
  };
  
@@ -106,7 +106,7 @@ index 4588e2fcd0b9..282378c98f00 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index bec236908f78..81e98ce8441a 100644
+index 8496984237fa..5e57526774a2 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1588,6 +1588,7 @@ static int ethtool_get_pauseparam(struct net_device *dev, void __user *useraddr)

@@ -1,4 +1,4 @@
-From 4a937756d154f148e96a85efb39e369be3fe954d Mon Sep 17 00:00:00 2001
+From e3605cd09743ac44ea03a043e372235e4df104eb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:50:30 +0100
 Subject: [PATCH 19/44] ethtool: set WoL settings with SET_SETTINGS request
@@ -16,20 +16,20 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 70 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 58ae0d593a69..e2aed926cd3c 100644
+index 003ff17fc470..2d8b4622b3d2 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -329,6 +329,9 @@ to be passed with SET_SETTINGS request:
-         ETHA_LINKINFO_AUTONEG		(u8)		autoneotiation status
-         ETHA_LINKINFO_TP_MDIX_CTRL	(u8)		MDI(-X) control
-     ETHA_SETTINGS_LINK_MODES	(bitset)	device link modes
+@@ -332,6 +332,9 @@ to be passed with SET_SETTINGS request:
+         ETHA_LINKMODES_OURS		(bitset)	advertised link modes
+         ETHA_LINKMODES_SPEED		(u32)		link speed (Mb/s)
+         ETHA_LINKMODES_DUPLEX		(u8)		duplex mode
 +    ETHA_SETTINGS_WOL		(nested)	wake on LAN settings
 +        ETHA_WOL_MODES			(bitfield32)	wake on LAN modes
 +        ETHA_WOL_SOPASS			(binary)	SecureOn(tm) password
  
- ETHA_SETTINGS_LINK_MODES bit set allows setting advertised link modes.
- If autonegotiation is on (either set now or kept from before), advertised
-@@ -339,6 +342,13 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
+ ETHA_LINKMODES_OURS bit set allows setting advertised link modes. If
+ autonegotiation is on (either set now or kept from before), advertised modes
+@@ -342,6 +345,13 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
  is supposed to allow requesting changes without knowing what exactly kernel
  supports.
  
@@ -43,7 +43,7 @@ index 58ae0d593a69..e2aed926cd3c 100644
  
  Request translation
  -------------------
-@@ -354,7 +364,7 @@ ETHTOOL_SSET			ETHNL_CMD_SET_SETTINGS
+@@ -357,7 +367,7 @@ ETHTOOL_SSET			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GDRVINFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GREGS			n/a
  ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
@@ -53,7 +53,7 @@ index 58ae0d593a69..e2aed926cd3c 100644
  ETHTOOL_SMSGLVL			n/a
  ETHTOOL_NWAY_RST		n/a
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index d3a3c4c588fc..5baccbcc4e6e 100644
+index ec7cfe68e1a8..cf95f2158667 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -107,6 +107,12 @@ static const struct link_mode_info link_mode_params[] = {
@@ -69,8 +69,8 @@ index d3a3c4c588fc..5baccbcc4e6e 100644
  static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
  	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_DEV]		= { .type = NLA_NESTED },
-@@ -429,6 +435,14 @@ static const struct nla_policy set_linkinfo_policy[ETHA_LINKINFO_MAX + 1] = {
- 	[ETHA_LINKINFO_TRANSCEIVER]	= { .type = NLA_REJECT },
+@@ -449,6 +455,14 @@ static const struct nla_policy set_linkmodes_policy[ETHA_LINKMODES_MAX + 1] = {
+ 	[ETHA_LINKMODES_DUPLEX]		= { .type = NLA_U8 },
  };
  
 +static const struct nla_policy set_wol_policy[ETHA_LINKINFO_MAX + 1] = {
@@ -84,16 +84,16 @@ index d3a3c4c588fc..5baccbcc4e6e 100644
  static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
  	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_DEV]		= { .type = NLA_NESTED },
-@@ -437,7 +451,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+@@ -456,7 +470,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_COMPACT]		= { .type = NLA_FLAG },
  	[ETHA_SETTINGS_LINK_INFO]	= { .type = NLA_NESTED },
  	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
- 	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_REJECT },
 -	[ETHA_SETTINGS_WOL]		= { .type = NLA_REJECT },
 +	[ETHA_SETTINGS_WOL]		= { .type = NLA_NESTED },
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -569,6 +583,43 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
+@@ -604,6 +618,43 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
  	return 0;
  }
  
@@ -137,7 +137,7 @@ index d3a3c4c588fc..5baccbcc4e6e 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-@@ -596,6 +647,13 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -631,6 +682,13 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret < 0)
  			goto out_ops;
  	}
@@ -146,7 +146,7 @@ index d3a3c4c588fc..5baccbcc4e6e 100644
 +		if (ret < 0)
 +			goto out_ops;
 +		if (ret)
-+			req_mask |= ETH_SETTINGS_IM_WOLINFO;
++			req_mask |= ETH_SETTINGS_IM_WOL;
 +	}
  	ret = 0;
  

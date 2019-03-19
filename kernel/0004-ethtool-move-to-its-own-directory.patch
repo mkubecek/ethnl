@@ -1,4 +1,4 @@
-From ca38d7e7f29a68431206a2941fca53dcd1ca61fd Mon Sep 17 00:00:00 2001
+From e6dfb0682a2e7b6b64d690575518e7ffbd8ed48c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 13 May 2018 02:35:53 +0200
 Subject: [PATCH 04/44] ethtool: move to its own directory
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  rename net/{core/ethtool.c => ethtool/ioctl.c} (100%)
 
 diff --git a/net/Makefile b/net/Makefile
-index bdaf53925acd..6c68520e5eb9 100644
+index 449fc0b221f8..848303d98d3d 100644
 --- a/net/Makefile
 +++ b/net/Makefile
 @@ -13,7 +13,7 @@ obj-$(CONFIG_NET)		+= $(tmp-y)

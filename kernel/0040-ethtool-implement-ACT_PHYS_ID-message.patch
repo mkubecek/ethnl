@@ -1,4 +1,4 @@
-From ce791d8f59ff830d6078cbd590ed60754b39442b Mon Sep 17 00:00:00 2001
+From cf6c2afc514486e02c0c4917223c2cb8cecaa107 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 40/44] ethtool: implement ACT_PHYS_ID message
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 186 insertions(+), 47 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 5d282c79f598..7b216065fb85 100644
+index 683bf17445c1..1ffe01965b88 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -563,6 +563,28 @@ Request contents:
+@@ -570,6 +570,28 @@ Request contents:
  If successful, a notification in the same format is sent.
  
  
@@ -53,7 +53,7 @@ index 5d282c79f598..7b216065fb85 100644
  Request translation
  -------------------
  
-@@ -598,7 +620,7 @@ ETHTOOL_GSG			ETHNL_CMD_GET_SETTINGS
+@@ -605,7 +627,7 @@ ETHTOOL_GSG			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SSG			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_TEST			n/a
  ETHTOOL_GSTRINGS		ETHNL_CMD_GET_STRSET
@@ -63,7 +63,7 @@ index 5d282c79f598..7b216065fb85 100644
  ETHTOOL_GTSO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_STSO			ETHNL_CMD_SET_SETTINGS
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index cdddf6ab497f..a2e765df2c5d 100644
+index 3f13153b1daa..00685fc94148 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -23,6 +23,7 @@ enum {
@@ -74,7 +74,7 @@ index cdddf6ab497f..a2e765df2c5d 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -394,6 +395,17 @@ enum {
+@@ -418,6 +419,17 @@ enum {
  	ETHA_NWAYRST_MAX = (__ETHA_NWAYRST_CNT - 1)
  };
  
@@ -267,7 +267,7 @@ index d557702d0f78..d80e5a72d401 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index b75e64455f15..dfe306d7676d 100644
+index dc18c213b369..9a95d05e4489 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1639,60 +1639,15 @@ static int ethtool_get_strings(struct net_device *dev, void __user *useraddr)

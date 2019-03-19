@@ -1,4 +1,4 @@
-From 9a180571415de0ff02aa9ea87ea6b926fbd76ac7 Mon Sep 17 00:00:00 2001
+From d717c7f5dd224b4e54cc238f47e7cd39d594ea93 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:56:10 +0100
 Subject: [PATCH 38/44] ethtool: set FEC parameters with SET_PARAMS request
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 50 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 4e9b0d36adf7..2ef14a1677b8 100644
+index 5b985f607ee3..07985b6536a1 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -497,10 +497,10 @@ SET_PARAMS
+@@ -504,10 +504,10 @@ SET_PARAMS
  
  SET_PARAMS request modifies the settings retrieved by GET_PARAMS, i.e. it
  replaces ETHTOOL_SCOALESCE, ETHTOOL_SRINGPARAM, ETHTOOL_SPAUSEPARAM,
@@ -32,7 +32,7 @@ index 4e9b0d36adf7..2ef14a1677b8 100644
  
      ETHA_PARAMS_COALESCE	(nested)	coalescing parameters
          ETHA_COALESCE_RX_USECS			(u32)
-@@ -545,6 +545,9 @@ SET_PARAMS request.
+@@ -552,6 +552,9 @@ SET_PARAMS request.
          ETHA_EEE_ENABLED			(bool)
          ETHA_EEE_TX_LPI_ENABLED			(bool)
          ETHA_EEE_TX_LPI_TIMER			(u32)
@@ -42,7 +42,7 @@ index 4e9b0d36adf7..2ef14a1677b8 100644
  
  
  Request translation
-@@ -635,4 +638,4 @@ ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
+@@ -642,4 +645,4 @@ ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		ETHNL_CMD_GET_PARAMS

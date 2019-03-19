@@ -1,4 +1,4 @@
-From 7dc335f5c047dfe690c1992cfcc054cb053ab925 Mon Sep 17 00:00:00 2001
+From da01123a849ea7fbea736aa8858eb0bcb3eaee08 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 21:27:19 +0100
 Subject: [PATCH 28/44] ethtool: set coalescing parameters with SET_PARAMS
@@ -17,10 +17,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 206 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index bee06024e870..66bf18ed0248 100644
+index ed53055ab98c..f14ea9f5af22 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -133,7 +133,7 @@ List of message types
+@@ -134,7 +134,7 @@ List of message types
      ETHNL_CMD_GET_SETTINGS
      ETHNL_CMD_SET_SETTINGS
      ETHNL_CMD_GET_PARAMS
@@ -29,7 +29,7 @@ index bee06024e870..66bf18ed0248 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -449,6 +449,38 @@ to them are broadcasted as notifications on change of these settings using
+@@ -456,6 +456,38 @@ to them are broadcasted as notifications on change of these settings using
  netlink or ioctl ethtool interface.
  
  
@@ -68,7 +68,7 @@ index bee06024e870..66bf18ed0248 100644
  Request translation
  -------------------
  
-@@ -471,7 +503,7 @@ ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
+@@ -478,7 +510,7 @@ ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		ETHNL_CMD_GET_PARAMS

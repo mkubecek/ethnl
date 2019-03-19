@@ -1,4 +1,4 @@
-From ed48f261a1f837f379edde0083b980969b5d2e99 Mon Sep 17 00:00:00 2001
+From aeb1c3badba4d9597364c340918e59e4cb9f2be3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
 Subject: [PATCH 43/44] ethtool: implement SET_RXFLOW notification
@@ -41,7 +41,7 @@ index e770e6e9acca..288e90f4dbb9 100644
 +
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 5c266dea008e..31e3970617f1 100644
+index fabe1da5054c..947701d841a1 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -716,6 +716,7 @@ static noinline_for_stack int ethtool_get_sset_info(struct net_device *dev,

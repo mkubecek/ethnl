@@ -1,4 +1,4 @@
-From e0de95caa84ae5a74d6728b8721eb5d6036eba72 Mon Sep 17 00:00:00 2001
+From 22bc6e4771dfb8896339466eec1652204b7a94f9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
 Subject: [PATCH 17/44] ethtool: set link settings and link modes with
@@ -9,21 +9,22 @@ advertised link modes as an alternative to ETHTOOL_SLINKSETTINGS ioctl
 command.
 
 ETHA_SETTINGS_LINK_MODES attribute is used to set (or modify) advertised
-link modes and ETHA_SETTINGS_LINK_INFO to set other link settings.
+link modes and related settings (autonegotiation, speed and duplex) and
+ETHA_SETTINGS_LINK_INFO to set other link settings.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  33 ++-
+ Documentation/networking/ethtool-netlink.txt |  34 ++-
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   4 +
- net/ethtool/settings.c                       | 284 +++++++++++++++++++
- 4 files changed, 323 insertions(+), 3 deletions(-)
+ net/ethtool/settings.c                       | 305 +++++++++++++++++++
+ 4 files changed, 345 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 89174531cfa4..e35e1071e978 100644
+index d723b3537c46..e79ae9fe01be 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -131,7 +131,7 @@ List of message types
+@@ -132,7 +132,7 @@ List of message types
      ETHNL_CMD_GET_INFO
      ETHNL_CMD_SET_INFO			response only
      ETHNL_CMD_GET_SETTINGS
@@ -32,7 +33,7 @@ index 89174531cfa4..e35e1071e978 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -302,6 +302,33 @@ to them are broadcasted as notifications on change of these settings using
+@@ -304,6 +304,34 @@ to them are broadcasted as notifications on change of these settings using
  netlink or ioctl ethtool interface.
  
  
@@ -45,19 +46,20 @@ index 89174531cfa4..e35e1071e978 100644
 +
 +    ETHA_SETTINGS_DEV		(nested)	device identification
 +    ETHA_SETTINGS_LINK_INFO	(nested)	link settings
-+        ETHA_LINKINFO_SPEED		(u32)		link speed (Mb/s)
-+        ETHA_LINKINFO_DUPLEX		(u8)		duplex mode
 +        ETHA_LINKINFO_PORT		(u8)		physical port
 +        ETHA_LINKINFO_PHYADDR		(u8)		MDIO address of phy
-+        ETHA_LINKINFO_AUTONEG		(u8)		autoneotiation status
 +        ETHA_LINKINFO_TP_MDIX_CTRL	(u8)		MDI(-X) control
-+    ETHA_SETTINGS_LINK_MODES	(bitset)	device link modes
++    ETHA_SETTINGS_LINK_MODES	(nested)	link modes
++        ETHA_LINKMODES_AUTONEG		(u8)		autonegotiation
++        ETHA_LINKMODES_OURS		(bitset)	advertised link modes
++        ETHA_LINKMODES_SPEED		(u32)		link speed (Mb/s)
++        ETHA_LINKMODES_DUPLEX		(u8)		duplex mode
 +
-+ETHA_SETTINGS_LINK_MODES bit set allows setting advertised link modes.
-+If autonegotiation is on (either set now or kept from before), advertised
-+modes are not changed (no ETHA_SETTINGS_LINK_MODES attribute) and at least one
-+of speed and duplex is specified, kernel adjusts advertised modes to all
-+supported modes matching speed, duplex or both (whatever is specified). This
++ETHA_LINKMODES_OURS bit set allows setting advertised link modes. If
++autonegotiation is on (either set now or kept from before), advertised modes
++are not changed (no ETHA_LINKMODES_OURS attribute) and at least one of speed
++and duplex is specified, kernel adjusts advertised modes to all supported
++modes matching speed, duplex or both (whatever is specified). This
 +autoselection is done on ethtool side with ioctl interface, netlink interface
 +is supposed to allow requesting changes without knowing what exactly kernel
 +supports.
@@ -66,7 +68,7 @@ index 89174531cfa4..e35e1071e978 100644
  Request translation
  -------------------
  
-@@ -312,7 +339,7 @@ have their netlink replacement yet.
+@@ -314,7 +342,7 @@ have their netlink replacement yet.
  ioctl command			netlink command
  ---------------------------------------------------------------------
  ETHTOOL_GSET			ETHNL_CMD_GET_SETTINGS
@@ -75,7 +77,7 @@ index 89174531cfa4..e35e1071e978 100644
  ETHTOOL_GDRVINFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GREGS			n/a
  ETHTOOL_GWOL			n/a
-@@ -386,7 +413,7 @@ ETHTOOL_STUNABLE		n/a
+@@ -388,7 +416,7 @@ ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
  ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
@@ -114,7 +116,7 @@ index 8b29e4262250..97189776c3c3 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 4994224b5113..683e7c8e89a3 100644
+index 5d0c44a58883..2e0f425029ef 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,97 @@ struct settings_data {
@@ -215,7 +217,7 @@ index 4994224b5113..683e7c8e89a3 100644
  static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
  	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_DEV]		= { .type = NLA_NESTED },
-@@ -262,3 +353,196 @@ const struct get_request_ops settings_request_ops = {
+@@ -275,3 +366,217 @@ const struct get_request_ops settings_request_ops = {
  	.reply_size		= settings_size,
  	.fill_reply		= fill_settings,
  };
@@ -224,14 +226,20 @@ index 4994224b5113..683e7c8e89a3 100644
 +
 +static const struct nla_policy set_linkinfo_policy[ETHA_LINKINFO_MAX + 1] = {
 +	[ETHA_LINKINFO_UNSPEC]		= { .type = NLA_REJECT },
-+	[ETHA_LINKINFO_SPEED]		= { .type = NLA_U32 },
-+	[ETHA_LINKINFO_DUPLEX]		= { .type = NLA_U8 },
 +	[ETHA_LINKINFO_PORT]		= { .type = NLA_U8 },
 +	[ETHA_LINKINFO_PHYADDR]		= { .type = NLA_U8 },
-+	[ETHA_LINKINFO_AUTONEG]		= { .type = NLA_U8 },
 +	[ETHA_LINKINFO_TP_MDIX]		= { .type = NLA_REJECT },
 +	[ETHA_LINKINFO_TP_MDIX_CTRL]	= { .type = NLA_U8 },
 +	[ETHA_LINKINFO_TRANSCEIVER]	= { .type = NLA_REJECT },
++};
++
++static const struct nla_policy set_linkmodes_policy[ETHA_LINKMODES_MAX + 1] = {
++	[ETHA_LINKMODES_UNSPEC]		= { .type = NLA_REJECT },
++	[ETHA_LINKMODES_AUTONEG]	= { .type = NLA_U8 },
++	[ETHA_LINKMODES_OURS]		= { .type = NLA_NESTED },
++	[ETHA_LINKMODES_PEER]		= { .type = NLA_REJECT },
++	[ETHA_LINKMODES_SPEED]		= { .type = NLA_U32 },
++	[ETHA_LINKMODES_DUPLEX]		= { .type = NLA_U8 },
 +};
 +
 +static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
@@ -241,7 +249,6 @@ index 4994224b5113..683e7c8e89a3 100644
 +	[ETHA_SETTINGS_COMPACT]		= { .type = NLA_FLAG },
 +	[ETHA_SETTINGS_LINK_INFO]	= { .type = NLA_NESTED },
 +	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
-+	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_REJECT },
 +};
 +
 +static int ethnl_set_link_ksettings(struct genl_info *info,
@@ -288,10 +295,6 @@ index 4994224b5113..683e7c8e89a3 100644
 +			     __ETHTOOL_LINK_MODE_MASK_NBITS);
 +}
 +
-+#define __MOD_ANY	BIT(0)
-+#define __REQ_SPEED	BIT(1)
-+#define __REQ_DUPLEX	BIT(2)
-+
 +static int update_linkinfo(struct genl_info *info, struct nlattr *nest,
 +			   struct ethtool_link_settings *lsettings)
 +{
@@ -306,26 +309,55 @@ index 4994224b5113..683e7c8e89a3 100644
 +		return ret;
 +
 +	ret = 0;
-+	if (tb[ETHA_LINKINFO_SPEED])
-+		ret |= __REQ_SPEED;
-+	if (tb[ETHA_LINKINFO_DUPLEX])
-+		ret |= __REQ_DUPLEX;
-+
-+	if (ethnl_update_u32(&lsettings->speed, tb[ETHA_LINKINFO_SPEED]))
-+		ret |= __MOD_ANY;
-+	if (ethnl_update_u8(&lsettings->duplex, tb[ETHA_LINKINFO_DUPLEX]))
-+		ret |= __MOD_ANY;
 +	if (ethnl_update_u8(&lsettings->port, tb[ETHA_LINKINFO_PORT]))
-+		ret |= __MOD_ANY;
++		ret = 1;
 +	if (ethnl_update_u8(&lsettings->phy_address, tb[ETHA_LINKINFO_PHYADDR]))
-+		ret |= __MOD_ANY;
-+	if (ethnl_update_u8(&lsettings->autoneg, tb[ETHA_LINKINFO_AUTONEG]))
-+		ret |= __MOD_ANY;
++		ret = 1;
 +	if (ethnl_update_u8(&lsettings->eth_tp_mdix_ctrl,
 +			    tb[ETHA_LINKINFO_TP_MDIX_CTRL]))
-+		ret |= __MOD_ANY;
++		ret = 1;
 +
 +	return ret;
++}
++
++static int update_link_modes(struct genl_info *info, const struct nlattr *nest,
++			     struct ethtool_link_ksettings *ksettings)
++{
++	struct ethtool_link_settings *lsettings = &ksettings->base;
++	struct nlattr *tb[ETHA_LINKMODES_MAX + 1];
++	bool req_speed, req_duplex;
++	bool mod = false;
++	int ret;
++
++	if (!nest)
++		return 0;
++	ret = nla_parse_nested_strict(tb, ETHA_LINKMODES_MAX, nest,
++				      set_linkmodes_policy, info->extack);
++	if (ret < 0)
++		return ret;
++	req_speed = tb[ETHA_LINKMODES_SPEED];
++	req_duplex = tb[ETHA_LINKMODES_DUPLEX];
++
++	if (ethnl_update_u8(&lsettings->autoneg, tb[ETHA_LINKMODES_AUTONEG]))
++		mod = true;
++	if (ethnl_update_bitset(ksettings->link_modes.advertising, NULL,
++				__ETHTOOL_LINK_MODE_MASK_NBITS,
++				tb[ETHA_LINKMODES_OURS],
++				&ret, link_mode_names, false, info))
++		mod = true;
++	if (ret < 0)
++		return ret;
++	if (ethnl_update_u32(&lsettings->speed, tb[ETHA_LINKMODES_SPEED]))
++		mod = true;
++	if (ethnl_update_u8(&lsettings->duplex, tb[ETHA_LINKMODES_DUPLEX]))
++		mod = true;
++
++	if (!tb[ETHA_LINKMODES_OURS] && lsettings->autoneg &&
++	    (req_speed || req_duplex) &&
++	    auto_link_modes(ksettings, req_speed, req_duplex))
++		mod = true;
++
++	return mod;
 +}
 +
 +/* Update device settings using ->set_link_ksettings() callback */
@@ -334,7 +366,6 @@ index 4994224b5113..683e7c8e89a3 100644
 +{
 +	struct ethtool_link_ksettings ksettings = {};
 +	struct ethtool_link_settings *lsettings;
-+	bool req_speed, req_duplex;
 +	u32 mod_mask = 0;
 +	int ret;
 +
@@ -348,19 +379,11 @@ index 4994224b5113..683e7c8e89a3 100644
 +		return ret;
 +	if (ret)
 +		mod_mask |= ETH_SETTINGS_IM_LINKINFO;
-+	req_speed = ret & __REQ_SPEED;
-+	req_duplex = ret & __REQ_DUPLEX;
 +
-+	if (ethnl_update_bitset(ksettings.link_modes.advertising, NULL,
-+				__ETHTOOL_LINK_MODE_MASK_NBITS,
-+				tb[ETHA_SETTINGS_LINK_MODES],
-+				&ret, link_mode_names, false, info))
-+		mod_mask |= ETH_SETTINGS_IM_LINKMODES;
++	ret = update_link_modes(info, tb[ETHA_SETTINGS_LINK_MODES], &ksettings);
 +	if (ret < 0)
 +		return ret;
-+	if (!tb[ETHA_SETTINGS_LINK_MODES] && lsettings->autoneg &&
-+	    (req_speed || req_duplex) &&
-+	    auto_link_modes(&ksettings, req_speed, req_duplex))
++	if (ret)
 +		mod_mask |= ETH_SETTINGS_IM_LINKMODES;
 +
 +	if (mod_mask) {

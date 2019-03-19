@@ -1,4 +1,4 @@
-From c3bcd42a79fd20a980bf1090ce20675a8cc7abb0 Mon Sep 17 00:00:00 2001
+From bd7bca31acf8381c1da6642b582542230c2a7188 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 16/44] ethtool: provide link settings and link modes in
@@ -7,10 +7,10 @@ Subject: [PATCH 16/44] ethtool: provide link settings and link modes in
 Implement GET_SETTINGS netlink request to get link settings and link mode
 information provided by ETHTOOL_GLINKSETTINGS ioctl command.
 
-The information in SET_SETTINGS message sent as reply is divided into
-two parts: supported, advertised and peer advertised link modes when
-ETH_SETTINGS_IM_LINKMODES flag is set in the request and other settings
-when ETH_SETTINGS_IM_LINKINFO is set.
+The information in SET_SETTINGS message sent as reply is divided into two
+parts: autonegotiation, speed, duplex and supported, advertised and peer
+advertised link modes when ETH_SETTINGS_IM_LINKMODES flag is set in the
+request and other settings when ETH_SETTINGS_IM_LINKINFO is set.
 
 Send notification in the same format as the reply message when relevant
 fields are modified using the ioctl interface (ETHTOOL_SLINKSETTINGS or
@@ -18,23 +18,23 @@ ETHTOOL_SSET command).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  49 +++-
+ Documentation/networking/ethtool-netlink.txt |  50 +++-
  include/linux/ethtool_netlink.h              |   3 +
- include/uapi/linux/ethtool_netlink.h         |  38 +++
+ include/uapi/linux/ethtool_netlink.h         |  46 +++
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/common.c                         |  48 ++++
  net/ethtool/common.h                         |   4 +
  net/ethtool/ioctl.c                          |  64 +----
  net/ethtool/netlink.c                        |  10 +
- net/ethtool/settings.c                       | 264 +++++++++++++++++++
- 9 files changed, 429 insertions(+), 53 deletions(-)
+ net/ethtool/settings.c                       | 277 +++++++++++++++++++
+ 9 files changed, 451 insertions(+), 53 deletions(-)
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index bb2d67ee1ffd..89174531cfa4 100644
+index 74c62f11810c..d723b3537c46 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -130,6 +130,8 @@ List of message types
+@@ -131,6 +131,8 @@ List of message types
      ETHNL_CMD_SET_STRSET		response only
      ETHNL_CMD_GET_INFO
      ETHNL_CMD_SET_INFO			response only
@@ -43,7 +43,7 @@ index bb2d67ee1ffd..89174531cfa4 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -257,6 +259,49 @@ if no PHC is associated, the attribute is not present.
+@@ -258,6 +260,50 @@ if no PHC is associated, the attribute is not present.
  GET_INFO requests allow dumps.
  
  
@@ -62,28 +62,29 @@ index bb2d67ee1ffd..89174531cfa4 100644
 +
 +Info mask bits meaning:
 +
-+    ETH_SETTINGS_IM_LINKINFO		link_ksettings except link modes
-+    ETH_SETTINGS_IM_LINKMODES		link modes from link_ksettings
++    ETH_SETTINGS_IM_LINKINFO		link settings
++    ETH_SETTINGS_IM_LINKMODES		link modes and related
 +
 +Response contents:
 +
 +    ETHA_SETTINGS_DEV		(nested)	device identification
 +    ETHA_SETTINGS_LINK_INFO	(nested)	link settings
-+        ETHA_LINKINFO_SPEED		(u32)		link speed (Mb/s)
-+        ETHA_LINKINFO_DUPLEX		(u8)		duplex mode
 +        ETHA_LINKINFO_PORT		(u8)		physical port
 +        ETHA_LINKINFO_PHYADDR		(u8)		MDIO address of phy
-+        ETHA_LINKINFO_AUTONEG		(u8)		autoneotiation status
 +        ETHA_LINKINFO_TP_MDIX		(u8)		MDI(-X) status
 +        ETHA_LINKINFO_TP_MDIX_CTRL	(u8)		MDI(-X) control
 +        ETHA_LINKINFO_TRANSCEIVER	(u8)		transceiver
-+    ETHA_SETTINGS_LINK_MODES	(bitset)	device link modes
-+    ETHA_SETTINGS_PEER_MODES	(bitset)	link partner link modes
++    ETHA_SETTINGS_LINK_MODES	(nested)	link modes
++        ETHA_LINKMODES_AUTONEG		(u8)		autoneotiation status
++        ETHA_LINKMODES_OURS		(bitset)	advertised link modes
++        ETHA_LINKMODES_PEER		(bitset)	partner link modes
++        ETHA_LINKMODES_SPEED		(u32)		link speed (Mb/s)
++        ETHA_LINKMODES_DUPLEX		(u8)		duplex mode
 +
 +Most of the attributes and their values have the same meaning as matching
-+members of the corresponding ioctl structures. For ETHA_SETTINGS_LINK_MODES,
++members of the corresponding ioctl structures. For ETHA_LINKMODES_OURS,
 +value represents advertised modes and mask represents supported modes.
-+ETHA_SETTINGS_PEER_MODES in the reply is a bit list.
++ETHA_LINKMODES_PEER in the reply is a bit list.
 +
 +GET_SETTINGS requests allow dumps and messages in the same format as response
 +to them are broadcasted as notifications on change of these settings using
@@ -93,7 +94,7 @@ index bb2d67ee1ffd..89174531cfa4 100644
  Request translation
  -------------------
  
-@@ -266,7 +311,7 @@ have their netlink replacement yet.
+@@ -267,7 +313,7 @@ have their netlink replacement yet.
  
  ioctl command			netlink command
  ---------------------------------------------------------------------
@@ -102,7 +103,7 @@ index bb2d67ee1ffd..89174531cfa4 100644
  ETHTOOL_SSET			n/a
  ETHTOOL_GDRVINFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GREGS			n/a
-@@ -340,7 +385,7 @@ ETHTOOL_GTUNABLE		n/a
+@@ -341,7 +387,7 @@ ETHTOOL_GTUNABLE		n/a
  ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
@@ -126,7 +127,7 @@ index 2a15e64a16f3..e770e6e9acca 100644
  	ETHNL_MCGRP_MONITOR,
  };
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index e7a6e813150b..9b6291fb3f09 100644
+index e7a6e813150b..895ba9cd8924 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -18,6 +18,8 @@ enum {
@@ -138,7 +139,7 @@ index e7a6e813150b..9b6291fb3f09 100644
  
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
-@@ -185,6 +187,42 @@ enum {
+@@ -185,6 +187,50 @@ enum {
  	ETHA_TSINFO_MAX = (__ETHA_TSINFO_CNT - 1)
  };
  
@@ -149,9 +150,8 @@ index e7a6e813150b..9b6291fb3f09 100644
 +	ETHA_SETTINGS_DEV,			/* nest - ETHA_DEV_* */
 +	ETHA_SETTINGS_INFOMASK,			/* u32 */
 +	ETHA_SETTINGS_COMPACT,			/* flag */
-+	ETHA_SETTINGS_LINK_INFO,		/* nested */
-+	ETHA_SETTINGS_LINK_MODES,		/* bitset */
-+	ETHA_SETTINGS_PEER_MODES,		/* bitset */
++	ETHA_SETTINGS_LINK_INFO,		/* nest - ETHA_LINKINFO_* */
++	ETHA_SETTINGS_LINK_MODES,		/* nest - ETHA_LINKMODES_* */
 +
 +	__ETHA_SETTINGS_CNT,
 +	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
@@ -165,17 +165,26 @@ index e7a6e813150b..9b6291fb3f09 100644
 +
 +enum {
 +	ETHA_LINKINFO_UNSPEC,
-+	ETHA_LINKINFO_SPEED,			/* u32 */
-+	ETHA_LINKINFO_DUPLEX,			/* u8 */
 +	ETHA_LINKINFO_PORT,			/* u8 */
 +	ETHA_LINKINFO_PHYADDR,			/* u8 */
-+	ETHA_LINKINFO_AUTONEG,			/* u8 */
 +	ETHA_LINKINFO_TP_MDIX,			/* u8 */
 +	ETHA_LINKINFO_TP_MDIX_CTRL,		/* u8 */
 +	ETHA_LINKINFO_TRANSCEIVER,		/* u8 */
 +
 +	__ETHA_LINKINFO_CNT,
 +	ETHA_LINKINFO_MAX = (__ETHA_LINKINFO_CNT - 1)
++};
++
++enum {
++	ETHA_LINKMODES_UNSPEC,
++	ETHA_LINKMODES_AUTONEG,			/* u8 */
++	ETHA_LINKMODES_OURS,			/* bitset */
++	ETHA_LINKMODES_PEER,			/* bitset */
++	ETHA_LINKMODES_SPEED,			/* u32 */
++	ETHA_LINKMODES_DUPLEX,			/* u8 */
++
++	__ETHA_LINKMODES_CNT,
++	ETHA_LINKMODES_MAX = (__ETHA_LINKMODES_CNT - 1)
 +};
 +
  /* generic netlink info */
@@ -261,7 +270,7 @@ index 02cbee79da35..7a3e0b10e69a 100644
 +
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index cec2b0531996..6cd211c42c3f 100644
+index 18721b5aa353..be3e34ac8cc7 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -30,6 +30,7 @@
@@ -404,10 +413,10 @@ index 412a03948f57..f5a453882d08 100644
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
-index 000000000000..4994224b5113
+index 000000000000..5d0c44a58883
 --- /dev/null
 +++ b/net/ethtool/settings.c
-@@ -0,0 +1,264 @@
+@@ -0,0 +1,277 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include "netlink.h"
@@ -431,7 +440,6 @@ index 000000000000..4994224b5113
 +	[ETHA_SETTINGS_COMPACT]		= { .type = NLA_FLAG },
 +	[ETHA_SETTINGS_LINK_INFO]	= { .type = NLA_REJECT },
 +	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_PEER_MODES]	= { .type = NLA_REJECT },
 +};
 +
 +static int parse_settings(struct common_req_info *req_info,
@@ -521,10 +529,8 @@ index 000000000000..4994224b5113
 +{
 +	int len = 0;
 +
-+	/* speed */
-+	len += nla_total_size(sizeof(u32));
-+	/* duplex, autoneg, port, phyaddr, mdix, mdixctrl, transcvr */
-+	len += 7 * nla_total_size(sizeof(u8));
++	/* port, phyaddr, mdix, mdixctrl, transcvr */
++	len += 5 * nla_total_size(sizeof(u8));
 +	/* mdio_support */
 +	len += nla_total_size(sizeof(struct nla_bitfield32));
 +
@@ -541,6 +547,8 @@ index 000000000000..4994224b5113
 +	u32 *lp_advertising = (u32 *)ksettings->link_modes.lp_advertising;
 +	int len = 0, ret;
 +
++	/* speed, duplex, autoneg */
++	len += nla_total_size(sizeof(u32)) + 2 * nla_total_size(sizeof(u8));
 +	ret = ethnl_bitset32_size(__ETHTOOL_LINK_MODE_MASK_NBITS, advertising,
 +				  supported, link_mode_names, flags);
 +	if (ret < 0)
@@ -553,7 +561,8 @@ index 000000000000..4994224b5113
 +		return ret;
 +	len += ret;
 +
-+	return len;
++	/* nest */
++	return nla_total_size(len);
 +}
 +
 +/* To keep things simple, reserve space for some attributes which may not
@@ -588,13 +597,9 @@ index 000000000000..4994224b5113
 +
 +	if (!nest)
 +		return -EMSGSIZE;
-+	if (nla_put_u32(skb, ETHA_LINKINFO_SPEED, lsettings->speed) ||
-+	    nla_put_u8(skb, ETHA_LINKINFO_DUPLEX, lsettings->duplex) ||
-+	    nla_put_u8(skb, ETHA_LINKINFO_PORT, lsettings->port) ||
++	if (nla_put_u8(skb, ETHA_LINKINFO_PORT, lsettings->port) ||
 +	    nla_put_u8(skb, ETHA_LINKINFO_PHYADDR,
 +		       lsettings->phy_address) ||
-+	    nla_put_u8(skb, ETHA_LINKINFO_AUTONEG,
-+		       lsettings->autoneg) ||
 +	    nla_put_u8(skb, ETHA_LINKINFO_TP_MDIX,
 +		       lsettings->eth_tp_mdix) ||
 +	    nla_put_u8(skb, ETHA_LINKINFO_TP_MDIX_CTRL,
@@ -617,23 +622,40 @@ index 000000000000..4994224b5113
 +	const u32 *advertising = (const u32 *)ksettings->link_modes.advertising;
 +	const u32 *lp_adv = (const u32 *)ksettings->link_modes.lp_advertising;
 +	const unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
++	const struct ethtool_link_settings *lsettings = &ksettings->base;
++	struct nlattr *nest;
 +	int ret;
 +
-+	ret = ethnl_put_bitset32(skb, ETHA_SETTINGS_LINK_MODES,
++	nest = ethnl_nest_start(skb, ETHA_SETTINGS_LINK_MODES);
++	if (!nest)
++		return -EMSGSIZE;
++	if (nla_put_u8(skb, ETHA_LINKMODES_AUTONEG, lsettings->autoneg))
++		goto err;
++
++	ret = ethnl_put_bitset32(skb, ETHA_LINKMODES_OURS,
 +				 __ETHTOOL_LINK_MODE_MASK_NBITS, advertising,
 +				 supported, link_mode_names, flags);
 +	if (ret < 0)
-+		return ret;
++		goto err;
 +	if (!lpm_empty) {
-+		ret = ethnl_put_bitset32(skb, ETHA_SETTINGS_PEER_MODES,
++		ret = ethnl_put_bitset32(skb, ETHA_LINKMODES_PEER,
 +					 __ETHTOOL_LINK_MODE_MASK_NBITS,
 +					 lp_adv, NULL, link_mode_names,
 +					 flags | ETHNL_BITSET_LIST);
 +		if (ret < 0)
-+			return ret;
++			goto err;
 +	}
 +
++	if (nla_put_u32(skb, ETHA_LINKMODES_SPEED, lsettings->speed) ||
++	    nla_put_u8(skb, ETHA_LINKMODES_DUPLEX, lsettings->duplex))
++		goto err;
++
++	nla_nest_end(skb, nest);
 +	return 0;
++
++err:
++	nla_nest_cancel(skb, nest);
++	return -EMSGSIZE;
 +}
 +
 +static int fill_settings(struct sk_buff *skb,

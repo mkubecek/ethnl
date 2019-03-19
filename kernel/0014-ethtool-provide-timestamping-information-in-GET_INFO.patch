@@ -1,4 +1,4 @@
-From 42622654be227f2527d09fc4c64a4db06750e0d0 Mon Sep 17 00:00:00 2001
+From 364bc3060e996ccee88dc1da634ed68cc647c80e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
 Subject: [PATCH 14/44] ethtool: provide timestamping information in GET_INFO
@@ -26,10 +26,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  10 files changed, 236 insertions(+), 20 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 3918a695f272..bb2d67ee1ffd 100644
+index cffa508ca6c6..74c62f11810c 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -239,6 +239,11 @@ Kernel response contents:
+@@ -240,6 +240,11 @@ Kernel response contents:
          ETHA_DRVINFO_FWVERSION		(string)	firmware version
          ETHA_DRVINFO_BUSINFO		(string)	device bus address
          ETHA_DRVINFO_EROM_VER		(string)	expansion ROM version
@@ -41,7 +41,7 @@ index 3918a695f272..bb2d67ee1ffd 100644
  
  The meaning of DRVINFO attributes follows the corresponding fields of
  ETHTOOL_GDRVINFO response. Second part with various counts and sizes is
-@@ -246,6 +251,9 @@ omitted as these are not really needed (and if they are, they can be easily
+@@ -247,6 +252,9 @@ omitted as these are not really needed (and if they are, they can be easily
  found by different means). Driver version is also omitted as it is rather
  misleading in most cases.
  
@@ -51,7 +51,7 @@ index 3918a695f272..bb2d67ee1ffd 100644
  GET_INFO requests allow dumps.
  
  
-@@ -321,7 +329,7 @@ ETHTOOL_SCHANNELS		n/a
+@@ -322,7 +330,7 @@ ETHTOOL_SCHANNELS		n/a
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
  ETHTOOL_GET_DUMP_DATA		n/a
@@ -414,7 +414,7 @@ index cc42993bb05b..68de78533ec7 100644
  	return 0;
  }
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index a37f17414758..cec2b0531996 100644
+index 844a4f4b1552..18721b5aa353 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -2027,28 +2027,12 @@ static int ethtool_get_dump_data(struct net_device *dev,

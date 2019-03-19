@@ -1,4 +1,4 @@
-From 0c055510a07eba5bba747c0377b51174eaa0cf5b Mon Sep 17 00:00:00 2001
+From 5f0bb12b867424a96dfaf402c6461f152a00207c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 13/44] ethtool: provide driver/device information in GET_INFO
@@ -25,10 +25,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/info.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 665337312bd0..3918a695f272 100644
+index 1508c16a236e..cffa508ca6c6 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -128,6 +128,8 @@ List of message types
+@@ -129,6 +129,8 @@ List of message types
      ETHNL_CMD_EVENT			notification only
      ETHNL_CMD_GET_STRSET
      ETHNL_CMD_SET_STRSET		response only
@@ -37,7 +37,7 @@ index 665337312bd0..3918a695f272 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -208,6 +210,45 @@ ETHA_STRSET_COUNTS tells kernel to only return string counts of the sets, not
+@@ -209,6 +211,45 @@ ETHA_STRSET_COUNTS tells kernel to only return string counts of the sets, not
  the actual strings.
  
  
@@ -83,7 +83,7 @@ index 665337312bd0..3918a695f272 100644
  Request translation
  -------------------
  
-@@ -219,7 +260,7 @@ ioctl command			netlink command
+@@ -220,7 +261,7 @@ ioctl command			netlink command
  ---------------------------------------------------------------------
  ETHTOOL_GSET			n/a
  ETHTOOL_SSET			n/a
@@ -399,7 +399,7 @@ index 000000000000..cc42993bb05b
 +	.fill_reply		= fill_info,
 +};
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 1604a77318fe..a37f17414758 100644
+index 04d747056070..844a4f4b1552 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -685,54 +685,14 @@ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,

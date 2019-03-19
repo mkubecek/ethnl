@@ -1,4 +1,4 @@
-From 70185e66214cd3276deec30b88362edd8db41dfd Mon Sep 17 00:00:00 2001
+From b1c3884cc8864cf994e56efac683841fb6c0a456 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 16:19:21 +0100
 Subject: [PATCH 25/44] ethtool: provide private flags in GET_SETTINGS request
@@ -19,26 +19,26 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 114 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index f85d9a31efd4..e8dc95f418d3 100644
+index 51261ae149ce..b15e6b61ce29 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -280,6 +280,7 @@ Info mask bits meaning:
-     ETH_SETTINGS_IM_MSGLEVEL		msglevel
-     ETH_SETTINGS_IM_LINK		link state
+@@ -281,6 +281,7 @@ Info mask bits meaning:
+     ETH_SETTINGS_IM_DEBUG		debugging
+     ETH_SETTINGS_IM_LINKSTATE		link state
      ETH_SETTINGS_IM_FEATURES		features
 +    ETH_SETTINGS_IM_PRIVFLAGS		device private flags
  
  Response contents:
  
-@@ -305,6 +306,7 @@ Response contents:
+@@ -309,6 +310,7 @@ Response contents:
          ETHA_FEATURES_WANTED		(bitset)	dev->wanted_features
          ETHA_FEATURES_ACTIVE		(bitset)	dev->features
          ETHA_FEATURES_NOCHANGE		(bitset)	NETIF_F_NEVER_CHANGE
 +    ETHA_SETTINGS_PRIV_FLAGS	(bitset)	device private flags
  
  Most of the attributes and their values have the same meaning as matching
- members of the corresponding ioctl structures. For ETHA_SETTINGS_LINK_MODES,
-@@ -326,6 +328,11 @@ itself. ETHA_FEATURES_HW uses mask consisting of all features recognized by
+ members of the corresponding ioctl structures. For ETHA_LINKMODES_OURS,
+@@ -331,6 +333,11 @@ itself. ETHA_FEATURES_HW uses mask consisting of all features recognized by
  kernel (to provide all names when using verbose bitmap format), remaining
  three use mask equal to value (to save space).
  
@@ -47,10 +47,10 @@ index f85d9a31efd4..e8dc95f418d3 100644
 +are device dependent. For compact bitset format, names can be retrieved as
 +ETH_SS_PRIV_FLAGS string set.
 +
- GET_SETTINGS request is allowed for unprivileged user but ETHA_SETTINGS_SOPASS
+ GET_SETTINGS request is allowed for unprivileged user but ETHA_WOL_SOPASS
  is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
  requests.
-@@ -436,7 +443,7 @@ ETHTOOL_GGSO			ETHNL_CMD_GET_SETTINGS
+@@ -443,7 +450,7 @@ ETHTOOL_GGSO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SGSO			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFLAGS			ETHNL_CMD_SET_SETTINGS
@@ -60,28 +60,28 @@ index f85d9a31efd4..e8dc95f418d3 100644
  ETHTOOL_GRXFH			n/a
  ETHTOOL_SRXFH			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 221b4c255420..bd92a2624ad6 100644
+index 854a3a1d6f35..7a9bd031aabe 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -201,6 +201,7 @@ enum {
- 	ETHA_SETTINGS_MSGLEVEL,			/* bitfield32 */
- 	ETHA_SETTINGS_LINK,			/* u8 */
+@@ -200,6 +200,7 @@ enum {
+ 	ETHA_SETTINGS_DEBUG,			/* nest - ETHA_DEBUG_* */
+ 	ETHA_SETTINGS_LINK_STATE,		/* nest - ETHA_LINKSTATE_* */
  	ETHA_SETTINGS_FEATURES,			/* nest - ETHA_FEATURES_* */
-+	ETHA_SETTINGS_PRIV_FLAGS,		/* nest - ETHA_BITSET_* */
++	ETHA_SETTINGS_PRIV_FLAGS,		/* bitset */
  
  	__ETHA_SETTINGS_CNT,
  	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
-@@ -212,13 +213,15 @@ enum {
- #define ETH_SETTINGS_IM_MSGLEVEL		(1U << 3)
- #define ETH_SETTINGS_IM_LINK			(1U << 4)
+@@ -211,13 +212,15 @@ enum {
+ #define ETH_SETTINGS_IM_DEBUG			(1U << 3)
+ #define ETH_SETTINGS_IM_LINKSTATE		(1U << 4)
  #define ETH_SETTINGS_IM_FEATURES		(1U << 5)
 +#define ETH_SETTINGS_IM_PRIVFLAGS		(1U << 6)
  
  #define ETH_SETTINGS_IM_ALL (ETH_SETTINGS_IM_LINKINFO | \
  			     ETH_SETTINGS_IM_LINKMODES | \
- 			     ETH_SETTINGS_IM_WOLINFO | \
- 			     ETH_SETTINGS_IM_MSGLEVEL | \
- 			     ETH_SETTINGS_IM_LINK | \
+ 			     ETH_SETTINGS_IM_WOL | \
+ 			     ETH_SETTINGS_IM_DEBUG | \
+ 			     ETH_SETTINGS_IM_LINKSTATE | \
 -			     ETH_SETTINGS_IM_FEATURES)
 +			     ETH_SETTINGS_IM_FEATURES | \
 +			     ETH_SETTINGS_IM_PRIVFLAGS)
@@ -89,10 +89,10 @@ index 221b4c255420..bd92a2624ad6 100644
  enum {
  	ETHA_LINKINFO_UNSPEC,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 1afb27590cc3..6366c32a0474 100644
+index 7ffab81570e4..ae9cc7d1de22 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -2529,6 +2529,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
+@@ -2531,6 +2531,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
  	case ETHTOOL_SPFLAGS:
  		rc = ethtool_set_value(dev, useraddr,
  				       dev->ethtool_ops->set_priv_flags);
@@ -103,7 +103,7 @@ index 1afb27590cc3..6366c32a0474 100644
  	case ETHTOOL_GRXFH:
  	case ETHTOOL_GRXRINGS:
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index c9cf5085010e..1692501438bb 100644
+index 25cfc52f2b26..d387955654db 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -22,6 +22,9 @@ struct settings_data {
@@ -116,15 +116,15 @@ index c9cf5085010e..1692501438bb 100644
  };
  
  struct link_mode_info {
-@@ -133,6 +136,7 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
- 	[ETHA_SETTINGS_MSGLEVEL]	= { .type = NLA_REJECT },
- 	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
+@@ -132,6 +135,7 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_DEBUG]		= { .type = NLA_REJECT },
+ 	[ETHA_SETTINGS_LINK_STATE]	= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_REJECT },
 +	[ETHA_SETTINGS_PRIV_FLAGS]	= { .type = NLA_REJECT },
  };
  
  static int parse_settings(struct common_req_info *req_info,
-@@ -210,6 +214,58 @@ static int ethnl_get_features(struct net_device *dev,
+@@ -209,6 +213,58 @@ static int ethnl_get_features(struct net_device *dev,
  	return 0;
  }
  
@@ -183,7 +183,7 @@ index c9cf5085010e..1692501438bb 100644
  static int prepare_settings(struct common_req_info *req_info,
  			    struct genl_info *info)
  {
-@@ -259,6 +315,11 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -258,6 +314,11 @@ static int prepare_settings(struct common_req_info *req_info,
  		data->link = __ethtool_get_link(dev);
  	if (req_mask & ETH_SETTINGS_IM_FEATURES)
  		ethnl_get_features(dev, data);
@@ -195,7 +195,7 @@ index c9cf5085010e..1692501438bb 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -377,6 +438,17 @@ static int settings_size(const struct common_req_info *req_info)
+@@ -389,6 +450,17 @@ static int settings_size(const struct common_req_info *req_info)
  			return ret;
  		len += ret;
  	}
@@ -213,7 +213,7 @@ index c9cf5085010e..1692501438bb 100644
  
  	return len;
  }
-@@ -500,6 +572,18 @@ static int fill_features(struct sk_buff *skb, const struct settings_data *data)
+@@ -561,6 +633,18 @@ static int fill_features(struct sk_buff *skb, const struct settings_data *data)
  	return 0;
  }
  
@@ -232,7 +232,7 @@ index c9cf5085010e..1692501438bb 100644
  static int fill_settings(struct sk_buff *skb,
  			 const struct common_req_info *req_info)
  {
-@@ -539,10 +623,23 @@ static int fill_settings(struct sk_buff *skb,
+@@ -601,10 +685,23 @@ static int fill_settings(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -256,7 +256,7 @@ index c9cf5085010e..1692501438bb 100644
  const struct get_request_ops settings_request_ops = {
  	.request_cmd		= ETHNL_CMD_GET_SETTINGS,
  	.reply_cmd		= ETHNL_CMD_SET_SETTINGS,
-@@ -554,6 +651,7 @@ const struct get_request_ops settings_request_ops = {
+@@ -616,6 +713,7 @@ const struct get_request_ops settings_request_ops = {
  	.prepare_data		= prepare_settings,
  	.reply_size		= settings_size,
  	.fill_reply		= fill_settings,
@@ -264,9 +264,9 @@ index c9cf5085010e..1692501438bb 100644
  };
  
  /* SET_SETTINGS */
-@@ -600,6 +698,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
- 					    .validation_data = &all_bits },
- 	[ETHA_SETTINGS_LINK]		= { .type = NLA_REJECT },
+@@ -672,6 +770,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
+ 	[ETHA_SETTINGS_LINK_STATE]	= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_NESTED },
 +	[ETHA_SETTINGS_PRIV_FLAGS]	= { .type = NLA_REJECT },
  };

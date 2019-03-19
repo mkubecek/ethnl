@@ -1,4 +1,4 @@
-From 97dc6b6b59376f7b30a92461714a9a9427cd8d41 Mon Sep 17 00:00:00 2001
+From a9fadd8f9600a272f2a737945245b5fc4a4cd4c6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 07/44] ethtool: netlink bitset handling
@@ -19,12 +19,12 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/bitset.h
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 22c78ff5247a..13d4053ab499 100644
+index 377d64c9b7fa..e97218d820c0 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -59,6 +59,69 @@ provided by kernel. In dump requests, device is not specified and kernel
- replies with one message per network device (only those for which the request
+@@ -60,6 +60,69 @@ replies with one message per network device (only those for which the request
  is supported).
+ 
  
 +Bit sets
 +--------

@@ -1,4 +1,4 @@
-From 023dccb49cf4065e263bb31cf9357e2885fb6d6d Mon Sep 17 00:00:00 2001
+From 36309e18e7474bcf9c7cda42eec3cf4e8d1fbb54 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:47:45 +0100
 Subject: [PATCH 36/44] ethtool: set EEE settings with SET_PARAMS request
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 75 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index a2ccf9242b62..61dd545c495f 100644
+index 59e3743e0a8a..36fc992a0cf1 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -491,11 +491,11 @@ SET_PARAMS
+@@ -498,11 +498,11 @@ SET_PARAMS
  ----------
  
  SET_PARAMS request modifies the settings retrieved by GET_PARAMS, i.e. it
@@ -34,7 +34,7 @@ index a2ccf9242b62..61dd545c495f 100644
  
      ETHA_PARAMS_COALESCE	(nested)	coalescing parameters
          ETHA_COALESCE_RX_USECS			(u32)
-@@ -534,6 +534,12 @@ request.
+@@ -541,6 +541,12 @@ request.
          ETHA_CHANNELS_TX_COUNT			(u32)
          ETHA_CHANNELS_OTHER_COUNT		(u32)
          ETHA_CHANNELS_COMBINED_COUNT		(u32)
@@ -47,7 +47,7 @@ index a2ccf9242b62..61dd545c495f 100644
  
  
  Request translation
-@@ -612,7 +618,7 @@ ETHTOOL_GET_TS_INFO		ETHNL_CMD_GET_INFO
+@@ -619,7 +625,7 @@ ETHTOOL_GET_TS_INFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS

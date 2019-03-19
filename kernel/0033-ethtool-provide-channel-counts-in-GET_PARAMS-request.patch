@@ -1,4 +1,4 @@
-From 0e821ae47f5b7c09777b8e88535ff209d10550f8 Mon Sep 17 00:00:00 2001
+From fd3f3cbded91c667b1f0b21e16c899e436e7c257 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:30:12 +0100
 Subject: [PATCH 33/44] ethtool: provide channel counts in GET_PARAMS request
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 91 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 9bd339a1256a..756f91a87e90 100644
+index da142cba4a63..3596bfda5667 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -404,9 +404,10 @@ GET_PARAMS
+@@ -411,9 +411,10 @@ GET_PARAMS
  ----------
  
  GET_PARAMS request retrieves information provided by ioctl comands
@@ -36,7 +36,7 @@ index 9bd339a1256a..756f91a87e90 100644
  
  Request contents:
  
-@@ -419,6 +420,7 @@ Info mask bits:
+@@ -426,6 +427,7 @@ Info mask bits:
      ETH_PARAMS_IM_COALESCE		coalescing parameters
      ETH_PARAMS_IM_RING			ring sizes
      ETH_PARAMS_IM_PAUSE			pause parameters
@@ -44,7 +44,7 @@ index 9bd339a1256a..756f91a87e90 100644
  
  Response contents: On top level, there is one attribute for each of the
  information categories, the information is nested in it.
-@@ -460,6 +462,15 @@ information categories, the information is nested in it.
+@@ -467,6 +469,15 @@ information categories, the information is nested in it.
          ETHA_PAUSE_AUTONEG			(bool)
          ETHA_PAUSE_RX				(bool)
          ETHA_PAUSE_TX				(bool)
@@ -60,7 +60,7 @@ index 9bd339a1256a..756f91a87e90 100644
  
  GET_PARAMS requests allow dumps and messages in the same format as response
  to them are broadcasted as notifications on change of these settings using
-@@ -576,7 +587,7 @@ ETHTOOL_GRXFHINDIR		n/a
+@@ -583,7 +594,7 @@ ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
@@ -70,10 +70,10 @@ index 9bd339a1256a..756f91a87e90 100644
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 282378c98f00..921e45c84d5c 100644
+index ce8e08f73576..87682f811d80 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -271,6 +271,7 @@ enum {
+@@ -295,6 +295,7 @@ enum {
  	ETHA_PARAMS_COALESCE,			/* nest - ETHA_COALESCE_* */
  	ETHA_PARAMS_RING,			/* nest - ETHA_RING_* */
  	ETHA_PARAMS_PAUSE,			/* nest - ETHA_PAUSE_* */
@@ -81,7 +81,7 @@ index 282378c98f00..921e45c84d5c 100644
  
  	__ETHA_PARAMS_CNT,
  	ETHA_PARAMS_MAX = (__ETHA_PARAMS_CNT - 1)
-@@ -279,10 +280,12 @@ enum {
+@@ -303,10 +304,12 @@ enum {
  #define ETH_PARAMS_IM_COALESCE			(1U << 0)
  #define ETH_PARAMS_IM_RING			(1U << 1)
  #define ETH_PARAMS_IM_PAUSE			(1U << 2)
@@ -95,7 +95,7 @@ index 282378c98f00..921e45c84d5c 100644
  
  enum {
  	ETHA_COALESCE_UNSPEC,
-@@ -338,6 +341,21 @@ enum {
+@@ -362,6 +365,21 @@ enum {
  	ETHA_PAUSE_MAX = (__ETHA_PAUSE_CNT - 1)
  };
  
@@ -118,7 +118,7 @@ index 282378c98f00..921e45c84d5c 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 81e98ce8441a..a37eb5827841 100644
+index 5e57526774a2..4e28c8061bfa 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1537,6 +1537,7 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,

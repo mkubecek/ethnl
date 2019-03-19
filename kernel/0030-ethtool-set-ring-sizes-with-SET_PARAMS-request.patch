@@ -1,4 +1,4 @@
-From b81de06b7ecb5d4cf5e41368a7709883ceece2c1 Mon Sep 17 00:00:00 2001
+From e82249d9c874a71a4db8d014430d925323b42854 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 07:53:54 +0100
 Subject: [PATCH 30/44] ethtool: set ring sizes with SET_PARAMS request
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 82 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 4fe9bfaa62e0..a9e1dfef5a1c 100644
+index aeadbf479b52..3c26883e98c2 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -465,8 +465,10 @@ SET_PARAMS
+@@ -472,8 +472,10 @@ SET_PARAMS
  ----------
  
  SET_PARAMS request modifies the settings retrieved by GET_PARAMS, i.e. it
@@ -30,7 +30,7 @@ index 4fe9bfaa62e0..a9e1dfef5a1c 100644
  
      ETHA_PARAMS_COALESCE	(nested)	coalescing parameters
          ETHA_COALESCE_RX_USECS			(u32)
-@@ -491,6 +493,11 @@ contained in nest attribute ETHA_PARAMS_COALESCE.
+@@ -498,6 +500,11 @@ contained in nest attribute ETHA_PARAMS_COALESCE.
          ETHA_COALESCE_TX_USE_ADAPTIVE		(bool)
          ETHA_COALESCE_RATE_SAMPLE_INTERVAL	(u32)
          ETHA_COALESCE_STATS_BLOCK_USECS		(u32)
@@ -42,7 +42,7 @@ index 4fe9bfaa62e0..a9e1dfef5a1c 100644
  
  
  Request translation
-@@ -517,7 +524,7 @@ ETHTOOL_SEEPROM			n/a
+@@ -524,7 +531,7 @@ ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		ETHNL_CMD_GET_PARAMS
  ETHTOOL_SCOALESCE		ETHNL_CMD_SET_PARAMS
  ETHTOOL_GRINGPARAM		ETHNL_CMD_GET_PARAMS

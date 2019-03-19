@@ -1,4 +1,4 @@
-From 53279bc96a30005394b40b1e6dfb3cf0a1b8b44a Mon Sep 17 00:00:00 2001
+From b40c068264e8648c22204066eee6a3da5f25fbf5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 44/44] ethtool: implement SET_RXFLOW message
@@ -25,10 +25,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 663 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 14973e7c5c01..9eca20b20d6b 100644
+index 72d5a717683e..77cbba67ed7f 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -136,7 +136,7 @@ List of message types
+@@ -137,7 +137,7 @@ List of message types
      ETHNL_CMD_SET_PARAMS
      ETHNL_CMD_ACT_NWAY_RST
      ETHNL_CMD_GET_RXFLOW
@@ -37,7 +37,7 @@ index 14973e7c5c01..9eca20b20d6b 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -722,6 +722,43 @@ these weights correspond to. If ETHA_ITWGHT_VALUES is omitted, values from 0
+@@ -729,6 +729,43 @@ these weights correspond to. If ETHA_ITWGHT_VALUES is omitted, values from 0
  to number of weights minus one are used.
  
  
@@ -81,7 +81,7 @@ index 14973e7c5c01..9eca20b20d6b 100644
  Request translation
  -------------------
  
-@@ -786,7 +823,7 @@ ETHTOOL_SRXNTUPLE		n/a
+@@ -793,7 +830,7 @@ ETHTOOL_SRXNTUPLE		n/a
  ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
  ETHTOOL_GRXFHINDIR		ETHNL_CMD_GET_RXFLOW
@@ -90,7 +90,7 @@ index 14973e7c5c01..9eca20b20d6b 100644
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GCHANNELS		ETHNL_CMD_GET_PARAMS
-@@ -800,7 +837,7 @@ ETHTOOL_GMODULEEEPROM		n/a
+@@ -807,7 +844,7 @@ ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
  ETHTOOL_SEEE			ETHNL_CMD_SET_PARAMS
  ETHTOOL_GRSSH			ETHNL_CMD_GET_RXFLOW
@@ -100,7 +100,7 @@ index 14973e7c5c01..9eca20b20d6b 100644
  ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 6c627266d1d7..fa4285854aa4 100644
+index c4442cf728fe..298127e0e787 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -26,7 +26,7 @@ enum {

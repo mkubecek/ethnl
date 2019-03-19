@@ -1,4 +1,4 @@
-From fe5597f9d7af622880b32ba139c0263261003368 Mon Sep 17 00:00:00 2001
+From e8886b4b1d3caf18b0a32cb5e98cf4b58b270093 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 05/44] ethtool: introduce ethtool netlink interface
@@ -9,14 +9,14 @@ option. Add interface description into Documentation/networking.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 167 +++++++++++++++++++
+ Documentation/networking/ethtool-netlink.txt | 168 +++++++++++++++++++
  include/linux/ethtool_netlink.h              |   9 +
  include/uapi/linux/ethtool_netlink.h         |  25 +++
  net/Kconfig                                  |   8 +
  net/ethtool/Makefile                         |   6 +-
  net/ethtool/netlink.c                        |  34 ++++
  net/ethtool/netlink.h                        |  12 ++
- 7 files changed, 260 insertions(+), 1 deletion(-)
+ 7 files changed, 261 insertions(+), 1 deletion(-)
  create mode 100644 Documentation/networking/ethtool-netlink.txt
  create mode 100644 include/linux/ethtool_netlink.h
  create mode 100644 include/uapi/linux/ethtool_netlink.h
@@ -25,10 +25,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 new file mode 100644
-index 000000000000..22c78ff5247a
+index 000000000000..377d64c9b7fa
 --- /dev/null
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -0,0 +1,167 @@
+@@ -0,0 +1,168 @@
 +                        Netlink interface for ethtool
 +                        =============================
 +
@@ -89,6 +89,7 @@ index 000000000000..22c78ff5247a
 +provided by kernel. In dump requests, device is not specified and kernel
 +replies with one message per network device (only those for which the request
 +is supported).
++
 +
 +List of message types
 +---------------------

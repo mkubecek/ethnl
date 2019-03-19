@@ -1,4 +1,4 @@
-From 18db75d70097c5aed33ca0cd336180661da58b5d Mon Sep 17 00:00:00 2001
+From eb901e82e4319f78ce3ff4bbac570ae752226fed Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:53:42 +0100
 Subject: [PATCH 37/44] ethtool: provide FEC parameters with GET_PARAMS request
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 72 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 61dd545c495f..4e9b0d36adf7 100644
+index 36fc992a0cf1..5b985f607ee3 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -405,9 +405,10 @@ GET_PARAMS
+@@ -412,9 +412,10 @@ GET_PARAMS
  
  GET_PARAMS request retrieves information provided by ioctl comands
  ETHTOOL_GCOALESCE (coalescing parameters), ETHTOOL_GRINGPARAM (ring sizes),
@@ -36,7 +36,7 @@ index 61dd545c495f..4e9b0d36adf7 100644
  
  Request contents:
  
-@@ -422,6 +423,7 @@ Info mask bits:
+@@ -429,6 +430,7 @@ Info mask bits:
      ETH_PARAMS_IM_PAUSE			pause parameters
      ETH_PARAMS_IM_CHANNELS		channel counts
      ETH_PARAMS_IM_EEE			EEE settings
@@ -44,7 +44,7 @@ index 61dd545c495f..4e9b0d36adf7 100644
  
  Response contents: On top level, there is one attribute for each of the
  information categories, the information is nested in it.
-@@ -481,6 +483,9 @@ information categories, the information is nested in it.
+@@ -488,6 +490,9 @@ information categories, the information is nested in it.
          ETHA_EEE_ENABLED			(bool)
          ETHA_EEE_TX_LPI_ENABLED			(bool)
          ETHA_EEE_TX_LPI_TIMER			(u32)
@@ -54,7 +54,7 @@ index 61dd545c495f..4e9b0d36adf7 100644
  
  GET_PARAMS requests allow dumps and messages in the same format as response
  to them are broadcasted as notifications on change of these settings using
-@@ -629,5 +634,5 @@ ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
+@@ -636,5 +641,5 @@ ETHTOOL_GLINKSETTINGS		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SLINKSETTINGS		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a
@@ -62,10 +62,10 @@ index 61dd545c495f..4e9b0d36adf7 100644
 +ETHTOOL_GFECPARAM		ETHNL_CMD_GET_PARAMS
  ETHTOOL_SFECPARAM		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 329d762a6e40..9e6b66f61211 100644
+index cba7f620b345..5f74484098e8 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -273,6 +273,7 @@ enum {
+@@ -297,6 +297,7 @@ enum {
  	ETHA_PARAMS_PAUSE,			/* nest - ETHA_PAUSE_* */
  	ETHA_PARAMS_CHANNELS,			/* nest - ETHA_CHANNELS_* */
  	ETHA_PARAMS_EEE,			/* nest - ETHA_EEE_* */
@@ -73,7 +73,7 @@ index 329d762a6e40..9e6b66f61211 100644
  
  	__ETHA_PARAMS_CNT,
  	ETHA_PARAMS_MAX = (__ETHA_PARAMS_CNT - 1)
-@@ -283,12 +284,14 @@ enum {
+@@ -307,12 +308,14 @@ enum {
  #define ETH_PARAMS_IM_PAUSE			(1U << 2)
  #define ETH_PARAMS_IM_CHANNELS			(1U << 3)
  #define ETH_PARAMS_IM_EEE			(1U << 4)
@@ -89,7 +89,7 @@ index 329d762a6e40..9e6b66f61211 100644
  
  enum {
  	ETHA_COALESCE_UNSPEC,
-@@ -372,6 +375,14 @@ enum {
+@@ -396,6 +399,14 @@ enum {
  	ETHA_EEE_MAX = (__ETHA_EEE_CNT - 1)
  };
  
@@ -105,10 +105,10 @@ index 329d762a6e40..9e6b66f61211 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 289c37e06cbf..87a345e78a18 100644
+index 9539d5b1de28..84a508dba539 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -2319,6 +2319,7 @@ static int ethtool_get_fecparam(struct net_device *dev, void __user *useraddr)
+@@ -2321,6 +2321,7 @@ static int ethtool_get_fecparam(struct net_device *dev, void __user *useraddr)
  static int ethtool_set_fecparam(struct net_device *dev, void __user *useraddr)
  {
  	struct ethtool_fecparam fecparam;
@@ -116,7 +116,7 @@ index 289c37e06cbf..87a345e78a18 100644
  
  	if (!dev->ethtool_ops->set_fecparam)
  		return -EOPNOTSUPP;
-@@ -2326,7 +2327,11 @@ static int ethtool_set_fecparam(struct net_device *dev, void __user *useraddr)
+@@ -2328,7 +2329,11 @@ static int ethtool_set_fecparam(struct net_device *dev, void __user *useraddr)
  	if (copy_from_user(&fecparam, useraddr, sizeof(fecparam)))
  		return -EFAULT;
  
