@@ -1,4 +1,4 @@
-From 4c283fb0cfe0b07930b2218c8922e6017209e78b Mon Sep 17 00:00:00 2001
+From 3431265aa38a0becac090d5545af5839a1958aa1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:43:01 +0100
 Subject: [PATCH 35/44] ethtool: provide EEE settings in GET_PARAMS request
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 130 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index a8977c8c9fed..59e3743e0a8a 100644
+index 28c287c434b7..d8c1e36f2ca2 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -412,9 +412,9 @@ GET_PARAMS
@@ -69,7 +69,7 @@ index a8977c8c9fed..59e3743e0a8a 100644
  ETHTOOL_GRSSH			n/a
  ETHTOOL_SRSSH			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 87682f811d80..cba7f620b345 100644
+index 8bbd62b59d6e..dd61c027ba44 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -296,6 +296,7 @@ enum {

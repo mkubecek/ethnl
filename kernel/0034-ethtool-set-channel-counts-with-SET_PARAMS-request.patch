@@ -1,4 +1,4 @@
-From b411cfd5bb60a470573762ebc72328ca3255b89a Mon Sep 17 00:00:00 2001
+From a19e4a7cdd602c7735ef93ececaeb7bc8e3ba003 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:36:43 +0100
 Subject: [PATCH 34/44] ethtool: set channel counts with SET_PARAMS request
@@ -17,7 +17,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 138 insertions(+), 64 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 3596bfda5667..a8977c8c9fed 100644
+index e2b2263c0c17..28c287c434b7 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -488,10 +488,11 @@ SET_PARAMS
@@ -58,7 +58,7 @@ index 3596bfda5667..a8977c8c9fed 100644
  ETHTOOL_GET_DUMP_FLAG		n/a
  ETHTOOL_GET_DUMP_DATA		n/a
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index 84b9258e4c22..1e4af095be63 100644
+index 4b2f08da910a..a30d5df409b0 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
 @@ -4,6 +4,7 @@
@@ -69,9 +69,9 @@ index 84b9258e4c22..1e4af095be63 100644
  #include "common.h"
  
  const char netdev_features_strings[NETDEV_FEATURE_COUNT][ETH_GSTRING_LEN] = {
-@@ -223,3 +224,67 @@ int __ethtool_get_link(struct net_device *dev)
+@@ -223,3 +224,67 @@ int __ethtool_get_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
  
- 	return netif_running(dev) && dev->ethtool_ops->get_link(dev);
+ 	return 0;
  }
 +
 +static int ethtool_get_max_rxfh_channel(struct net_device *dev, u32 *max)
@@ -138,13 +138,13 @@ index 84b9258e4c22..1e4af095be63 100644
 +	return dev->ethtool_ops->set_channels(dev, channels);
 +}
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
-index cf0b81af2d9f..d557702d0f78 100644
+index 1e00a7eecbbd..5b05f1417b9e 100644
 --- a/net/ethtool/common.h
 +++ b/net/ethtool/common.h
 @@ -21,6 +21,9 @@ int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info);
  int __ethtool_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info);
- int __ethtool_get_wol(struct net_device *dev, struct ethtool_wolinfo *wol);
  int __ethtool_get_link(struct net_device *dev);
+ int __ethtool_get_wol(struct net_device *dev, struct ethtool_wolinfo *wol);
 +int __ethtool_set_channels(struct net_device *dev,
 +			   const struct ethtool_channels *curr,
 +			   struct ethtool_channels *channels);

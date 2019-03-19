@@ -1,4 +1,4 @@
-From da01123a849ea7fbea736aa8858eb0bcb3eaee08 Mon Sep 17 00:00:00 2001
+From b64b454829eaedbc20867d443322d6b09d5721e9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 21:27:19 +0100
 Subject: [PATCH 28/44] ethtool: set coalescing parameters with SET_PARAMS
@@ -17,7 +17,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 206 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index ed53055ab98c..f14ea9f5af22 100644
+index 69c96911919e..759c3f5313ea 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -134,7 +134,7 @@ List of message types

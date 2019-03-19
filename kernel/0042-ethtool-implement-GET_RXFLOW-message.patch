@@ -1,4 +1,4 @@
-From 056d981176f457c2ea6b9872290186d536c8e67c Mon Sep 17 00:00:00 2001
+From 2dfdd73876df0fd67673b4f1f940b54d85e708cc Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 42/44] ethtool: implement GET_RXFLOW message
@@ -25,7 +25,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/rxflow.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 52fbcf0e444d..72d5a717683e 100644
+index 1be01b45b83b..7dc59ba86fa4 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -136,6 +136,8 @@ List of message types
@@ -189,7 +189,7 @@ index 52fbcf0e444d..72d5a717683e 100644
  ETHTOOL_GTUNABLE		n/a
  ETHTOOL_STUNABLE		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index eb58d6bf3bfe..c4442cf728fe 100644
+index 2c97fd8fca21..a7494f3a1515 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -25,6 +25,8 @@ enum {

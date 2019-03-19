@@ -1,4 +1,4 @@
-From cf6c2afc514486e02c0c4917223c2cb8cecaa107 Mon Sep 17 00:00:00 2001
+From 6f7796533005416c723d0986285fc0421d4c0de8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 40/44] ethtool: implement ACT_PHYS_ID message
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 186 insertions(+), 47 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 683bf17445c1..1ffe01965b88 100644
+index a2ed44e993c5..b46534038476 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -570,6 +570,28 @@ Request contents:
@@ -63,7 +63,7 @@ index 683bf17445c1..1ffe01965b88 100644
  ETHTOOL_GTSO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_STSO			ETHNL_CMD_SET_SETTINGS
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 3f13153b1daa..00685fc94148 100644
+index 7df29675101e..17134284864b 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -23,6 +23,7 @@ enum {
@@ -176,7 +176,7 @@ index 7cfe0025403a..a131a92b7957 100644
 +	return ret;
 +}
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index 1e4af095be63..adcbb09863de 100644
+index a30d5df409b0..e1a045184f51 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
 @@ -1,5 +1,6 @@
@@ -255,10 +255,10 @@ index 1e4af095be63..adcbb09863de 100644
 +	return rc;
 +}
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
-index d557702d0f78..d80e5a72d401 100644
+index 5b05f1417b9e..19c2c6da4700 100644
 --- a/net/ethtool/common.h
 +++ b/net/ethtool/common.h
-@@ -24,6 +24,7 @@ int __ethtool_get_link(struct net_device *dev);
+@@ -24,6 +24,7 @@ int __ethtool_get_wol(struct net_device *dev, struct ethtool_wolinfo *wol);
  int __ethtool_set_channels(struct net_device *dev,
  			   const struct ethtool_channels *curr,
  			   struct ethtool_channels *channels);

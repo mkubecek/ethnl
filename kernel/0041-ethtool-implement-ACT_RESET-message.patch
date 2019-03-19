@@ -1,4 +1,4 @@
-From 2124601031e73ef1ea6f9ded99938172b431f443 Mon Sep 17 00:00:00 2001
+From 379752d8aee29f236f30f5e1414174130fd62a33 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 41/44] ethtool: implement ACT_RESET message
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 300 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 1ffe01965b88..52fbcf0e444d 100644
+index b46534038476..1be01b45b83b 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -592,6 +592,29 @@ other ACT_PHYS_ID requests for any device fail with EBUSY. The same holds for
@@ -91,7 +91,7 @@ index ef1288eb737c..79fb94881c4b 100644
  
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 00685fc94148..eb58d6bf3bfe 100644
+index 17134284864b..2c97fd8fca21 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -24,6 +24,7 @@ enum {

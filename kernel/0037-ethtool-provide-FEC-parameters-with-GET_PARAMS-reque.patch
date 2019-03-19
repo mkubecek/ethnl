@@ -1,4 +1,4 @@
-From eb901e82e4319f78ce3ff4bbac570ae752226fed Mon Sep 17 00:00:00 2001
+From dccd81694c1c2c98fe4b354676164c6ac9fbf305 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:53:42 +0100
 Subject: [PATCH 37/44] ethtool: provide FEC parameters with GET_PARAMS request
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 72 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 36fc992a0cf1..5b985f607ee3 100644
+index 047410852ee7..ada700eb2892 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -412,9 +412,10 @@ GET_PARAMS
@@ -62,7 +62,7 @@ index 36fc992a0cf1..5b985f607ee3 100644
 +ETHTOOL_GFECPARAM		ETHNL_CMD_GET_PARAMS
  ETHTOOL_SFECPARAM		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index cba7f620b345..5f74484098e8 100644
+index dd61c027ba44..8aba49b83487 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -297,6 +297,7 @@ enum {

@@ -1,4 +1,4 @@
-From 4500020eee33c65851d7c8b0ecfd461f7eb7e0a1 Mon Sep 17 00:00:00 2001
+From c0f42f7e5f226e8e60be20d089f20f1b5a5eec52 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 39/44] ethtool: implement ACT_NWAY_RST message
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/actions.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 07985b6536a1..683bf17445c1 100644
+index 07238252c864..a2ed44e993c5 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -135,6 +135,7 @@ List of message types
@@ -60,7 +60,7 @@ index 07985b6536a1..683bf17445c1 100644
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 5f74484098e8..3f13153b1daa 100644
+index 8aba49b83487..7df29675101e 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -22,6 +22,7 @@ enum {

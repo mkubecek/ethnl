@@ -1,4 +1,4 @@
-From b40c068264e8648c22204066eee6a3da5f25fbf5 Mon Sep 17 00:00:00 2001
+From dcd439ee00259110f0d4caeaba9611bbb29416b2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 44/44] ethtool: implement SET_RXFLOW message
@@ -25,7 +25,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 663 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 72d5a717683e..77cbba67ed7f 100644
+index 7dc59ba86fa4..462a5cef8c5c 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -137,7 +137,7 @@ List of message types
@@ -100,7 +100,7 @@ index 72d5a717683e..77cbba67ed7f 100644
  ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index c4442cf728fe..298127e0e787 100644
+index a7494f3a1515..4a2aad1a3546 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -26,7 +26,7 @@ enum {

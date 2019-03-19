@@ -1,4 +1,4 @@
-From 36309e18e7474bcf9c7cda42eec3cf4e8d1fbb54 Mon Sep 17 00:00:00 2001
+From d0864a3daabf5c45c1c7b681ce65ec93ac17cab3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:47:45 +0100
 Subject: [PATCH 36/44] ethtool: set EEE settings with SET_PARAMS request
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 75 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 59e3743e0a8a..36fc992a0cf1 100644
+index d8c1e36f2ca2..047410852ee7 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -498,11 +498,11 @@ SET_PARAMS

@@ -1,4 +1,4 @@
-From fd3f3cbded91c667b1f0b21e16c899e436e7c257 Mon Sep 17 00:00:00 2001
+From 8b8e67a92b7b9b11d6012e52451d281b37fc8bf9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:30:12 +0100
 Subject: [PATCH 33/44] ethtool: provide channel counts in GET_PARAMS request
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 91 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index da142cba4a63..3596bfda5667 100644
+index f29c8c3a2fc7..e2b2263c0c17 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -411,9 +411,10 @@ GET_PARAMS
@@ -70,7 +70,7 @@ index da142cba4a63..3596bfda5667 100644
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index ce8e08f73576..87682f811d80 100644
+index bc1fbcd6a007..8bbd62b59d6e 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -295,6 +295,7 @@ enum {

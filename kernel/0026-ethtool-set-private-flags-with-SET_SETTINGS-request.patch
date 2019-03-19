@@ -1,4 +1,4 @@
-From 7d77567a40c3693cd946b219855cf709a287c9d5 Mon Sep 17 00:00:00 2001
+From 5fff53ff10d300e890f957de8ae1f981661c0a1f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 26/44] ethtool: set private flags with SET_SETTINGS request
@@ -15,7 +15,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 44 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index b15e6b61ce29..2f3173f56a55 100644
+index d8b6e13d6953..e9aca2a4285b 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -373,6 +373,7 @@ to be passed with SET_SETTINGS request:
@@ -36,12 +36,12 @@ index b15e6b61ce29..2f3173f56a55 100644
  ETHTOOL_SRXFH			n/a
  ETHTOOL_GGRO			ETHNL_CMD_GET_SETTINGS
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index d387955654db..d67cf0707f2e 100644
+index 3290eddcdbf3..06937d6d984c 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -770,7 +770,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHA_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
- 	[ETHA_SETTINGS_LINK_STATE]	= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_NESTED },
 -	[ETHA_SETTINGS_PRIV_FLAGS]	= { .type = NLA_REJECT },
 +	[ETHA_SETTINGS_PRIV_FLAGS]	= { .type = NLA_NESTED },

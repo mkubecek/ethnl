@@ -1,4 +1,4 @@
-From 99d9177749914c218d8123e2c103506f58643b33 Mon Sep 17 00:00:00 2001
+From 94932d59a0d134c53a25fdbc601d16a0e679fa51 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 23/44] ethtool: provide device features in GET_SETTINGS
@@ -27,21 +27,21 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 163 insertions(+), 13 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index ee5d22cda4d3..8f2ce956fae9 100644
+index 20e43d42afdd..3779a8540697 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -280,6 +280,7 @@ Info mask bits meaning:
+     ETH_SETTINGS_IM_LINKSTATE		link state
      ETH_SETTINGS_IM_WOL			struct ethtool_wolinfo
      ETH_SETTINGS_IM_DEBUG		debugging
-     ETH_SETTINGS_IM_LINKSTATE		link state
 +    ETH_SETTINGS_IM_FEATURES		features
  
  Response contents:
  
 @@ -303,6 +304,11 @@ Response contents:
+         ETHA_WOL_SOPASS			(binary)	SecureOn(tm) password
+     ETHA_SETTINGS_DEBUG		(nested)	debugging
          ETHA_DEBUG_MSG_MASK		(bitfield32)	debug message mask
-     ETHA_SETTINGS_LINK_STATE	(nested)	link state
-         ETHA_LINKSTATE_LINK		(u8)		link on/off/unknown
 +    ETHA_SETTINGS_FEATURES	(nested)	device features
 +        ETHA_FEATURES_HW		(bitset)	dev->hw_features
 +        ETHA_FEATURES_WANTED		(bitset)	dev->wanted_features
@@ -124,35 +124,35 @@ index ee5d22cda4d3..8f2ce956fae9 100644
  ETHTOOL_GCHANNELS		n/a
  ETHTOOL_SCHANNELS		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 862ad82da225..9bbcd5dc3118 100644
+index 924f7059f944..62186807f4a7 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -199,6 +199,7 @@ enum {
+ 	ETHA_SETTINGS_LINK_STATE,		/* nest - ETHA_LINKSTATE_* */
  	ETHA_SETTINGS_WOL,			/* nest - ETHA_WOL_* */
  	ETHA_SETTINGS_DEBUG,			/* nest - ETHA_DEBUG_* */
- 	ETHA_SETTINGS_LINK_STATE,		/* nest - ETHA_LINKSTATE_* */
 +	ETHA_SETTINGS_FEATURES,			/* nest - ETHA_FEATURES_* */
  
  	__ETHA_SETTINGS_CNT,
  	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
 @@ -209,12 +210,14 @@ enum {
- #define ETH_SETTINGS_IM_WOL			(1U << 2)
- #define ETH_SETTINGS_IM_DEBUG			(1U << 3)
- #define ETH_SETTINGS_IM_LINKSTATE		(1U << 4)
+ #define ETH_SETTINGS_IM_LINKSTATE		(1U << 2)
+ #define ETH_SETTINGS_IM_WOL			(1U << 3)
+ #define ETH_SETTINGS_IM_DEBUG			(1U << 4)
 +#define ETH_SETTINGS_IM_FEATURES		(1U << 5)
  
  #define ETH_SETTINGS_IM_ALL (ETH_SETTINGS_IM_LINKINFO | \
  			     ETH_SETTINGS_IM_LINKMODES | \
+ 			     ETH_SETTINGS_IM_LINKSTATE | \
  			     ETH_SETTINGS_IM_WOL | \
- 			     ETH_SETTINGS_IM_DEBUG | \
--			     ETH_SETTINGS_IM_LINKSTATE)
-+			     ETH_SETTINGS_IM_LINKSTATE | \
+-			     ETH_SETTINGS_IM_DEBUG)
++			     ETH_SETTINGS_IM_DEBUG | \
 +			     ETH_SETTINGS_IM_FEATURES)
  
  enum {
  	ETHA_LINKINFO_UNSPEC,
 @@ -265,6 +268,17 @@ enum {
- 	ETHA_LINKSTATE_MAX = (__ETHA_LINKSTATE_CNT - 1)
+ 	ETHA_DEBUG_MAX = (__ETHA_DEBUG_CNT - 1)
  };
  
 +enum {
@@ -170,7 +170,7 @@ index 862ad82da225..9bbcd5dc3118 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
-index e5b5c5c2a4b9..cf0b81af2d9f 100644
+index bbe3e51f7308..1e00a7eecbbd 100644
 --- a/net/ethtool/common.h
 +++ b/net/ethtool/common.h
 @@ -6,6 +6,8 @@
@@ -225,26 +225,26 @@ index f65c7de2c817..53a405b1aa97 100644
  
  	return NOTIFY_DONE;
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 072da8d024ce..cdc211304a5e 100644
+index bc7ca03aa205..a566b4978415 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -16,6 +16,12 @@ struct settings_data {
- 	u32				msglevel;
+@@ -15,6 +15,12 @@ struct settings_data {
+ 	struct ethtool_link_settings	*lsettings;
  	int				link;
- 	bool				lpm_empty;
+ 	u32				msglevel;
 +	struct {
 +		u32	hw[ETHTOOL_DEV_FEATURE_WORDS];
 +		u32	wanted[ETHTOOL_DEV_FEATURE_WORDS];
 +		u32	active[ETHTOOL_DEV_FEATURE_WORDS];
 +		u32	nochange[ETHTOOL_DEV_FEATURE_WORDS];
 +	} features;
+ 	bool				lpm_empty;
  };
  
- struct link_mode_info {
 @@ -125,6 +131,7 @@ static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_LINK_STATE]	= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_WOL]		= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_DEBUG]		= { .type = NLA_REJECT },
- 	[ETHA_SETTINGS_LINK_STATE]	= { .type = NLA_REJECT },
 +	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_REJECT },
  };
  
@@ -275,16 +275,16 @@ index 072da8d024ce..cdc211304a5e 100644
  			    struct genl_info *info)
  {
 @@ -231,6 +256,8 @@ static int prepare_settings(struct common_req_info *req_info,
+ 		else
+ 			req_mask &= ~ETH_SETTINGS_IM_DEBUG;
  	}
- 	if (req_mask & ETH_SETTINGS_IM_LINKSTATE)
- 		data->link = __ethtool_get_link(dev);
 +	if (req_mask & ETH_SETTINGS_IM_FEATURES)
 +		ethnl_get_features(dev, data);
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -297,6 +324,38 @@ static int link_state_size(int link)
- 	return nla_total_size(nla_total_size(sizeof(u8)));
+@@ -297,6 +324,38 @@ static int debug_size(void)
+ 	return nla_total_size(nla_total_size(sizeof(struct nla_bitfield32)));
  }
  
 +static int features_size(const struct settings_data *data)
@@ -323,9 +323,9 @@ index 072da8d024ce..cdc211304a5e 100644
   * be added to the message (e.g. ETHA_SETTINGS_SOPASS); therefore the length
   * returned may be bigger than the actual length of the message sent
 @@ -324,6 +383,12 @@ static int settings_size(const struct common_req_info *req_info)
+ 		len += wol_size();
+ 	if (info_mask & ETH_SETTINGS_IM_DEBUG)
  		len += debug_size();
- 	if (info_mask & ETH_SETTINGS_IM_LINKSTATE)
- 		len += link_state_size(data->link);
 +	if (info_mask & ETH_SETTINGS_IM_FEATURES) {
 +		ret = features_size(data);
 +		if (ret < 0)
@@ -335,7 +335,7 @@ index 072da8d024ce..cdc211304a5e 100644
  
  	return len;
  }
-@@ -458,6 +523,44 @@ static int fill_link_state(struct sk_buff *skb, u8 link)
+@@ -458,6 +523,44 @@ static int fill_debug(struct sk_buff *skb, u32 msglevel)
  	return -EMSGSIZE;
  }
  
@@ -393,9 +393,9 @@ index 072da8d024ce..cdc211304a5e 100644
  	return 0;
  }
 @@ -554,6 +662,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
+ 	[ETHA_SETTINGS_LINK_STATE]	= { .type = NLA_REJECT },
  	[ETHA_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHA_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
- 	[ETHA_SETTINGS_LINK_STATE]	= { .type = NLA_REJECT },
 +	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_REJECT },
  };
  
