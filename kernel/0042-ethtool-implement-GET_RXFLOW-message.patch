@@ -1,4 +1,4 @@
-From 2dfdd73876df0fd67673b4f1f940b54d85e708cc Mon Sep 17 00:00:00 2001
+From 1c6a32899174341a7f7c3ca1f6b30c05c0191e54 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 42/44] ethtool: implement GET_RXFLOW message
@@ -19,9 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt | 122 ++++-
  include/uapi/linux/ethtool_netlink.h         | 101 ++++
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/netlink.c                        |   9 +
+ net/ethtool/netlink.c                        |   8 +
+ net/ethtool/netlink.h                        |   1 +
  net/ethtool/rxflow.c                         | 463 +++++++++++++++++++
- 5 files changed, 692 insertions(+), 5 deletions(-)
+ 6 files changed, 692 insertions(+), 5 deletions(-)
  create mode 100644 net/ethtool/rxflow.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -318,17 +319,10 @@ index b3e88cf0f4c0..a6ace735f44f 100644
 -		   actions.o
 +		   actions.o rxflow.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 508a9ff1cd77..a73da54505e6 100644
+index d1474a13d2aa..074bebdd4ce4 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -233,12 +233,14 @@ extern const struct get_request_ops strset_request_ops;
- extern const struct get_request_ops info_request_ops;
- extern const struct get_request_ops settings_request_ops;
- extern const struct get_request_ops params_request_ops;
-+extern const struct get_request_ops rxflow_request_ops;
- 
- const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
- 	[ETHNL_CMD_GET_STRSET]		= &strset_request_ops,
+@@ -234,6 +234,7 @@ const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
  	[ETHNL_CMD_GET_INFO]		= &info_request_ops,
  	[ETHNL_CMD_GET_SETTINGS]	= &settings_request_ops,
  	[ETHNL_CMD_GET_PARAMS]		= &params_request_ops,
@@ -336,7 +330,7 @@ index 508a9ff1cd77..a73da54505e6 100644
  };
  
  /**
-@@ -712,6 +714,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -707,6 +708,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_ADMIN_PERM,
  		.doit	= ethnl_act_reset,
  	},
@@ -350,6 +344,18 @@ index 508a9ff1cd77..a73da54505e6 100644
  };
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
+diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
+index d7e8f7f0e952..df3d249b54a1 100644
+--- a/net/ethtool/netlink.h
++++ b/net/ethtool/netlink.h
+@@ -292,6 +292,7 @@ extern const struct get_request_ops strset_request_ops;
+ extern const struct get_request_ops info_request_ops;
+ extern const struct get_request_ops settings_request_ops;
+ extern const struct get_request_ops params_request_ops;
++extern const struct get_request_ops rxflow_request_ops;
+ 
+ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
+ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
 new file mode 100644
 index 000000000000..d3cc3acd870e

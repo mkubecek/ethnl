@@ -1,4 +1,4 @@
-From 5f0bb12b867424a96dfaf402c6461f152a00207c Mon Sep 17 00:00:00 2001
+From 140deac9309bfea84b1d8cdd4ce4d26406e59180 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 13/44] ethtool: provide driver/device information in GET_INFO
@@ -20,8 +20,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/common.h                         |   2 +
  net/ethtool/info.c                           | 158 +++++++++++++++++++
  net/ethtool/ioctl.c                          |  50 +-----
- net/ethtool/netlink.c                        |   9 ++
- 8 files changed, 299 insertions(+), 47 deletions(-)
+ net/ethtool/netlink.c                        |   8 +
+ net/ethtool/netlink.h                        |   1 +
+ 9 files changed, 299 insertions(+), 47 deletions(-)
  create mode 100644 net/ethtool/info.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -463,14 +464,10 @@ index 04d747056070..844a4f4b1552 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 7e0ce8a829db..e35cf4485795 100644
+index 3559f5c7040f..ab30f77eda25 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -152,9 +152,11 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
- /* GET request helpers */
- 
- extern const struct get_request_ops strset_request_ops;
-+extern const struct get_request_ops info_request_ops;
+@@ -153,6 +153,7 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  
  const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
  	[ETHNL_CMD_GET_STRSET]		= &strset_request_ops,
@@ -478,7 +475,7 @@ index 7e0ce8a829db..e35cf4485795 100644
  };
  
  /**
-@@ -566,6 +568,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -564,6 +565,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -492,6 +489,17 @@ index 7e0ce8a829db..e35cf4485795 100644
  };
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
+diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
+index 32d85bb5c49a..48980ae9e963 100644
+--- a/net/ethtool/netlink.h
++++ b/net/ethtool/netlink.h
+@@ -278,5 +278,6 @@ struct get_request_ops {
+ /* request handlers */
+ 
+ extern const struct get_request_ops strset_request_ops;
++extern const struct get_request_ops info_request_ops;
+ 
+ #endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
 2.21.0
 

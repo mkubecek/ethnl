@@ -1,4 +1,4 @@
-From 3be968cb84667fa2e106b9074beaa1c891e2bf33 Mon Sep 17 00:00:00 2001
+From a6e798787418f84c7778a2b432cfdc61dde38999 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 20 Feb 2019 18:11:53 +0100
 Subject: [PATCH 03/44] netlink: add strict version of nla_parse_nested()

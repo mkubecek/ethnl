@@ -1,4 +1,4 @@
-From dcd439ee00259110f0d4caeaba9611bbb29416b2 Mon Sep 17 00:00:00 2001
+From 558a5bb09aab732cd9b85ff34e38acde1fafb32d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 44/44] ethtool: implement SET_RXFLOW message
@@ -113,10 +113,10 @@ index a7494f3a1515..4a2aad1a3546 100644
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 945c1956d61d..783449b977a7 100644
+index daa36b9fc42c..4dde707776bb 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -722,6 +722,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -716,6 +716,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -129,10 +129,10 @@ index 945c1956d61d..783449b977a7 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index fe3f639f2013..b8c92f496785 100644
+index 877a44e2d6dd..a32fc835040e 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -290,6 +290,7 @@ struct get_request_ops {
+@@ -296,6 +296,7 @@ extern const struct get_request_ops rxflow_request_ops;
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);

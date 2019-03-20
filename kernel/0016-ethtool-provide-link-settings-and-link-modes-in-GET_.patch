@@ -1,4 +1,4 @@
-From bd7bca31acf8381c1da6642b582542230c2a7188 Mon Sep 17 00:00:00 2001
+From 323da1779da8544da2c4b5fe3907a98d8070d5f4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 16/44] ethtool: provide link settings and link modes in
@@ -25,9 +25,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/common.c                         |  48 ++++
  net/ethtool/common.h                         |   4 +
  net/ethtool/ioctl.c                          |  64 +----
- net/ethtool/netlink.c                        |  10 +
+ net/ethtool/netlink.c                        |   9 +
+ net/ethtool/netlink.h                        |   1 +
  net/ethtool/settings.c                       | 277 +++++++++++++++++++
- 9 files changed, 451 insertions(+), 53 deletions(-)
+ 10 files changed, 451 insertions(+), 53 deletions(-)
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -373,15 +374,10 @@ index 18721b5aa353..be3e34ac8cc7 100644
  
  static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 412a03948f57..f5a453882d08 100644
+index 521b139f46b6..859d44550390 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -231,10 +231,12 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
- 
- extern const struct get_request_ops strset_request_ops;
- extern const struct get_request_ops info_request_ops;
-+extern const struct get_request_ops settings_request_ops;
- 
+@@ -232,6 +232,7 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
  	[ETHNL_CMD_GET_STRSET]		= &strset_request_ops,
  	[ETHNL_CMD_GET_INFO]		= &info_request_ops,
@@ -389,7 +385,7 @@ index 412a03948f57..f5a453882d08 100644
  };
  
  /**
-@@ -559,6 +561,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -556,6 +557,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  				       const void *data);
  
  ethnl_notify_handler_t ethnl_notify_handlers[] = {
@@ -397,7 +393,7 @@ index 412a03948f57..f5a453882d08 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -653,6 +656,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -650,6 +652,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -411,6 +407,17 @@ index 412a03948f57..f5a453882d08 100644
  };
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
+diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
+index ce60d7e18651..fd7a362d79fa 100644
+--- a/net/ethtool/netlink.h
++++ b/net/ethtool/netlink.h
+@@ -289,5 +289,6 @@ struct get_request_ops {
+ 
+ extern const struct get_request_ops strset_request_ops;
+ extern const struct get_request_ops info_request_ops;
++extern const struct get_request_ops settings_request_ops;
+ 
+ #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
 index 000000000000..5d0c44a58883

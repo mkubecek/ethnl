@@ -1,4 +1,4 @@
-From e774f1d6160d49350e213f8d048515b6bd87737e Mon Sep 17 00:00:00 2001
+From 4ecd006ece8817ad2db0bb334a54ce1866881c73 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 12/44] ethtool: provide string sets with GET_STRSET request
@@ -22,9 +22,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool.h                 |   2 +
  include/uapi/linux/ethtool_netlink.h         |  43 ++
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/netlink.c                        |  10 +
+ net/ethtool/netlink.c                        |   8 +
+ net/ethtool/netlink.h                        |   4 +
  net/ethtool/strset.c                         | 447 +++++++++++++++++++
- 6 files changed, 547 insertions(+), 3 deletions(-)
+ 7 files changed, 549 insertions(+), 3 deletions(-)
  create mode 100644 net/ethtool/strset.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -190,21 +191,18 @@ index 11782306593b..11ceb00821b3 100644
 -ethtool_nl-y	:= netlink.o bitset.o
 +ethtool_nl-y	:= netlink.o bitset.o strset.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 18f300e42d21..7e0ce8a829db 100644
+index 18f300e42d21..3559f5c7040f 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -151,7 +151,10 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
- 
+@@ -152,6 +152,7 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  /* GET request helpers */
  
-+extern const struct get_request_ops strset_request_ops;
-+
  const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
 +	[ETHNL_CMD_GET_STRSET]		= &strset_request_ops,
  };
  
  /**
-@@ -556,6 +559,13 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -556,6 +557,13 @@ static struct notifier_block ethnl_netdev_notifier = {
  /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
@@ -218,6 +216,19 @@ index 18f300e42d21..7e0ce8a829db 100644
  };
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
+diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
+index 625f912144b1..32d85bb5c49a 100644
+--- a/net/ethtool/netlink.h
++++ b/net/ethtool/netlink.h
+@@ -275,4 +275,8 @@ struct get_request_ops {
+ 	void (*cleanup)(struct common_req_info *req_info);
+ };
+ 
++/* request handlers */
++
++extern const struct get_request_ops strset_request_ops;
++
+ #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
 new file mode 100644
 index 000000000000..808ab6b4b387

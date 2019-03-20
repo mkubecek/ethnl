@@ -1,4 +1,4 @@
-From 22bc6e4771dfb8896339466eec1652204b7a94f9 Mon Sep 17 00:00:00 2001
+From ea678ae8641e3a0113918a8d6c72eb7d03486444 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
 Subject: [PATCH 17/44] ethtool: set link settings and link modes with
@@ -16,9 +16,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  34 ++-
  net/ethtool/netlink.c                        |   5 +
- net/ethtool/netlink.h                        |   4 +
+ net/ethtool/netlink.h                        |   2 +
  net/ethtool/settings.c                       | 305 +++++++++++++++++++
- 4 files changed, 345 insertions(+), 3 deletions(-)
+ 4 files changed, 343 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index d723b3537c46..e79ae9fe01be 100644
@@ -87,10 +87,10 @@ index d723b3537c46..e79ae9fe01be 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index f5a453882d08..f65c7de2c817 100644
+index 859d44550390..8f47149784a6 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -663,6 +663,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -659,6 +659,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -103,15 +103,13 @@ index f5a453882d08..f65c7de2c817 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 8b29e4262250..97189776c3c3 100644
+index fd7a362d79fa..853cd5b23415 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -285,4 +285,8 @@ struct get_request_ops {
- 	void (*cleanup)(struct common_req_info *req_info);
- };
+@@ -291,4 +291,6 @@ extern const struct get_request_ops strset_request_ops;
+ extern const struct get_request_ops info_request_ops;
+ extern const struct get_request_ops settings_request_ops;
  
-+/* request handlers */
-+
 +int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */

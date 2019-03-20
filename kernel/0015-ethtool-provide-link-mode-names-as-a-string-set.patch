@@ -1,4 +1,4 @@
-From 04817fe17eeb7726da2b3a148d717c2458352df8 Mon Sep 17 00:00:00 2001
+From 8118eceee573ddb7e374c564dbc2579e50308b84 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:50:07 +0100
 Subject: [PATCH 15/44] ethtool: provide link mode names as a string set
@@ -51,7 +51,7 @@ index 882a542eaaa9..ef1288eb737c 100644
  	ETH_SS_COUNT
  };
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index e35cf4485795..412a03948f57 100644
+index ab30f77eda25..521b139f46b6 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -6,6 +6,84 @@
@@ -139,7 +139,7 @@ index e35cf4485795..412a03948f57 100644
  static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
  	[ETHA_DEV_UNSPEC]	= { .type = NLA_REJECT },
  	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -599,6 +677,9 @@ static int __init ethnl_init(void)
+@@ -596,6 +674,9 @@ static int __init ethnl_init(void)
  {
  	int ret;
  
@@ -150,7 +150,7 @@ index e35cf4485795..412a03948f57 100644
  	if (ret < 0)
  		panic("ethtool: could not register genetlink family\n");
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 3f77803f947e..8b29e4262250 100644
+index 4ad9a3eee3e5..ce60d7e18651 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -23,6 +23,7 @@ extern struct genl_family ethtool_genl_family;

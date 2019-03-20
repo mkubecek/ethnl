@@ -1,4 +1,4 @@
-From 196e4add5cc4f435f545d3774d5fd43630853811 Mon Sep 17 00:00:00 2001
+From 18037ff357afc073b83286b91f66e69eae5eeef9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
 Subject: [PATCH 43/44] ethtool: implement SET_RXFLOW notification
@@ -138,10 +138,10 @@ index fabe1da5054c..947701d841a1 100644
  	if (copy_to_user(useraddr + offsetof(struct ethtool_rxfh, rss_context),
  			 &rxfh.rss_context, sizeof(rxfh.rss_context)))
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index a73da54505e6..945c1956d61d 100644
+index 074bebdd4ce4..daa36b9fc42c 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -570,6 +570,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -564,6 +564,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,
  	[ETHNL_CMD_ACT_PHYS_ID]		= ethnl_physid_notify,
  	[ETHNL_CMD_ACT_RESET]		= ethnl_reset_notify,
@@ -150,10 +150,10 @@ index a73da54505e6..945c1956d61d 100644
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 25098c150fa1..fe3f639f2013 100644
+index df3d249b54a1..877a44e2d6dd 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -303,5 +303,7 @@ void ethnl_physid_notify(struct net_device *dev, struct netlink_ext_ack *extack,
+@@ -309,5 +309,7 @@ void ethnl_physid_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  			 unsigned int cmd, u32 req_mask, const void *data);
  void ethnl_reset_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  			unsigned int cmd, u32 req_mask, const void *data);
