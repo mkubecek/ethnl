@@ -1,37 +1,61 @@
-Note: this is marked as RFC because it's rather late in the cycle; the plan
-is to make a regular submission (with changes based on review) once
-net-next reopens after the 5.1 merge window. The full (work in progress)
-series, together with the (userspace) ethtool counterpart can be found at
-https://github.com/mkubecek/ethnl
-
-This is first part of alternative userspace interface for ethtool. The aim
-is to address some long known issues with the ioctl interface, mainly lack
-of extensibility, raciness, limited error reporting and absence of
-notifications.
+This is first part of netlink based alternative userspace interface for
+ethtool. The aim is to address some long known issues with the ioctl
+interface, mainly lack of extensibility, raciness, limited error reporting
+and absence of notifications. The goal is to allow userspace ethtool
+utility to provide all features it currently does but without using the
+ioctl interface.
 
 The interface uses generic netlink family "ethtool"; it provides multicast
 group "monitor" which is used for notifications. Documentation for the
-interface is in Documentation/networking/ethtool-netlink.txt
+interface is in Documentation/networking/ethtool-netlink.txt file. The
+netlink interface is optional, it is built when CONFIG_ETHTOOL_NETLINK
+(bool) option is enabled.
+
+There are three types of requests distinguished by prefix "GET" (query for
+information), "SET" (modify parameters) and "ACT" (perform an action). The
+GET_* and SET_* messages are paired even if the data they deal with is read
+only because SET_* message is also used for reply to corresponding GET_*
+message. Notifications on parameter changes are also sent as SET_* messages
+in the same format as reply to corresponding GET request.
 
 Basic concepts:
 
-- the goal is to provide all features of ioctl interface but allow
-  easier future extensions; at some point, it should be possible to have
-  full ethtool functionality without using the ioctl interface
-- inextensibility of ioctl interface resulted in way too many commands,
-  many of them obsoleted by newer ones; reduce the number by  ignoring the
-  obsolete commands and grouping some together
-- for "set" type commands, allows passing only the attributes to be
-  changed; therefore we don't need a get-modify-set cycle (which is
-  inherently racy), userspace can simply say what it wants to change
-- provide notifications to multicast group "monitor" like rtnetlink does,
-  i.e. in the form of messages close to replies to "get" requests
-- allow dump requests to get some information about all network devices
-  providing it
-- be less dependent on ethtool and kernel being in sync; allow e.g. saying
-  "ethtool -s eth0 advertise foo off" without ethtool knowing what "foo"
-  means; it's kernel's job to know what mode "xyz" is and if it exists and
-  is supported
+- make extensions easier not only by allowing new attributes but also by
+  imposing as few artificial limits as possible, e.g. by using arbitrary
+  size bit sets for most bitmap attributes or by not using fixed size
+  strings
+- use extack for error reporting and warnings
+- send netlink notifications on changes (even if they were done using the
+  ioctl interfaces)
+- avoid the racy read/modify/write cycle between kernel and userspace by
+  sending only attributes which userspace wants to change; there is still
+  a read/modify/write cycle between generic kernel code and ethtool_ops
+  handler in NIC driver but it is only in kernel and under a lock
+- reduce the number of value lists that need to be kept in sync between
+  kernel and userspace (e.g. recognized link modes)
+- where feasible, allow dump requests to query specific information for all
+  network devices
+- as the lack of extensibility of the ioctl interface led to having too
+  many commands, group some of these together to one netlink message but
+  allow querying only part(s) of the information (using "info mask" bitmap)
+  and modifying only some of the parameters (by providing only some
+  attributes)
+- as parsing and generating netlink messages is more complicated than
+  simply copying data structures between userspace API and ethtool_ops
+  handlers (which most ioctl commands do), split the code into multiple
+  files in net/ethtool directory; move net/core/ethtool.c also to this
+  directory and rename it to ioctl.c
+
+Main changes between RFC v3 and v4:
+
+- use more kerneldoc style comments
+- strict attribute policy checking
+- use macros for tables of link mode names and parameters
+- provide permanent hardware address in rtnetlink
+- coding style cleanup
+- split too long patches, reorder
+- wrap more ETHA_SETTINGS_* attributes in nests
+- add also some SET_* implementation into submitted part
 
 Main changes between RFC v2 and RFC v3:
 
@@ -51,6 +75,9 @@ Main changes between RFC v1 and RFC v2:
 - support getting/setting device features
 - get rid of family specific header, everything passed as attributes
 - split netlink code into multiple files in net/ethtool/ directory
+
+The full (work in progress) series, together with the (userspace) ethtool
+counterpart can be found at https://github.com/mkubecek/ethnl
 
 ToDo / open questions:
 

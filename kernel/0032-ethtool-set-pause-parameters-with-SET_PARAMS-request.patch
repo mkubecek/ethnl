@@ -1,4 +1,4 @@
-From 308761cf06f1d044141a44c15aa65b66d3c110f9 Mon Sep 17 00:00:00 2001
+From 8bb427596041aea4588cdfda713ef3e3b438bf80 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:07:38 +0100
 Subject: [PATCH 32/44] ethtool: set pause parameters with SET_PARAMS request

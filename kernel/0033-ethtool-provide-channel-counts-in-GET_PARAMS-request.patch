@@ -1,4 +1,4 @@
-From f9c73801262de17bb595dcd6bc5e84a5d9b6646e Mon Sep 17 00:00:00 2001
+From b6df44db295a4de19bb9d673d8af1e422180f087 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:30:12 +0100
 Subject: [PATCH 33/44] ethtool: provide channel counts in GET_PARAMS request
