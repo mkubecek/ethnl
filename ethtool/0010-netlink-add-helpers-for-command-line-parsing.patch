@@ -1,4 +1,4 @@
-From be1cd2d91db7561a42929f1fb058ff4c7fe56b63 Mon Sep 17 00:00:00 2001
+From b09730f86d49a5bb5765c0931630b0a8e0d7eac2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:42:26 +0100
 Subject: [PATCH 10/34] netlink: add helpers for command line parsing

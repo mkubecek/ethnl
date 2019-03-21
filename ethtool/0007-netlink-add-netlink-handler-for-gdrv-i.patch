@@ -1,4 +1,4 @@
-From 87f8e796985f6b8b17949bc3cd162850a9effc2d Mon Sep 17 00:00:00 2001
+From 67a3ad91dcc1da748168a308989f5e8b1f944f67 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
 Subject: [PATCH 07/34] netlink: add netlink handler for gdrv (-i)
@@ -11,9 +11,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Makefile.am       |   1 +
  ethtool.c         |   3 +-
  netlink/extapi.h  |   1 +
- netlink/info.c    | 169 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/info.c    | 168 ++++++++++++++++++++++++++++++++++++++++++++++
  netlink/monitor.c |  10 +++
- 5 files changed, 183 insertions(+), 1 deletion(-)
+ 5 files changed, 182 insertions(+), 1 deletion(-)
  create mode 100644 netlink/info.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -63,10 +63,10 @@ index c6a65e3222cd..2612f1752b56 100644
  void monitor_usage();
 diff --git a/netlink/info.c b/netlink/info.c
 new file mode 100644
-index 000000000000..634d29fd2534
+index 000000000000..019004b871f3
 --- /dev/null
 +++ b/netlink/info.c
-@@ -0,0 +1,169 @@
+@@ -0,0 +1,168 @@
 +#include <errno.h>
 +
 +#include "../internal.h"
@@ -101,7 +101,6 @@ index 000000000000..634d29fd2534
 +
 +		id = mnl_attr_get_u32(tb[ETHA_STRINGSET_ID]);
 +		count = mnl_attr_get_u32(tb[ETHA_STRINGSET_COUNT]);
-+		printf("* id=%u count=%u\n", id, count);
 +		if (id >= 32)
 +			continue;
 +		if (count > 0)

@@ -1,4 +1,4 @@
-From 66912a99e444e8e931dd2f8d36c03510465c5119 Mon Sep 17 00:00:00 2001
+From 1ec35f2851705fc41d35bb294c988b7f21febfd5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 08:43:44 +0200
 Subject: [PATCH 30/34] netlink: add netlink handler for reset (--reset)
