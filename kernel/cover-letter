@@ -49,6 +49,10 @@ Basic concepts:
 The full (work in progress) series, together with the (userspace) ethtool
 counterpart can be found at https://github.com/mkubecek/ethnl
 
+Changes between v4 and v5:
+
+- do not panic on failed initialization, only WARN()
+
 Main changes between RFC v3 and v4:
 
 - use more kerneldoc style comments
