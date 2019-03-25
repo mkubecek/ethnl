@@ -1,4 +1,4 @@
-From 31cfdb45a74acbdb8d08f97b7f90f5aa9cf9c487 Mon Sep 17 00:00:00 2001
+From aa7c995468705af948852731ae3c3ce620f5e80d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Aug 2018 23:26:42 +0200
 Subject: [PATCH 08/34] netlink: add netlink handler for tsinfo (-T)
@@ -155,7 +155,7 @@ index 2612f1752b56..9e9dfa11aead 100644
  
  void monitor_usage();
 diff --git a/netlink/info.c b/netlink/info.c
-index 019004b871f3..cc3dd5cbce31 100644
+index c4d0c9c9f5e8..d928b16851e7 100644
 --- a/netlink/info.c
 +++ b/netlink/info.c
 @@ -2,6 +2,8 @@

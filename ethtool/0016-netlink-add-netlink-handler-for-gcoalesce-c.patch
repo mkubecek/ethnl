@@ -1,4 +1,4 @@
-From d2a789f2e65560f69cf8665f33945b6e92efcf4f Mon Sep 17 00:00:00 2001
+From 55e4a8649e854a92f792aa77b940a73073925c38 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
 Subject: [PATCH 16/34] netlink: add netlink handler for gcoalesce (-c)

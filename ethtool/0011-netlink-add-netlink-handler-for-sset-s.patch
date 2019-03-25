@@ -1,4 +1,4 @@
-From 75c2ddfe287f6fb5355408e272e70a3328f744a8 Mon Sep 17 00:00:00 2001
+From 5cb271ff66d4729556046fa52f750c1b5b8f4f07 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 11/34] netlink: add netlink handler for sset (-s)
