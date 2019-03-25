@@ -1,4 +1,4 @@
-From 0f815db92d82135ec011c6aa3692dec1de8dcaca Mon Sep 17 00:00:00 2001
+From f1be1207bef98745cb12d7fa4479cca660d8fb36 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 21:27:19 +0100
 Subject: [PATCH 28/44] ethtool: set coalescing parameters with SET_PARAMS
@@ -78,10 +78,10 @@ index 69c96911919e..759c3f5313ea 100644
  ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 5dcb3a01202f..e28f8dea0793 100644
+index 828ef12d71e9..00cf6c27f10d 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -684,6 +684,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -688,6 +688,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},

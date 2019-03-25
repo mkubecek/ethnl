@@ -1,4 +1,4 @@
-From a5a50f3d60cee03f75b70fdf17e73a6212aaec3d Mon Sep 17 00:00:00 2001
+From 8795d07d3315b232b4e7ebc7d109c9aa3185e555 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 05/44] ethtool: introduce ethtool netlink interface
@@ -244,10 +244,10 @@ index 000000000000..6aa267451542
 +
 +#endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/Kconfig b/net/Kconfig
-index 1efe1f9ee492..df54939adbc2 100644
+index 3e8fdd688329..75c600b45775 100644
 --- a/net/Kconfig
 +++ b/net/Kconfig
-@@ -451,6 +451,14 @@ config FAILOVER
+@@ -448,6 +448,14 @@ config FAILOVER
  	  migration of VMs with direct attached VFs by failing over to the
  	  paravirtual datapath when the VF is unplugged.
  
@@ -277,7 +277,7 @@ index 3ebfab2bca66..f30e0da88be5 100644
 +ethtool_nl-y	:= netlink.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
 new file mode 100644
-index 000000000000..5fe3e5b68e81
+index 000000000000..85dd6dac71a2
 --- /dev/null
 +++ b/net/ethtool/netlink.c
 @@ -0,0 +1,34 @@
@@ -308,8 +308,8 @@ index 000000000000..5fe3e5b68e81
 +	int ret;
 +
 +	ret = genl_register_family(&ethtool_genl_family);
-+	if (ret < 0)
-+		panic("ethtool: could not register genetlink family\n");
++	if (WARN(ret < 0, "ethtool: genetlink family registration failed"))
++		return ret;
 +
 +	return 0;
 +}

@@ -1,4 +1,4 @@
-From 552ce08c00a09355032ba16716d29415704b1330 Mon Sep 17 00:00:00 2001
+From 1782c40e0985895b0e265a55767f75471e52030a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 40/44] ethtool: implement ACT_PHYS_ID message
@@ -333,10 +333,10 @@ index dc18c213b369..9a95d05e4489 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 1e5b2cca7de8..d7976c9b32c6 100644
+index 7345b9fad227..654979f1c6b6 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -561,6 +561,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -563,6 +563,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_SETTINGS]	= ethnl_std_notify,
  	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
  	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,
@@ -344,7 +344,7 @@ index 1e5b2cca7de8..d7976c9b32c6 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -695,6 +696,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -699,6 +700,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_act_nway_rst,
  	},

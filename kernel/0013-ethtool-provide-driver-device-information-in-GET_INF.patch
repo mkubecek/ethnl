@@ -1,4 +1,4 @@
-From 084e52d43a6809a5ef2000c089a00540e8d54e72 Mon Sep 17 00:00:00 2001
+From b7aea4b2642b2fe6f12cfb843a03154f584f3bf6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 13/44] ethtool: provide driver/device information in GET_INFO
@@ -464,10 +464,10 @@ index 04d747056070..844a4f4b1552 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 3559f5c7040f..ab30f77eda25 100644
+index 63ee0f846b50..7f9597c0c7a7 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -153,6 +153,7 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -155,6 +155,7 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  
  const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
  	[ETHNL_CMD_GET_STRSET]		= &strset_request_ops,
@@ -475,7 +475,7 @@ index 3559f5c7040f..ab30f77eda25 100644
  };
  
  /**
-@@ -564,6 +565,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -568,6 +569,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},

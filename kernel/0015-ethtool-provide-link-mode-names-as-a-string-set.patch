@@ -1,4 +1,4 @@
-From 3af2ddbb88c7f91e6783177bfd0f0cb47223b957 Mon Sep 17 00:00:00 2001
+From 823fb9fb5d2055836719962d30befbc5da8e9310 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:50:07 +0100
 Subject: [PATCH 15/44] ethtool: provide link mode names as a string set
@@ -51,12 +51,12 @@ index 882a542eaaa9..ef1288eb737c 100644
  	ETH_SS_COUNT
  };
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index ab30f77eda25..521b139f46b6 100644
+index 7f9597c0c7a7..f0385c30169b 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -6,6 +6,84 @@
+@@ -8,6 +8,84 @@ u32 ethnl_bcast_seq;
  
- u32 ethnl_bcast_seq;
+ static bool ethnl_ok __read_mostly;
  
 +#define __LINK_MODE_NAME(speed, type, duplex) \
 +	#speed "base" #type "/" #duplex
@@ -139,7 +139,7 @@ index ab30f77eda25..521b139f46b6 100644
  static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
  	[ETHA_DEV_UNSPEC]	= { .type = NLA_REJECT },
  	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -596,6 +674,9 @@ static int __init ethnl_init(void)
+@@ -600,6 +678,9 @@ static int __init ethnl_init(void)
  {
  	int ret;
  
@@ -147,8 +147,8 @@ index ab30f77eda25..521b139f46b6 100644
 +		     __ETHTOOL_LINK_MODE_MASK_NBITS);
 +
  	ret = genl_register_family(&ethtool_genl_family);
- 	if (ret < 0)
- 		panic("ethtool: could not register genetlink family\n");
+ 	if (WARN(ret < 0, "ethtool: genetlink family registration failed"))
+ 		return ret;
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
 index 4ad9a3eee3e5..ce60d7e18651 100644
 --- a/net/ethtool/netlink.h

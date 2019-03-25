@@ -1,4 +1,4 @@
-From aeaa2c05d76be8e87867b6e09cb9ab18dae44d69 Mon Sep 17 00:00:00 2001
+From 901fe605465ab8be78026ce2da21c45ea52ca3a3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 18:01:46 +0100
 Subject: [PATCH 22/44] ethtool: set message level with SET_SETTINGS request

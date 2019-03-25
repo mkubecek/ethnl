@@ -1,4 +1,4 @@
-From bdfa211492a177df9a4029d7914f0adc05b5436b Mon Sep 17 00:00:00 2001
+From 043188fe4776b9420a11116af5e6bad8925b9ee7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 06/44] ethtool: helper functions for netlink interface
@@ -35,7 +35,7 @@ index 6aa267451542..59240a2cda56 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 5fe3e5b68e81..de50aa59f477 100644
+index 85dd6dac71a2..cc6829ba4331 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -1,8 +1,152 @@

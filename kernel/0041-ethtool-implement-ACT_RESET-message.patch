@@ -1,4 +1,4 @@
-From 1dd5cba0b86774d223e7d7f52d9a6a2e6cee629a Mon Sep 17 00:00:00 2001
+From 9f1301b6b592febdac47c4b2cab74eb65a0424f2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 41/44] ethtool: implement ACT_RESET message
@@ -402,10 +402,10 @@ index 9a95d05e4489..fabe1da5054c 100644
  	if (copy_to_user(useraddr, &reset, sizeof(reset)))
  		return -EFAULT;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index d7976c9b32c6..d1474a13d2aa 100644
+index 654979f1c6b6..3a5417684622 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -562,6 +562,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -564,6 +564,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
  	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,
  	[ETHNL_CMD_ACT_PHYS_ID]		= ethnl_physid_notify,
@@ -413,7 +413,7 @@ index d7976c9b32c6..d1474a13d2aa 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -701,6 +702,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -705,6 +706,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_act_phys_id,
  	},

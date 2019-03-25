@@ -1,4 +1,4 @@
-From f0256f8f102d8c4430b18a762aa7a012834780f7 Mon Sep 17 00:00:00 2001
+From e555dfc055eb5d34b2530a22d913c0919d77c27b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
 Subject: [PATCH 17/44] ethtool: set link settings and link modes with
@@ -87,10 +87,10 @@ index d723b3537c46..e79ae9fe01be 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 859d44550390..8f47149784a6 100644
+index 9b4ad09799c5..50ed82d5f18b 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -659,6 +659,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -663,6 +663,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},

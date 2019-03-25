@@ -1,4 +1,4 @@
-From a230ef915c0d32710343e61d11e620c9130878bc Mon Sep 17 00:00:00 2001
+From 9123f942b484ef4bbb684bb1f4aa2b70d673a259 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 07/44] ethtool: netlink bitset handling

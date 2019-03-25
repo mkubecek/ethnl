@@ -1,4 +1,4 @@
-From e744f45639a611020fa2da9d5b3956beba8c6e50 Mon Sep 17 00:00:00 2001
+From 3578e5f334acf11b84e75d0ee41c072340a7b085 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
 Subject: [PATCH 08/44] ethtool: support for netlink notifications
@@ -14,12 +14,12 @@ sleep.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- include/linux/ethtool_netlink.h      |  5 +++++
- include/linux/netdevice.h            | 12 +++++++++++
+ include/linux/ethtool_netlink.h      |  5 ++++
+ include/linux/netdevice.h            | 12 +++++++++
  include/uapi/linux/ethtool_netlink.h |  2 ++
- net/ethtool/netlink.c                | 32 ++++++++++++++++++++++++++++
+ net/ethtool/netlink.c                | 37 ++++++++++++++++++++++++++++
  net/ethtool/netlink.h                |  2 ++
- 5 files changed, 53 insertions(+)
+ 5 files changed, 58 insertions(+)
 
 diff --git a/include/linux/ethtool_netlink.h b/include/linux/ethtool_netlink.h
 index 0412adb4f42f..2a15e64a16f3 100644
@@ -37,7 +37,7 @@ index 0412adb4f42f..2a15e64a16f3 100644
  
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index 823762291ebf..83bff4f497e5 100644
+index 166fdc0a78b4..bc761511edb4 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
 @@ -4353,6 +4353,18 @@ struct netdev_notifier_bonding_info {
@@ -71,19 +71,21 @@ index de18e076ed69..91e4d117957b 100644
 +
  #endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index de50aa59f477..0a77de4f339a 100644
+index cc6829ba4331..4a31765165ea 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -4,6 +4,8 @@
+@@ -4,6 +4,10 @@
  #include <linux/ethtool_netlink.h>
  #include "netlink.h"
  
 +u32 ethnl_bcast_seq;
 +
++static bool ethnl_ok __read_mostly;
++
  static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
  	[ETHA_DEV_UNSPEC]	= { .type = NLA_REJECT },
  	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -147,11 +149,39 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -147,11 +151,41 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  	return NULL;
  }
  
@@ -100,6 +102,8 @@ index de50aa59f477..0a77de4f339a 100644
 +void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
 +		    unsigned int cmd, u32 req_mask, const void *data)
 +{
++	if (unlikely(!ethnl_ok))
++		return;
 +	ASSERT_RTNL();
 +
 +	if (likely(cmd < ARRAY_SIZE(ethnl_notify_handlers) &&
@@ -123,7 +127,7 @@ index de50aa59f477..0a77de4f339a 100644
  struct genl_family ethtool_genl_family = {
  	.hdrsize	= 0,
  	.name		= ETHTOOL_GENL_NAME,
-@@ -160,6 +190,8 @@ struct genl_family ethtool_genl_family = {
+@@ -160,6 +194,8 @@ struct genl_family ethtool_genl_family = {
  	.parallel_ops	= true,
  	.ops		= ethtool_genl_ops,
  	.n_ops		= ARRAY_SIZE(ethtool_genl_ops),
@@ -132,6 +136,14 @@ index de50aa59f477..0a77de4f339a 100644
  };
  
  /* module setup */
+@@ -171,6 +207,7 @@ static int __init ethnl_init(void)
+ 	ret = genl_register_family(&ethtool_genl_family);
+ 	if (WARN(ret < 0, "ethtool: genetlink family registration failed"))
+ 		return ret;
++	ethnl_ok = true;
+ 
+ 	return 0;
+ }
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
 index b8a6cd3dc3e3..5f2299548915 100644
 --- a/net/ethtool/netlink.h

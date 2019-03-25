@@ -1,4 +1,4 @@
-From 9d0b5596c70e68e8ab93f24a020f5ad747cbf81b Mon Sep 17 00:00:00 2001
+From 86383ca16fa2d2d2ff6f3f184e410f53a0ef2a5e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 42/44] ethtool: implement GET_RXFLOW message
@@ -319,10 +319,10 @@ index b3e88cf0f4c0..a6ace735f44f 100644
 -		   actions.o
 +		   actions.o rxflow.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index d1474a13d2aa..074bebdd4ce4 100644
+index 3a5417684622..ecdbe24d3e96 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -234,6 +234,7 @@ const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
+@@ -236,6 +236,7 @@ const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
  	[ETHNL_CMD_GET_INFO]		= &info_request_ops,
  	[ETHNL_CMD_GET_SETTINGS]	= &settings_request_ops,
  	[ETHNL_CMD_GET_PARAMS]		= &params_request_ops,
@@ -330,7 +330,7 @@ index d1474a13d2aa..074bebdd4ce4 100644
  };
  
  /**
-@@ -707,6 +708,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -711,6 +712,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_ADMIN_PERM,
  		.doit	= ethnl_act_reset,
  	},
