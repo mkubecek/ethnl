@@ -1,4 +1,4 @@
-From 7b095463057f03e0caa092b35bea8faeb33021f4 Mon Sep 17 00:00:00 2001
+From 64d224fdae9c3b9d9e02521c068144a482ffb70a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:24:40 +0200
 Subject: [PATCH 32/34] netlink: add netlink handler for srxfh (-X)

@@ -1,4 +1,4 @@
-From 9f558d1f8354f5082a3784699f52adb6f69337d6 Mon Sep 17 00:00:00 2001
+From 7fae59b1d970e06032e7562c41c5f0076f91b679 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 04/34] netlink: add netlink interface
@@ -25,14 +25,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.c                    | 190 ++++++---
  internal.h                   |  11 +
  netlink/extapi.h             |  16 +
- netlink/netlink.c            | 721 +++++++++++++++++++++++++++++++++++
- netlink/netlink.h            | 158 ++++++++
+ netlink/netlink.c            | 726 +++++++++++++++++++++++++++++++++++
+ netlink/netlink.h            | 159 ++++++++
  uapi/linux/ethtool.h         |  13 +
  uapi/linux/ethtool_netlink.h | 556 +++++++++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 +++++
  uapi/linux/net_tstamp.h      |  13 +
  uapi/linux/netlink.h         | 248 ++++++++++++
- 14 files changed, 1991 insertions(+), 65 deletions(-)
+ 14 files changed, 1997 insertions(+), 65 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
  create mode 100644 netlink/extapi.h
@@ -553,10 +553,10 @@ index 000000000000..6fe8ad200e24
 +#endif /* ETHTOOL_EXTAPI_H__ */
 diff --git a/netlink/netlink.c b/netlink/netlink.c
 new file mode 100644
-index 000000000000..97e36bbf7091
+index 000000000000..86291b620800
 --- /dev/null
 +++ b/netlink/netlink.c
-@@ -0,0 +1,721 @@
+@@ -0,0 +1,726 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -868,7 +868,7 @@ index 000000000000..97e36bbf7091
 +
 +	if (len < NLMSG_HDRLEN + sizeof(*nlerr))
 +		return -EFAULT;
-+	if (!(nlhdr->nlmsg_flags & NLM_F_ACK_TLVS))
++	if (nlctx->suppress_nlerr || !(nlhdr->nlmsg_flags & NLM_F_ACK_TLVS))
 +		goto out;
 +	if (!(nlhdr->nlmsg_flags & NLM_F_CAPPED))
 +		tlv_offset += MNL_ALIGN(mnl_nlmsg_get_payload_len(&nlerr->msg));
@@ -885,7 +885,8 @@ index 000000000000..97e36bbf7091
 +out:
 +	if (nlerr->error) {
 +		errno = -nlerr->error;
-+		perror("netlink error");
++		if (!nlctx->suppress_nlerr)
++			perror("netlink error");
 +	}
 +	return nlerr->error;
 +}
@@ -1168,6 +1169,7 @@ index 000000000000..97e36bbf7091
 +{
 +	int ret;
 +
++	nlctx->suppress_nlerr = true;
 +	ret = __msg_init(nlctx, GENL_ID_CTRL, CTRL_CMD_GETFAMILY,
 +			 NLM_F_REQUEST | NLM_F_ACK, 1);
 +	if (ret < 0)
@@ -1177,8 +1179,11 @@ index 000000000000..97e36bbf7091
 +
 +	ethnl_sendmsg(nlctx);
 +	ethnl_process_reply(nlctx, ethnl_family_cb);
++	if (!nlctx->ethnl_fam)
++		return -EADDRNOTAVAIL;
 +
-+	return (nlctx->ethnl_fam ? 0 : -EADDRNOTAVAIL);
++	nlctx->suppress_nlerr = false;
++	return 0;
 +}
 +
 +/* initialization */
@@ -1280,10 +1285,10 @@ index 000000000000..97e36bbf7091
 +}
 diff --git a/netlink/netlink.h b/netlink/netlink.h
 new file mode 100644
-index 000000000000..bbfa5aa5bc48
+index 000000000000..c8cd4cb9d35f
 --- /dev/null
 +++ b/netlink/netlink.h
-@@ -0,0 +1,158 @@
+@@ -0,0 +1,159 @@
 +/*
 + * netlink.h - common interface for all netlink code
 + *
@@ -1317,6 +1322,7 @@ index 000000000000..bbfa5aa5bc48
 +	const char *devname;
 +	bool is_dump;
 +	int exit_code;
++	bool suppress_nlerr;
 +};
 +
 +struct attr_tb_info {

@@ -1,4 +1,4 @@
-From cf8516ff1fab7a432b39438886051765e94d5f86 Mon Sep 17 00:00:00 2001
+From 8b5345a2eecab1313b9e211edef7e9518faacc47 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:46:58 +0200
 Subject: [PATCH 31/34] netlink: add netlink handler for grxfh (-x)

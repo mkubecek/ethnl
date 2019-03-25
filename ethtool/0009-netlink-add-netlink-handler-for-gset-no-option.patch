@@ -1,4 +1,4 @@
-From 9e1c571239575e386c6498e7cd51ca89af81e6b1 Mon Sep 17 00:00:00 2001
+From ff162abbf712806ac0b001e037bc712774e838a2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 09/34] netlink: add netlink handler for gset (no option)
@@ -670,7 +670,7 @@ index e8ad2f59a7c0..43d82ed4a0ff 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 2d56efd86d03..ab2bfdad2084 100644
+index 0974f4b93d5d..84ff2e96b006 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -4,8 +4,10 @@
@@ -684,7 +684,7 @@ index 2d56efd86d03..ab2bfdad2084 100644
  
  /* misc helpers */
  
-@@ -541,6 +543,124 @@ int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname)
+@@ -542,6 +544,124 @@ int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname)
  	return 0;
  }
  
@@ -810,10 +810,10 @@ index 2d56efd86d03..ab2bfdad2084 100644
  
  int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index f09148663856..9460acd2cbad 100644
+index 601437acc8e4..b911ed77fd20 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -65,6 +65,10 @@ typedef void (*bitset_walk_callback)(unsigned int, const char *, bool, void *);
+@@ -66,6 +66,10 @@ typedef void (*bitset_walk_callback)(unsigned int, const char *, bool, void *);
  int walk_bitset(const struct nlattr *bitset, const struct stringset *label,
  		bitset_walk_callback cb, void *data);
  

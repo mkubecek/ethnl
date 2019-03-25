@@ -1,4 +1,4 @@
-From db326e37ce0f95451b32c9a4c15191a220166cac Mon Sep 17 00:00:00 2001
+From 8d3da4f2ea1e0f6c3500f329896e254473c5dd69 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:29:46 +0200
 Subject: [PATCH 28/34] netlink: add netlink handler for nway_rst (-r)

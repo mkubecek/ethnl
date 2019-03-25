@@ -1,4 +1,4 @@
-From cdd8926541285c73628c851fb360faac91a20286 Mon Sep 17 00:00:00 2001
+From 69ca62e34e4e56aff183c87810e85a243aaf0952 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 07:27:00 +0100
 Subject: [PATCH 22/34] netlink: add netlink handler for scoalesce (-C)

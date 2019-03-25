@@ -1,4 +1,4 @@
-From ea501d979ad7164c23c93ab5a45cb05d1e0ab45c Mon Sep 17 00:00:00 2001
+From 53745150f06f6e958e2da48da2b735f56005c4f8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 14:09:19 +0200
 Subject: [PATCH 05/34] netlink: add support for string sets
@@ -33,7 +33,7 @@ index f6a567459157..21cde638a6b6 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 97e36bbf7091..a251d8297852 100644
+index 86291b620800..3918091bc6b9 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -162,7 +162,7 @@ err:
@@ -54,10 +54,10 @@ index 97e36bbf7091..a251d8297852 100644
  		uint32_t *val_bm;
  		uint32_t *mask_bm;
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index bbfa5aa5bc48..2e5c0ae0f8dc 100644
+index c8cd4cb9d35f..fa61a6bcf6a3 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -40,6 +40,8 @@ struct attr_tb_info {
+@@ -41,6 +41,8 @@ struct attr_tb_info {
  #define DECLARE_ATTR_TB_INFO(tbl) \
  	struct attr_tb_info tbl ## _info = { (tbl), (MNL_ARRAY_SIZE(tbl) - 1) }
  
@@ -66,7 +66,7 @@ index bbfa5aa5bc48..2e5c0ae0f8dc 100644
  unsigned int nl_copy_payload(void *buff, unsigned int maxlen,
  			     const struct nlattr *attr);
  bool ethnla_put(struct nl_context *nlctx, uint16_t type, size_t len,
-@@ -55,7 +57,7 @@ bool bitset_get_bit(const struct nlattr *bitset, bool mask, unsigned int idx,
+@@ -56,7 +58,7 @@ bool bitset_get_bit(const struct nlattr *bitset, bool mask, unsigned int idx,
  		    int *retptr);
  bool bitset_is_empty(const struct nlattr *bitset, bool mask, int *retptr);
  typedef void (*bitset_walk_callback)(unsigned int, const char *, bool, void *);

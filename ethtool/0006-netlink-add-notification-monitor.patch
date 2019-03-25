@@ -1,4 +1,4 @@
-From 747acbf594d5ca85f2e01053115b2c0b05daa7ab Mon Sep 17 00:00:00 2001
+From cef1b2f17f71f4f3184400ed4b2219f1f9c2e16d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
 Subject: [PATCH 06/34] netlink: add notification monitor
@@ -331,10 +331,10 @@ index 000000000000..d02c0ac5339c
 +	fputs("                [ DEVNAME | * ]\n", stdout);
 +}
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index a251d8297852..2d56efd86d03 100644
+index 3918091bc6b9..0974f4b93d5d 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -588,6 +588,31 @@ err:
+@@ -589,6 +589,31 @@ err:
  
  /* get ethtool family id */
  
@@ -366,7 +366,7 @@ index a251d8297852..2d56efd86d03 100644
  static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	struct nl_context *nlctx = data;
-@@ -595,9 +620,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -596,9 +621,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  
  	nlctx->ethnl_fam = 0;
  	mnl_attr_for_each(attr, nlhdr, GENL_HDRLEN) {
@@ -381,7 +381,7 @@ index a251d8297852..2d56efd86d03 100644
  		}
  	}
  
-@@ -676,6 +705,7 @@ int __init_aux_nlctx(struct nl_context *nlctx)
+@@ -681,6 +710,7 @@ int __init_aux_nlctx(struct nl_context *nlctx)
  	}
  
  	aux->ethnl_fam = nlctx->ethnl_fam;
@@ -390,7 +390,7 @@ index a251d8297852..2d56efd86d03 100644
  
  	return 0;
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 2e5c0ae0f8dc..f09148663856 100644
+index fa61a6bcf6a3..601437acc8e4 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -18,6 +18,7 @@
@@ -401,10 +401,10 @@ index 2e5c0ae0f8dc..f09148663856 100644
  	struct mnl_socket *sk;
  	struct nl_context *aux_nlctx;
  	void *cmd_private;
-@@ -31,6 +32,10 @@ struct nl_context {
- 	const char *devname;
+@@ -32,6 +33,10 @@ struct nl_context {
  	bool is_dump;
  	int exit_code;
+ 	bool suppress_nlerr;
 +	bool is_monitor;
 +	uint8_t filter_cmd;
 +	uint32_t filter_mask;
@@ -412,7 +412,7 @@ index 2e5c0ae0f8dc..f09148663856 100644
  };
  
  struct attr_tb_info {
-@@ -139,6 +144,27 @@ static inline void show_string(const struct nlattr **tb, unsigned int idx,
+@@ -140,6 +145,27 @@ static inline void show_string(const struct nlattr **tb, unsigned int idx,
  	printf("%s: %s\n", label, tb[idx] ? mnl_attr_get_str(tb[idx]) : "");
  }
  

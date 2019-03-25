@@ -1,4 +1,4 @@
-From 5cb271ff66d4729556046fa52f750c1b5b8f4f07 Mon Sep 17 00:00:00 2001
+From ca309a6c2df299a13f41c1b121cc52889b3ec339 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 11/34] netlink: add netlink handler for sset (-s)
@@ -69,11 +69,11 @@ index 5500835372b3..4f9e60c2fca8 100644
  
  void monitor_usage();
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index ab2bfdad2084..3defa951cf8b 100644
+index 84ff2e96b006..ec4d5df31e4f 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -770,6 +770,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
- 	return (nlctx->ethnl_fam ? 0 : -EADDRNOTAVAIL);
+@@ -775,6 +775,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
+ 	return 0;
  }
  
 +int nomsg_reply_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -89,10 +89,10 @@ index ab2bfdad2084..3defa951cf8b 100644
  
  static int nlctx_init(struct nl_context *nlctx, unsigned long debug)
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index c586feeeeb67..21214d3c393b 100644
+index 355b71feb2a7..f75edab04612 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -79,6 +79,7 @@ int attr_cb(const struct nlattr *attr, void *data);
+@@ -80,6 +80,7 @@ int attr_cb(const struct nlattr *attr, void *data);
  int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
  			   uint16_t dev_attrtype);
  int ethnl_send_get_request(struct nl_context *nlctx, mnl_cb_t cb);
