@@ -46,6 +46,9 @@ Basic concepts:
   files in net/ethtool directory; move net/core/ethtool.c also to this
   directory and rename it to ioctl.c
 
+The full (work in progress) series, together with the (userspace) ethtool
+counterpart can be found at https://github.com/mkubecek/ethnl
+
 Main changes between RFC v3 and v4:
 
 - use more kerneldoc style comments
@@ -75,9 +78,6 @@ Main changes between RFC v1 and RFC v2:
 - support getting/setting device features
 - get rid of family specific header, everything passed as attributes
 - split netlink code into multiple files in net/ethtool/ directory
-
-The full (work in progress) series, together with the (userspace) ethtool
-counterpart can be found at https://github.com/mkubecek/ethnl
 
 ToDo / open questions:
 
