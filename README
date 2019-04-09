@@ -13,3 +13,9 @@ and let ethtool use it where available.
 There are two directories: kernel with a patch series for kernel (based on
 net-next tree) and ethtool with a patch series for userspace ethtool
 utility (based on master branch).
+
+The patch sets are based on commits
+
+  - kernel:    68cc2999f692
+  - ethtool:   5da4e23263a2
+  - iproute2:  3efdd4366772
