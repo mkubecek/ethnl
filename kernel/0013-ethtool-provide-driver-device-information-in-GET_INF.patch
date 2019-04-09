@@ -1,4 +1,4 @@
-From b7aea4b2642b2fe6f12cfb843a03154f584f3bf6 Mon Sep 17 00:00:00 2001
+From 323aae2e81747128924e7f293935f19395f8bb48 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 13/44] ethtool: provide driver/device information in GET_INFO
@@ -152,7 +152,7 @@ index 11ceb00821b3..96d41dc45d4f 100644
 -ethtool_nl-y	:= netlink.o bitset.o strset.o
 +ethtool_nl-y	:= netlink.o bitset.o strset.o info.o
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index 73f721a1c557..8da992129321 100644
+index b0ce420e994e..0660a2107f06 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
 @@ -1,5 +1,7 @@
@@ -163,9 +163,9 @@ index 73f721a1c557..8da992129321 100644
  #include "common.h"
  
  const char netdev_features_strings[NETDEV_FEATURE_COUNT][ETH_GSTRING_LEN] = {
-@@ -81,3 +83,53 @@ phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN] = {
- 	[ETHTOOL_ID_UNSPEC]     = "Unspec",
+@@ -82,3 +84,53 @@ phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN] = {
  	[ETHTOOL_PHY_DOWNSHIFT]	= "phy-downshift",
+ 	[ETHTOOL_PHY_FAST_LINK_DOWN] = "phy-fast-link-down",
  };
 +
 +int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info)
@@ -400,7 +400,7 @@ index 000000000000..cc42993bb05b
 +	.fill_reply		= fill_info,
 +};
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 04d747056070..844a4f4b1552 100644
+index 10729878a56d..fec7d92a1b2a 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -685,54 +685,14 @@ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,

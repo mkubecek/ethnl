@@ -1,4 +1,4 @@
-From be5ce3381f30d7c3fe14ba6d98a58a31c57b851b Mon Sep 17 00:00:00 2001
+From 629b81cbe8fcbf2dbf02e9c64a13e889219271df Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:08:55 +0100
 Subject: [PATCH 19/44] ethtool: provide WoL information in GET_SETTINGS
@@ -111,10 +111,10 @@ index 45c27c7291d0..532ad11ae87c 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index dc907d8b6e43..4b2f08da910a 100644
+index 47a5548c118c..1ef13ec78c45 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
-@@ -213,3 +213,13 @@ int __ethtool_get_link(struct net_device *dev)
+@@ -214,3 +214,13 @@ int __ethtool_get_link(struct net_device *dev)
  
  	return netif_running(dev) && dev->ethtool_ops->get_link(dev);
  }
@@ -141,7 +141,7 @@ index a5ddd7f5cfce..bbe3e51f7308 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 58669dafeaf9..bba02a218eea 100644
+index c77e655dc371..b8ce0ee4cebe 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1242,11 +1242,11 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)

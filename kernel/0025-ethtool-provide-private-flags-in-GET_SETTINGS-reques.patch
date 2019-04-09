@@ -1,4 +1,4 @@
-From bc28a603dcdea4bd8b2154e6801cc7a80fcbc416 Mon Sep 17 00:00:00 2001
+From 8ef6aa8a79af74bd27a61ed2c6373999e324a331 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 16:19:21 +0100
 Subject: [PATCH 25/44] ethtool: provide private flags in GET_SETTINGS request
@@ -89,10 +89,10 @@ index ba0ac3456c56..b376a5f93608 100644
  enum {
  	ETHA_LINKINFO_UNSPEC,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 7ffab81570e4..ae9cc7d1de22 100644
+index c5d3096bcb9b..e391652130d8 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -2531,6 +2531,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
+@@ -2546,6 +2546,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
  	case ETHTOOL_SPFLAGS:
  		rc = ethtool_set_value(dev, useraddr,
  				       dev->ethtool_ops->set_priv_flags);

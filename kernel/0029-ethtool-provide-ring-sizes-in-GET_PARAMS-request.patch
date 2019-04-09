@@ -1,4 +1,4 @@
-From 3d86264e924d17d570911971ffd5ee02b627792d Mon Sep 17 00:00:00 2001
+From 207eae0076f2a8ed903d46b57445f91176608e8f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 07:40:58 +0100
 Subject: [PATCH 29/44] ethtool: provide ring sizes in GET_PARAMS request
@@ -114,7 +114,7 @@ index 63b318a6a491..cc1aba2b3a11 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 911f597d632e..8496984237fa 100644
+index ee326a10991b..0775f5810b9e 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1491,6 +1491,7 @@ static int ethtool_get_ringparam(struct net_device *dev, void __user *useraddr)

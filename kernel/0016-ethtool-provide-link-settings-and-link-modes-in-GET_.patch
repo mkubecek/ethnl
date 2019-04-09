@@ -1,4 +1,4 @@
-From 0ae3153e1816aea673f2ec8b4bd3898638aa07f7 Mon Sep 17 00:00:00 2001
+From 965ba0020dcf79540a3df03495e497f681306a82 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 16/44] ethtool: provide link settings and link modes in
@@ -202,10 +202,10 @@ index 96d41dc45d4f..6a7a182e1568 100644
 -ethtool_nl-y	:= netlink.o bitset.o strset.o info.o
 +ethtool_nl-y	:= netlink.o bitset.o strset.o info.o settings.o
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index 7e846f4151f9..a91a4f00d275 100644
+index 3bf8e1c89f8b..19c95cf0d0bf 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
-@@ -157,3 +157,51 @@ int __ethtool_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info)
+@@ -158,3 +158,51 @@ int __ethtool_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info)
  
  	return err;
  }
@@ -271,7 +271,7 @@ index 02cbee79da35..7a3e0b10e69a 100644
 +
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 18721b5aa353..be3e34ac8cc7 100644
+index d923aa183a9e..4a5df702955b 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -30,6 +30,7 @@

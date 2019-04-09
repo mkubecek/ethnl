@@ -1,4 +1,4 @@
-From c5373166e42b0e00f008735eb672ee9724c8eafd Mon Sep 17 00:00:00 2001
+From 8b06d3ec0224f18bfe79debdf35f5a2449ac7a1e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:43:01 +0100
 Subject: [PATCH 35/44] ethtool: provide EEE settings in GET_PARAMS request
@@ -116,7 +116,7 @@ index 8bbd62b59d6e..dd61c027ba44 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index ef9af99a59d3..9539d5b1de28 100644
+index 3d04a11f1328..af1337f0dc20 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1265,6 +1265,7 @@ static int ethtool_get_eee(struct net_device *dev, char __user *useraddr)

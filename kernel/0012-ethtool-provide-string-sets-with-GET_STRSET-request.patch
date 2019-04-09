@@ -1,4 +1,4 @@
-From f5af581e33b4976b84eae7c7788e3fde9adfa83c Mon Sep 17 00:00:00 2001
+From aa99559be934994777ee54ae9b79a5fec653feb0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 12/44] ethtool: provide string sets with GET_STRSET request
@@ -107,10 +107,10 @@ index 5e5d785fe215..1508c16a236e 100644
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		n/a
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
-index 3652b239dad1..eaea804972f6 100644
+index 818ad368b586..35b2fcd30950 100644
 --- a/include/uapi/linux/ethtool.h
 +++ b/include/uapi/linux/ethtool.h
-@@ -574,6 +574,8 @@ enum ethtool_stringset {
+@@ -582,6 +582,8 @@ enum ethtool_stringset {
  	ETH_SS_TUNABLES,
  	ETH_SS_PHY_STATS,
  	ETH_SS_PHY_TUNABLES,

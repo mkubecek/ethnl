@@ -1,4 +1,4 @@
-From f24bf2ff5715897c236a2ebbef874c9bc5886566 Mon Sep 17 00:00:00 2001
+From cb0595736c64c1b3ef14d0992eb883df30f8b05a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 44/44] ethtool: implement SET_RXFLOW message
@@ -141,7 +141,7 @@ index 877a44e2d6dd..a32fc835040e 100644
  int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_reset(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index c5493e60fb61..d20a81676c39 100644
+index c5493e60fb61..a80f33e1edfb 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
 @@ -531,3 +531,619 @@ void ethnl_rxflow_notify(struct net_device *dev,
@@ -591,7 +591,7 @@ index c5493e60fb61..d20a81676c39 100644
 +		unsigned int i;
 +
 +		for (i = 0; i < size; i++)
-+			table[i] = i % rx_rings.data;
++			table[i] = i % nrings;
 +		*reset = true;
 +	}
 +	*pindtbl = table;

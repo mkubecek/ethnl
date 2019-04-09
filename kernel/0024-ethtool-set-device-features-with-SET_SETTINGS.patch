@@ -1,4 +1,4 @@
-From ba83df91136091af1ce6f47ffdc794f9d1bdf204 Mon Sep 17 00:00:00 2001
+From e56cf5f225549a65c71c543ee62446b61510566d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 24/44] ethtool: set device features with SET_SETTINGS

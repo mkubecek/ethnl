@@ -1,4 +1,4 @@
-From 1782c40e0985895b0e265a55767f75471e52030a Mon Sep 17 00:00:00 2001
+From e522c0b212bdcf3aab3ef3b9fab496c71ab53620 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 40/44] ethtool: implement ACT_PHYS_ID message
@@ -176,7 +176,7 @@ index 7cfe0025403a..a131a92b7957 100644
 +	return ret;
 +}
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index a30d5df409b0..e1a045184f51 100644
+index 191198e7e671..d74fe8f2302d 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
 @@ -1,5 +1,6 @@
@@ -186,7 +186,7 @@ index a30d5df409b0..e1a045184f51 100644
  #include <linux/rtnetlink.h>
  #include <linux/phy.h>
  #include <linux/net_tstamp.h>
-@@ -288,3 +289,67 @@ int __ethtool_set_channels(struct net_device *dev,
+@@ -289,3 +290,67 @@ int __ethtool_set_channels(struct net_device *dev,
  
  	return dev->ethtool_ops->set_channels(dev, channels);
  }
@@ -267,10 +267,10 @@ index 5b05f1417b9e..19c2c6da4700 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index dc18c213b369..9a95d05e4489 100644
+index d34af84c1adf..8a7fa834c3d8 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -1639,60 +1639,15 @@ static int ethtool_get_strings(struct net_device *dev, void __user *useraddr)
+@@ -1644,60 +1644,15 @@ static int ethtool_get_strings(struct net_device *dev, void __user *useraddr)
  static int ethtool_phys_id(struct net_device *dev, void __user *useraddr)
  {
  	struct ethtool_value id;

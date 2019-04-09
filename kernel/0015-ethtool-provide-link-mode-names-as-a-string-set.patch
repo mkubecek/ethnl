@@ -1,4 +1,4 @@
-From 823fb9fb5d2055836719962d30befbc5da8e9310 Mon Sep 17 00:00:00 2001
+From 192a691b0e713ab228d46383fad4c9ef395bbba6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:50:07 +0100
 Subject: [PATCH 15/44] ethtool: provide link mode names as a string set
@@ -31,10 +31,10 @@ index e6ebc9761822..ac3612599450 100644
   * fields, but they are allowed to overwrite them (will be ignored).
   */
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
-index 882a542eaaa9..ef1288eb737c 100644
+index bdf36c041486..986bbc20a930 100644
 --- a/include/uapi/linux/ethtool.h
 +++ b/include/uapi/linux/ethtool.h
-@@ -566,6 +566,7 @@ struct ethtool_pauseparam {
+@@ -574,6 +574,7 @@ struct ethtool_pauseparam {
   * @ETH_SS_TSTAMP_SOF: timestamping flag names
   * @ETH_SS_TSTAMP_TX_TYPE: timestamping Tx type names
   * @ETH_SS_TSTAMP_RX_FILTER: timestamping Rx filter names
@@ -42,7 +42,7 @@ index 882a542eaaa9..ef1288eb737c 100644
   */
  enum ethtool_stringset {
  	ETH_SS_TEST		= 0,
-@@ -580,6 +581,7 @@ enum ethtool_stringset {
+@@ -588,6 +589,7 @@ enum ethtool_stringset {
  	ETH_SS_TSTAMP_SOF,
  	ETH_SS_TSTAMP_TX_TYPE,
  	ETH_SS_TSTAMP_RX_FILTER,

@@ -1,4 +1,4 @@
-From 0a1c4ac67996792b422532fdf3b0f1d6c8a2b6cc Mon Sep 17 00:00:00 2001
+From e79e8fb4974a1fb593dc2586fda020faa0992cde Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 15 Feb 2019 11:50:56 +0100
 Subject: [PATCH 11/44] ethtool: move string arrays into common file
@@ -10,10 +10,10 @@ tunables and PHY tunables into this file.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  net/ethtool/Makefile |  2 +-
- net/ethtool/common.c | 83 ++++++++++++++++++++++++++++++++++++++++++++
+ net/ethtool/common.c | 84 ++++++++++++++++++++++++++++++++++++++++++++
  net/ethtool/common.h | 17 +++++++++
- net/ethtool/ioctl.c  | 82 ++-----------------------------------------
- 4 files changed, 103 insertions(+), 81 deletions(-)
+ net/ethtool/ioctl.c  | 83 ++-----------------------------------------
+ 4 files changed, 104 insertions(+), 82 deletions(-)
  create mode 100644 net/ethtool/common.c
  create mode 100644 net/ethtool/common.h
 
@@ -31,10 +31,10 @@ index 482fdb9380fa..11782306593b 100644
  
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
 new file mode 100644
-index 000000000000..73f721a1c557
+index 000000000000..b0ce420e994e
 --- /dev/null
 +++ b/net/ethtool/common.c
-@@ -0,0 +1,83 @@
+@@ -0,0 +1,84 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include "common.h"
@@ -117,6 +117,7 @@ index 000000000000..73f721a1c557
 +phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN] = {
 +	[ETHTOOL_ID_UNSPEC]     = "Unspec",
 +	[ETHTOOL_PHY_DOWNSHIFT]	= "phy-downshift",
++	[ETHTOOL_PHY_FAST_LINK_DOWN] = "phy-fast-link-down",
 +};
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
 new file mode 100644
@@ -142,7 +143,7 @@ index 000000000000..41b2efc1e4e1
 +
 +#endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index b1eb32419732..04d747056070 100644
+index 4a593853cbf2..10729878a56d 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -31,6 +31,8 @@
@@ -154,7 +155,7 @@ index b1eb32419732..04d747056070 100644
  /*
   * Some useful ethtool_ops methods that're device independent.
   * If we find that all drivers want to do the same thing here,
-@@ -58,86 +60,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
+@@ -58,87 +60,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
  
  #define ETHTOOL_DEV_FEATURE_WORDS	((NETDEV_FEATURE_COUNT + 31) / 32)
  
@@ -236,6 +237,7 @@ index b1eb32419732..04d747056070 100644
 -phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN] = {
 -	[ETHTOOL_ID_UNSPEC]     = "Unspec",
 -	[ETHTOOL_PHY_DOWNSHIFT]	= "phy-downshift",
+-	[ETHTOOL_PHY_FAST_LINK_DOWN] = "phy-fast-link-down",
 -};
 -
  static int ethtool_get_features(struct net_device *dev, void __user *useraddr)

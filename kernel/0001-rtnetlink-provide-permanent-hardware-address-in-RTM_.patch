@@ -1,4 +1,4 @@
-From 16ffb1fbfa8f54de587ac52f4ff95e5034c590b4 Mon Sep 17 00:00:00 2001
+From 76344e13e1ac0eb38ea5165d13f1bdb153bfca5d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 6 Mar 2019 08:20:31 +0100
 Subject: [PATCH 01/44] rtnetlink: provide permanent hardware address in
@@ -35,7 +35,7 @@ index 5b225ff63b48..351ef746b8b0 100644
  };
  
 diff --git a/net/core/rtnetlink.c b/net/core/rtnetlink.c
-index a51cab95ba64..a72e8f4d777b 100644
+index f9b964fd4e4d..02c01620ed7e 100644
 --- a/net/core/rtnetlink.c
 +++ b/net/core/rtnetlink.c
 @@ -1026,6 +1026,7 @@ static noinline size_t if_nlmsg_size(const struct net_device *dev,
