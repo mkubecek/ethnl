@@ -1,4 +1,4 @@
-From e28bc760a8193e9fe88ecc3ae146ef8e83c499a5 Mon Sep 17 00:00:00 2001
+From 5e9cb89f9023b211a93ca06299288bc19e194c44 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:43:19 +0100
 Subject: [PATCH 26/34] netlink: add netlink handler for seee (--set-eee)
@@ -10,14 +10,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c        |  5 +++--
  netlink/extapi.h |  1 +
- netlink/params.c | 33 +++++++++++++++++++++++++++++++++
- 3 files changed, 37 insertions(+), 2 deletions(-)
+ netlink/params.c | 34 ++++++++++++++++++++++++++++++++++
+ 3 files changed, 38 insertions(+), 2 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 048b1956684e..9a296ea5f2ab 100644
+index f49dc1bec045..2819eb330a21 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4937,6 +4937,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4989,6 +4989,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sring	NULL
  #define nl_spause	NULL
  #define nl_schannels	NULL
@@ -25,7 +25,7 @@ index 048b1956684e..9a296ea5f2ab 100644
  #endif
  
  static const struct option {
-@@ -5109,10 +5110,10 @@ static const struct option {
+@@ -5161,10 +5162,10 @@ static const struct option {
  	  "		[ length N ]\n" },
  	{ "--show-eee", 1, do_geee, nl_geee,
  	  "Show EEE settings"},
@@ -51,36 +51,36 @@ index 0fff61c24c63..3f19931b699f 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index c52c818f453c..c4ebee11372c 100644
+index 896ad3a372c6..21bfada83cfb 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
-@@ -601,3 +601,36 @@ int nl_schannels(struct cmd_context *ctx)
- {
- 	return nl_set_param(ctx, "-L", schannels_params, ETHA_PARAMS_CHANNELS);
+@@ -608,3 +608,37 @@ int nl_schannels(struct cmd_context *ctx)
+ 	return nl_set_param(ctx, "-L", schannels_params,
+ 			    ETHTOOL_A_PARAMS_CHANNELS);
  }
 +
 +static const struct param_parser seee_params[] = {
 +	{
 +		.arg		= "advertise",
-+		.type		= ETHA_EEE_LINK_MODES,
++		.type		= ETHTOOL_A_EEE_LINK_MODES,
 +		.handler	= nl_parse_bitset,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "tx-lpi",
-+		.type		= ETHA_EEE_TX_LPI_ENABLED,
++		.type		= ETHTOOL_A_EEE_TX_LPI_ENABLED,
 +		.handler	= nl_parse_u8bool,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "tx-timer",
-+		.type		= ETHA_EEE_TX_LPI_TIMER,
++		.type		= ETHTOOL_A_EEE_TX_LPI_TIMER,
 +		.handler	= nl_parse_direct_u32,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "eee",
-+		.type		= ETHA_EEE_ENABLED,
++		.type		= ETHTOOL_A_EEE_ENABLED,
 +		.handler	= nl_parse_u8bool,
 +		.min_argc	= 1,
 +	},
@@ -89,7 +89,8 @@ index c52c818f453c..c4ebee11372c 100644
 +
 +int nl_seee(struct cmd_context *ctx)
 +{
-+	return nl_set_param(ctx, "--set-eee", seee_params, ETHA_PARAMS_EEE);
++	return nl_set_param(ctx, "--set-eee", seee_params,
++			    ETHTOOL_A_PARAMS_EEE);
 +}
 -- 
 2.21.0

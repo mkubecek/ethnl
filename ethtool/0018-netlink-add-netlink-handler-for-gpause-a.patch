@@ -1,4 +1,4 @@
-From 30127ae9501f53033f6f0315c346eb7350389b4c Mon Sep 17 00:00:00 2001
+From 51b5d83944e8545b1ed848647cdc3b4e4840b561 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:04:09 +0100
 Subject: [PATCH 18/34] netlink: add netlink handler for gpause (-a)
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 44 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 1dda9a9922af..ce0b6533c320 100644
+index efe80db1df18..9aaeab924ebf 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4929,6 +4929,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4981,6 +4981,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sprivflags	NULL
  #define nl_gcoalesce	NULL
  #define nl_gring	NULL
@@ -26,7 +26,7 @@ index 1dda9a9922af..ce0b6533c320 100644
  #endif
  
  static const struct option {
-@@ -4952,7 +4953,7 @@ static const struct option {
+@@ -5004,7 +5005,7 @@ static const struct option {
  	  "		[ wol %d[/%d] |  p|u|m|b|a|g|s|f|d...[/p|u|m|b|a|g|s|f|d...] ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
  	  "		[ msglvl %d[/%d] | type on|off ... [--] ]\n" },
@@ -48,7 +48,7 @@ index deba845b52ae..24d19dde5fc3 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 2fb0e81cd7e8..9132d4a58b0c 100644
+index 680af2d8f1d4..338ebf939430 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -181,6 +181,11 @@ static struct monitor_option monitor_opts[] = {
@@ -64,16 +64,16 @@ index 2fb0e81cd7e8..9132d4a58b0c 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index 6782d98a6956..b45aac166dcd 100644
+index 15a16d0f61a1..63913956c1b6 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
-@@ -83,6 +83,28 @@ static int show_ring(struct nl_context *nlctx, const struct nlattr *nest)
+@@ -85,6 +85,28 @@ static int show_ring(struct nl_context *nlctx, const struct nlattr *nest)
  	return 0;
  }
  
 +static int show_pause(struct nl_context *nlctx, const struct nlattr *nest)
 +{
-+	const struct nlattr *tb[ETHA_PAUSE_MAX + 1] = {};
++	const struct nlattr *tb[ETHTOOL_A_PAUSE_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	int ret;
 +
@@ -84,9 +84,9 @@ index 6782d98a6956..b45aac166dcd 100644
 +		return ret;
 +
 +	printf("Pause parameters for %s:\n", nlctx->devname);
-+	show_bool(tb[ETHA_PAUSE_AUTONEG], "Autonegotiate:\t");
-+	show_bool(tb[ETHA_PAUSE_RX], "RX:\t\t");
-+	show_bool(tb[ETHA_PAUSE_TX], "TX:\t\t");
++	show_bool(tb[ETHTOOL_A_PAUSE_AUTONEG], "Autonegotiate:\t");
++	show_bool(tb[ETHTOOL_A_PAUSE_RX], "RX:\t\t");
++	show_bool(tb[ETHTOOL_A_PAUSE_TX], "TX:\t\t");
 +	/* ToDo: query negotiated pause frame usage */
 +	putchar('\n');
 +
@@ -95,13 +95,13 @@ index 6782d98a6956..b45aac166dcd 100644
 +
  int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
- 	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
-@@ -115,6 +137,15 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ 	const struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1] = {};
+@@ -117,6 +139,15 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_ERROR;
  		}
  	}
 +	if (mask_ok(nlctx, ETH_PARAMS_IM_PAUSE)) {
-+		ret = show_pause(nlctx, tb[ETHA_PARAMS_PAUSE]);
++		ret = show_pause(nlctx, tb[ETHTOOL_A_PARAMS_PAUSE]);
 +		if ((ret < 0) && show_only(nlctx, ETH_PARAMS_IM_PAUSE)) {
 +			nlctx->exit_code = 76;
 +			errno = -ret;
@@ -112,7 +112,7 @@ index 6782d98a6956..b45aac166dcd 100644
  
  	return MNL_CB_OK;
  }
-@@ -141,3 +172,8 @@ int nl_gring(struct cmd_context *ctx)
+@@ -143,3 +174,8 @@ int nl_gring(struct cmd_context *ctx)
  {
  	return params_request(ctx, ETH_PARAMS_IM_RING);
  }

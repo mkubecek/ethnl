@@ -1,4 +1,4 @@
-From 7a6500334e1a0ed809f9b6f6809aec83b3b57c6a Mon Sep 17 00:00:00 2001
+From e06b7f109054d9951659732f733ce3c9225ef654 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
 Subject: [PATCH 12/34] netlink: add netlink handler for gfeatures (-k)
@@ -18,8 +18,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.c          |  68 +++-----------
  netlink/extapi.h   |   1 +
  netlink/monitor.c  |   6 ++
- netlink/settings.c | 228 +++++++++++++++++++++++++++++++++++++++++++++
- 6 files changed, 296 insertions(+), 56 deletions(-)
+ netlink/settings.c | 230 +++++++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 298 insertions(+), 56 deletions(-)
 
 diff --git a/common.c b/common.c
 index 962f3f9c318c..f52a1ba5f04c 100644
@@ -90,7 +90,7 @@ index 37edac765e65..749bf389e9e1 100644
  extern const unsigned int link_modes_count;
  
 diff --git a/ethtool.c b/ethtool.c
-index d14d60e65ece..de2b9e69b3ca 100644
+index f1064f882b99..377f4ab175f3 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -102,51 +102,6 @@ struct cmdline_info {
@@ -228,7 +228,7 @@ index d14d60e65ece..de2b9e69b3ca 100644
  			if (!off_flag_def[i].set_cmd)
  				continue;
  			if (off_flags_mask & off_flag_def[i].value) {
-@@ -4968,6 +4923,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5020,6 +4975,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_tsinfo	NULL
  #define nl_gset		NULL
  #define nl_sset		NULL
@@ -236,7 +236,7 @@ index d14d60e65ece..de2b9e69b3ca 100644
  #endif
  
  static const struct option {
-@@ -5032,7 +4988,7 @@ static const struct option {
+@@ -5084,7 +5040,7 @@ static const struct option {
  	  "		[ rx-mini N ]\n"
  	  "		[ rx-jumbo N ]\n"
  	  "		[ tx N ]\n" },
@@ -258,7 +258,7 @@ index 4f9e60c2fca8..f4bbb0b456ef 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 43d82ed4a0ff..ece096c6ba58 100644
+index 48c971091bfe..21779cfad8cb 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -155,6 +155,12 @@ static struct monitor_option monitor_opts[] = {
@@ -275,10 +275,10 @@ index 43d82ed4a0ff..ece096c6ba58 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/settings.c b/netlink/settings.c
-index ab80c34f2ef4..9767613c5e59 100644
+index b8fdeff266f5..ea081e9cfb62 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -251,6 +251,7 @@ static int dump_wol_info(struct nl_context *nlctx, const struct nlattr *nest,
+@@ -252,6 +252,7 @@ static int dump_wol_info(struct nl_context *nlctx, const struct nlattr *nest,
  	return dump_wol(&wolinfo) ? -EFAULT : 0;
  }
  
@@ -286,42 +286,43 @@ index ab80c34f2ef4..9767613c5e59 100644
  static int dump_debug(struct nl_context *nlctx, const struct nlattr *nest,
  		      bool *first)
  {
-@@ -302,6 +303,219 @@ static int dump_link_state(struct nl_context *nlctx, const struct nlattr *nest,
+@@ -303,6 +304,221 @@ static int dump_link_state(struct nl_context *nlctx, const struct nlattr *nest,
  	return 0;
  }
  
 +uint32_t *get_compact_bitset_value(const struct nlattr *bitset)
 +{
-+        const struct nlattr *tb[ETHA_BITSET_MAX + 1] = {};
++        const struct nlattr *tb[ETHTOOL_A_BITSET_MAX + 1] = {};
 +        DECLARE_ATTR_TB_INFO(tb);
 +	unsigned int count;
 +        int ret;
 +
 +        ret = mnl_attr_parse_nested(bitset, attr_cb, &tb_info);
-+        if (ret < 0 || !tb[ETHA_BITSET_SIZE] || !tb[ETHA_BITSET_VALUE])
++        if (ret < 0 ||
++	    !tb[ETHTOOL_A_BITSET_SIZE] || !tb[ETHTOOL_A_BITSET_VALUE])
 +		return NULL;
-+	count = mnl_attr_get_u32(tb[ETHA_BITSET_SIZE]);
-+	if (32 * mnl_attr_get_payload_len(tb[ETHA_BITSET_VALUE]) < count)
++	count = mnl_attr_get_u32(tb[ETHTOOL_A_BITSET_SIZE]);
++	if (32 * mnl_attr_get_payload_len(tb[ETHTOOL_A_BITSET_VALUE]) < count)
 +		return NULL;
 +
-+	return mnl_attr_get_payload(tb[ETHA_BITSET_VALUE]);
++	return mnl_attr_get_payload(tb[ETHTOOL_A_BITSET_VALUE]);
 +}
 +
 +uint32_t *get_compact_bitset_mask(const struct nlattr *bitset)
 +{
-+        const struct nlattr *tb[ETHA_BITSET_MAX + 1] = {};
++        const struct nlattr *tb[ETHTOOL_A_BITSET_MAX + 1] = {};
 +        DECLARE_ATTR_TB_INFO(tb);
 +	unsigned int count;
 +        int ret;
 +
 +        ret = mnl_attr_parse_nested(bitset, attr_cb, &tb_info);
-+        if (ret < 0 || !tb[ETHA_BITSET_SIZE] || !tb[ETHA_BITSET_MASK])
++        if (ret < 0 || !tb[ETHTOOL_A_BITSET_SIZE] || !tb[ETHTOOL_A_BITSET_MASK])
 +		return NULL;
-+	count = mnl_attr_get_u32(tb[ETHA_BITSET_SIZE]);
-+	if (32 * mnl_attr_get_payload_len(tb[ETHA_BITSET_MASK]) < count)
++	count = mnl_attr_get_u32(tb[ETHTOOL_A_BITSET_SIZE]);
++	if (32 * mnl_attr_get_payload_len(tb[ETHTOOL_A_BITSET_MASK]) < count)
 +		return NULL;
 +
-+	return mnl_attr_get_payload(tb[ETHA_BITSET_MASK]);
++	return mnl_attr_get_payload(tb[ETHTOOL_A_BITSET_MASK]);
 +}
 +
 +struct feature_results {
@@ -336,7 +337,7 @@ index ab80c34f2ef4..9767613c5e59 100644
 +static int prepare_feature_results(const struct nlattr *bitset,
 +				   struct feature_results *dest)
 +{
-+	const struct nlattr *tb[ETHA_FEATURES_MAX + 1] = {};
++	const struct nlattr *tb[ETHTOOL_A_FEATURES_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	unsigned int count;
 +	int ret;
@@ -345,20 +346,21 @@ index ab80c34f2ef4..9767613c5e59 100644
 +	ret = mnl_attr_parse_nested(bitset, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return ret;
-+	if (!tb[ETHA_FEATURES_HW] || !tb[ETHA_FEATURES_WANTED] ||
-+	    !tb[ETHA_FEATURES_ACTIVE] || !tb[ETHA_FEATURES_NOCHANGE])
++	if (!tb[ETHTOOL_A_FEATURES_HW] || !tb[ETHTOOL_A_FEATURES_WANTED] ||
++	    !tb[ETHTOOL_A_FEATURES_ACTIVE] || !tb[ETHTOOL_A_FEATURES_NOCHANGE])
 +		return -EFAULT;
-+	count = bitset_get_count(tb[ETHA_FEATURES_HW], &ret);
++	count = bitset_get_count(tb[ETHTOOL_A_FEATURES_HW], &ret);
 +	if (ret < 0)
 +		return -EFAULT;
-+	if ((bitset_get_count(tb[ETHA_FEATURES_WANTED], &ret) != count) ||
-+	    (bitset_get_count(tb[ETHA_FEATURES_ACTIVE], &ret) != count) ||
-+	    (bitset_get_count(tb[ETHA_FEATURES_NOCHANGE], &ret) != count))
++	if ((bitset_get_count(tb[ETHTOOL_A_FEATURES_WANTED], &ret) != count) ||
++	    (bitset_get_count(tb[ETHTOOL_A_FEATURES_ACTIVE], &ret) != count) ||
++	    (bitset_get_count(tb[ETHTOOL_A_FEATURES_NOCHANGE], &ret) != count))
 +		return -EFAULT;
-+	dest->hw = get_compact_bitset_value(tb[ETHA_FEATURES_HW]);
-+	dest->wanted = get_compact_bitset_value(tb[ETHA_FEATURES_WANTED]);
-+	dest->active = get_compact_bitset_value(tb[ETHA_FEATURES_ACTIVE]);
-+	dest->nochange = get_compact_bitset_value(tb[ETHA_FEATURES_NOCHANGE]);
++	dest->hw = get_compact_bitset_value(tb[ETHTOOL_A_FEATURES_HW]);
++	dest->wanted = get_compact_bitset_value(tb[ETHTOOL_A_FEATURES_WANTED]);
++	dest->active = get_compact_bitset_value(tb[ETHTOOL_A_FEATURES_ACTIVE]);
++	dest->nochange =
++		get_compact_bitset_value(tb[ETHTOOL_A_FEATURES_NOCHANGE]);
 +	if (!dest->hw || !dest->wanted || !dest->active || !dest->nochange)
 +		return -EFAULT;
 +	dest->count = count;
@@ -505,24 +507,24 @@ index ab80c34f2ef4..9767613c5e59 100644
 +
  int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
- 	const struct nlattr *tb[ETHA_SETTINGS_MAX + 1] = {};
-@@ -348,6 +562,15 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ 	const struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1] = {};
+@@ -352,6 +568,15 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  		if (ret == 0)
  			allfail = false;
  	};
-+	if (tb[ETHA_SETTINGS_FEATURES] &&
++	if (tb[ETHTOOL_A_SETTINGS_FEATURES] &&
 +	    mask_ok(nlctx, ETH_SETTINGS_IM_FEATURES)) {
 +		int ret;
 +
 +		printf("Features for %s:\n", nlctx->devname);
-+		ret = dump_features(tb[ETHA_SETTINGS_FEATURES]);
++		ret = dump_features(tb[ETHTOOL_A_SETTINGS_FEATURES]);
 +		if (ret == 0)
 +			allfail = false;
 +	}
  
  	if (allfail && !nlctx->is_monitor && !nlctx->is_dump) {
  		fputs("No data available\n", stdout);
-@@ -388,6 +611,11 @@ int nl_gset(struct cmd_context *ctx)
+@@ -392,6 +617,11 @@ int nl_gset(struct cmd_context *ctx)
  	return (ret < 0) ? 75 : 0;
  }
  

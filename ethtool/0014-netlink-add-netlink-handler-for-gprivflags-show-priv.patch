@@ -1,4 +1,4 @@
-From 2d695fb549ffc0ac2b6fc0b3a54273032369f40c Mon Sep 17 00:00:00 2001
+From a1ab2208ba67ad2851b85e0079df5eed239c991b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:20:18 +0200
 Subject: [PATCH 14/34] netlink: add netlink handler for gprivflags
@@ -13,14 +13,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.c          |  3 ++-
  netlink/extapi.h   |  1 +
  netlink/monitor.c  |  5 ++++
- netlink/settings.c | 63 +++++++++++++++++++++++++++++++++++++++++++++-
- 4 files changed, 70 insertions(+), 2 deletions(-)
+ netlink/settings.c | 64 +++++++++++++++++++++++++++++++++++++++++++++-
+ 4 files changed, 71 insertions(+), 2 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 22fbccf628cb..dbf26486071f 100644
+index 94dcd8e158dc..a4b93956cb8d 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4925,6 +4925,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4977,6 +4977,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sset		NULL
  #define nl_gfeatures	NULL
  #define nl_sfeatures	NULL
@@ -28,7 +28,7 @@ index 22fbccf628cb..dbf26486071f 100644
  #endif
  
  static const struct option {
-@@ -5084,7 +5085,7 @@ static const struct option {
+@@ -5136,7 +5137,7 @@ static const struct option {
  	  "               [ tx N ]\n"
  	  "               [ other N ]\n"
  	  "               [ combined N ]\n" },
@@ -50,7 +50,7 @@ index d0199cb440f8..ce5fde1ddc35 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index ece096c6ba58..bdf914f9abde 100644
+index 21779cfad8cb..4f3bbd0a84b0 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -161,6 +161,11 @@ static struct monitor_option monitor_opts[] = {
@@ -66,10 +66,10 @@ index ece096c6ba58..bdf914f9abde 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/settings.c b/netlink/settings.c
-index ced13997042c..34689dd4a607 100644
+index 0be442235add..1ecafa1b8f27 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -516,6 +516,53 @@ out_free:
+@@ -519,6 +519,53 @@ out_free:
  	return 0;
  }
  
@@ -122,21 +122,22 @@ index ced13997042c..34689dd4a607 100644
 +
  int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
- 	const struct nlattr *tb[ETHA_SETTINGS_MAX + 1] = {};
-@@ -571,6 +618,12 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ 	const struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1] = {};
+@@ -577,6 +624,13 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  		if (ret == 0)
  			allfail = false;
  	}
-+	if (tb[ETHA_SETTINGS_PRIV_FLAGS] &&
++	if (tb[ETHTOOL_A_SETTINGS_PRIV_FLAGS] &&
 +	    mask_ok(nlctx, ETH_SETTINGS_IM_PRIVFLAGS)) {
-+		ret = dump_priv_flags(nlctx, tb[ETHA_SETTINGS_PRIV_FLAGS]);
++		ret = dump_priv_flags(nlctx,
++				      tb[ETHTOOL_A_SETTINGS_PRIV_FLAGS]);
 +		if (ret == 0)
 +			allfail = false;
 +	}
  
  	if (allfail && !nlctx->is_monitor && !nlctx->is_dump) {
  		fputs("No data available\n", stdout);
-@@ -582,12 +635,15 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -588,12 +642,15 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  
  int settings_request(struct cmd_context *ctx, uint32_t info_mask)
  {
@@ -152,8 +153,8 @@ index ced13997042c..34689dd4a607 100644
 +	}
  
  	ret = ethnl_prep_get_request(ctx, ETHNL_CMD_GET_SETTINGS,
- 				     ETHA_SETTINGS_DEV);
-@@ -616,6 +672,11 @@ int nl_gfeatures(struct cmd_context *ctx)
+ 				     ETHTOOL_A_SETTINGS_DEV);
+@@ -622,6 +679,11 @@ int nl_gfeatures(struct cmd_context *ctx)
  	return settings_request(ctx, ETH_SETTINGS_IM_FEATURES);
  }
  

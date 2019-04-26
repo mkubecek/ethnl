@@ -1,4 +1,4 @@
-From 2a1a9d98bc3972b40a5fc52e836674e5142ed699 Mon Sep 17 00:00:00 2001
+From b312ebb6b2c641367f8d79e6e35a4421b4c260fc Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 7 Oct 2018 19:50:11 +0200
 Subject: [PATCH 33/34] netlink: add netlink handler for getting flow hash
@@ -12,14 +12,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c        |   3 +-
  netlink/extapi.h |   1 +
- netlink/rxflow.c | 189 +++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 192 insertions(+), 1 deletion(-)
+ netlink/rxflow.c | 190 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 193 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 3e16e6c6023f..dee5320652dc 100644
+index 5675e08f1c7f..85e632a0d4ef 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4944,6 +4944,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4996,6 +4996,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_reset	NULL
  #define nl_grxfh	NULL
  #define nl_srxfh	NULL
@@ -27,7 +27,7 @@ index 3e16e6c6023f..dee5320652dc 100644
  #endif
  
  static const struct option {
-@@ -5042,7 +5043,7 @@ static const struct option {
+@@ -5094,7 +5095,7 @@ static const struct option {
  	  "Show adapter statistics" },
  	{ "--phy-statistics", 1, do_gphystats, NULL,
  	  "Show phy statistics" },
@@ -49,7 +49,7 @@ index 952a79e92188..30ec79f0e94e 100644
  
  void monitor_usage();
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
-index 81b4ff032e04..55ed350210c2 100644
+index 24479e6bc910..a60adb2d4719 100644
 --- a/netlink/rxflow.c
 +++ b/netlink/rxflow.c
 @@ -8,6 +8,33 @@
@@ -86,7 +86,7 @@ index 81b4ff032e04..55ed350210c2 100644
  /* GET_RXFLOW */
  
  static int apply_block(uint32_t *table, unsigned int size,
-@@ -203,6 +230,67 @@ static void dump_hashfn_walk_cb(unsigned int idx, const char *name, bool val,
+@@ -204,6 +231,67 @@ static void dump_hashfn_walk_cb(unsigned int idx, const char *name, bool val,
  	printf("    %s: %s\n", name, val ? "on" : "off");
  }
  
@@ -119,17 +119,17 @@ index 81b4ff032e04..55ed350210c2 100644
 +
 +
 +	mnl_attr_for_each_nested(opt, opts) {
-+		const struct nlattr *tb[ETHA_RXHASHOPT_MAX + 1] = {};
++		const struct nlattr *tb[ETHTOOL_A_RXHASHOPT_MAX + 1] = {};
 +		DECLARE_ATTR_TB_INFO(tb);
 +		const struct nla_bitfield32 *fields;
 +		uint32_t flow_type;
 +
-+		if (mnl_attr_get_type(opt) != ETHA_RXHASHOPTS_OPT)
++		if (mnl_attr_get_type(opt) != ETHTOOL_A_RXHASHOPTS_OPT)
 +			continue;
 +		ret = mnl_attr_parse_nested(opt, attr_cb, &tb_info);
-+		if (ret < 0 || !tb[ETHA_RXHASHOPT_FLOWTYPE])
++		if (ret < 0 || !tb[ETHTOOL_A_RXHASHOPT_FLOWTYPE])
 +			continue;
-+		flow_type = mnl_attr_get_u32(tb[ETHA_RXHASHOPT_FLOWTYPE]);
++		flow_type = mnl_attr_get_u32(tb[ETHTOOL_A_RXHASHOPT_FLOWTYPE]);
 +		if (req_type && flow_type != *req_type)
 +			continue;
 +
@@ -139,10 +139,10 @@ index 81b4ff032e04..55ed350210c2 100644
 +		else
 +			printf("%s flows", flow_type_labels[flow_type]);
 +
-+		fields = tb[ETHA_RXHASHOPT_FIELDS] ?
-+			 mnl_attr_get_payload(tb[ETHA_RXHASHOPT_FIELDS]) :
++		fields = tb[ETHTOOL_A_RXHASHOPT_FIELDS] ?
++			 mnl_attr_get_payload(tb[ETHTOOL_A_RXHASHOPT_FIELDS]) :
 +			 NULL;
-+		if (tb[ETHA_RXHASHOPT_DISCARD])
++		if (tb[ETHTOOL_A_RXHASHOPT_DISCARD])
 +			printf(" - All matching flows discarded on RX\n");
 +		else
 +			dump_hash_fields(fields ? fields->value : 0);
@@ -153,13 +153,13 @@ index 81b4ff032e04..55ed350210c2 100644
 +
  int rxflow_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
- 	const struct nlattr *tb[ETHA_RXFLOW_MAX + 1] = {};
-@@ -240,6 +328,13 @@ int rxflow_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ 	const struct nlattr *tb[ETHTOOL_A_RXFLOW_MAX + 1] = {};
+@@ -242,6 +330,13 @@ int rxflow_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			printf("    Operation not supported\n");
  		}
  	}
 +	if (mask_ok(nlctx, ETH_RXFLOW_IM_HASHOPTS)) {
-+		ret = dump_hashopts(tb[ETHA_RXFLOW_HASH_OPTS],
++		ret = dump_hashopts(tb[ETHTOOL_A_RXFLOW_HASH_OPTS],
 +				    nlctx->cmd_private);
 +		if (ret < 0)
 +			printf("Cannot get RX network flow hashing options: %s\n",
@@ -168,7 +168,7 @@ index 81b4ff032e04..55ed350210c2 100644
  
  	return MNL_CB_OK;
  }
-@@ -283,6 +378,100 @@ int nl_grxfh(struct cmd_context *ctx)
+@@ -285,6 +380,101 @@ int nl_grxfh(struct cmd_context *ctx)
  	return ethnl_send_get_request(nlctx, rxflow_reply_cb);
  }
  
@@ -221,17 +221,18 @@ index 81b4ff032e04..55ed350210c2 100644
 +		exit(2);
 +
 +	ret = ethnl_prep_get_request(ctx, ETHNL_CMD_GET_RXFLOW,
-+				     ETHA_RXFLOW_DEV);
++				     ETHTOOL_A_RXFLOW_DEV);
 +	if (ret < 0)
 +		return ret;
-+	if (ethnla_put_u32(nlctx, ETHA_RXFLOW_INFOMASK, ETH_RXFLOW_IM_HASHOPTS))
++	if (ethnla_put_u32(nlctx, ETHTOOL_A_RXFLOW_INFOMASK,
++			   ETH_RXFLOW_IM_HASHOPTS))
 +		return -EMSGSIZE;
-+	/* ETHA_RXFLOW_COMPACT = false */
++	/* ETHTOOL_A_RXFLOW_COMPACT = false */
 +	ret = nl_parser(nlctx, grxfh_params, NULL);
 +	if (ret < 0)
 +		return ret;
 +	if (params.context &&
-+	    ethnla_put_u32(nlctx, ETHA_RXFLOW_CONTEXT, params.context))
++	    ethnla_put_u32(nlctx, ETHTOOL_A_RXFLOW_CONTEXT, params.context))
 +		return -EMSGSIZE;
 +	if (params.flow_type)
 +		nlctx->cmd_private = &params.flow_type;

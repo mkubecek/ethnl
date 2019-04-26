@@ -1,4 +1,4 @@
-From 7a4a4c6bd6ecef28c29b122f7202759d0d72753f Mon Sep 17 00:00:00 2001
+From cd5c32bf79bd34d1dac71f9b94eec93874ac670c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:32:39 +0100
 Subject: [PATCH 25/34] netlink: add netlink handler for schannels (-L)
@@ -10,14 +10,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c        |  3 ++-
  netlink/extapi.h |  1 +
- netlink/params.c | 33 +++++++++++++++++++++++++++++++++
- 3 files changed, 36 insertions(+), 1 deletion(-)
+ netlink/params.c | 34 ++++++++++++++++++++++++++++++++++
+ 3 files changed, 37 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 318dcccce42f..048b1956684e 100644
+index 63f24063be98..f49dc1bec045 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4936,6 +4936,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4988,6 +4988,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_scoalesce	NULL
  #define nl_sring	NULL
  #define nl_spause	NULL
@@ -25,7 +25,7 @@ index 318dcccce42f..048b1956684e 100644
  #endif
  
  static const struct option {
-@@ -5089,7 +5090,7 @@ static const struct option {
+@@ -5141,7 +5142,7 @@ static const struct option {
  	  "		N\n"},
  	{ "-l|--show-channels", 1, do_gchannels, nl_gchannels,
  	  "Query Channels" },
@@ -47,36 +47,36 @@ index d6e58d36161d..0fff61c24c63 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index 8ba959f73433..c52c818f453c 100644
+index 2ce25bca65ca..896ad3a372c6 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
-@@ -568,3 +568,36 @@ int nl_spause(struct cmd_context *ctx)
+@@ -574,3 +574,37 @@ int nl_spause(struct cmd_context *ctx)
  {
- 	return nl_set_param(ctx, "-A", spause_params, ETHA_PARAMS_PAUSE);
+ 	return nl_set_param(ctx, "-A", spause_params, ETHTOOL_A_PARAMS_PAUSE);
  }
 +
 +static const struct param_parser schannels_params[] = {
 +	{
 +		.arg		= "rx",
-+		.type		= ETHA_CHANNELS_RX_COUNT,
++		.type		= ETHTOOL_A_CHANNELS_RX_COUNT,
 +		.handler	= nl_parse_direct_u32,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "tx",
-+		.type		= ETHA_CHANNELS_TX_COUNT,
++		.type		= ETHTOOL_A_CHANNELS_TX_COUNT,
 +		.handler	= nl_parse_direct_u32,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "other",
-+		.type		= ETHA_CHANNELS_OTHER_COUNT,
++		.type		= ETHTOOL_A_CHANNELS_OTHER_COUNT,
 +		.handler	= nl_parse_direct_u32,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "combined",
-+		.type		= ETHA_CHANNELS_COMBINED_COUNT,
++		.type		= ETHTOOL_A_CHANNELS_COMBINED_COUNT,
 +		.handler	= nl_parse_direct_u32,
 +		.min_argc	= 1,
 +	},
@@ -85,7 +85,8 @@ index 8ba959f73433..c52c818f453c 100644
 +
 +int nl_schannels(struct cmd_context *ctx)
 +{
-+	return nl_set_param(ctx, "-L", schannels_params, ETHA_PARAMS_CHANNELS);
++	return nl_set_param(ctx, "-L", schannels_params,
++			    ETHTOOL_A_PARAMS_CHANNELS);
 +}
 -- 
 2.21.0

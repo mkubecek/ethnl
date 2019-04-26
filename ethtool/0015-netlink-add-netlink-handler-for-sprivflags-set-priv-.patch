@@ -1,4 +1,4 @@
-From da2bd1a8731e98c2b11c1197e345eb783e7ae1ba Mon Sep 17 00:00:00 2001
+From 1c2001f3c11695dcfe5a9c497ef9085c539936be Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:23:10 +0200
 Subject: [PATCH 15/34] netlink: add netlink handler for sprivflags
@@ -11,14 +11,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c          |  3 ++-
  netlink/extapi.h   |  1 +
- netlink/settings.c | 33 +++++++++++++++++++++++++++++++++
- 3 files changed, 36 insertions(+), 1 deletion(-)
+ netlink/settings.c | 34 ++++++++++++++++++++++++++++++++++
+ 3 files changed, 37 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index dbf26486071f..97f512a96f64 100644
+index a4b93956cb8d..629dd512fb06 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4926,6 +4926,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4978,6 +4978,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gfeatures	NULL
  #define nl_sfeatures	NULL
  #define nl_gprivflags	NULL
@@ -26,7 +26,7 @@ index dbf26486071f..97f512a96f64 100644
  #endif
  
  static const struct option {
-@@ -5087,7 +5088,7 @@ static const struct option {
+@@ -5139,7 +5140,7 @@ static const struct option {
  	  "               [ combined N ]\n" },
  	{ "--show-priv-flags", 1, do_gprivflags, nl_gprivflags,
  	  "Query private flags" },
@@ -48,10 +48,10 @@ index ce5fde1ddc35..f89c6d0e169c 100644
  
  void monitor_usage();
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 34689dd4a607..befcf83fe598 100644
+index 1ecafa1b8f27..d64e73730f80 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -1138,3 +1138,36 @@ int nl_sfeatures(struct cmd_context *ctx)
+@@ -1145,3 +1145,37 @@ int nl_sfeatures(struct cmd_context *ctx)
  		return 0;
  	return nlctx->exit_code ?: 92;
  }
@@ -72,10 +72,11 @@ index 34689dd4a607..befcf83fe598 100644
 +		       NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return 2;
-+	if (ethnla_put_dev(nlctx, ETHA_SETTINGS_DEV, ctx->devname))
++	if (ethnla_put_dev(nlctx, ETHTOOL_A_SETTINGS_DEV, ctx->devname))
 +		return -EMSGSIZE;
 +
-+	ret = nl_parse_bitset(nlctx, ETHA_SETTINGS_PRIV_FLAGS, NULL, NULL);
++	ret = nl_parse_bitset(nlctx, ETHTOOL_A_SETTINGS_PRIV_FLAGS, NULL,
++		              NULL);
 +	if (ret < 0)
 +		return -EINVAL;
 +

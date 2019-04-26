@@ -1,4 +1,4 @@
-From 64d224fdae9c3b9d9e02521c068144a482ffb70a Mon Sep 17 00:00:00 2001
+From cf02bb63561ac58d968deced283f4960ce8300d1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:24:40 +0200
 Subject: [PATCH 32/34] netlink: add netlink handler for srxfh (-X)
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 341 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 0e68e0622ecb..3e16e6c6023f 100644
+index c67ea0b310c8..5675e08f1c7f 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4943,6 +4943,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4995,6 +4995,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_phys_id	NULL
  #define nl_reset	NULL
  #define nl_grxfh	NULL
@@ -26,7 +26,7 @@ index 0e68e0622ecb..3e16e6c6023f 100644
  #endif
  
  static const struct option {
-@@ -5076,7 +5077,7 @@ static const struct option {
+@@ -5128,7 +5129,7 @@ static const struct option {
  	{ "-x|--show-rxfh-indir|--show-rxfh", 1, do_grxfh, nl_grxfh,
  	  "Show Rx flow hash indirection table and/or RSS hash key",
  	  "		[ context %d ]\n" },
@@ -48,7 +48,7 @@ index ef4981ce29c8..952a79e92188 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 4e6ea0143256..e36b9e0fee2a 100644
+index 185952d79da2..dd71e0e47f28 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -100,6 +100,7 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data);
@@ -83,10 +83,10 @@ index 4e6ea0143256..e36b9e0fee2a 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
-index 55e8c650e4fd..81b4ff032e04 100644
+index 67504b0c94cb..24479e6bc910 100644
 --- a/netlink/rxflow.c
 +++ b/netlink/rxflow.c
-@@ -283,3 +283,331 @@ int nl_grxfh(struct cmd_context *ctx)
+@@ -285,3 +285,331 @@ int nl_grxfh(struct cmd_context *ctx)
  	return ethnl_send_get_request(nlctx, rxflow_reply_cb);
  }
  
@@ -263,12 +263,12 @@ index 55e8c650e4fd..81b4ff032e04 100644
 +{
 +	struct nlattr *patch;
 +
-+	patch = ethnla_nest_start(nlctx, ETHA_INDTBL_PATTERN);
++	patch = ethnla_nest_start(nlctx, ETHTOOL_A_INDTBL_PATTERN);
 +	if (!patch)
 +		return -EMSGSIZE;
 +
-+	if (ethnla_put_u32(nlctx, ETHA_ITPAT_MIN_RING, 0) ||
-+	    ethnla_put_u32(nlctx, ETHA_ITPAT_MAX_RING, num - 1)) {
++	if (ethnla_put_u32(nlctx, ETHTOOL_A_ITPAT_MIN_RING, 0) ||
++	    ethnla_put_u32(nlctx, ETHTOOL_A_ITPAT_MAX_RING, num - 1)) {
 +		mnl_attr_nest_cancel(nlctx->nlhdr, patch);
 +		return -EMSGSIZE;
 +	}
@@ -282,11 +282,11 @@ index 55e8c650e4fd..81b4ff032e04 100644
 +{
 +	struct nlattr *patch;
 +
-+	patch = ethnla_nest_start(nlctx, ETHA_INDTBL_WEIGHTS);
++	patch = ethnla_nest_start(nlctx, ETHTOOL_A_INDTBL_WEIGHTS);
 +	if (!patch)
 +		return -EMSGSIZE;
 +
-+	if (ethnla_put(nlctx, ETHA_ITWGHT_WEIGHTS,
++	if (ethnla_put(nlctx, ETHTOOL_A_ITWGHT_WEIGHTS,
 +		       data->count * sizeof(data->weights[0]),
 +		       data->weights)) {
 +		mnl_attr_nest_cancel(nlctx->nlhdr, patch);
@@ -304,7 +304,7 @@ index 55e8c650e4fd..81b4ff032e04 100644
 +
 +	if (!data->equal && !data->weight.count && !data->it_default)
 +		return 0;
-+	table = ethnla_nest_start(nlctx, ETHA_RXFLOW_INDIR_TBL);
++	table = ethnla_nest_start(nlctx, ETHTOOL_A_RXFLOW_INDIR_TBL);
 +	if (!table)
 +		return -EMSGSIZE;
 +
@@ -335,19 +335,19 @@ index 55e8c650e4fd..81b4ff032e04 100644
 +
 +	if (!hashfn)
 +		return 0;
-+	bitset_attr = ethnla_nest_start(nlctx, ETHA_RXFLOW_HASH_FN);
++	bitset_attr = ethnla_nest_start(nlctx, ETHTOOL_A_RXFLOW_HASH_FN);
 +	if (!bitset_attr)
 +		return -EMSGSIZE;
-+	if (ethnla_put_flag(nlctx, ETHA_BITSET_LIST, true))
++	if (ethnla_put_flag(nlctx, ETHTOOL_A_BITSET_LIST, true))
 +		return -EMSGSIZE;
-+	bits_attr = ethnla_nest_start(nlctx, ETHA_BITSET_BITS);
++	bits_attr = ethnla_nest_start(nlctx, ETHTOOL_A_BITSET_BITS);
 +	if (!bits_attr)
 +		goto err;
-+	bit_attr = ethnla_nest_start(nlctx, ETHA_BITS_BIT);
++	bit_attr = ethnla_nest_start(nlctx, ETHTOOL_A_BITS_BIT);
 +	if (!bits_attr)
 +		goto err;
 +
-+	if (ethnla_put_strz(nlctx, ETHA_BIT_NAME, hashfn))
++	if (ethnla_put_strz(nlctx, ETHTOOL_A_BIT_NAME, hashfn))
 +		goto err;
 +
 +	mnl_attr_nest_end(nlhdr, bit_attr);
@@ -366,10 +366,10 @@ index 55e8c650e4fd..81b4ff032e04 100644
 +
 +	/* context delete request is special, handle it separately */
 +	if (data->ctx_delete) {
-+		if (ethnla_put_u32(nlctx, ETHA_RXFLOW_CTXOP,
++		if (ethnla_put_u32(nlctx, ETHTOOL_A_RXFLOW_CTXOP,
 +				   ETH_RXFLOW_CTXOP_DEL))
 +			return -EMSGSIZE;
-+		if (ethnla_put_u32(nlctx, ETHA_RXFLOW_CONTEXT, context))
++		if (ethnla_put_u32(nlctx, ETHTOOL_A_RXFLOW_CONTEXT, context))
 +			return -EMSGSIZE;
 +		return 0;
 +	}
@@ -378,12 +378,12 @@ index 55e8c650e4fd..81b4ff032e04 100644
 +		op = ETH_RXFLOW_CTXOP_NEW;
 +		context = 0;
 +	}
-+	if (ethnla_put_u32(nlctx, ETHA_RXFLOW_CTXOP, op))
++	if (ethnla_put_u32(nlctx, ETHTOOL_A_RXFLOW_CTXOP, op))
 +		return -EMSGSIZE;
 +	if (fill_hfunc(nlctx, data->hfunc))
 +		return -EMSGSIZE;
-+	if (data->hkey.data && ethnla_put(nlctx, ETHA_RXFLOW_HASH_KEY,
-+				     data->hkey.len, data->hkey.data))
++	if (data->hkey.data && ethnla_put(nlctx, ETHTOOL_A_RXFLOW_HASH_KEY,
++					  data->hkey.len, data->hkey.data))
 +		return -EMSGSIZE;
 +	return fill_indtbl(nlctx, data);
 +}
@@ -405,7 +405,7 @@ index 55e8c650e4fd..81b4ff032e04 100644
 +		return 2;
 +
 +	ret = ethnl_prep_get_request(ctx, ETHNL_CMD_SET_RXFLOW,
-+				     ETHA_RXFLOW_DEV);
++				     ETHTOOL_A_RXFLOW_DEV);
 +	if (ret < 0)
 +		goto out_free;
 +	ret = fill_srxfh(nlctx, &data);

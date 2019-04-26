@@ -1,4 +1,4 @@
-From ca309a6c2df299a13f41c1b121cc52889b3ec339 Mon Sep 17 00:00:00 2001
+From 1903d9532002f533dcf495252cc25f1372602147 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 11/34] netlink: add netlink handler for sset (-s)
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  7 files changed, 225 insertions(+), 4 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 229106c1135c..d14d60e65ece 100644
+index a206ecb31981..f1064f882b99 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4967,6 +4967,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5019,6 +5019,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gdrv		NULL
  #define nl_tsinfo	NULL
  #define nl_gset		NULL
@@ -32,7 +32,7 @@ index 229106c1135c..d14d60e65ece 100644
  #endif
  
  static const struct option {
-@@ -4977,19 +4978,19 @@ static const struct option {
+@@ -5029,19 +5030,19 @@ static const struct option {
  	char *help;
  	char *opthelp;
  } args[] = {
@@ -69,10 +69,10 @@ index 5500835372b3..4f9e60c2fca8 100644
  
  void monitor_usage();
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 84ff2e96b006..ec4d5df31e4f 100644
+index 281fe25d94e2..09a664585e7f 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -775,6 +775,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
+@@ -776,6 +776,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
  	return 0;
  }
  
@@ -101,10 +101,10 @@ index 355b71feb2a7..f75edab04612 100644
  
  /* put data wrappers */
 diff --git a/netlink/parser.c b/netlink/parser.c
-index 3fe05bd642a9..b303e59458ea 100644
+index ae0ddf8a2161..9811b029268a 100644
 --- a/netlink/parser.c
 +++ b/netlink/parser.c
-@@ -831,6 +831,42 @@ err:
+@@ -832,6 +832,42 @@ err:
  	return -EINVAL;
  }
  
@@ -161,7 +161,7 @@ index c654d55d46f6..59f88145a61d 100644
  int nl_parser(struct nl_context *nlctx, const struct param_parser *params,
  	      void *dest);
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 8f4c288dbb3d..ab80c34f2ef4 100644
+index 17109bc5091f..b8fdeff266f5 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -6,6 +6,7 @@
@@ -172,7 +172,7 @@ index 8f4c288dbb3d..ab80c34f2ef4 100644
  
  /* GET_SETTINGS */
  
-@@ -386,3 +387,173 @@ int nl_gset(struct cmd_context *ctx)
+@@ -390,3 +391,173 @@ int nl_gset(struct cmd_context *ctx)
  				    ETH_SETTINGS_IM_WOL);
  	return (ret < 0) ? 75 : 0;
  }
@@ -242,76 +242,76 @@ index 8f4c288dbb3d..ab80c34f2ef4 100644
 +static const struct param_parser sset_params[] = {
 +	{
 +		.arg		= "port",
-+		.nest		= ETHA_SETTINGS_LINK_INFO,
-+		.type		= ETHA_LINKINFO_PORT,
++		.nest		= ETHTOOL_A_SETTINGS_LINK_INFO,
++		.type		= ETHTOOL_A_LINKINFO_PORT,
 +		.handler	= nl_parse_lookup_u8,
 +		.handler_data	= port_values,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "mdix",
-+		.nest		= ETHA_SETTINGS_LINK_INFO,
-+		.type		= ETHA_LINKINFO_TP_MDIX_CTRL,
++		.nest		= ETHTOOL_A_SETTINGS_LINK_INFO,
++		.type		= ETHTOOL_A_LINKINFO_TP_MDIX_CTRL,
 +		.handler	= nl_parse_lookup_u8,
 +		.handler_data	= mdix_values,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "phyad",
-+		.nest		= ETHA_SETTINGS_LINK_INFO,
-+		.type		= ETHA_LINKINFO_PHYADDR,
++		.nest		= ETHTOOL_A_SETTINGS_LINK_INFO,
++		.type		= ETHTOOL_A_LINKINFO_PHYADDR,
 +		.handler	= nl_parse_direct_u8,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "autoneg",
-+		.nest		= ETHA_SETTINGS_LINK_MODES,
-+		.type		= ETHA_LINKMODES_AUTONEG,
++		.nest		= ETHTOOL_A_SETTINGS_LINK_MODES,
++		.type		= ETHTOOL_A_LINKMODES_AUTONEG,
 +		.handler	= nl_parse_lookup_u8,
 +		.handler_data	= autoneg_values,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "advertise",
-+		.nest		= ETHA_SETTINGS_LINK_MODES,
-+		.type		= ETHA_LINKMODES_OURS,
++		.nest		= ETHTOOL_A_SETTINGS_LINK_MODES,
++		.type		= ETHTOOL_A_LINKMODES_OURS,
 +		.handler	= nl_parse_bitset,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "speed",
-+		.nest		= ETHA_SETTINGS_LINK_MODES,
-+		.type		= ETHA_LINKMODES_SPEED,
++		.nest		= ETHTOOL_A_SETTINGS_LINK_MODES,
++		.type		= ETHTOOL_A_LINKMODES_SPEED,
 +		.handler	= nl_parse_direct_u32,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "duplex",
-+		.nest		= ETHA_SETTINGS_LINK_MODES,
-+		.type		= ETHA_LINKMODES_DUPLEX,
++		.nest		= ETHTOOL_A_SETTINGS_LINK_MODES,
++		.type		= ETHTOOL_A_LINKMODES_DUPLEX,
 +		.handler	= nl_parse_lookup_u8,
 +		.handler_data	= duplex_values,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "wol",
-+		.nest		= ETHA_SETTINGS_WOL,
-+		.type		= ETHA_WOL_MODES,
++		.nest		= ETHTOOL_A_SETTINGS_WOL,
++		.type		= ETHTOOL_A_WOL_MODES,
 +		.handler	= nl_parse_char_bitfield32,
 +		.handler_data	= &wol_parser_data,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "sopass",
-+		.nest		= ETHA_SETTINGS_WOL,
-+		.type		= ETHA_WOL_SOPASS,
++		.nest		= ETHTOOL_A_SETTINGS_WOL,
++		.type		= ETHTOOL_A_WOL_SOPASS,
 +		.handler	= nl_parse_mac_addr,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "msglvl",
-+		.nest		= ETHA_SETTINGS_DEBUG,
-+		.type		= ETHA_DEBUG_MSG_MASK,
++		.nest		= ETHTOOL_A_SETTINGS_DEBUG,
++		.type		= ETHTOOL_A_DEBUG_MSG_MASK,
 +		.handler	= nl_parse_bitfield32,
 +		.handler_data	= flags_msglvl,
 +		.min_argc	= 1,
@@ -331,7 +331,7 @@ index 8f4c288dbb3d..ab80c34f2ef4 100644
 +		       NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return 2;
-+	if (ethnla_put_dev(nlctx, ETHA_SETTINGS_DEV, ctx->devname))
++	if (ethnla_put_dev(nlctx, ETHTOOL_A_SETTINGS_DEV, ctx->devname))
 +		return -EMSGSIZE;
 +
 +	ret = nl_parser(nlctx, sset_params, NULL);

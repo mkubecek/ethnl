@@ -1,4 +1,4 @@
-From 9e4e522d9dc8d8bfa8f125f49031bee3a0015d36 Mon Sep 17 00:00:00 2001
+From e4173691712633e5220817df0d2ac4cc0c0df196 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
 Subject: [PATCH 21/34] netlink: add netlink handler for gfec (--show-fec)
@@ -52,10 +52,10 @@ index 749bf389e9e1..6c238701783f 100644
  
  enum link_mode_class {
 diff --git a/ethtool.c b/ethtool.c
-index dc0fc2717322..7280ec1e0c45 100644
+index 0c099a785fb7..74c5caf013f6 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4932,6 +4932,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4984,6 +4984,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gpause	NULL
  #define nl_gchannels	NULL
  #define nl_geee		NULL
@@ -63,7 +63,7 @@ index dc0fc2717322..7280ec1e0c45 100644
  #endif
  
  static const struct option {
-@@ -5139,7 +5140,7 @@ static const struct option {
+@@ -5193,7 +5194,7 @@ static const struct option {
  	  "		[ ap-shared ]\n"
  	  "		[ dedicated ]\n"
  	  "		[ all ]\n"},
@@ -85,7 +85,7 @@ index 2d0ce8649052..c2676d492c75 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 12ceda8654dd..fabaa169c277 100644
+index e76768862ae3..c8adbd2b88a9 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -196,6 +196,11 @@ static struct monitor_option monitor_opts[] = {
@@ -101,16 +101,16 @@ index 12ceda8654dd..fabaa169c277 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index 55138b6fdc83..51c3960d6d5d 100644
+index a5f6c13be656..d50924510930 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
-@@ -185,6 +185,35 @@ static int show_eee(struct nl_context *nlctx, const struct nlattr *nest)
+@@ -190,6 +190,35 @@ static int show_eee(struct nl_context *nlctx, const struct nlattr *nest)
  	return 0;
  }
  
 +static int show_fec(struct nl_context *nlctx, const struct nlattr *nest)
 +{
-+	const struct nlattr *tb[ETHA_FEC_MAX + 1] = {};
++	const struct nlattr *tb[ETHTOOL_A_FEC_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	int ret;
 +
@@ -121,9 +121,9 @@ index 55138b6fdc83..51c3960d6d5d 100644
 +		return ret;
 +
 +	printf("FEC parameters for %s:\n", nlctx->devname);
-+	if (tb[ETHA_FEC_MODES]) {
++	if (tb[ETHTOOL_A_FEC_MODES]) {
 +		const struct nla_bitfield32 *fec_encs =
-+			mnl_attr_get_payload(tb[ETHA_FEC_MODES]);
++			mnl_attr_get_payload(tb[ETHTOOL_A_FEC_MODES]);
 +
 +		printf("Configured FEC encodings:\t");
 +		print_flags(flags_fecenc, n_flags_fecenc, fec_encs->selector);
@@ -139,13 +139,13 @@ index 55138b6fdc83..51c3960d6d5d 100644
 +
  int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
- 	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
-@@ -244,6 +273,15 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ 	const struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1] = {};
+@@ -249,6 +278,15 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_ERROR;
  		}
  	}
 +	if (mask_ok(nlctx, ETH_PARAMS_IM_FEC)) {
-+		ret = show_fec(nlctx, tb[ETHA_PARAMS_FEC]);
++		ret = show_fec(nlctx, tb[ETHTOOL_A_PARAMS_FEC]);
 +		if ((ret < 0) && show_only(nlctx, ETH_PARAMS_IM_FEC)) {
 +			nlctx->exit_code = 1;
 +			errno = -ret;
@@ -156,7 +156,7 @@ index 55138b6fdc83..51c3960d6d5d 100644
  
  	return MNL_CB_OK;
  }
-@@ -285,3 +323,8 @@ int nl_geee(struct cmd_context *ctx)
+@@ -290,3 +328,8 @@ int nl_geee(struct cmd_context *ctx)
  {
  	return params_request(ctx, ETH_PARAMS_IM_EEE);
  }

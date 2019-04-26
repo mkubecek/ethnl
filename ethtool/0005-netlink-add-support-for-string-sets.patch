@@ -1,10 +1,10 @@
-From 53745150f06f6e958e2da48da2b735f56005c4f8 Mon Sep 17 00:00:00 2001
+From 2f55757b9908649c0cfa92743de5a932e3a1c7d5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 14:09:19 +0200
 Subject: [PATCH 05/34] netlink: add support for string sets
 
-Add infrastructure for querying kernel string sets (analog to ioct commands
-ETHTOOL_GSSET_INFO and ETHTOOL_GSTRINGS).
+Add infrastructure for querying kernel string sets (analog to ioctl
+commands ETHTOOL_GSSET_INFO and ETHTOOL_GSTRINGS).
 
 Let notification monitor request string sets on start so that it can
 resolve bit indices to names when processing bitsets in compact format.
@@ -14,17 +14,17 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Makefile.am       |   1 +
  netlink/netlink.c |   3 +-
  netlink/netlink.h |   4 +-
- netlink/strset.c  | 309 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/strset.c  | 311 ++++++++++++++++++++++++++++++++++++++++++++++
  netlink/strset.h  |  18 +++
- 5 files changed, 332 insertions(+), 3 deletions(-)
+ 5 files changed, 334 insertions(+), 3 deletions(-)
  create mode 100644 netlink/strset.c
  create mode 100644 netlink/strset.h
 
 diff --git a/Makefile.am b/Makefile.am
-index f6a567459157..21cde638a6b6 100644
+index 140769d20e4c..1e07f5d742e3 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -22,6 +22,7 @@ endif
+@@ -27,6 +27,7 @@ endif
  if ETHTOOL_ENABLE_NETLINK
  ethtool_SOURCES += \
  		  netlink/netlink.c netlink/netlink.h netlink/extapi.h \
@@ -33,7 +33,7 @@ index f6a567459157..21cde638a6b6 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 86291b620800..3918091bc6b9 100644
+index cb04ea267c18..ff97e70b9bbd 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -162,7 +162,7 @@ err:
@@ -44,11 +44,11 @@ index 86291b620800..3918091bc6b9 100644
 +int walk_bitset(const struct nlattr *bitset, const struct stringset *labels,
  		bitset_walk_callback cb, void *data)
  {
- 	const struct nlattr *bitset_tb[ETHA_BITSET_MAX + 1] = {};
+ 	const struct nlattr *bitset_tb[ETHTOOL_A_BITSET_MAX + 1] = {};
 @@ -180,7 +180,6 @@ int walk_bitset(const struct nlattr *bitset, int ss_index,
- 	bits = bitset_tb[ETHA_BITSET_VALUE];
+ 	bits = bitset_tb[ETHTOOL_A_BITSET_VALUE];
  	if (bits) {
- 		const struct nlattr *mask = bitset_tb[ETHA_BITSET_MASK];
+ 		const struct nlattr *mask = bitset_tb[ETHTOOL_A_BITSET_MASK];
 -		const struct stringset *labels = global_stringset(ss_index);
  		unsigned int count, nwords, idx;
  		uint32_t *val_bm;
@@ -77,10 +77,10 @@ index c8cd4cb9d35f..fa61a6bcf6a3 100644
  int msg_init(struct nl_context *nlctx, int cmd, unsigned int flags);
 diff --git a/netlink/strset.c b/netlink/strset.c
 new file mode 100644
-index 000000000000..2b7f1fb74166
+index 000000000000..57fb3e358920
 --- /dev/null
 +++ b/netlink/strset.c
-@@ -0,0 +1,309 @@
+@@ -0,0 +1,311 @@
 +#include <errno.h>
 +#include <string.h>
 +
@@ -117,7 +117,7 @@ index 000000000000..2b7f1fb74166
 +
 +static int import_stringset(struct stringset *dest, const struct nlattr *nest)
 +{
-+	const struct nlattr *tb_stringset[ETHA_STRINGSET_MAX + 1] = {};
++	const struct nlattr *tb_stringset[ETHTOOL_A_STRINGSET_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb_stringset);
 +	const struct nlattr *string;
 +	unsigned int size;
@@ -128,23 +128,24 @@ index 000000000000..2b7f1fb74166
 +	ret = mnl_attr_parse_nested(nest, attr_cb, &tb_stringset_info);
 +	if (ret < 0)
 +		return ret;
-+	if (!tb_stringset[ETHA_STRINGSET_ID] ||
-+	    !tb_stringset[ETHA_STRINGSET_COUNT] ||
-+	    !tb_stringset[ETHA_STRINGSET_STRINGS])
++	if (!tb_stringset[ETHTOOL_A_STRINGSET_ID] ||
++	    !tb_stringset[ETHTOOL_A_STRINGSET_COUNT] ||
++	    !tb_stringset[ETHTOOL_A_STRINGSET_STRINGS])
 +		return -EFAULT;
-+	idx = mnl_attr_get_u32(tb_stringset[ETHA_STRINGSET_ID]);
++	idx = mnl_attr_get_u32(tb_stringset[ETHTOOL_A_STRINGSET_ID]);
 +	if (idx >= ETH_SS_COUNT)
 +		return 0;
-+	count = mnl_attr_get_u32(tb_stringset[ETHA_STRINGSET_COUNT]);
++	count = mnl_attr_get_u32(tb_stringset[ETHTOOL_A_STRINGSET_COUNT]);
 +	if (count == 0)
 +		return 0;
 +
-+	size = mnl_attr_get_len(tb_stringset[ETHA_STRINGSET_STRINGS]);
++	size = mnl_attr_get_len(tb_stringset[ETHTOOL_A_STRINGSET_STRINGS]);
 +	ret = -ENOMEM;
 +	dest[idx].raw_data = malloc(size);
 +	if (!dest[idx].raw_data)
 +		goto err;
-+	memcpy(dest[idx].raw_data, tb_stringset[ETHA_STRINGSET_STRINGS], size);
++	memcpy(dest[idx].raw_data, tb_stringset[ETHTOOL_A_STRINGSET_STRINGS],
++	       size);
 +	dest[idx].strings = calloc(count, sizeof(dest[idx].strings[0]));
 +	if (!dest[idx].strings)
 +		goto err;
@@ -152,24 +153,24 @@ index 000000000000..2b7f1fb74166
 +
 +	nest = dest[idx].raw_data;
 +	mnl_attr_for_each_nested(string, nest) {
-+		const struct nlattr *tb[ETHA_STRING_MAX + 1] = {};
++		const struct nlattr *tb[ETHTOOL_A_STRING_MAX + 1] = {};
 +		DECLARE_ATTR_TB_INFO(tb);
 +		unsigned int i;
 +
-+		if (mnl_attr_get_type(string) != ETHA_STRINGS_STRING)
++		if (mnl_attr_get_type(string) != ETHTOOL_A_STRINGS_STRING)
 +			continue;
 +		ret = mnl_attr_parse_nested(string, attr_cb, &tb_info);
 +		if (ret < 0)
 +			goto err;
 +		ret = -EFAULT;
-+		if (!tb[ETHA_STRING_INDEX] || !tb[ETHA_STRING_VALUE])
++		if (!tb[ETHTOOL_A_STRING_INDEX] || !tb[ETHTOOL_A_STRING_VALUE])
 +			goto err;
 +
-+		i = mnl_attr_get_u32(tb[ETHA_STRING_INDEX]);
++		i = mnl_attr_get_u32(tb[ETHTOOL_A_STRING_INDEX]);
 +		if (i >= count)
 +			goto err;
 +		dest[idx].strings[i] =
-+			mnl_attr_get_payload(tb[ETHA_STRING_VALUE]);
++			mnl_attr_get_payload(tb[ETHTOOL_A_STRING_VALUE]);
 +	}
 +
 +	return 0;
@@ -218,7 +219,7 @@ index 000000000000..2b7f1fb74166
 +
 +static int strset_reply_cb(const struct nlmsghdr *nlhdr, void *data)
 +{
-+	const struct nlattr *tb[ETHA_STRSET_MAX + 1] = {};
++	const struct nlattr *tb[ETHTOOL_A_STRSET_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	struct nl_context *nlctx = data;
 +	char devname[IFNAMSIZ] = "";
@@ -231,8 +232,9 @@ index 000000000000..2b7f1fb74166
 +	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return ret;
-+	if (tb[ETHA_STRSET_DEV]) {
-+		ret = get_dev_info(tb[ETHA_STRSET_DEV], &ifindex, devname);
++	if (tb[ETHTOOL_A_STRSET_DEV]) {
++		ret = get_dev_info(tb[ETHTOOL_A_STRSET_DEV], &ifindex,
++				   devname);
 +		if (ret < 0)
 +			return MNL_CB_OK;
 +		nlctx->devname = devname;
@@ -265,7 +267,7 @@ index 000000000000..2b7f1fb74166
 +	}
 +
 +	mnl_attr_for_each(attr, nlhdr, GENL_HDRLEN) {
-+		if (mnl_attr_get_type(attr) == ETHA_STRSET_STRINGSET)
++		if (mnl_attr_get_type(attr) == ETHTOOL_A_STRSET_STRINGSET)
 +			import_stringset(dest, attr);
 +	}
 +
@@ -326,7 +328,7 @@ index 000000000000..2b7f1fb74166
 +	if (ret < 0)
 +		return ret;
 +	if (dev) {
-+		if (ethnla_put_dev(nlctx, ETHA_STRSET_DEV, dev))
++		if (ethnla_put_dev(nlctx, ETHTOOL_A_STRSET_DEV, dev))
 +			return -EMSGSIZE;
 +	}
 +	ret = ethnl_send_get_request(nlctx, strset_reply_cb);

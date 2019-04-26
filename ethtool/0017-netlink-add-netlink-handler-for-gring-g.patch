@@ -1,4 +1,4 @@
-From d36d647604bcf58f7d3920e47f74b9ba06e277cb Mon Sep 17 00:00:00 2001
+From 5c484179003a26bdcc52244085d5f47a35027fb7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:59:50 +0100
 Subject: [PATCH 17/34] netlink: add netlink handler for gring (-g)
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 50 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 9ec6e647e766..1dda9a9922af 100644
+index 9495352337d4..efe80db1df18 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4928,6 +4928,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4980,6 +4980,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gprivflags	NULL
  #define nl_sprivflags	NULL
  #define nl_gcoalesce	NULL
@@ -26,7 +26,7 @@ index 9ec6e647e766..1dda9a9922af 100644
  #endif
  
  static const struct option {
-@@ -4984,7 +4985,7 @@ static const struct option {
+@@ -5036,7 +5037,7 @@ static const struct option {
  	  "		[tx-usecs-high N]\n"
  	  "		[tx-frames-high N]\n"
  	  "		[sample-interval N]\n" },
@@ -48,7 +48,7 @@ index a63f79eee2c8..deba845b52ae 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 707d975a0d9b..2fb0e81cd7e8 100644
+index ca03840acf6f..680af2d8f1d4 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -176,6 +176,11 @@ static struct monitor_option monitor_opts[] = {
@@ -64,16 +64,16 @@ index 707d975a0d9b..2fb0e81cd7e8 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index 30aee5758c42..6782d98a6956 100644
+index 77e30894db97..15a16d0f61a1 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
-@@ -55,6 +55,34 @@ static int show_coalesce(struct nl_context *nlctx, const struct nlattr *nest)
+@@ -57,6 +57,34 @@ static int show_coalesce(struct nl_context *nlctx, const struct nlattr *nest)
  	return 0;
  }
  
 +static int show_ring(struct nl_context *nlctx, const struct nlattr *nest)
 +{
-+	const struct nlattr *tb[ETHA_RING_MAX + 1] = {};
++	const struct nlattr *tb[ETHTOOL_A_RING_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	int ret;
 +
@@ -85,15 +85,15 @@ index 30aee5758c42..6782d98a6956 100644
 +
 +	printf("Ring parameters for %s:\n", nlctx->devname);
 +	printf("Pre-set maximums:\n");
-+	show_u32(tb[ETHA_RING_RX_MAX_PENDING], "RX:\t\t");
-+	show_u32(tb[ETHA_RING_RX_MINI_MAX_PENDING], "RX Mini:\t");
-+	show_u32(tb[ETHA_RING_RX_JUMBO_MAX_PENDING], "RX Jumbo:\t");
-+	show_u32(tb[ETHA_RING_TX_MAX_PENDING], "TX:\t\t");
++	show_u32(tb[ETHTOOL_A_RING_RX_MAX_PENDING], "RX:\t\t");
++	show_u32(tb[ETHTOOL_A_RING_RX_MINI_MAX_PENDING], "RX Mini:\t");
++	show_u32(tb[ETHTOOL_A_RING_RX_JUMBO_MAX_PENDING], "RX Jumbo:\t");
++	show_u32(tb[ETHTOOL_A_RING_TX_MAX_PENDING], "TX:\t\t");
 +	printf("Current hardware settings:\n");
-+	show_u32(tb[ETHA_RING_RX_PENDING], "RX:\t\t");
-+	show_u32(tb[ETHA_RING_RX_MINI_PENDING], "RX Mini:\t");
-+	show_u32(tb[ETHA_RING_RX_JUMBO_PENDING], "RX Jumbo:\t");
-+	show_u32(tb[ETHA_RING_TX_PENDING], "TX:\t\t");
++	show_u32(tb[ETHTOOL_A_RING_RX_PENDING], "RX:\t\t");
++	show_u32(tb[ETHTOOL_A_RING_RX_MINI_PENDING], "RX Mini:\t");
++	show_u32(tb[ETHTOOL_A_RING_RX_JUMBO_PENDING], "RX Jumbo:\t");
++	show_u32(tb[ETHTOOL_A_RING_TX_PENDING], "TX:\t\t");
 +	putchar('\n');
 +
 +	return 0;
@@ -101,13 +101,13 @@ index 30aee5758c42..6782d98a6956 100644
 +
  int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
- 	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
-@@ -78,6 +106,15 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ 	const struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1] = {};
+@@ -80,6 +108,15 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_ERROR;
  		}
  	}
 +	if (mask_ok(nlctx, ETH_PARAMS_IM_RING)) {
-+		ret = show_ring(nlctx, tb[ETHA_PARAMS_RING]);
++		ret = show_ring(nlctx, tb[ETHTOOL_A_PARAMS_RING]);
 +		if ((ret < 0) && show_only(nlctx, ETH_PARAMS_IM_RING)) {
 +			nlctx->exit_code = 76;
 +			errno = -ret;
@@ -118,7 +118,7 @@ index 30aee5758c42..6782d98a6956 100644
  
  	return MNL_CB_OK;
  }
-@@ -99,3 +136,8 @@ int nl_gcoalesce(struct cmd_context *ctx)
+@@ -101,3 +138,8 @@ int nl_gcoalesce(struct cmd_context *ctx)
  {
  	return params_request(ctx, ETH_PARAMS_IM_COALESCE);
  }

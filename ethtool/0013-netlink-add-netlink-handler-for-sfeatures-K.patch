@@ -1,4 +1,4 @@
-From 9b425174ba84199a2086ddac2792fe6a4a034465 Mon Sep 17 00:00:00 2001
+From 8a6e30d70839acc16b2ea06f0c92fdb91055cc19 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:25:31 +0200
 Subject: [PATCH 13/34] netlink: add netlink handler for sfeatures (-K)
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 295 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index de2b9e69b3ca..22fbccf628cb 100644
+index 377f4ab175f3..94dcd8e158dc 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4924,6 +4924,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4976,6 +4976,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gset		NULL
  #define nl_sset		NULL
  #define nl_gfeatures	NULL
@@ -32,7 +32,7 @@ index de2b9e69b3ca..22fbccf628cb 100644
  #endif
  
  static const struct option {
-@@ -4990,7 +4991,7 @@ static const struct option {
+@@ -5042,7 +5043,7 @@ static const struct option {
  	  "		[ tx N ]\n" },
  	{ "-k|--show-features|--show-offload", 1, do_gfeatures, nl_gfeatures,
  	  "Get state of protocol offload and other features" },
@@ -54,10 +54,10 @@ index f4bbb0b456ef..d0199cb440f8 100644
  
  void monitor_usage();
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 9767613c5e59..ced13997042c 100644
+index ea081e9cfb62..0be442235add 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -785,3 +785,295 @@ int nl_sset(struct cmd_context *ctx)
+@@ -791,3 +791,295 @@ int nl_sset(struct cmd_context *ctx)
  		return 0;
  	return nlctx->exit_code ?: 75;
  }
@@ -76,7 +76,7 @@ index 9767613c5e59..ced13997042c 100644
 +		global_stringset(ETH_SS_FEATURES);
 +	const unsigned int count = get_count(feature_names);
 +	const unsigned int words = (count + 31) / 32;
-+	const struct nlattr *tb[ETHA_FEATURES_MAX + 1] = {};
++	const struct nlattr *tb[ETHTOOL_A_FEATURES_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	const uint32_t *wanted_val;
 +	const uint32_t *wanted_mask;
@@ -89,18 +89,18 @@ index 9767613c5e59..ced13997042c 100644
 +	ret = mnl_attr_parse_nested(feat_attr, attr_cb, &tb_info);
 +	if (ret < 0)
 +		goto err;
-+	if (!tb[ETHA_FEATURES_WANTED] || !tb[ETHA_FEATURES_ACTIVE])
++	if (!tb[ETHTOOL_A_FEATURES_WANTED] || !tb[ETHTOOL_A_FEATURES_ACTIVE])
 +		goto err;
-+	if (bitset_get_count(tb[ETHA_FEATURES_WANTED], &ret) != count ||
++	if (bitset_get_count(tb[ETHTOOL_A_FEATURES_WANTED], &ret) != count ||
 +	    ret < 0)
 +		goto err;
-+	if (bitset_get_count(tb[ETHA_FEATURES_ACTIVE], &ret) != count ||
++	if (bitset_get_count(tb[ETHTOOL_A_FEATURES_ACTIVE], &ret) != count ||
 +	    ret < 0)
 +		goto err;
-+	wanted_val = get_compact_bitset_value(tb[ETHA_FEATURES_WANTED]);
-+	wanted_mask = get_compact_bitset_mask(tb[ETHA_FEATURES_WANTED]);
-+	active_val = get_compact_bitset_value(tb[ETHA_FEATURES_ACTIVE]);
-+	active_mask = get_compact_bitset_mask(tb[ETHA_FEATURES_ACTIVE]);
++	wanted_val = get_compact_bitset_value(tb[ETHTOOL_A_FEATURES_WANTED]);
++	wanted_mask = get_compact_bitset_mask(tb[ETHTOOL_A_FEATURES_WANTED]);
++	active_val = get_compact_bitset_value(tb[ETHTOOL_A_FEATURES_ACTIVE]);
++	active_mask = get_compact_bitset_mask(tb[ETHTOOL_A_FEATURES_ACTIVE]);
 +	if (!wanted_val || !wanted_mask || !active_val || !active_mask)
 +		goto err;
 +
@@ -158,12 +158,12 @@ index 9767613c5e59..ced13997042c 100644
 +{
 +	struct nlattr *bit_attr;
 +
-+	bit_attr = ethnla_nest_start(nlctx, ETHA_BITS_BIT);
++	bit_attr = ethnla_nest_start(nlctx, ETHTOOL_A_BITS_BIT);
 +	if (!bit_attr)
 +		return -EMSGSIZE;
-+	if (ethnla_put_strz(nlctx, ETHA_BIT_NAME, name))
++	if (ethnla_put_strz(nlctx, ETHTOOL_A_BIT_NAME, name))
 +		return -EMSGSIZE;
-+	if (ethnla_put_flag(nlctx, ETHA_BIT_VALUE, val))
++	if (ethnla_put_flag(nlctx, ETHTOOL_A_BIT_VALUE, val))
 +		return -EMSGSIZE;
 +	mnl_attr_nest_end(nlctx->nlhdr, bit_attr);
 +
@@ -214,7 +214,7 @@ index 9767613c5e59..ced13997042c 100644
 +int sfeatures_reply_cb(const struct nlmsghdr *nlhdr, void *data)
 +{
 +	const struct genlmsghdr *ghdr = (const struct genlmsghdr *)(nlhdr + 1);
-+	const struct nlattr *tb[ETHA_SETTINGS_MAX + 1] = {};
++	const struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	struct nl_context *nlctx = data;
 +	const char *devname;
@@ -228,16 +228,16 @@ index 9767613c5e59..ced13997042c 100644
 +	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return ret;
-+	devname = get_dev_name(tb[ETHA_SETTINGS_DEV]);
++	devname = get_dev_name(tb[ETHTOOL_A_SETTINGS_DEV]);
 +	if (strcmp(devname, nlctx->devname)) {
 +		fprintf(stderr, "warning: unexpected message for device %s\n",
 +			devname);
 +		return MNL_CB_OK;
 +	}
-+	if (!tb[ETHA_SETTINGS_FEATURES])
++	if (!tb[ETHTOOL_A_SETTINGS_FEATURES])
 +		return MNL_CB_OK;
 +
-+	show_feature_changes(nlctx, tb[ETHA_SETTINGS_FEATURES]);
++	show_feature_changes(nlctx, tb[ETHTOOL_A_SETTINGS_FEATURES]);
 +	return MNL_CB_OK;
 +}
 +
@@ -249,10 +249,10 @@ index 9767613c5e59..ced13997042c 100644
 +	int ret;
 +
 +	ret = -EMSGSIZE;
-+	bitset_attr = ethnla_nest_start(nlctx, ETHA_FEATURES_WANTED);
++	bitset_attr = ethnla_nest_start(nlctx, ETHTOOL_A_FEATURES_WANTED);
 +	if (!bitset_attr)
 +		return ret;
-+	bits_attr = ethnla_nest_start(nlctx, ETHA_BITSET_BITS);
++	bits_attr = ethnla_nest_start(nlctx, ETHTOOL_A_BITSET_BITS);
 +	if (!bits_attr)
 +		goto err;
 +
@@ -330,18 +330,18 @@ index 9767613c5e59..ced13997042c 100644
 +		       NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return 2;
-+	if (ethnla_put_dev(nlctx, ETHA_SETTINGS_DEV, ctx->devname))
++	if (ethnla_put_dev(nlctx, ETHTOOL_A_SETTINGS_DEV, ctx->devname))
 +		return -EMSGSIZE;
-+	if (ethnla_put_flag(nlctx, ETHA_SETTINGS_COMPACT, true))
++	if (ethnla_put_flag(nlctx, ETHTOOL_A_SETTINGS_COMPACT, true))
 +		return -EMSGSIZE;
 +
-+	feat_attr = ethnla_nest_start(nlctx, ETHA_SETTINGS_FEATURES);
++	feat_attr = ethnla_nest_start(nlctx, ETHTOOL_A_SETTINGS_FEATURES);
 +	if (!feat_attr)
 +		return -EMSGSIZE;
 +	ret = fill_sfeatures_bitmap(nlctx);
 +	if (ret < 0)
 +		return ret;
-+	if (ethnla_put_flag(nlctx, ETHA_FEATURES_WANT_DIFF, true))
++	if (ethnla_put_flag(nlctx, ETHTOOL_A_FEATURES_WANT_DIFF, true))
 +		return -EMSGSIZE;
 +	mnl_attr_nest_end(nlctx->nlhdr, feat_attr);
 +

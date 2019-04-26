@@ -1,4 +1,4 @@
-From 7f65e4957ce0e12abd1e4a2f235c3132fe88f887 Mon Sep 17 00:00:00 2001
+From c494c7a0c4f5e0071297b0ad5662bd1317d5bd99 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 08:43:44 +0200
 Subject: [PATCH 30/34] netlink: add netlink handler for reset (--reset)
@@ -9,16 +9,16 @@ ETHNL_CMD_ACT_RESET.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c         |   3 +-
- netlink/actions.c | 243 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/actions.c | 246 ++++++++++++++++++++++++++++++++++++++++++++++
  netlink/extapi.h  |   1 +
  netlink/monitor.c |   9 ++
- 4 files changed, 255 insertions(+), 1 deletion(-)
+ 4 files changed, 258 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 349bd2837c2a..96028041764f 100644
+index a50523b98752..0e21ff6ed573 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4941,6 +4941,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4993,6 +4993,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sfec		NULL
  #define nl_nway_rst	NULL
  #define nl_phys_id	NULL
@@ -26,17 +26,17 @@ index 349bd2837c2a..96028041764f 100644
  #endif
  
  static const struct option {
-@@ -5125,7 +5126,7 @@ static const struct option {
- 	{ "--get-phy-tunable", 1, do_get_phy_tunable, NULL,
+@@ -5179,7 +5180,7 @@ static const struct option {
  	  "Get PHY tunable",
- 	  "		[ downshift ]\n"},
+ 	  "		[ downshift ]\n"
+ 	  "		[ fast-link-down ]\n"},
 -	{ "--reset", 1, do_reset, NULL,
 +	{ "--reset", 1, do_reset, nl_reset,
  	  "Reset components",
  	  "		[ flags %x ]\n"
  	  "		[ mgmt ]\n"
 diff --git a/netlink/actions.c b/netlink/actions.c
-index 160352ea8df3..316004a8d786 100644
+index fe77a23d808f..73d0652b229d 100644
 --- a/netlink/actions.c
 +++ b/netlink/actions.c
 @@ -6,6 +6,7 @@
@@ -47,7 +47,7 @@ index 160352ea8df3..316004a8d786 100644
  
  /* ACT_NWAY_RST */
  
-@@ -130,3 +131,245 @@ int nl_phys_id(struct cmd_context *ctx)
+@@ -131,3 +132,248 @@ int nl_phys_id(struct cmd_context *ctx)
  
  	return ret;
  }
@@ -73,7 +73,7 @@ index 160352ea8df3..316004a8d786 100644
 +
 +int reset_reply_cb(const struct nlmsghdr *nlhdr, void *data)
 +{
-+	const struct nlattr *tb[ETHA_RESET_MAX + 1] = {};
++	const struct nlattr *tb[ETHTOOL_A_RESET_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	struct nl_context *nlctx = data;
 +	const struct stringset *labels = global_stringset(ETH_SS_RESET_FLAGS);
@@ -83,26 +83,27 @@ index 160352ea8df3..316004a8d786 100644
 +	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return ret;
-+	nlctx->devname = get_dev_name(tb[ETHA_RESET_DEV]);
++	nlctx->devname = get_dev_name(tb[ETHTOOL_A_RESET_DEV]);
 +	if (!dev_ok(nlctx))
 +		return MNL_CB_OK;
 +
-+	if (tb[ETHA_RESET_ALL]) {
++	if (tb[ETHTOOL_A_RESET_ALL]) {
 +		walk_data.flags_t = ETH_RESET_ALL;
 +		goto show;
 +	}
 +	walk_data.shared = true;
-+	if (tb[ETHA_RESET_SHARED])
-+		walk_bitset(tb[ETHA_RESET_SHARED], labels, reset_walk_cb,
++	if (tb[ETHTOOL_A_RESET_SHARED])
++		walk_bitset(tb[ETHTOOL_A_RESET_SHARED], labels, reset_walk_cb,
 +			    &walk_data);
 +
-+	if (tb[ETHA_RESET_ALL_DEDICATED]) {
++	if (tb[ETHTOOL_A_RESET_ALL_DEDICATED]) {
 +		walk_data.flags_t |= ETH_RESET_DEDICATED;
 +		goto show;
 +	}
 +	walk_data.shared = false;
-+	if (tb[ETHA_RESET_DEDICATED])
-+		walk_bitset(tb[ETHA_RESET_DEDICATED], labels, reset_walk_cb,
++	if (tb[ETHTOOL_A_RESET_DEDICATED])
++		walk_bitset(tb[ETHTOOL_A_RESET_DEDICATED], labels,
++			    reset_walk_cb,
 +			    &walk_data);
 +
 +show:
@@ -123,9 +124,9 @@ index 160352ea8df3..316004a8d786 100644
 +
 +	if (!nest)
 +		return -EMSGSIZE;
-+	if (ethnla_put_u32(nlctx, ETHA_BITSET_SIZE, nsb(value)) ||
-+	    ethnla_put_u32(nlctx, ETHA_BITSET_VALUE, value) ||
-+	    ethnla_put_u32(nlctx, ETHA_BITSET_MASK, value))
++	if (ethnla_put_u32(nlctx, ETHTOOL_A_BITSET_SIZE, nsb(value)) ||
++	    ethnla_put_u32(nlctx, ETHTOOL_A_BITSET_VALUE, value) ||
++	    ethnla_put_u32(nlctx, ETHTOOL_A_BITSET_MASK, value))
 +		return -EMSGSIZE;
 +	mnl_attr_nest_end(nlctx->nlhdr, nest);
 +
@@ -138,21 +139,21 @@ index 160352ea8df3..316004a8d786 100644
 +	int ret;
 +
 +	if (flags == ETH_RESET_ALL)
-+		return ethnla_put_flag(nlctx, ETHA_RESET_ALL, true) ?
++		return ethnla_put_flag(nlctx, ETHTOOL_A_RESET_ALL, true) ?
 +		       -EMSGSIZE : 0;
 +
 +	if ((flags & ETH_RESET_DEDICATED) == ETH_RESET_DEDICATED) {
-+		if (ethnla_put_flag(nlctx, ETHA_RESET_ALL_DEDICATED, true))
++		if (ethnla_put_flag(nlctx, ETHTOOL_A_RESET_ALL_DEDICATED, true))
 +			return -EMSGSIZE;
 +	} else if (flags & ETH_RESET_DEDICATED) {
-+		ret = fill_bitset_from_u32(nlctx, ETHA_RESET_DEDICATED,
++		ret = fill_bitset_from_u32(nlctx, ETHTOOL_A_RESET_DEDICATED,
 +					   flags & ETH_RESET_DEDICATED);
 +		if (ret < 0)
 +			return ret;
 +	}
 +
 +	if (flags >> ETH_RESET_SHARED_SHIFT) {
-+		ret = fill_bitset_from_u32(nlctx, ETHA_RESET_SHARED,
++		ret = fill_bitset_from_u32(nlctx, ETHTOOL_A_RESET_SHARED,
 +					   flags >> ETH_RESET_SHARED_SHIFT);
 +		if (ret < 0)
 +			return ret;
@@ -180,7 +181,7 @@ index 160352ea8df3..316004a8d786 100644
 +
 +	for (i = 0; i < nlctx->argc; i++) {
 +		if (!strcmp(nlctx->argp[i], "all")) {
-+			if (ethnla_put_flag(nlctx, ETHA_RESET_ALL, true))
++			if (ethnla_put_flag(nlctx, ETHTOOL_A_RESET_ALL, true))
 +				return -EMSGSIZE;
 +			else
 +				return 0;
@@ -189,7 +190,7 @@ index 160352ea8df3..316004a8d786 100644
 +			all_dedicated = true;
 +	}
 +	if (all_dedicated) {
-+	       if (ethnla_put_flag(nlctx, ETHA_RESET_ALL_DEDICATED, true))
++	       if (ethnla_put_flag(nlctx, ETHTOOL_A_RESET_ALL_DEDICATED, true))
 +		       return -EMSGSIZE;
 +	       goto check_shared;
 +	}
@@ -203,20 +204,21 @@ index 160352ea8df3..316004a8d786 100644
 +		if (len >= 0 && !strcmp(arg + len, SHARED_SUFFIX))
 +			continue;
 +		if (!bitset) {
-+			bitset = ethnla_nest_start(nlctx, ETHA_RESET_DEDICATED);
++			bitset = ethnla_nest_start(nlctx,
++						   ETHTOOL_A_RESET_DEDICATED);
 +			if (!bitset)
 +				return -EMSGSIZE;
-+			if (ethnla_put_flag(nlctx, ETHA_BITSET_LIST, true))
++			if (ethnla_put_flag(nlctx, ETHTOOL_A_BITSET_LIST, true))
 +				return -EMSGSIZE;
-+			bits = ethnla_nest_start(nlctx, ETHA_BITSET_BITS);
++			bits = ethnla_nest_start(nlctx, ETHTOOL_A_BITSET_BITS);
 +			if (!bits)
 +				return -EMSGSIZE;
 +		}
 +
-+		bit = ethnla_nest_start(nlctx, ETHA_BITS_BIT);
++		bit = ethnla_nest_start(nlctx, ETHTOOL_A_BITS_BIT);
 +		if (!bit)
 +			return -EMSGSIZE;
-+		if (ethnla_put_strz(nlctx, ETHA_BIT_NAME, arg))
++		if (ethnla_put_strz(nlctx, ETHTOOL_A_BIT_NAME, arg))
 +			return -EMSGSIZE;
 +		mnl_attr_nest_end(nlhdr, bit);
 +	}
@@ -238,21 +240,22 @@ index 160352ea8df3..316004a8d786 100644
 +		if (len < 0 || strcmp(arg + len, SHARED_SUFFIX))
 +			continue;
 +		if (!bitset) {
-+			bitset = ethnla_nest_start(nlctx, ETHA_RESET_SHARED);
++			bitset = ethnla_nest_start(nlctx,
++						   ETHTOOL_A_RESET_SHARED);
 +			if (!bitset)
 +				return -EMSGSIZE;
-+			if (ethnla_put_flag(nlctx, ETHA_BITSET_LIST, true))
++			if (ethnla_put_flag(nlctx, ETHTOOL_A_BITSET_LIST, true))
 +				return -EMSGSIZE;
-+			bits = ethnla_nest_start(nlctx, ETHA_BITSET_BITS);
++			bits = ethnla_nest_start(nlctx, ETHTOOL_A_BITSET_BITS);
 +			if (!bits)
 +				return -EMSGSIZE;
 +		}
 +
-+		bit = ethnla_nest_start(nlctx, ETHA_BITS_BIT);
++		bit = ethnla_nest_start(nlctx, ETHTOOL_A_BITS_BIT);
 +		if (!bit)
 +			return -EMSGSIZE;
 +		tail = mnl_nlmsg_get_payload_tail(nlhdr);
-+		if (ethnla_put(nlctx, ETHA_BIT_NAME, len + 1, arg))
++		if (ethnla_put(nlctx, ETHTOOL_A_BIT_NAME, len + 1, arg))
 +			return -EMSGSIZE;
 +		tail[MNL_ATTR_HDRLEN + len] = '\0';
 +		mnl_attr_nest_end(nlhdr, bit);
@@ -277,8 +280,8 @@ index 160352ea8df3..316004a8d786 100644
 +	ret = msg_init(nlctx, ETHNL_CMD_ACT_RESET, NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return -EFAULT;
-+	if (ethnla_put_dev(nlctx, ETHA_RESET_DEV, ctx->devname) ||
-+	    ethnla_put_flag(nlctx, ETHA_RESET_COMPACT, true))
++	if (ethnla_put_dev(nlctx, ETHTOOL_A_RESET_DEV, ctx->devname) ||
++	    ethnla_put_flag(nlctx, ETHTOOL_A_RESET_COMPACT, true))
 +		return -EMSGSIZE;
 +	ret = parse_reset(nlctx);
 +	if (ret < 0)
@@ -306,7 +309,7 @@ index c8c621ce6c21..57f2267da967 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 841e4c91cda4..4e6ea0143256 100644
+index 04e19afd4210..185952d79da2 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -99,6 +99,7 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);

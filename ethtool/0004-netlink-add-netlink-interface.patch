@@ -1,4 +1,4 @@
-From 7fae59b1d970e06032e7562c41c5f0076f91b679 Mon Sep 17 00:00:00 2001
+From b386b55379d0645b3f90a3e94871e4b2f5a4a2ca Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 04/34] netlink: add netlink interface
@@ -25,14 +25,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.c                    | 190 ++++++---
  internal.h                   |  11 +
  netlink/extapi.h             |  16 +
- netlink/netlink.c            | 726 +++++++++++++++++++++++++++++++++++
+ netlink/netlink.c            | 727 +++++++++++++++++++++++++++++++++++
  netlink/netlink.h            | 159 ++++++++
  uapi/linux/ethtool.h         |  13 +
  uapi/linux/ethtool_netlink.h | 556 +++++++++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 +++++
  uapi/linux/net_tstamp.h      |  13 +
  uapi/linux/netlink.h         | 248 ++++++++++++
- 14 files changed, 1997 insertions(+), 65 deletions(-)
+ 14 files changed, 1998 insertions(+), 65 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
  create mode 100644 netlink/extapi.h
@@ -43,7 +43,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 uapi/linux/netlink.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 09105fe83819..f6a567459157 100644
+index 05beb22be669..140769d20e4c 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -6,7 +6,9 @@ EXTRA_DIST = LICENSE ethtool.8 ethtool.spec.in aclocal.m4 ChangeLog autogen.sh
@@ -57,8 +57,8 @@ index 09105fe83819..f6a567459157 100644
  if ETHTOOL_ENABLE_PRETTY_DUMP
  ethtool_SOURCES += \
  		  amd8111e.c de2104x.c dsa.c e100.c e1000.c et131x.c igb.c	\
-@@ -17,12 +19,23 @@ ethtool_SOURCES += \
- 		  ixgbevf.c tse.c vmxnet3.c qsfp.c qsfp.h fjes.c lan78xx.c
+@@ -22,12 +24,23 @@ bashcompletiondir = $(BASH_COMPLETION_DIR)
+ dist_bashcompletion_DATA = shell-completion/bash/ethtool
  endif
  
 +if ETHTOOL_ENABLE_NETLINK
@@ -104,7 +104,7 @@ index 000000000000..286c2055f2d7
 +
 +#endif /* ETHTOOL_COMMON_H__ */
 diff --git a/configure.ac b/configure.ac
-index 4e5477aa9a2b..456ab31777db 100644
+index 3c0686c76004..b57a7b55c728 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
@@ -116,9 +116,9 @@ index 4e5477aa9a2b..456ab31777db 100644
  AC_CONFIG_HEADERS([ethtool-config.h])
  
  AM_MAINTAINER_MODE
-@@ -40,5 +40,17 @@ if test x$enable_pretty_dump = xyes; then
- fi
- AM_CONDITIONAL([ETHTOOL_ENABLE_PRETTY_DUMP], [test x$enable_pretty_dump = xyes])
+@@ -66,5 +66,17 @@ AC_SUBST([BASH_COMPLETION_DIR])
+ AM_CONDITIONAL([ENABLE_BASH_COMPLETION],
+ 	       [test "x$with_bash_completion_dir" != xno])
  
 +AC_ARG_ENABLE(netlink,
 +	      [  --enable-netlink	  enable netlink interface (enabled by default)],
@@ -135,7 +135,7 @@ index 4e5477aa9a2b..456ab31777db 100644
  AC_CONFIG_FILES([Makefile ethtool.spec ethtool.8])
  AC_OUTPUT
 diff --git a/ethtool.c b/ethtool.c
-index afd406cce130..deac45dbfbd2 100644
+index 64ae72bf571a..a39d09092439 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -30,6 +30,7 @@
@@ -166,7 +166,7 @@ index afd406cce130..deac45dbfbd2 100644
  static void exit_bad_args(void) __attribute__((noreturn));
  
  static void exit_bad_args(void)
-@@ -5136,14 +5139,22 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
+@@ -5188,14 +5191,22 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
  
  static int show_usage(struct cmd_context *ctx);
  
@@ -190,7 +190,7 @@ index afd406cce130..deac45dbfbd2 100644
  	  "		[ speed %d ]\n"
  	  "		[ duplex half|full ]\n"
  	  "		[ port tp|aui|bnc|mii|fibre ]\n"
-@@ -5155,13 +5166,17 @@ static const struct option {
+@@ -5207,13 +5218,17 @@ static const struct option {
  	  "		[ wol p|u|m|b|a|g|s|f|d... ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
  	  "		[ msglvl %d | msglvl type on|off ... ]\n" },
@@ -212,7 +212,7 @@ index afd406cce130..deac45dbfbd2 100644
  	  "		[adaptive-rx on|off]\n"
  	  "		[adaptive-tx on|off]\n"
  	  "		[rx-usecs N]\n"
-@@ -5184,46 +5199,54 @@ static const struct option {
+@@ -5236,46 +5251,54 @@ static const struct option {
  	  "		[tx-usecs-high N]\n"
  	  "		[tx-frames-high N]\n"
  	  "		[sample-interval N]\n" },
@@ -282,7 +282,7 @@ index afd406cce130..deac45dbfbd2 100644
  	  "Configure Rx network flow classification options or rules",
  	  "		rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 m|v|t|s|d|f|n|r... [context %d] |\n"
-@@ -5248,55 +5271,64 @@ static const struct option {
+@@ -5300,57 +5323,66 @@ static const struct option {
  	  "			[ context %d ]\n"
  	  "			[ loc %d]] |\n"
  	  "		delete %d\n" },
@@ -353,18 +353,20 @@ index afd406cce130..deac45dbfbd2 100644
 -	{ "--set-phy-tunable", 1, do_set_phy_tunable, "Set PHY tunable",
 +	{ "--set-phy-tunable", 1, do_set_phy_tunable, NULL,
 +	  "Set PHY tunable",
- 	  "		[ downshift on|off [count N] ]\n"},
+ 	  "		[ downshift on|off [count N] ]\n"
+ 	  "		[ fast-link-down on|off [msecs N] ]\n"},
 -	{ "--get-phy-tunable", 1, do_get_phy_tunable, "Get PHY tunable",
 +	{ "--get-phy-tunable", 1, do_get_phy_tunable, NULL,
 +	  "Get PHY tunable",
- 	  "		[ downshift ]\n"},
+ 	  "		[ downshift ]\n"
+ 	  "		[ fast-link-down ]\n"},
 -	{ "--reset", 1, do_reset, "Reset components",
 +	{ "--reset", 1, do_reset, NULL,
 +	  "Reset components",
  	  "		[ flags %x ]\n"
  	  "		[ mgmt ]\n"
  	  "		[ mgmt-shared ]\n"
-@@ -5318,14 +5350,19 @@ static const struct option {
+@@ -5372,14 +5404,19 @@ static const struct option {
  	  "		[ ap-shared ]\n"
  	  "		[ dedicated ]\n"
  	  "		[ all ]\n"},
@@ -389,7 +391,7 @@ index afd406cce130..deac45dbfbd2 100644
  	{}
  };
  
-@@ -5544,14 +5581,39 @@ static int do_perqueue(struct cmd_context *ctx)
+@@ -5598,14 +5635,39 @@ static int do_perqueue(struct cmd_context *ctx)
  	return 0;
  }
  
@@ -429,7 +431,7 @@ index afd406cce130..deac45dbfbd2 100644
  
  	/* Skip command name */
  	argp++;
-@@ -5583,6 +5645,7 @@ int main(int argc, char **argp)
+@@ -5637,6 +5699,7 @@ int main(int argc, char **argp)
  		argp++;
  		argc--;
  		func = args[k].func;
@@ -437,7 +439,7 @@ index afd406cce130..deac45dbfbd2 100644
  		want_device = args[k].want_device;
  		goto opt_found;
  	}
-@@ -5592,33 +5655,38 @@ int main(int argc, char **argp)
+@@ -5646,33 +5709,38 @@ int main(int argc, char **argp)
  	want_device = 1;
  
  opt_found:
@@ -553,10 +555,10 @@ index 000000000000..6fe8ad200e24
 +#endif /* ETHTOOL_EXTAPI_H__ */
 diff --git a/netlink/netlink.c b/netlink/netlink.c
 new file mode 100644
-index 000000000000..86291b620800
+index 000000000000..cb04ea267c18
 --- /dev/null
 +++ b/netlink/netlink.c
-@@ -0,0 +1,726 @@
+@@ -0,0 +1,727 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -601,7 +603,7 @@ index 000000000000..86291b620800
 +	const struct nlattr *attr;
 +
 +	mnl_attr_for_each_nested(attr, bitset) {
-+		if (mnl_attr_get_type(attr) != ETHA_BITSET_SIZE)
++		if (mnl_attr_get_type(attr) != ETHTOOL_A_BITSET_SIZE)
 +			continue;
 +		*retptr = 0;
 +		return mnl_attr_get_u32(attr);
@@ -614,7 +616,7 @@ index 000000000000..86291b620800
 +bool bitset_get_bit(const struct nlattr *bitset, bool mask, unsigned int idx,
 +		    int *retptr)
 +{
-+	const struct nlattr *bitset_tb[ETHA_BITSET_MAX + 1] = {};
++	const struct nlattr *bitset_tb[ETHTOOL_A_BITSET_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(bitset_tb);
 +	const struct nlattr *bits;
 +	const struct nlattr *bit;
@@ -625,8 +627,8 @@ index 000000000000..86291b620800
 +	if (ret < 0)
 +		goto err;
 +
-+	bits = mask ? bitset_tb[ETHA_BITSET_MASK] :
-+		      bitset_tb[ETHA_BITSET_VALUE];
++	bits = mask ? bitset_tb[ETHTOOL_A_BITSET_MASK] :
++		      bitset_tb[ETHTOOL_A_BITSET_VALUE];
 +	if (bits) {
 +		const uint32_t *bitmap =
 +			(const uint32_t *)mnl_attr_get_payload(bits);
@@ -636,26 +638,26 @@ index 000000000000..86291b620800
 +		return bitmap[idx / 32] & (1U << (idx % 32));
 +	}
 +
-+	bits = bitset_tb[ETHA_BITSET_BITS];
++	bits = bitset_tb[ETHTOOL_A_BITSET_BITS];
 +	if (!bits)
 +		goto err;
 +	mnl_attr_for_each_nested(bit, bits) {
-+		const struct nlattr *tb[ETHA_BIT_MAX + 1] = {};
++		const struct nlattr *tb[ETHTOOL_A_BIT_MAX + 1] = {};
 +		DECLARE_ATTR_TB_INFO(tb);
 +		unsigned int my_idx;
 +
-+		if (mnl_attr_get_type(bit) != ETHA_BITS_BIT)
++		if (mnl_attr_get_type(bit) != ETHTOOL_A_BITS_BIT)
 +			continue;
 +		ret = mnl_attr_parse_nested(bit, attr_cb, &tb_info);
 +		if (ret < 0)
 +			goto err;
 +		ret = -EFAULT;
-+		if (!tb[ETHA_BIT_INDEX])
++		if (!tb[ETHTOOL_A_BIT_INDEX])
 +			goto err;
 +
-+		my_idx = mnl_attr_get_u32(tb[ETHA_BIT_INDEX]);
++		my_idx = mnl_attr_get_u32(tb[ETHTOOL_A_BIT_INDEX]);
 +		if (my_idx == idx)
-+			return mask || tb[ETHA_BIT_VALUE];
++			return mask || tb[ETHTOOL_A_BIT_VALUE];
 +	}
 +
 +	return false;
@@ -667,7 +669,7 @@ index 000000000000..86291b620800
 +
 +bool bitset_is_empty(const struct nlattr *bitset, bool mask, int *retptr)
 +{
-+	const struct nlattr *bitset_tb[ETHA_BITSET_MAX + 1] = {};
++	const struct nlattr *bitset_tb[ETHTOOL_A_BITSET_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(bitset_tb);
 +	const struct nlattr *bits;
 +	const struct nlattr *bit;
@@ -678,8 +680,8 @@ index 000000000000..86291b620800
 +	if (ret < 0)
 +		goto err;
 +
-+	bits = mask ? bitset_tb[ETHA_BITSET_MASK] :
-+		      bitset_tb[ETHA_BITSET_VALUE];
++	bits = mask ? bitset_tb[ETHTOOL_A_BITSET_MASK] :
++		      bitset_tb[ETHTOOL_A_BITSET_VALUE];
 +	if (bits) {
 +		const uint32_t *bitmap =
 +			(const uint32_t *)mnl_attr_get_payload(bits);
@@ -695,22 +697,22 @@ index 000000000000..86291b620800
 +		return true;
 +	}
 +
-+	bits = bitset_tb[ETHA_BITSET_BITS];
++	bits = bitset_tb[ETHTOOL_A_BITSET_BITS];
 +	if (!bits)
 +		goto err;
 +	mnl_attr_for_each_nested(bit, bits) {
-+		const struct nlattr *tb[ETHA_BIT_MAX + 1] = {};
++		const struct nlattr *tb[ETHTOOL_A_BIT_MAX + 1] = {};
 +		DECLARE_ATTR_TB_INFO(tb);
 +
-+		if (mnl_attr_get_type(bit) != ETHA_BITS_BIT)
++		if (mnl_attr_get_type(bit) != ETHTOOL_A_BITS_BIT)
 +			continue;
-+		if (mask || bitset_tb[ETHA_BITSET_LIST])
++		if (mask || bitset_tb[ETHTOOL_A_BITSET_LIST])
 +			return false;
 +
 +		ret = mnl_attr_parse_nested(bit, attr_cb, &tb_info);
 +		if (ret < 0)
 +			goto err;
-+		if (tb[ETHA_BIT_VALUE])
++		if (tb[ETHTOOL_A_BIT_VALUE])
 +			return false;
 +	}
 +
@@ -724,7 +726,7 @@ index 000000000000..86291b620800
 +int walk_bitset(const struct nlattr *bitset, int ss_index,
 +		bitset_walk_callback cb, void *data)
 +{
-+	const struct nlattr *bitset_tb[ETHA_BITSET_MAX + 1] = {};
++	const struct nlattr *bitset_tb[ETHTOOL_A_BITSET_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(bitset_tb);
 +	const struct nlattr *bits;
 +	const struct nlattr *bit;
@@ -734,19 +736,19 @@ index 000000000000..86291b620800
 +	ret = mnl_attr_parse_nested(bitset, attr_cb, &bitset_tb_info);
 +	if (ret < 0)
 +		return ret;
-+	is_list = bitset_tb[ETHA_BITSET_LIST];
++	is_list = bitset_tb[ETHTOOL_A_BITSET_LIST];
 +
-+	bits = bitset_tb[ETHA_BITSET_VALUE];
++	bits = bitset_tb[ETHTOOL_A_BITSET_VALUE];
 +	if (bits) {
-+		const struct nlattr *mask = bitset_tb[ETHA_BITSET_MASK];
++		const struct nlattr *mask = bitset_tb[ETHTOOL_A_BITSET_MASK];
 +		const struct stringset *labels = global_stringset(ss_index);
 +		unsigned int count, nwords, idx;
 +		uint32_t *val_bm;
 +		uint32_t *mask_bm;
 +
-+		if (!bitset_tb[ETHA_BITSET_SIZE])
++		if (!bitset_tb[ETHTOOL_A_BITSET_SIZE])
 +			return -EFAULT;
-+		count = mnl_attr_get_u32(bitset_tb[ETHA_BITSET_SIZE]);
++		count = mnl_attr_get_u32(bitset_tb[ETHTOOL_A_BITSET_SIZE]);
 +		nwords = (count + 31) / 32;
 +		if ((mnl_attr_get_payload_len(bits) / 4 < nwords) ||
 +		    (mask && mnl_attr_get_payload_len(mask) / 4 < nwords))
@@ -761,25 +763,26 @@ index 000000000000..86291b620800
 +		return 0;
 +	}
 +
-+	bits = bitset_tb[ETHA_BITSET_BITS];
++	bits = bitset_tb[ETHTOOL_A_BITSET_BITS];
 +	if (!bits)
 +		return -EFAULT;
 +	mnl_attr_for_each_nested(bit, bits) {
-+		const struct nlattr *tb[ETHA_BIT_MAX + 1] = {};
++		const struct nlattr *tb[ETHTOOL_A_BIT_MAX + 1] = {};
 +		DECLARE_ATTR_TB_INFO(tb);
 +		const char *name;
 +		unsigned int idx;
 +
-+		if (mnl_attr_get_type(bit) != ETHA_BITS_BIT)
++		if (mnl_attr_get_type(bit) != ETHTOOL_A_BITS_BIT)
 +			continue;
 +
 +		ret = mnl_attr_parse_nested(bit, attr_cb, &tb_info);
-+		if (ret < 0 || !tb[ETHA_BIT_INDEX] || !tb[ETHA_BIT_NAME])
++		if (ret < 0 ||
++		    !tb[ETHTOOL_A_BIT_INDEX] || !tb[ETHTOOL_A_BIT_NAME])
 +			return -EFAULT;
 +
-+		idx = mnl_attr_get_u32(tb[ETHA_BIT_INDEX]);
-+		name = mnl_attr_get_str(tb[ETHA_BIT_NAME]);
-+		cb(idx, name, is_list || tb[ETHA_BIT_VALUE], data);
++		idx = mnl_attr_get_u32(tb[ETHTOOL_A_BIT_INDEX]);
++		name = mnl_attr_get_str(tb[ETHTOOL_A_BIT_NAME]);
++		cb(idx, name, is_list || tb[ETHTOOL_A_BIT_VALUE], data);
 +	}
 +
 +	return 0;
@@ -1045,7 +1048,7 @@ index 000000000000..86291b620800
 +
 +	if (!nest)
 +		return true;
-+	if (ethnla_put_strz(nlctx, ETHA_DEV_NAME, devname)) {
++	if (ethnla_put_strz(nlctx, ETHTOOL_A_DEV_NAME, devname)) {
 +		mnl_attr_nest_cancel(nlhdr, nest);
 +		return true;
 +	}
@@ -1056,21 +1059,21 @@ index 000000000000..86291b620800
 +
 +const char *get_dev_name(const struct nlattr *nest)
 +{
-+	const struct nlattr *dev_tb[ETHA_DEV_MAX + 1] = {};
++	const struct nlattr *dev_tb[ETHTOOL_A_DEV_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(dev_tb);
 +	int ret;
 +
 +	if (!nest)
 +		return NULL;
 +	ret = mnl_attr_parse_nested(nest, attr_cb, &dev_tb_info);
-+	if (ret < 0 || !dev_tb[ETHA_DEV_NAME])
++	if (ret < 0 || !dev_tb[ETHTOOL_A_DEV_NAME])
 +		return "(none)";
-+	return mnl_attr_get_str(dev_tb[ETHA_DEV_NAME]);
++	return mnl_attr_get_str(dev_tb[ETHTOOL_A_DEV_NAME]);
 +}
 +
 +int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname)
 +{
-+	const struct nlattr *dev_tb[ETHA_DEV_MAX + 1] = {};
++	const struct nlattr *dev_tb[ETHTOOL_A_DEV_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(dev_tb);
 +	int ret;
 +
@@ -1083,19 +1086,19 @@ index 000000000000..86291b620800
 +		return -EFAULT;
 +	ret = mnl_attr_parse_nested(nest, attr_cb, &dev_tb_info);
 +	if (ret < 0 ||
-+	    (ifindex && !dev_tb[ETHA_DEV_INDEX]) ||
-+	    (ifname && !dev_tb[ETHA_DEV_NAME]))
++	    (ifindex && !dev_tb[ETHTOOL_A_DEV_INDEX]) ||
++	    (ifname && !dev_tb[ETHTOOL_A_DEV_NAME]))
 +		return -EFAULT;
 +
 +	if (ifindex)
-+		*ifindex = mnl_attr_get_u32(dev_tb[ETHA_DEV_INDEX]);
++		*ifindex = mnl_attr_get_u32(dev_tb[ETHTOOL_A_DEV_INDEX]);
 +	if (ifname) {
-+		strncpy(ifname, mnl_attr_get_str(dev_tb[ETHA_DEV_NAME]),
++		strncpy(ifname, mnl_attr_get_str(dev_tb[ETHTOOL_A_DEV_NAME]),
 +			IFNAMSIZ);
 +		if (ifname[IFNAMSIZ - 1]) {
 +			ifname[IFNAMSIZ - 1] = '\0';
 +			fprintf(stderr, "kernel device name too long: '%s'\n",
-+				mnl_attr_get_str(dev_tb[ETHA_DEV_NAME]));
++				mnl_attr_get_str(dev_tb[ETHTOOL_A_DEV_NAME]));
 +			return -EFAULT;
 +		}
 +	}
@@ -1449,10 +1452,10 @@ index 000000000000..c8cd4cb9d35f
 +
 +#endif /* ETHTOOL_NETLINK_INT_H__ */
 diff --git a/uapi/linux/ethtool.h b/uapi/linux/ethtool.h
-index 02b3300a4e28..b22160143599 100644
+index 25777cb7bb2b..ea4a6f42e028 100644
 --- a/uapi/linux/ethtool.h
 +++ b/uapi/linux/ethtool.h
-@@ -561,6 +561,11 @@ struct ethtool_pauseparam {
+@@ -569,6 +569,11 @@ struct ethtool_pauseparam {
   * @ETH_SS_RSS_HASH_FUNCS: RSS hush function names
   * @ETH_SS_PHY_STATS: Statistic names, for use with %ETHTOOL_GPHYSTATS
   * @ETH_SS_PHY_TUNABLES: PHY tunable names
@@ -1464,7 +1467,7 @@ index 02b3300a4e28..b22160143599 100644
   */
  enum ethtool_stringset {
  	ETH_SS_TEST		= 0,
-@@ -572,6 +577,13 @@ enum ethtool_stringset {
+@@ -580,6 +585,13 @@ enum ethtool_stringset {
  	ETH_SS_TUNABLES,
  	ETH_SS_PHY_STATS,
  	ETH_SS_PHY_TUNABLES,
@@ -1478,7 +1481,7 @@ index 02b3300a4e28..b22160143599 100644
  };
  
  /**
-@@ -1731,6 +1743,7 @@ enum ethtool_reset_flags {
+@@ -1739,6 +1751,7 @@ enum ethtool_reset_flags {
  	ETH_RESET_ALL		= 0xffffffff,	/* All components used by this
  						 * interface, even if shared */
  };
@@ -1488,7 +1491,7 @@ index 02b3300a4e28..b22160143599 100644
  
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..344c86a60244
+index 000000000000..ed032e2015e1
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
 @@ -0,0 +1,556 @@
@@ -1529,135 +1532,135 @@ index 000000000000..344c86a60244
 +/* device specification */
 +
 +enum {
-+	ETHA_DEV_UNSPEC,
-+	ETHA_DEV_INDEX,				/* u32 */
-+	ETHA_DEV_NAME,				/* string */
++	ETHTOOL_A_DEV_UNSPEC,
++	ETHTOOL_A_DEV_INDEX,			/* u32 */
++	ETHTOOL_A_DEV_NAME,			/* string */
 +
-+	__ETHA_DEV_CNT,
-+	ETHA_DEV_MAX = (__ETHA_DEV_CNT - 1)
++	__ETHTOOL_A_DEV_CNT,
++	ETHTOOL_A_DEV_MAX = (__ETHTOOL_A_DEV_CNT - 1)
 +};
 +
 +/* bit sets */
 +
 +enum {
-+	ETHA_BIT_UNSPEC,
-+	ETHA_BIT_INDEX,				/* u32 */
-+	ETHA_BIT_NAME,				/* string */
-+	ETHA_BIT_VALUE,				/* flag */
++	ETHTOOL_A_BIT_UNSPEC,
++	ETHTOOL_A_BIT_INDEX,			/* u32 */
++	ETHTOOL_A_BIT_NAME,			/* string */
++	ETHTOOL_A_BIT_VALUE,			/* flag */
 +
-+	__ETHA_BIT_CNT,
-+	ETHA_BIT_MAX = (__ETHA_BIT_CNT - 1)
++	__ETHTOOL_A_BIT_CNT,
++	ETHTOOL_A_BIT_MAX = (__ETHTOOL_A_BIT_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_BITS_UNSPEC,
-+	ETHA_BITS_BIT,
++	ETHTOOL_A_BITS_UNSPEC,
++	ETHTOOL_A_BITS_BIT,
 +
-+	__ETHA_BITS_CNT,
-+	ETHA_BITS_MAX = (__ETHA_BITS_CNT - 1)
++	__ETHTOOL_A_BITS_CNT,
++	ETHTOOL_A_BITS_MAX = (__ETHTOOL_A_BITS_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_BITSET_UNSPEC,
-+	ETHA_BITSET_LIST,			/* flag */
-+	ETHA_BITSET_SIZE,			/* u32 */
-+	ETHA_BITSET_BITS,			/* nest - ETHA_BITS_* */
-+	ETHA_BITSET_VALUE,			/* binary */
-+	ETHA_BITSET_MASK,			/* binary */
++	ETHTOOL_A_BITSET_UNSPEC,
++	ETHTOOL_A_BITSET_LIST,			/* flag */
++	ETHTOOL_A_BITSET_SIZE,			/* u32 */
++	ETHTOOL_A_BITSET_BITS,			/* nest - ETHTOOL_A_BITS_* */
++	ETHTOOL_A_BITSET_VALUE,			/* binary */
++	ETHTOOL_A_BITSET_MASK,			/* binary */
 +
-+	__ETHA_BITSET_CNT,
-+	ETHA_BITSET_MAX = (__ETHA_BITSET_CNT - 1)
++	__ETHTOOL_A_BITSET_CNT,
++	ETHTOOL_A_BITSET_MAX = (__ETHTOOL_A_BITSET_CNT - 1)
 +};
 +
 +/* events */
 +
 +enum {
-+	ETHA_NEWDEV_UNSPEC,
-+	ETHA_NEWDEV_DEV,			/* nest - ETHA_DEV_* */
++	ETHTOOL_A_NEWDEV_UNSPEC,
++	ETHTOOL_A_NEWDEV_DEV,			/* nest - ETHTOOL_A_DEV_* */
 +
-+	__ETHA_NEWDEV_CNT,
-+	ETHA_NEWDEV_MAX = (__ETHA_NEWDEV_CNT - 1)
++	__ETHTOOL_A_NEWDEV_CNT,
++	ETHTOOL_A_NEWDEV_MAX = (__ETHTOOL_A_NEWDEV_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_DELDEV_UNSPEC,
-+	ETHA_DELDEV_DEV,			/* nest - ETHA_DEV_* */
++	ETHTOOL_A_DELDEV_UNSPEC,
++	ETHTOOL_A_DELDEV_DEV,			/* nest - ETHTOOL_A_DEV_* */
 +
-+	__ETHA_DELDEV_CNT,
-+	ETHA_DELDEV_MAX = (__ETHA_DELDEV_CNT - 1)
++	__ETHTOOL_A_DELDEV_CNT,
++	ETHTOOL_A_DELDEV_MAX = (__ETHTOOL_A_DELDEV_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_RENAMEDEV_UNSPEC,
-+	ETHA_RENAMEDEV_DEV,			/* nest - ETHA_DEV_* */
++	ETHTOOL_A_RENAMEDEV_UNSPEC,
++	ETHTOOL_A_RENAMEDEV_DEV,		/* nest - ETHTOOL_A_DEV_* */
 +
-+	__ETHA_RENAMEDEV_CNT,
-+	ETHA_RENAMEDEV_MAX = (__ETHA_RENAMEDEV_CNT - 1)
++	__ETHTOOL_A_RENAMEDEV_CNT,
++	ETHTOOL_A_RENAMEDEV_MAX = (__ETHTOOL_A_RENAMEDEV_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_EVENT_UNSPEC,
-+	ETHA_EVENT_NEWDEV,			/* nest - ETHA_NEWDEV_* */
-+	ETHA_EVENT_DELDEV,			/* nest - ETHA_DELDEV_* */
-+	ETHA_EVENT_RENAMEDEV,			/* nest - ETHA_RENAMEDEV_* */
++	ETHTOOL_A_EVENT_UNSPEC,
++	ETHTOOL_A_EVENT_NEWDEV,			/* nest - ETHTOOL_A_NEWDEV_* */
++	ETHTOOL_A_EVENT_DELDEV,			/* nest - ETHTOOL_A_DELDEV_* */
++	ETHTOOL_A_EVENT_RENAMEDEV,		/* nest - ETHTOOL_A_RENAMEDEV_* */
 +
-+	__ETHA_EVENT_CNT,
-+	ETHA_EVENT_MAX = (__ETHA_EVENT_CNT - 1)
++	__ETHTOOL_A_EVENT_CNT,
++	ETHTOOL_A_EVENT_MAX = (__ETHTOOL_A_EVENT_CNT - 1)
 +};
 +
 +/* string sets */
 +
 +enum {
-+	ETHA_STRING_UNSPEC,
-+	ETHA_STRING_INDEX,			/* u32 */
-+	ETHA_STRING_VALUE,			/* string */
++	ETHTOOL_A_STRING_UNSPEC,
++	ETHTOOL_A_STRING_INDEX,			/* u32 */
++	ETHTOOL_A_STRING_VALUE,			/* string */
 +
-+	__ETHA_STRING_CNT,
-+	ETHA_STRING_MAX = (__ETHA_STRING_CNT - 1)
++	__ETHTOOL_A_STRING_CNT,
++	ETHTOOL_A_STRING_MAX = (__ETHTOOL_A_STRING_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_STRINGS_UNSPEC,
-+	ETHA_STRINGS_STRING,			/* nest - ETHA_STRINGS_* */
++	ETHTOOL_A_STRINGS_UNSPEC,
++	ETHTOOL_A_STRINGS_STRING,		/* nest - ETHTOOL_A_STRINGS_* */
 +
-+	__ETHA_STRINGS_CNT,
-+	ETHA_STRINGS_MAX = (__ETHA_STRINGS_CNT - 1)
++	__ETHTOOL_A_STRINGS_CNT,
++	ETHTOOL_A_STRINGS_MAX = (__ETHTOOL_A_STRINGS_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_STRINGSET_UNSPEC,
-+	ETHA_STRINGSET_ID,			/* u32 */
-+	ETHA_STRINGSET_COUNT,			/* u32 */
-+	ETHA_STRINGSET_STRINGS,			/* nest - ETHA_STRINGS_* */
++	ETHTOOL_A_STRINGSET_UNSPEC,
++	ETHTOOL_A_STRINGSET_ID,			/* u32 */
++	ETHTOOL_A_STRINGSET_COUNT,		/* u32 */
++	ETHTOOL_A_STRINGSET_STRINGS,		/* nest - ETHTOOL_A_STRINGS_* */
 +
-+	__ETHA_STRINGSET_CNT,
-+	ETHA_STRINGSET_MAX = (__ETHA_STRINGSET_CNT - 1)
++	__ETHTOOL_A_STRINGSET_CNT,
++	ETHTOOL_A_STRINGSET_MAX = (__ETHTOOL_A_STRINGSET_CNT - 1)
 +};
 +
 +/* GET_STRINGSET / SET_STRINGSET */
 +
 +enum {
-+	ETHA_STRSET_UNSPEC,
-+	ETHA_STRSET_DEV,			/* nest - ETHA_DEV_* */
-+	ETHA_STRSET_COUNTS,			/* flag */
-+	ETHA_STRSET_STRINGSET,			/* nest - ETHA_STRSET_* */
++	ETHTOOL_A_STRSET_UNSPEC,
++	ETHTOOL_A_STRSET_DEV,			/* nest - ETHTOOL_A_DEV_* */
++	ETHTOOL_A_STRSET_COUNTS,		/* flag */
++	ETHTOOL_A_STRSET_STRINGSET,		/* nest - ETHTOOL_A_STRSET_* */
 +
-+	__ETHA_STRSET_CNT,
-+	ETHA_STRSET_MAX = (__ETHA_STRSET_CNT - 1)
++	__ETHTOOL_A_STRSET_CNT,
++	ETHTOOL_A_STRSET_MAX = (__ETHTOOL_A_STRSET_CNT - 1)
 +};
 +
 +/* GET_INFO / SET_INFO */
 +
 +enum {
-+	ETHA_INFO_UNSPEC,
-+	ETHA_INFO_DEV,				/* nest - ETHA_DEV_* */
-+	ETHA_INFO_INFOMASK,			/* u32 */
-+	ETHA_INFO_COMPACT,			/* flag */
-+	ETHA_INFO_DRVINFO,			/* nest - ETHA_DRVINFO_* */
-+	ETHA_INFO_TSINFO,			/* nest - ETHA_TSINFO_* */
++	ETHTOOL_A_INFO_UNSPEC,
++	ETHTOOL_A_INFO_DEV,			/* nest - ETHTOOL_A_DEV_* */
++	ETHTOOL_A_INFO_INFOMASK,		/* u32 */
++	ETHTOOL_A_INFO_COMPACT,			/* flag */
++	ETHTOOL_A_INFO_DRVINFO,			/* nest - ETHTOOL_A_DRVINFO_* */
++	ETHTOOL_A_INFO_TSINFO,			/* nest - ETHTOOL_A_TSINFO_* */
 +
-+	__ETHA_INFO_CNT,
-+	ETHA_INFO_MAX = (__ETHA_INFO_CNT - 1)
++	__ETHTOOL_A_INFO_CNT,
++	ETHTOOL_A_INFO_MAX = (__ETHTOOL_A_INFO_CNT - 1)
 +};
 +
 +#define ETH_INFO_IM_DRVINFO			(1U << 0)
@@ -1667,44 +1670,44 @@ index 000000000000..344c86a60244
 +			 ETH_INFO_IM_TSINFO)
 +
 +enum {
-+	ETHA_DRVINFO_UNSPEC,
-+	ETHA_DRVINFO_DRIVER,			/* string */
-+	ETHA_DRVINFO_FWVERSION,			/* string */
-+	ETHA_DRVINFO_BUSINFO,			/* string */
-+	ETHA_DRVINFO_EROM_VER,			/* string */
++	ETHTOOL_A_DRVINFO_UNSPEC,
++	ETHTOOL_A_DRVINFO_DRIVER,		/* string */
++	ETHTOOL_A_DRVINFO_FWVERSION,		/* string */
++	ETHTOOL_A_DRVINFO_BUSINFO,		/* string */
++	ETHTOOL_A_DRVINFO_EROM_VER,		/* string */
 +
-+	__ETHA_DRVINFO_CNT,
-+	ETHA_DRVINFO_MAX = (__ETHA_DRVINFO_CNT - 1)
++	__ETHTOOL_A_DRVINFO_CNT,
++	ETHTOOL_A_DRVINFO_MAX = (__ETHTOOL_A_DRVINFO_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_TSINFO_UNSPEC,
-+	ETHA_TSINFO_TIMESTAMPING,		/* bitset */
-+	ETHA_TSINFO_PHC_INDEX,			/* u32 */
-+	ETHA_TSINFO_TX_TYPES,			/* bitset */
-+	ETHA_TSINFO_RX_FILTERS,			/* bitset */
++	ETHTOOL_A_TSINFO_UNSPEC,
++	ETHTOOL_A_TSINFO_TIMESTAMPING,		/* bitset */
++	ETHTOOL_A_TSINFO_PHC_INDEX,		/* u32 */
++	ETHTOOL_A_TSINFO_TX_TYPES,		/* bitset */
++	ETHTOOL_A_TSINFO_RX_FILTERS,		/* bitset */
 +
-+	__ETHA_TSINFO_CNT,
-+	ETHA_TSINFO_MAX = (__ETHA_TSINFO_CNT - 1)
++	__ETHTOOL_A_TSINFO_CNT,
++	ETHTOOL_A_TSINFO_MAX = (__ETHTOOL_A_TSINFO_CNT - 1)
 +};
 +
 +/* GET_SETTINGS / SET_SETTINGS */
 +
 +enum {
-+	ETHA_SETTINGS_UNSPEC,
-+	ETHA_SETTINGS_DEV,			/* nest - ETHA_DEV_* */
-+	ETHA_SETTINGS_INFOMASK,			/* u32 */
-+	ETHA_SETTINGS_COMPACT,			/* flag */
-+	ETHA_SETTINGS_LINK_INFO,		/* nest - ETHA_LINKINFO_* */
-+	ETHA_SETTINGS_LINK_MODES,		/* nest - ETHA_LINKMODES_* */
-+	ETHA_SETTINGS_LINK_STATE,		/* nest - ETHA_LINKSTATE_* */
-+	ETHA_SETTINGS_WOL,			/* nest - ETHA_WOL_* */
-+	ETHA_SETTINGS_DEBUG,			/* nest - ETHA_DEBUG_* */
-+	ETHA_SETTINGS_FEATURES,			/* nest - ETHA_FEATURES_* */
-+	ETHA_SETTINGS_PRIV_FLAGS,		/* bitset */
++	ETHTOOL_A_SETTINGS_UNSPEC,
++	ETHTOOL_A_SETTINGS_DEV,			/* nest - ETHTOOL_A_DEV_* */
++	ETHTOOL_A_SETTINGS_INFOMASK,		/* u32 */
++	ETHTOOL_A_SETTINGS_COMPACT,		/* flag */
++	ETHTOOL_A_SETTINGS_LINK_INFO,		/* nest - ETHTOOL_A_LINKINFO_* */
++	ETHTOOL_A_SETTINGS_LINK_MODES,		/* nest - ETHTOOL_A_LINKMODES_* */
++	ETHTOOL_A_SETTINGS_LINK_STATE,		/* nest - ETHTOOL_A_LINKSTATE_* */
++	ETHTOOL_A_SETTINGS_WOL,			/* nest - ETHTOOL_A_WOL_* */
++	ETHTOOL_A_SETTINGS_DEBUG,		/* nest - ETHTOOL_A_DEBUG_* */
++	ETHTOOL_A_SETTINGS_FEATURES,		/* nest - ETHTOOL_A_FEATURES_* */
++	ETHTOOL_A_SETTINGS_PRIV_FLAGS,		/* bitset */
 +
-+	__ETHA_SETTINGS_CNT,
-+	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
++	__ETHTOOL_A_SETTINGS_CNT,
++	ETHTOOL_A_SETTINGS_MAX = (__ETHTOOL_A_SETTINGS_CNT - 1)
 +};
 +
 +#define ETH_SETTINGS_IM_LINKINFO		(1U << 0)
@@ -1724,82 +1727,82 @@ index 000000000000..344c86a60244
 +			     ETH_SETTINGS_IM_PRIVFLAGS)
 +
 +enum {
-+	ETHA_LINKINFO_UNSPEC,
-+	ETHA_LINKINFO_PORT,			/* u8 */
-+	ETHA_LINKINFO_PHYADDR,			/* u8 */
-+	ETHA_LINKINFO_TP_MDIX,			/* u8 */
-+	ETHA_LINKINFO_TP_MDIX_CTRL,		/* u8 */
-+	ETHA_LINKINFO_TRANSCEIVER,		/* u8 */
++	ETHTOOL_A_LINKINFO_UNSPEC,
++	ETHTOOL_A_LINKINFO_PORT,		/* u8 */
++	ETHTOOL_A_LINKINFO_PHYADDR,		/* u8 */
++	ETHTOOL_A_LINKINFO_TP_MDIX,		/* u8 */
++	ETHTOOL_A_LINKINFO_TP_MDIX_CTRL,	/* u8 */
++	ETHTOOL_A_LINKINFO_TRANSCEIVER,		/* u8 */
 +
-+	__ETHA_LINKINFO_CNT,
-+	ETHA_LINKINFO_MAX = (__ETHA_LINKINFO_CNT - 1)
++	__ETHTOOL_A_LINKINFO_CNT,
++	ETHTOOL_A_LINKINFO_MAX = (__ETHTOOL_A_LINKINFO_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_LINKMODES_UNSPEC,
-+	ETHA_LINKMODES_AUTONEG,			/* u8 */
-+	ETHA_LINKMODES_OURS,			/* bitset */
-+	ETHA_LINKMODES_PEER,			/* bitset */
-+	ETHA_LINKMODES_SPEED,			/* u32 */
-+	ETHA_LINKMODES_DUPLEX,			/* u8 */
++	ETHTOOL_A_LINKMODES_UNSPEC,
++	ETHTOOL_A_LINKMODES_AUTONEG,		/* u8 */
++	ETHTOOL_A_LINKMODES_OURS,		/* bitset */
++	ETHTOOL_A_LINKMODES_PEER,		/* bitset */
++	ETHTOOL_A_LINKMODES_SPEED,		/* u32 */
++	ETHTOOL_A_LINKMODES_DUPLEX,		/* u8 */
 +
-+	__ETHA_LINKMODES_CNT,
-+	ETHA_LINKMODES_MAX = (__ETHA_LINKMODES_CNT - 1)
++	__ETHTOOL_A_LINKMODES_CNT,
++	ETHTOOL_A_LINKMODES_MAX = (__ETHTOOL_A_LINKMODES_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_LINKSTATE_UNSPEC,
-+	ETHA_LINKSTATE_LINK,			/* u8 */
++	ETHTOOL_A_LINKSTATE_UNSPEC,
++	ETHTOOL_A_LINKSTATE_LINK,		/* u8 */
 +
-+	__ETHA_LINKSTATE_CNT,
-+	ETHA_LINKSTATE_MAX = (__ETHA_LINKSTATE_CNT - 1)
++	__ETHTOOL_A_LINKSTATE_CNT,
++	ETHTOOL_A_LINKSTATE_MAX = (__ETHTOOL_A_LINKSTATE_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_WOL_UNSPEC,
-+	ETHA_WOL_MODES,				/* bitfield32 */
-+	ETHA_WOL_SOPASS,			/* binary */
++	ETHTOOL_A_WOL_UNSPEC,
++	ETHTOOL_A_WOL_MODES,			/* bitfield32 */
++	ETHTOOL_A_WOL_SOPASS,			/* binary */
 +
-+	__ETHA_WOL_CNT,
-+	ETHA_WOL_MAX = (__ETHA_WOL_CNT - 1)
++	__ETHTOOL_A_WOL_CNT,
++	ETHTOOL_A_WOL_MAX = (__ETHTOOL_A_WOL_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_DEBUG_UNSPEC,
-+	ETHA_DEBUG_MSG_MASK,			/* bitfield32 */
++	ETHTOOL_A_DEBUG_UNSPEC,
++	ETHTOOL_A_DEBUG_MSG_MASK,		/* bitfield32 */
 +
-+	__ETHA_DEBUG_CNT,
-+	ETHA_DEBUG_MAX = (__ETHA_DEBUG_CNT - 1)
++	__ETHTOOL_A_DEBUG_CNT,
++	ETHTOOL_A_DEBUG_MAX = (__ETHTOOL_A_DEBUG_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_FEATURES_UNSPEC,
-+	ETHA_FEATURES_HW,			/* bitset */
-+	ETHA_FEATURES_WANTED,			/* bitset */
-+	ETHA_FEATURES_ACTIVE,			/* bitset */
-+	ETHA_FEATURES_NOCHANGE,			/* bitset */
-+	ETHA_FEATURES_WANT_DIFF,		/* flag */
++	ETHTOOL_A_FEATURES_UNSPEC,
++	ETHTOOL_A_FEATURES_HW,			/* bitset */
++	ETHTOOL_A_FEATURES_WANTED,		/* bitset */
++	ETHTOOL_A_FEATURES_ACTIVE,		/* bitset */
++	ETHTOOL_A_FEATURES_NOCHANGE,		/* bitset */
++	ETHTOOL_A_FEATURES_WANT_DIFF,		/* flag */
 +
-+	__ETHA_FEATURES_CNT,
-+	ETHA_FEATURES_MAX = (__ETHA_FEATURES_CNT - 1)
++	__ETHTOOL_A_FEATURES_CNT,
++	ETHTOOL_A_FEATURES_MAX = (__ETHTOOL_A_FEATURES_CNT - 1)
 +};
 +
 +/* GET_PARAMS / SET_PARAMS */
 +
 +enum {
-+	ETHA_PARAMS_UNSPEC,
-+	ETHA_PARAMS_DEV,			/* nest - ETHA_DEV_* */
-+	ETHA_PARAMS_INFOMASK,			/* u32 */
-+	ETHA_PARAMS_COMPACT,			/* flag */
-+	ETHA_PARAMS_COALESCE,			/* nest - ETHA_COALESCE_* */
-+	ETHA_PARAMS_RING,			/* nest - ETHA_RING_* */
-+	ETHA_PARAMS_PAUSE,			/* nest - ETHA_PAUSE_* */
-+	ETHA_PARAMS_CHANNELS,			/* nest - ETHA_CHANNELS_* */
-+	ETHA_PARAMS_EEE,			/* nest - ETHA_EEE_* */
-+	ETHA_PARAMS_FEC,			/* nest - ETHA_FEC_* */
++	ETHTOOL_A_PARAMS_UNSPEC,
++	ETHTOOL_A_PARAMS_DEV,			/* nest - ETHTOOL_A_DEV_* */
++	ETHTOOL_A_PARAMS_INFOMASK,		/* u32 */
++	ETHTOOL_A_PARAMS_COMPACT,		/* flag */
++	ETHTOOL_A_PARAMS_COALESCE,		/* nest - ETHTOOL_A_COALESCE_* */
++	ETHTOOL_A_PARAMS_RING,			/* nest - ETHTOOL_A_RING_* */
++	ETHTOOL_A_PARAMS_PAUSE,			/* nest - ETHTOOL_A_PAUSE_* */
++	ETHTOOL_A_PARAMS_CHANNELS,		/* nest - ETHTOOL_A_CHANNELS_* */
++	ETHTOOL_A_PARAMS_EEE,			/* nest - ETHTOOL_A_EEE_* */
++	ETHTOOL_A_PARAMS_FEC,			/* nest - ETHTOOL_A_FEC_* */
 +
-+	__ETHA_PARAMS_CNT,
-+	ETHA_PARAMS_MAX = (__ETHA_PARAMS_CNT - 1)
++	__ETHTOOL_A_PARAMS_CNT,
++	ETHTOOL_A_PARAMS_MAX = (__ETHTOOL_A_PARAMS_CNT - 1)
 +};
 +
 +#define ETH_PARAMS_IM_COALESCE			(1U << 0)
@@ -1817,149 +1820,149 @@ index 000000000000..344c86a60244
 +			   ETH_PARAMS_IM_FEC)
 +
 +enum {
-+	ETHA_COALESCE_UNSPEC,
-+	ETHA_COALESCE_RX_USECS,			/* u32 */
-+	ETHA_COALESCE_RX_MAXFRM,		/* u32 */
-+	ETHA_COALESCE_RX_USECS_IRQ,		/* u32 */
-+	ETHA_COALESCE_RX_MAXFRM_IRQ,		/* u32 */
-+	ETHA_COALESCE_RX_USECS_LOW,		/* u32 */
-+	ETHA_COALESCE_RX_MAXFRM_LOW,		/* u32 */
-+	ETHA_COALESCE_RX_USECS_HIGH,		/* u32 */
-+	ETHA_COALESCE_RX_MAXFRM_HIGH,		/* u32 */
-+	ETHA_COALESCE_TX_USECS,			/* u32 */
-+	ETHA_COALESCE_TX_MAXFRM,		/* u32 */
-+	ETHA_COALESCE_TX_USECS_IRQ,		/* u32 */
-+	ETHA_COALESCE_TX_MAXFRM_IRQ,		/* u32 */
-+	ETHA_COALESCE_TX_USECS_LOW,		/* u32 */
-+	ETHA_COALESCE_TX_MAXFRM_LOW,		/* u32 */
-+	ETHA_COALESCE_TX_USECS_HIGH,		/* u32 */
-+	ETHA_COALESCE_TX_MAXFRM_HIGH,		/* u32 */
-+	ETHA_COALESCE_PKT_RATE_LOW,		/* u32 */
-+	ETHA_COALESCE_PKT_RATE_HIGH,		/* u32 */
-+	ETHA_COALESCE_RX_USE_ADAPTIVE,		/* u8 */
-+	ETHA_COALESCE_TX_USE_ADAPTIVE,		/* u8 */
-+	ETHA_COALESCE_RATE_SAMPLE_INTERVAL,	/* u32 */
-+	ETHA_COALESCE_STATS_BLOCK_USECS,	/* u32 */
++	ETHTOOL_A_COALESCE_UNSPEC,
++	ETHTOOL_A_COALESCE_RX_USECS,		/* u32 */
++	ETHTOOL_A_COALESCE_RX_MAXFRM,		/* u32 */
++	ETHTOOL_A_COALESCE_RX_USECS_IRQ,	/* u32 */
++	ETHTOOL_A_COALESCE_RX_MAXFRM_IRQ,	/* u32 */
++	ETHTOOL_A_COALESCE_RX_USECS_LOW,	/* u32 */
++	ETHTOOL_A_COALESCE_RX_MAXFRM_LOW,	/* u32 */
++	ETHTOOL_A_COALESCE_RX_USECS_HIGH,	/* u32 */
++	ETHTOOL_A_COALESCE_RX_MAXFRM_HIGH,	/* u32 */
++	ETHTOOL_A_COALESCE_TX_USECS,		/* u32 */
++	ETHTOOL_A_COALESCE_TX_MAXFRM,		/* u32 */
++	ETHTOOL_A_COALESCE_TX_USECS_IRQ,	/* u32 */
++	ETHTOOL_A_COALESCE_TX_MAXFRM_IRQ,	/* u32 */
++	ETHTOOL_A_COALESCE_TX_USECS_LOW,	/* u32 */
++	ETHTOOL_A_COALESCE_TX_MAXFRM_LOW,	/* u32 */
++	ETHTOOL_A_COALESCE_TX_USECS_HIGH,	/* u32 */
++	ETHTOOL_A_COALESCE_TX_MAXFRM_HIGH,	/* u32 */
++	ETHTOOL_A_COALESCE_PKT_RATE_LOW,	/* u32 */
++	ETHTOOL_A_COALESCE_PKT_RATE_HIGH,	/* u32 */
++	ETHTOOL_A_COALESCE_RX_USE_ADAPTIVE,	/* u8 */
++	ETHTOOL_A_COALESCE_TX_USE_ADAPTIVE,	/* u8 */
++	ETHTOOL_A_COALESCE_RATE_SAMPLE_INTERVAL, /* u32 */
++	ETHTOOL_A_COALESCE_STATS_BLOCK_USECS,	/* u32 */
 +
-+	__ETHA_COALESCE_CNT,
-+	ETHA_COALESCE_MAX = (__ETHA_COALESCE_CNT - 1)
++	__ETHTOOL_A_COALESCE_CNT,
++	ETHTOOL_A_COALESCE_MAX = (__ETHTOOL_A_COALESCE_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_RING_UNSPEC,
-+	ETHA_RING_RX_MAX_PENDING,		/* u32 */
-+	ETHA_RING_RX_MINI_MAX_PENDING,		/* u32 */
-+	ETHA_RING_RX_JUMBO_MAX_PENDING,		/* u32 */
-+	ETHA_RING_TX_MAX_PENDING,		/* u32 */
-+	ETHA_RING_RX_PENDING,			/* u32 */
-+	ETHA_RING_RX_MINI_PENDING,		/* u32 */
-+	ETHA_RING_RX_JUMBO_PENDING,		/* u32 */
-+	ETHA_RING_TX_PENDING,			/* u32 */
++	ETHTOOL_A_RING_UNSPEC,
++	ETHTOOL_A_RING_RX_MAX_PENDING,		/* u32 */
++	ETHTOOL_A_RING_RX_MINI_MAX_PENDING,	/* u32 */
++	ETHTOOL_A_RING_RX_JUMBO_MAX_PENDING,	/* u32 */
++	ETHTOOL_A_RING_TX_MAX_PENDING,		/* u32 */
++	ETHTOOL_A_RING_RX_PENDING,		/* u32 */
++	ETHTOOL_A_RING_RX_MINI_PENDING,		/* u32 */
++	ETHTOOL_A_RING_RX_JUMBO_PENDING,	/* u32 */
++	ETHTOOL_A_RING_TX_PENDING,		/* u32 */
 +
-+	__ETHA_RING_CNT,
-+	ETHA_RING_MAX = (__ETHA_RING_CNT - 1)
++	__ETHTOOL_A_RING_CNT,
++	ETHTOOL_A_RING_MAX = (__ETHTOOL_A_RING_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_PAUSE_UNSPEC,
-+	ETHA_PAUSE_AUTONEG,			/* u8 */
-+	ETHA_PAUSE_RX,				/* u8 */
-+	ETHA_PAUSE_TX,				/* u8 */
++	ETHTOOL_A_PAUSE_UNSPEC,
++	ETHTOOL_A_PAUSE_AUTONEG,		/* u8 */
++	ETHTOOL_A_PAUSE_RX,			/* u8 */
++	ETHTOOL_A_PAUSE_TX,			/* u8 */
 +
-+	__ETHA_PAUSE_CNT,
-+	ETHA_PAUSE_MAX = (__ETHA_PAUSE_CNT - 1)
++	__ETHTOOL_A_PAUSE_CNT,
++	ETHTOOL_A_PAUSE_MAX = (__ETHTOOL_A_PAUSE_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_CHANNELS_UNSPEC,
-+	ETHA_CHANNELS_MAX_RX,			/* u32 */
-+	ETHA_CHANNELS_MAX_TX,			/* u32 */
-+	ETHA_CHANNELS_MAX_OTHER,		/* u32 */
-+	ETHA_CHANNELS_MAX_COMBINED,		/* u32 */
-+	ETHA_CHANNELS_RX_COUNT,			/* u32 */
-+	ETHA_CHANNELS_TX_COUNT,			/* u32 */
-+	ETHA_CHANNELS_OTHER_COUNT,		/* u32 */
-+	ETHA_CHANNELS_COMBINED_COUNT,		/* u32 */
++	ETHTOOL_A_CHANNELS_UNSPEC,
++	ETHTOOL_A_CHANNELS_MAX_RX,		/* u32 */
++	ETHTOOL_A_CHANNELS_MAX_TX,		/* u32 */
++	ETHTOOL_A_CHANNELS_MAX_OTHER,		/* u32 */
++	ETHTOOL_A_CHANNELS_MAX_COMBINED,	/* u32 */
++	ETHTOOL_A_CHANNELS_RX_COUNT,		/* u32 */
++	ETHTOOL_A_CHANNELS_TX_COUNT,		/* u32 */
++	ETHTOOL_A_CHANNELS_OTHER_COUNT,		/* u32 */
++	ETHTOOL_A_CHANNELS_COMBINED_COUNT,	/* u32 */
 +
-+	__ETHA_CHANNELS_CNT,
-+	ETHA_CHANNELS_MAX = (__ETHA_CHANNELS_CNT - 1)
++	__ETHTOOL_A_CHANNELS_CNT,
++	ETHTOOL_A_CHANNELS_MAX = (__ETHTOOL_A_CHANNELS_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_EEE_UNSPEC,
-+	ETHA_EEE_LINK_MODES,			/* bitset */
-+	ETHA_EEE_PEER_MODES,			/* bitset */
-+	ETHA_EEE_ACTIVE,			/* u8 */
-+	ETHA_EEE_ENABLED,			/* u8 */
-+	ETHA_EEE_TX_LPI_ENABLED,		/* u8 */
-+	ETHA_EEE_TX_LPI_TIMER,			/* u32 */
++	ETHTOOL_A_EEE_UNSPEC,
++	ETHTOOL_A_EEE_LINK_MODES,		/* bitset */
++	ETHTOOL_A_EEE_PEER_MODES,		/* bitset */
++	ETHTOOL_A_EEE_ACTIVE,			/* u8 */
++	ETHTOOL_A_EEE_ENABLED,			/* u8 */
++	ETHTOOL_A_EEE_TX_LPI_ENABLED,		/* u8 */
++	ETHTOOL_A_EEE_TX_LPI_TIMER,		/* u32 */
 +
-+	__ETHA_EEE_CNT,
-+	ETHA_EEE_MAX = (__ETHA_EEE_CNT - 1)
++	__ETHTOOL_A_EEE_CNT,
++	ETHTOOL_A_EEE_MAX = (__ETHTOOL_A_EEE_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_FEC_UNSPEC,
-+	ETHA_FEC_MODES,				/* bitfield32 */
++	ETHTOOL_A_FEC_UNSPEC,
++	ETHTOOL_A_FEC_MODES,			/* bitfield32 */
 +
-+	__ETHA_FEC_CNT,
-+	ETHA_FEC_MAX = (__ETHA_FEC_CNT - 1)
++	__ETHTOOL_A_FEC_CNT,
++	ETHTOOL_A_FEC_MAX = (__ETHTOOL_A_FEC_CNT - 1)
 +};
 +
 +/* ACT_NWAY_RST */
 +
 +enum {
-+	ETHA_NWAYRST_UNSPEC,
-+	ETHA_NWAYRST_DEV,			/* nest - ETHA_DEV_* */
++	ETHTOOL_A_NWAYRST_UNSPEC,
++	ETHTOOL_A_NWAYRST_DEV,			/* nest - ETHTOOL_A_DEV_* */
 +
-+	__ETHA_NWAYRST_CNT,
-+	ETHA_NWAYRST_MAX = (__ETHA_NWAYRST_CNT - 1)
++	__ETHTOOL_A_NWAYRST_CNT,
++	ETHTOOL_A_NWAYRST_MAX = (__ETHTOOL_A_NWAYRST_CNT - 1)
 +};
 +
 +/* ACT_PHYS_ID */
 +
 +enum {
-+	ETHA_PHYSID_UNSPEC,
-+	ETHA_PHYSID_DEV,			/* nest - ETHA_DEV_* */
-+	ETHA_PHYSID_LENGTH,			/* u32 */
++	ETHTOOL_A_PHYSID_UNSPEC,
++	ETHTOOL_A_PHYSID_DEV,			/* nest - ETHTOOL_A_DEV_* */
++	ETHTOOL_A_PHYSID_LENGTH,		/* u32 */
 +
-+	__ETHA_PHYSID_CNT,
-+	ETHA_PHYSID_MAX = (__ETHA_PHYSID_CNT - 1)
++	__ETHTOOL_A_PHYSID_CNT,
++	ETHTOOL_A_PHYSID_MAX = (__ETHTOOL_A_PHYSID_CNT - 1)
 +};
 +
 +/* ACT_RESET */
 +
 +enum {
-+	ETHA_RESET_UNSPEC,
-+	ETHA_RESET_DEV,				/* nest - ETHA_DEV_* */
-+	ETHA_RESET_COMPACT,			/* flag */
-+	ETHA_RESET_ALL,				/* flag */
-+	ETHA_RESET_ALL_DEDICATED,		/* flag */
-+	ETHA_RESET_DEDICATED,			/* bitset */
-+	ETHA_RESET_SHARED,			/* bitset */
++	ETHTOOL_A_RESET_UNSPEC,
++	ETHTOOL_A_RESET_DEV,			/* nest - ETHTOOL_A_DEV_* */
++	ETHTOOL_A_RESET_COMPACT,		/* flag */
++	ETHTOOL_A_RESET_ALL,			/* flag */
++	ETHTOOL_A_RESET_ALL_DEDICATED,		/* flag */
++	ETHTOOL_A_RESET_DEDICATED,		/* bitset */
++	ETHTOOL_A_RESET_SHARED,			/* bitset */
 +
-+	__ETHA_RESET_CNT,
-+	ETHA_RESET_MAX = (__ETHA_RESET_CNT - 1)
++	__ETHTOOL_A_RESET_CNT,
++	ETHTOOL_A_RESET_MAX = (__ETHTOOL_A_RESET_CNT - 1)
 +};
 +
 +/* GET_RXFLOW / SET_RXFLOW */
 +
 +enum {
-+	ETHA_RXFLOW_UNSPEC,
-+	ETHA_RXFLOW_DEV,			/* nest - ETHA_DEV_* */
-+	ETHA_RXFLOW_INFOMASK,			/* u32 */
-+	ETHA_RXFLOW_COMPACT,			/* flag */
-+	ETHA_RXFLOW_CTXOP,			/* u32 - ETH_RXFLOW_CTXOP_* */
-+	ETHA_RXFLOW_CONTEXT,			/* u32 */
-+	ETHA_RXFLOW_NRINGS,			/* u32 */
-+	ETHA_RXFLOW_HASH_FN,			/* bitset */
-+	ETHA_RXFLOW_HASH_KEY,			/* binary */
-+	ETHA_RXFLOW_HASH_OPTS,			/* nest - ETHA_RXHASHOPTS_* */
-+	ETHA_RXFLOW_INDTBL_SIZE,		/* u32 */
-+	ETHA_RXFLOW_INDIR_TBL,			/* nest - ETHA_INDTBL_* */
++	ETHTOOL_A_RXFLOW_UNSPEC,
++	ETHTOOL_A_RXFLOW_DEV,			/* nest - ETHTOOL_A_DEV_* */
++	ETHTOOL_A_RXFLOW_INFOMASK,		/* u32 */
++	ETHTOOL_A_RXFLOW_COMPACT,		/* flag */
++	ETHTOOL_A_RXFLOW_CTXOP,			/* u32 - ETH_RXFLOW_CTXOP_* */
++	ETHTOOL_A_RXFLOW_CONTEXT,		/* u32 */
++	ETHTOOL_A_RXFLOW_NRINGS,		/* u32 */
++	ETHTOOL_A_RXFLOW_HASH_FN,		/* bitset */
++	ETHTOOL_A_RXFLOW_HASH_KEY,		/* binary */
++	ETHTOOL_A_RXFLOW_HASH_OPTS,		/* nest - ETHTOOL_A_RXHASHOPTS_* */
++	ETHTOOL_A_RXFLOW_INDTBL_SIZE,		/* u32 */
++	ETHTOOL_A_RXFLOW_INDIR_TBL,		/* nest - ETHTOOL_A_INDTBL_* */
 +
-+	__ETHA_RXFLOW_CNT,
-+	ETHA_RXFLOW_MAX = (__ETHA_RXFLOW_CNT - 1)
++	__ETHTOOL_A_RXFLOW_CNT,
++	ETHTOOL_A_RXFLOW_MAX = (__ETHTOOL_A_RXFLOW_CNT - 1)
 +};
 +
 +#define ETH_RXFLOW_IM_INFO			(1U << 0)
@@ -1981,64 +1984,64 @@ index 000000000000..344c86a60244
 +};
 +
 +enum {
-+	ETHA_RXHASHOPTS_UNSPEC,
-+	ETHA_RXHASHOPTS_OPT,			/* nest - ETH_RXHASHOPT_* */
++	ETHTOOL_A_RXHASHOPTS_UNSPEC,
++	ETHTOOL_A_RXHASHOPTS_OPT,		/* nest - ETH_RXHASHOPT_* */
 +
-+	__ETHA_RXHASHOPTS_CNT,
-+	ETHA_RXHASHOPTS_MAX = (__ETHA_RXHASHOPTS_CNT - 1)
++	__ETHTOOL_A_RXHASHOPTS_CNT,
++	ETHTOOL_A_RXHASHOPTS_MAX = (__ETHTOOL_A_RXHASHOPTS_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_RXHASHOPT_UNSPEC,
-+	ETHA_RXHASHOPT_FLOWTYPE,		/* u32 */
-+	ETHA_RXHASHOPT_FIELDS,			/* bitfield32 */
-+	ETHA_RXHASHOPT_DISCARD,			/* flag */
++	ETHTOOL_A_RXHASHOPT_UNSPEC,
++	ETHTOOL_A_RXHASHOPT_FLOWTYPE,		/* u32 */
++	ETHTOOL_A_RXHASHOPT_FIELDS,		/* bitfield32 */
++	ETHTOOL_A_RXHASHOPT_DISCARD,		/* flag */
 +
-+	__ETHA_RXHASHOPT_CNT,
-+	ETHA_RXHASHOPT_MAX = (__ETHA_RXHASHOPT_CNT - 1)
++	__ETHTOOL_A_RXHASHOPT_CNT,
++	ETHTOOL_A_RXHASHOPT_MAX = (__ETHTOOL_A_RXHASHOPT_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_INDTBL_UNSPEC,
-+	ETHA_INDTBL_BLOCK32,			/* nest - ETH_ITBLK_* */
-+	ETHA_INDTBL_BLOCK16,			/* nest - ETH_ITBLK_* */
-+	ETHA_INDTBL_BLOCK8,			/* nest - ETH_ITBLK_* */
-+	ETHA_INDTBL_PATTERN,			/* nest - ETH_ITPAT_* */
-+	ETHA_INDTBL_WEIGHTS,			/* nest - ETH_ITWGHT_* */
++	ETHTOOL_A_INDTBL_UNSPEC,
++	ETHTOOL_A_INDTBL_BLOCK32,		/* nest - ETH_ITBLK_* */
++	ETHTOOL_A_INDTBL_BLOCK16,		/* nest - ETH_ITBLK_* */
++	ETHTOOL_A_INDTBL_BLOCK8, 		/* nest - ETH_ITBLK_* */
++	ETHTOOL_A_INDTBL_PATTERN,		/* nest - ETH_ITPAT_* */
++	ETHTOOL_A_INDTBL_WEIGHTS,		/* nest - ETH_ITWGHT_* */
 +
-+	__ETHA_INDTBL_CNT,
-+	ETHA_INDTBL_MAX = (__ETHA_INDTBL_CNT - 1)
++	__ETHTOOL_A_INDTBL_CNT,
++	ETHTOOL_A_INDTBL_MAX = (__ETHTOOL_A_INDTBL_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_ITBLK_UNSPEC,
-+	ETHA_ITBLK_START,			/* u32 */
-+	ETHA_ITBLK_LEN,				/* u32 */
-+	ETHA_ITBLK_DATA,			/* binary */
++	ETHTOOL_A_ITBLK_UNSPEC,
++	ETHTOOL_A_ITBLK_START,			/* u32 */
++	ETHTOOL_A_ITBLK_LEN,			/* u32 */
++	ETHTOOL_A_ITBLK_DATA,			/* binary */
 +
-+	__ETHA_ITBLK_CNT,
-+	ETHA_ITBLK_MAX = (__ETHA_ITBLK_CNT - 1)
++	__ETHTOOL_A_ITBLK_CNT,
++	ETHTOOL_A_ITBLK_MAX = (__ETHTOOL_A_ITBLK_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_ITPAT_UNSPEC,
-+	ETHA_ITPAT_START,			/* u32 */
-+	ETHA_ITPAT_LEN,				/* u32 */
-+	ETHA_ITPAT_MIN_RING,			/* u32 */
-+	ETHA_ITPAT_MAX_RING,			/* u32 */
-+	ETHA_ITPAT_OFFSET,			/* u32 */
++	ETHTOOL_A_ITPAT_UNSPEC,
++	ETHTOOL_A_ITPAT_START,			/* u32 */
++	ETHTOOL_A_ITPAT_LEN,			/* u32 */
++	ETHTOOL_A_ITPAT_MIN_RING,		/* u32 */
++	ETHTOOL_A_ITPAT_MAX_RING,		/* u32 */
++	ETHTOOL_A_ITPAT_OFFSET,			/* u32 */
 +
-+	__ETHA_ITPAT_CNT,
-+	ETHA_ITPAT_MAX = (__ETHA_ITPAT_CNT - 1)
++	__ETHTOOL_A_ITPAT_CNT,
++	ETHTOOL_A_ITPAT_MAX = (__ETHTOOL_A_ITPAT_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_ITWGHT_UNSPEC,
-+	ETHA_ITWGHT_VALUES,			/* binary */
-+	ETHA_ITWGHT_WEIGHTS,			/* binary */
++	ETHTOOL_A_ITWGHT_UNSPEC,
++	ETHTOOL_A_ITWGHT_VALUES,		/* binary */
++	ETHTOOL_A_ITWGHT_WEIGHTS,		/* binary */
 +
-+	__ETHA_ITWGHT_CNT,
-+	ETHA_ITWGHT_MAX = (__ETHA_ITWGHT_CNT - 1)
++	__ETHTOOL_A_ITWGHT_CNT,
++	ETHTOOL_A_ITWGHT_MAX = (__ETHTOOL_A_ITWGHT_CNT - 1)
 +};
 +
 +/* generic netlink info */

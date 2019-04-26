@@ -1,4 +1,4 @@
-From a72bc951d4e2c2a7ad2e99361da550a8bfc871c4 Mon Sep 17 00:00:00 2001
+From 73912ba75150654bbaaecc6d4e7dd45ceb11961e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:04:49 +0100
 Subject: [PATCH 23/34] netlink: add netlink handler for sring (-G)
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 36 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 1d5fa35f01fb..20abccef9816 100644
+index 75032aca5015..d6fdf56025ba 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4934,6 +4934,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4986,6 +4986,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_geee		NULL
  #define nl_gfec		NULL
  #define nl_scoalesce	NULL
@@ -25,7 +25,7 @@ index 1d5fa35f01fb..20abccef9816 100644
  #endif
  
  static const struct option {
-@@ -4992,7 +4993,7 @@ static const struct option {
+@@ -5044,7 +5045,7 @@ static const struct option {
  	  "		[sample-interval N]\n" },
  	{ "-g|--show-ring", 1, do_gring, nl_gring,
  	  "Query RX/TX ring parameters" },
@@ -47,36 +47,36 @@ index 41c8f5487062..5b13a28ac5e6 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index 9ebd911b7a9b..47ae0b53f5dd 100644
+index 7b5a0881c946..38c02fa017cc 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
-@@ -508,3 +508,36 @@ int nl_scoalesce(struct cmd_context *ctx)
- {
- 	return nl_set_param(ctx, "-C", scoalesce_params, ETHA_PARAMS_COALESCE);
+@@ -514,3 +514,36 @@ int nl_scoalesce(struct cmd_context *ctx)
+ 	return nl_set_param(ctx, "-C", scoalesce_params,
+ 			    ETHTOOL_A_PARAMS_COALESCE);
  }
 +
 +static const struct param_parser sring_params[] = {
 +	{
 +		.arg		= "rx",
-+		.type		= ETHA_RING_RX_PENDING,
++		.type		= ETHTOOL_A_RING_RX_PENDING,
 +		.handler	= nl_parse_direct_u32,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "rx-mini",
-+		.type		= ETHA_RING_RX_MINI_PENDING,
++		.type		= ETHTOOL_A_RING_RX_MINI_PENDING,
 +		.handler	= nl_parse_direct_u32,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "rx-jumbo",
-+		.type		= ETHA_RING_RX_JUMBO_PENDING,
++		.type		= ETHTOOL_A_RING_RX_JUMBO_PENDING,
 +		.handler	= nl_parse_direct_u32,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "tx",
-+		.type		= ETHA_RING_TX_PENDING,
++		.type		= ETHTOOL_A_RING_TX_PENDING,
 +		.handler	= nl_parse_direct_u32,
 +		.min_argc	= 1,
 +	},
@@ -85,7 +85,7 @@ index 9ebd911b7a9b..47ae0b53f5dd 100644
 +
 +int nl_sring(struct cmd_context *ctx)
 +{
-+	return nl_set_param(ctx, "-G", sring_params, ETHA_PARAMS_RING);
++	return nl_set_param(ctx, "-G", sring_params, ETHTOOL_A_PARAMS_RING);
 +}
 -- 
 2.21.0

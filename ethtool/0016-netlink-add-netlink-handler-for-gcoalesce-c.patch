@@ -1,4 +1,4 @@
-From 7f0204167363409c5235ad47dbc42085726b185a Mon Sep 17 00:00:00 2001
+From fce900ab252ef2bf8aaa731b6ded60195e93db76 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
 Subject: [PATCH 16/34] netlink: add netlink handler for gcoalesce (-c)
@@ -12,15 +12,15 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.c         |   3 +-
  netlink/extapi.h  |   1 +
  netlink/monitor.c |  10 +++++
- netlink/params.c  | 101 ++++++++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 115 insertions(+), 2 deletions(-)
+ netlink/params.c  | 103 ++++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 117 insertions(+), 2 deletions(-)
  create mode 100644 netlink/params.c
 
 diff --git a/Makefile.am b/Makefile.am
-index dbb9369a1a95..85bf889ad46d 100644
+index 3634b39baab7..bb361b27a4b5 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -24,7 +24,7 @@ ethtool_SOURCES += \
+@@ -29,7 +29,7 @@ ethtool_SOURCES += \
  		  netlink/netlink.c netlink/netlink.h netlink/extapi.h \
  		  netlink/strset.c netlink/strset.h netlink/monitor.c \
  		  netlink/parser.c netlink/parser.h \
@@ -30,10 +30,10 @@ index dbb9369a1a95..85bf889ad46d 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 97f512a96f64..9ec6e647e766 100644
+index 629dd512fb06..9495352337d4 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4927,6 +4927,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4979,6 +4979,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sfeatures	NULL
  #define nl_gprivflags	NULL
  #define nl_sprivflags	NULL
@@ -41,7 +41,7 @@ index 97f512a96f64..9ec6e647e766 100644
  #endif
  
  static const struct option {
-@@ -4957,7 +4958,7 @@ static const struct option {
+@@ -5009,7 +5010,7 @@ static const struct option {
  	  "		[ autoneg on|off ]\n"
  	  "		[ rx on|off ]\n"
  	  "		[ tx on|off ]\n" },
@@ -63,7 +63,7 @@ index f89c6d0e169c..a63f79eee2c8 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index bdf914f9abde..707d975a0d9b 100644
+index 4f3bbd0a84b0..ca03840acf6f 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -96,6 +96,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -99,10 +99,10 @@ index bdf914f9abde..707d975a0d9b 100644
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
 new file mode 100644
-index 000000000000..30aee5758c42
+index 000000000000..77e30894db97
 --- /dev/null
 +++ b/netlink/params.c
-@@ -0,0 +1,101 @@
+@@ -0,0 +1,103 @@
 +#include <errno.h>
 +#include <string.h>
 +#include <stdio.h>
@@ -117,7 +117,7 @@ index 000000000000..30aee5758c42
 +
 +static int show_coalesce(struct nl_context *nlctx, const struct nlattr *nest)
 +{
-+	const struct nlattr *tb[ETHA_COALESCE_MAX + 1] = {};
++	const struct nlattr *tb[ETHTOOL_A_COALESCE_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	int ret;
 +
@@ -129,32 +129,34 @@ index 000000000000..30aee5758c42
 +
 +	printf("Coalesce parameters for %s:\n", nlctx->devname);
 +	printf("Adaptive RX: %s  TX: %s\n",
-+	       u8_to_bool(tb[ETHA_COALESCE_RX_USE_ADAPTIVE]),
-+	       u8_to_bool(tb[ETHA_COALESCE_TX_USE_ADAPTIVE]));
-+	show_u32(tb[ETHA_COALESCE_STATS_BLOCK_USECS], "stats-block-usecs: ");
-+	show_u32(tb[ETHA_COALESCE_RATE_SAMPLE_INTERVAL], "sample-interval: ");
-+	show_u32(tb[ETHA_COALESCE_PKT_RATE_LOW], "pkt-rate-low: ");
-+	show_u32(tb[ETHA_COALESCE_PKT_RATE_HIGH], "pkt-rate-high: ");
++	       u8_to_bool(tb[ETHTOOL_A_COALESCE_RX_USE_ADAPTIVE]),
++	       u8_to_bool(tb[ETHTOOL_A_COALESCE_TX_USE_ADAPTIVE]));
++	show_u32(tb[ETHTOOL_A_COALESCE_STATS_BLOCK_USECS],
++		 "stats-block-usecs: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_RATE_SAMPLE_INTERVAL],
++		 "sample-interval: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_PKT_RATE_LOW], "pkt-rate-low: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_PKT_RATE_HIGH], "pkt-rate-high: ");
 +	putchar('\n');
-+	show_u32(tb[ETHA_COALESCE_RX_USECS], "rx-usecs: ");
-+	show_u32(tb[ETHA_COALESCE_RX_MAXFRM], "rx-frames: ");
-+	show_u32(tb[ETHA_COALESCE_RX_USECS_IRQ], "rx-usecs-irq: ");
-+	show_u32(tb[ETHA_COALESCE_RX_MAXFRM_IRQ], "rx-frames-irq: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_RX_USECS], "rx-usecs: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_RX_MAXFRM], "rx-frames: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_RX_USECS_IRQ], "rx-usecs-irq: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_RX_MAXFRM_IRQ], "rx-frames-irq: ");
 +	putchar('\n');
-+	show_u32(tb[ETHA_COALESCE_TX_USECS], "tx-usecs: ");
-+	show_u32(tb[ETHA_COALESCE_TX_MAXFRM], "tx-frames: ");
-+	show_u32(tb[ETHA_COALESCE_TX_USECS_IRQ], "tx-usecs-irq: ");
-+	show_u32(tb[ETHA_COALESCE_TX_MAXFRM_IRQ], "tx-frames-irq: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_TX_USECS], "tx-usecs: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_TX_MAXFRM], "tx-frames: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_TX_USECS_IRQ], "tx-usecs-irq: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_TX_MAXFRM_IRQ], "tx-frames-irq: ");
 +	putchar('\n');
-+	show_u32(tb[ETHA_COALESCE_RX_USECS_LOW], "rx-usecs-low: ");
-+	show_u32(tb[ETHA_COALESCE_RX_MAXFRM_LOW], "rx-frame-low: ");
-+	show_u32(tb[ETHA_COALESCE_TX_USECS_LOW], "tx-usecs-low: ");
-+	show_u32(tb[ETHA_COALESCE_TX_MAXFRM_LOW], "tx-frame-low: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_RX_USECS_LOW], "rx-usecs-low: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_RX_MAXFRM_LOW], "rx-frame-low: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_TX_USECS_LOW], "tx-usecs-low: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_TX_MAXFRM_LOW], "tx-frame-low: ");
 +	putchar('\n');
-+	show_u32(tb[ETHA_COALESCE_RX_USECS_HIGH], "rx-usecs-high: ");
-+	show_u32(tb[ETHA_COALESCE_RX_MAXFRM_HIGH], "rx-frame-high: ");
-+	show_u32(tb[ETHA_COALESCE_TX_USECS_HIGH], "tx-usecs-high: ");
-+	show_u32(tb[ETHA_COALESCE_TX_MAXFRM_HIGH], "tx-frame-high: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_RX_USECS_HIGH], "rx-usecs-high: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_RX_MAXFRM_HIGH], "rx-frame-high: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_TX_USECS_HIGH], "tx-usecs-high: ");
++	show_u32(tb[ETHTOOL_A_COALESCE_TX_MAXFRM_HIGH], "tx-frame-high: ");
 +	putchar('\n');
 +
 +	return 0;
@@ -162,7 +164,7 @@ index 000000000000..30aee5758c42
 +
 +int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
 +{
-+	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
++	const struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	struct nl_context *nlctx = data;
 +	int ret;
@@ -170,12 +172,12 @@ index 000000000000..30aee5758c42
 +	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return ret;
-+	nlctx->devname = get_dev_name(tb[ETHA_PARAMS_DEV]);
++	nlctx->devname = get_dev_name(tb[ETHTOOL_A_PARAMS_DEV]);
 +	if (!dev_ok(nlctx))
 +		return MNL_CB_OK;
 +
 +	if (mask_ok(nlctx, ETH_PARAMS_IM_COALESCE)) {
-+		ret = show_coalesce(nlctx, tb[ETHA_PARAMS_COALESCE]);
++		ret = show_coalesce(nlctx, tb[ETHTOOL_A_PARAMS_COALESCE]);
 +		if ((ret < 0) && show_only(nlctx, ETH_PARAMS_IM_COALESCE)) {
 +			nlctx->exit_code = 82;
 +			errno = -ret;
@@ -192,10 +194,10 @@ index 000000000000..30aee5758c42
 +	int ret;
 +
 +	ret = ethnl_prep_get_request(ctx, ETHNL_CMD_GET_PARAMS,
-+				     ETHA_PARAMS_DEV);
++				     ETHTOOL_A_PARAMS_DEV);
 +	if (ret < 0)
 +		return ret;
-+	if (ethnla_put_u32(ctx->nlctx, ETHA_PARAMS_INFOMASK, info_mask))
++	if (ethnla_put_u32(ctx->nlctx, ETHTOOL_A_PARAMS_INFOMASK, info_mask))
 +		return -EMSGSIZE;
 +	return ethnl_send_get_request(ctx->nlctx, params_reply_cb);
 +}

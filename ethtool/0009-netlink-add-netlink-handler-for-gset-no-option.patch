@@ -1,4 +1,4 @@
-From ff162abbf712806ac0b001e037bc712774e838a2 Mon Sep 17 00:00:00 2001
+From 3d10bdbbc2719dcaab1235aebbbe83f846da4828 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 09/34] netlink: add netlink handler for gset (no option)
@@ -12,22 +12,22 @@ into new file common.c.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am        |   2 +-
- common.c           | 285 +++++++++++++++++++++++++++++++++
+ common.c           | 285 ++++++++++++++++++++++++++++++++
  common.h           |  56 +++++++
  ethtool.c          | 152 +-----------------
  netlink/extapi.h   |   1 +
  netlink/monitor.c  |  14 ++
  netlink/netlink.c  | 120 ++++++++++++++
  netlink/netlink.h  |   4 +
- netlink/settings.c | 388 +++++++++++++++++++++++++++++++++++++++++++++
- 9 files changed, 877 insertions(+), 145 deletions(-)
+ netlink/settings.c | 392 +++++++++++++++++++++++++++++++++++++++++++++
+ 9 files changed, 881 insertions(+), 145 deletions(-)
  create mode 100644 netlink/settings.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 42ea94138543..d879cc498291 100644
+index 1d9949d64075..0330bb3ec32d 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -23,7 +23,7 @@ if ETHTOOL_ENABLE_NETLINK
+@@ -28,7 +28,7 @@ if ETHTOOL_ENABLE_NETLINK
  ethtool_SOURCES += \
  		  netlink/netlink.c netlink/netlink.h netlink/extapi.h \
  		  netlink/strset.c netlink/strset.h netlink/monitor.c \
@@ -395,7 +395,7 @@ index 7c08ec2d7c2f..37edac765e65 100644
 +
  #endif /* ETHTOOL_COMMON_H__ */
 diff --git a/ethtool.c b/ethtool.c
-index 5fb6e739faf2..229106c1135c 100644
+index 5d2dc068e5c3..a206ecb31981 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -57,26 +57,6 @@
@@ -602,7 +602,7 @@ index 5fb6e739faf2..229106c1135c 100644
  		flag_to_cmdline_info(flags_msglvl[i].name,
  				     flags_msglvl[i].value,
  				     &msglvl_wanted, &msglvl_mask,
-@@ -5104,6 +4966,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5156,6 +5018,7 @@ static int show_usage(struct cmd_context *ctx);
   */
  #define nl_gdrv		NULL
  #define nl_tsinfo	NULL
@@ -610,7 +610,7 @@ index 5fb6e739faf2..229106c1135c 100644
  #endif
  
  static const struct option {
-@@ -5628,6 +5491,7 @@ int main(int argc, char **argp)
+@@ -5682,6 +5545,7 @@ int main(int argc, char **argp)
  	}
  	if ((*argp)[0] == '-')
  		exit_bad_args();
@@ -631,7 +631,7 @@ index 9e9dfa11aead..5500835372b3 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index e8ad2f59a7c0..43d82ed4a0ff 100644
+index 3b5f9475c6e4..48c971091bfe 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -95,6 +95,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -670,7 +670,7 @@ index e8ad2f59a7c0..43d82ed4a0ff 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 0974f4b93d5d..84ff2e96b006 100644
+index 68300ccc99b6..281fe25d94e2 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -4,8 +4,10 @@
@@ -684,7 +684,7 @@ index 0974f4b93d5d..84ff2e96b006 100644
  
  /* misc helpers */
  
-@@ -542,6 +544,124 @@ int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname)
+@@ -543,6 +545,124 @@ int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname)
  	return 0;
  }
  
@@ -692,7 +692,7 @@ index 0974f4b93d5d..84ff2e96b006 100644
 +		    const char *before, const char *between, const char *after,
 +		    const char *if_none)
 +{
-+	const struct nlattr *bitset_tb[ETHA_BITSET_MAX + 1] = {};
++	const struct nlattr *bitset_tb[ETHTOOL_A_BITSET_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(bitset_tb);
 +	const unsigned int before_len = strlen(before);
 +	const struct nlattr *bits;
@@ -702,7 +702,7 @@ index 0974f4b93d5d..84ff2e96b006 100644
 +	int ret;
 +
 +	ret = mnl_attr_parse_nested(bitset, attr_cb, &bitset_tb_info);
-+	bits = bitset_tb[ETHA_BITSET_BITS];
++	bits = bitset_tb[ETHTOOL_A_BITSET_BITS];
 +	if (ret < 0)
 +		goto err_nonl;
 +	if (!bits) {
@@ -712,12 +712,12 @@ index 0974f4b93d5d..84ff2e96b006 100644
 +		unsigned int idx;
 +		const char *name;
 +
-+		bits = mask ? bitset_tb[ETHA_BITSET_MASK] :
-+			      bitset_tb[ETHA_BITSET_VALUE];
++		bits = mask ? bitset_tb[ETHTOOL_A_BITSET_MASK] :
++			      bitset_tb[ETHTOOL_A_BITSET_VALUE];
 +		ret = -EFAULT;
-+		if (!bits || !bitset_tb[ETHA_BITSET_SIZE])
++		if (!bits || !bitset_tb[ETHTOOL_A_BITSET_SIZE])
 +			goto err_nonl;
-+		count = mnl_attr_get_u32(bitset_tb[ETHA_BITSET_SIZE]);
++		count = mnl_attr_get_u32(bitset_tb[ETHTOOL_A_BITSET_SIZE]);
 +		if (mnl_attr_get_payload_len(bits) / 4 < (count + 31) / 32)
 +			goto err_nonl;
 +
@@ -755,24 +755,24 @@ index 0974f4b93d5d..84ff2e96b006 100644
 +
 +	printf("\t%s", before);
 +	mnl_attr_for_each_nested(bit, bits) {
-+		const struct nlattr *tb[ETHA_BIT_MAX + 1] = {};
++		const struct nlattr *tb[ETHTOOL_A_BIT_MAX + 1] = {};
 +		DECLARE_ATTR_TB_INFO(tb);
 +		unsigned int idx;
 +		const char *name;
 +
-+		if (mnl_attr_get_type(bit) != ETHA_BITS_BIT)
++		if (mnl_attr_get_type(bit) != ETHTOOL_A_BITS_BIT)
 +			continue;
 +		ret = mnl_attr_parse_nested(bit, attr_cb, &tb_info);
 +		if (ret < 0)
 +			goto err;
 +		ret = -EFAULT;
-+		if (!tb[ETHA_BIT_INDEX] || !tb[ETHA_BIT_NAME])
++		if (!tb[ETHTOOL_A_BIT_INDEX] || !tb[ETHTOOL_A_BIT_NAME])
 +			goto err;
-+		if (!mask && !tb[ETHA_BIT_VALUE])
++		if (!mask && !tb[ETHTOOL_A_BIT_VALUE])
 +			continue;
 +
-+		idx = mnl_attr_get_u32(tb[ETHA_BIT_INDEX]);
-+		name = mnl_attr_get_str(tb[ETHA_BIT_NAME]);
++		idx = mnl_attr_get_u32(tb[ETHTOOL_A_BIT_INDEX]);
++		name = mnl_attr_get_str(tb[ETHTOOL_A_BIT_NAME]);
 +		if (!lm_class_match(idx, class))
 +			continue;
 +		if (first) {
@@ -826,10 +826,10 @@ index 601437acc8e4..b911ed77fd20 100644
  int attr_cb(const struct nlattr *attr, void *data);
 diff --git a/netlink/settings.c b/netlink/settings.c
 new file mode 100644
-index 000000000000..8f4c288dbb3d
+index 000000000000..17109bc5091f
 --- /dev/null
 +++ b/netlink/settings.c
-@@ -0,0 +1,388 @@
+@@ -0,0 +1,392 @@
 +#include <errno.h>
 +#include <string.h>
 +#include <stdio.h>
@@ -961,7 +961,7 @@ index 000000000000..8f4c288dbb3d
 +static int dump_modes(struct nl_context *nlctx, const struct nlattr *nest,
 +		      bool *first, int *lm_autoneg)
 +{
-+	const struct nlattr *tb[ETHA_LINKMODES_MAX + 1] = {};
++	const struct nlattr *tb[ETHTOOL_A_LINKMODES_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	int ret;
 +
@@ -971,18 +971,18 @@ index 000000000000..8f4c288dbb3d
 +	if (ret < 0)
 +		return ret;
 +
-+	if (tb[ETHA_LINKMODES_OURS]) {
-+	    ret = dump_our_modes(nlctx, tb[ETHA_LINKMODES_OURS], first);
++	if (tb[ETHTOOL_A_LINKMODES_OURS]) {
++	    ret = dump_our_modes(nlctx, tb[ETHTOOL_A_LINKMODES_OURS], first);
 +	    if (ret < 0)
 +		    return ret;
 +	}
-+	if (tb[ETHA_LINKMODES_PEER]) {
-+	    ret = dump_peer_modes(nlctx, tb[ETHA_LINKMODES_PEER], first);
++	if (tb[ETHTOOL_A_LINKMODES_PEER]) {
++	    ret = dump_peer_modes(nlctx, tb[ETHTOOL_A_LINKMODES_PEER], first);
 +	    if (ret < 0)
 +		    return ret;
 +	}
-+	if (tb[ETHA_LINKMODES_SPEED]) {
-+		uint32_t val = mnl_attr_get_u32(tb[ETHA_LINKMODES_SPEED]);
++	if (tb[ETHTOOL_A_LINKMODES_SPEED]) {
++		uint32_t val = mnl_attr_get_u32(tb[ETHTOOL_A_LINKMODES_SPEED]);
 +
 +		print_banner(nlctx, first);
 +		if (val == 0 || val == (uint16_t)(-1) || val == (uint32_t)(-1))
@@ -990,14 +990,14 @@ index 000000000000..8f4c288dbb3d
 +		else
 +			printf("\tSpeed: %uMb/s\n", val);
 +	}
-+	if (tb[ETHA_LINKMODES_DUPLEX]) {
-+		uint8_t val = mnl_attr_get_u8(tb[ETHA_LINKMODES_DUPLEX]);
++	if (tb[ETHTOOL_A_LINKMODES_DUPLEX]) {
++		uint8_t val = mnl_attr_get_u8(tb[ETHTOOL_A_LINKMODES_DUPLEX]);
 +
 +		print_banner(nlctx, first);
 +		print_enum(names_duplex, val, "\tDuplex: ", "Unknown! (%i)");
 +	}
-+	if (tb[ETHA_LINKMODES_AUTONEG])
-+		*lm_autoneg = mnl_attr_get_u8(tb[ETHA_LINKMODES_AUTONEG]);
++	if (tb[ETHTOOL_A_LINKMODES_AUTONEG])
++		*lm_autoneg = mnl_attr_get_u8(tb[ETHTOOL_A_LINKMODES_AUTONEG]);
 +	else
 +		*lm_autoneg = -1;
 +
@@ -1007,7 +1007,7 @@ index 000000000000..8f4c288dbb3d
 +static int dump_link_info(struct nl_context *nlctx, const struct nlattr *nest,
 +			   bool *first, int lm_autoneg)
 +{
-+	const struct nlattr *tb[ETHA_LINKINFO_MAX + 1] = {};
++	const struct nlattr *tb[ETHTOOL_A_LINKINFO_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	int port = -1;
 +	int ret;
@@ -1018,22 +1018,23 @@ index 000000000000..8f4c288dbb3d
 +	if (ret < 0)
 +		return ret;
 +
-+	if (tb[ETHA_LINKINFO_PORT]) {
-+		uint8_t val = mnl_attr_get_u8(tb[ETHA_LINKINFO_PORT]);
++	if (tb[ETHTOOL_A_LINKINFO_PORT]) {
++		uint8_t val = mnl_attr_get_u8(tb[ETHTOOL_A_LINKINFO_PORT]);
 +
 +		print_banner(nlctx, first);
 +		print_enum(names_port, val, "\tPort: ", "Unknown! (%i)\n");
 +		port = val;
 +	}
-+	if (tb[ETHA_LINKINFO_PHYADDR]) {
-+		uint8_t val = mnl_attr_get_u8(tb[ETHA_LINKINFO_PHYADDR]);
++	if (tb[ETHTOOL_A_LINKINFO_PHYADDR]) {
++		uint8_t val = mnl_attr_get_u8(tb[ETHTOOL_A_LINKINFO_PHYADDR]);
 +
 +		print_banner(nlctx, first);
 +		printf("\tPHYAD: %u\n", val);
 +	}
-+	if (tb[ETHA_LINKINFO_TRANSCEIVER]) {
-+		uint8_t val = mnl_attr_get_u8(tb[ETHA_LINKINFO_TRANSCEIVER]);
++	if (tb[ETHTOOL_A_LINKINFO_TRANSCEIVER]) {
++		uint8_t val;
 +
++		val = mnl_attr_get_u8(tb[ETHTOOL_A_LINKINFO_TRANSCEIVER]);
 +		print_banner(nlctx, first);
 +		print_enum(names_transceiver, val, "\tTransceiver: ",
 +			   "Unknown!");
@@ -1043,11 +1044,11 @@ index 000000000000..8f4c288dbb3d
 +		printf("\tAuto-negotiation: %s\n",
 +		       (lm_autoneg == AUTONEG_DISABLE) ? "off" : "on");
 +	}
-+	if (tb[ETHA_LINKINFO_TP_MDIX] && tb[ETHA_LINKINFO_TP_MDIX] &&
++	if (tb[ETHTOOL_A_LINKINFO_TP_MDIX] && tb[ETHTOOL_A_LINKINFO_TP_MDIX] &&
 +	    port == PORT_TP) {
-+		uint8_t mdix = mnl_attr_get_u8(tb[ETHA_LINKINFO_TP_MDIX]);
++		uint8_t mdix = mnl_attr_get_u8(tb[ETHTOOL_A_LINKINFO_TP_MDIX]);
 +		uint8_t mdix_ctrl =
-+			mnl_attr_get_u8(tb[ETHA_LINKINFO_TP_MDIX_CTRL]);
++			mnl_attr_get_u8(tb[ETHTOOL_A_LINKINFO_TP_MDIX_CTRL]);
 +
 +		print_banner(nlctx, first);
 +		dump_mdix(mdix, mdix_ctrl);
@@ -1059,7 +1060,7 @@ index 000000000000..8f4c288dbb3d
 +static int dump_wol_info(struct nl_context *nlctx, const struct nlattr *nest,
 +			 bool *first)
 +{
-+	const struct nlattr *tb[ETHA_WOL_MAX + 1] = {};
++	const struct nlattr *tb[ETHTOOL_A_WOL_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	struct ethtool_wolinfo wolinfo = {};
 +	const struct nla_bitfield32 *wol_bf;
@@ -1071,21 +1072,21 @@ index 000000000000..8f4c288dbb3d
 +	if (ret < 0)
 +		return ret;
 +
-+	wol_bf = mnl_attr_get_payload(tb[ETHA_WOL_MODES]);
++	wol_bf = mnl_attr_get_payload(tb[ETHTOOL_A_WOL_MODES]);
 +
 +	print_banner(nlctx, first);
 +	wolinfo.wolopts = wol_bf->value;
 +	wolinfo.supported = wol_bf->selector;
-+	if (tb[ETHA_WOL_SOPASS])
++	if (tb[ETHTOOL_A_WOL_SOPASS])
 +		nl_copy_payload(wolinfo.sopass, SOPASS_MAX,
-+				tb[ETHA_WOL_SOPASS]);
++				tb[ETHTOOL_A_WOL_SOPASS]);
 +	return dump_wol(&wolinfo) ? -EFAULT : 0;
 +}
 +
 +static int dump_debug(struct nl_context *nlctx, const struct nlattr *nest,
 +		      bool *first)
 +{
-+	const struct nlattr *tb[ETHA_DEBUG_MAX + 1] = {};
++	const struct nlattr *tb[ETHTOOL_A_DEBUG_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	struct nla_bitfield32 *val;
 +	uint32_t msglvl;
@@ -1097,7 +1098,7 @@ index 000000000000..8f4c288dbb3d
 +	if (ret < 0)
 +		return ret;
 +
-+	val = mnl_attr_get_payload(tb[ETHA_DEBUG_MSG_MASK]);
++	val = mnl_attr_get_payload(tb[ETHTOOL_A_DEBUG_MSG_MASK]);
 +	msglvl = val->value;
 +
 +	print_banner(nlctx, first);
@@ -1113,7 +1114,7 @@ index 000000000000..8f4c288dbb3d
 +static int dump_link_state(struct nl_context *nlctx, const struct nlattr *nest,
 +			   bool *first)
 +{
-+	const struct nlattr *tb[ETHA_LINKSTATE_MAX + 1] = {};
++	const struct nlattr *tb[ETHTOOL_A_LINKSTATE_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	int ret;
 +
@@ -1123,8 +1124,8 @@ index 000000000000..8f4c288dbb3d
 +	if (ret < 0)
 +		return ret;
 +
-+	if (tb[ETHA_LINKSTATE_LINK]) {
-+		uint8_t val = mnl_attr_get_u8(tb[ETHA_LINKSTATE_LINK]);
++	if (tb[ETHTOOL_A_LINKSTATE_LINK]) {
++		uint8_t val = mnl_attr_get_u8(tb[ETHTOOL_A_LINKSTATE_LINK]);
 +
 +		print_banner(nlctx, first);
 +		printf("\tLink detected: %s\n", val ? "yes" : "no");
@@ -1135,7 +1136,7 @@ index 000000000000..8f4c288dbb3d
 +
 +int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
 +{
-+	const struct nlattr *tb[ETHA_SETTINGS_MAX + 1] = {};
++	const struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	struct nl_context *nlctx = data;
 +	int lm_autoneg = -1;
@@ -1146,35 +1147,38 @@ index 000000000000..8f4c288dbb3d
 +	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return ret;
-+	nlctx->devname = get_dev_name(tb[ETHA_SETTINGS_DEV]);
++	nlctx->devname = get_dev_name(tb[ETHTOOL_A_SETTINGS_DEV]);
 +	if (!dev_ok(nlctx))
 +		return MNL_CB_OK;
 +
 +	if (mask_ok(nlctx, ETH_SETTINGS_IM_LINKMODES)) {
-+		ret = dump_modes(nlctx, tb[ETHA_SETTINGS_LINK_MODES], &first,
++		ret = dump_modes(nlctx, tb[ETHTOOL_A_SETTINGS_LINK_MODES],
++				 &first,
 +				 &lm_autoneg);
 +		if (ret == 0)
 +			allfail = false;
 +	}
 +	if (mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
-+		ret = dump_link_info(nlctx, tb[ETHA_SETTINGS_LINK_INFO],
++		ret = dump_link_info(nlctx, tb[ETHTOOL_A_SETTINGS_LINK_INFO],
 +				     &first, lm_autoneg);
 +		if (ret == 0)
 +			allfail = false;
 +	}
-+	if (tb[ETHA_SETTINGS_WOL] && mask_ok(nlctx, ETH_SETTINGS_IM_WOL)) {
-+		ret = dump_wol_info(nlctx, tb[ETHA_SETTINGS_WOL], &first);
++	if (tb[ETHTOOL_A_SETTINGS_WOL] && mask_ok(nlctx, ETH_SETTINGS_IM_WOL)) {
++		ret = dump_wol_info(nlctx, tb[ETHTOOL_A_SETTINGS_WOL], &first);
 +		if (ret == 0)
 +			allfail = false;
 +	}
-+	if (tb[ETHA_SETTINGS_DEBUG] && mask_ok(nlctx, ETH_SETTINGS_IM_DEBUG)) {
-+		ret = dump_debug(nlctx, tb[ETHA_SETTINGS_DEBUG], &first);
++	if (tb[ETHTOOL_A_SETTINGS_DEBUG] &&
++	    mask_ok(nlctx, ETH_SETTINGS_IM_DEBUG)) {
++		ret = dump_debug(nlctx, tb[ETHTOOL_A_SETTINGS_DEBUG], &first);
 +		if (ret == 0)
 +			allfail = false;
 +	}
-+	if (tb[ETHA_SETTINGS_LINK_STATE] &&
++	if (tb[ETHTOOL_A_SETTINGS_LINK_STATE] &&
 +	    mask_ok(nlctx, ETH_SETTINGS_IM_LINKSTATE)) {
-+		ret = dump_link_state(nlctx, tb[ETHA_SETTINGS_LINK_STATE],
++		ret = dump_link_state(nlctx,
++				      tb[ETHTOOL_A_SETTINGS_LINK_STATE],
 +				      &first);
 +		if (ret == 0)
 +			allfail = false;
@@ -1198,11 +1202,11 @@ index 000000000000..8f4c288dbb3d
 +		load_global_strings(nlctx);
 +
 +	ret = ethnl_prep_get_request(ctx, ETHNL_CMD_GET_SETTINGS,
-+				     ETHA_SETTINGS_DEV);
++				     ETHTOOL_A_SETTINGS_DEV);
 +	if (ret < 0)
 +		return ret;
-+	if (ethnla_put_u32(nlctx, ETHA_SETTINGS_INFOMASK, info_mask) ||
-+	    ethnla_put_flag(nlctx, ETHA_SETTINGS_COMPACT, compact))
++	if (ethnla_put_u32(nlctx, ETHTOOL_A_SETTINGS_INFOMASK, info_mask) ||
++	    ethnla_put_flag(nlctx, ETHTOOL_A_SETTINGS_COMPACT, compact))
 +		return -EMSGSIZE;
 +	return ethnl_send_get_request(nlctx, settings_reply_cb);
 +}

@@ -1,4 +1,4 @@
-From c70fcc7beacf539a2c8596ba55bc0bfa2b98b54e Mon Sep 17 00:00:00 2001
+From d69a16f0a6d72d6297e540e000e20dd242a219db Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:05:40 +0100
 Subject: [PATCH 19/34] netlink: add netlink handler for gchannels (-l)
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 50 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index ce0b6533c320..d14ba034b0f5 100644
+index 9aaeab924ebf..ebdc6a0cd318 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4930,6 +4930,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4982,6 +4982,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gcoalesce	NULL
  #define nl_gring	NULL
  #define nl_gpause	NULL
@@ -26,7 +26,7 @@ index ce0b6533c320..d14ba034b0f5 100644
  #endif
  
  static const struct option {
-@@ -5081,7 +5082,7 @@ static const struct option {
+@@ -5133,7 +5134,7 @@ static const struct option {
  	{ "-W|--set-dump", 1, do_setfwdump, NULL,
  	  "Set dump flag of the device",
  	  "		N\n"},
@@ -48,7 +48,7 @@ index 24d19dde5fc3..2ca01fb4c9ea 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 9132d4a58b0c..97b4fe0aabd2 100644
+index 338ebf939430..c9a850f5c3c8 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -186,6 +186,11 @@ static struct monitor_option monitor_opts[] = {
@@ -64,16 +64,16 @@ index 9132d4a58b0c..97b4fe0aabd2 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index b45aac166dcd..81547492532f 100644
+index 63913956c1b6..4535cd52367a 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
-@@ -105,6 +105,34 @@ static int show_pause(struct nl_context *nlctx, const struct nlattr *nest)
+@@ -107,6 +107,34 @@ static int show_pause(struct nl_context *nlctx, const struct nlattr *nest)
  	return 0;
  }
  
 +static int show_channels(struct nl_context *nlctx, const struct nlattr *nest)
 +{
-+	const struct nlattr *tb[ETHA_CHANNELS_MAX + 1] = {};
++	const struct nlattr *tb[ETHTOOL_A_CHANNELS_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	int ret;
 +
@@ -85,15 +85,15 @@ index b45aac166dcd..81547492532f 100644
 +
 +	printf("Channel parameters for %s:\n", nlctx->devname);
 +	printf("Pre-set maximums:\n");
-+	show_u32(tb[ETHA_CHANNELS_MAX_RX], "RX:\t\t");
-+	show_u32(tb[ETHA_CHANNELS_MAX_TX], "TX:\t\t");
-+	show_u32(tb[ETHA_CHANNELS_MAX_OTHER], "Other:\t\t");
-+	show_u32(tb[ETHA_CHANNELS_MAX_COMBINED], "Combined:\t");
++	show_u32(tb[ETHTOOL_A_CHANNELS_MAX_RX], "RX:\t\t");
++	show_u32(tb[ETHTOOL_A_CHANNELS_MAX_TX], "TX:\t\t");
++	show_u32(tb[ETHTOOL_A_CHANNELS_MAX_OTHER], "Other:\t\t");
++	show_u32(tb[ETHTOOL_A_CHANNELS_MAX_COMBINED], "Combined:\t");
 +	printf("Current hardware settings:\n");
-+	show_u32(tb[ETHA_CHANNELS_RX_COUNT], "RX:\t\t");
-+	show_u32(tb[ETHA_CHANNELS_TX_COUNT], "TX:\t\t");
-+	show_u32(tb[ETHA_CHANNELS_OTHER_COUNT], "Other:\t\t");
-+	show_u32(tb[ETHA_CHANNELS_COMBINED_COUNT], "Combined:\t");
++	show_u32(tb[ETHTOOL_A_CHANNELS_RX_COUNT], "RX:\t\t");
++	show_u32(tb[ETHTOOL_A_CHANNELS_TX_COUNT], "TX:\t\t");
++	show_u32(tb[ETHTOOL_A_CHANNELS_OTHER_COUNT], "Other:\t\t");
++	show_u32(tb[ETHTOOL_A_CHANNELS_COMBINED_COUNT], "Combined:\t");
 +	putchar('\n');
 +
 +	return 0;
@@ -101,13 +101,13 @@ index b45aac166dcd..81547492532f 100644
 +
  int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
- 	const struct nlattr *tb[ETHA_PARAMS_MAX + 1] = {};
-@@ -146,6 +174,15 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+ 	const struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1] = {};
+@@ -148,6 +176,15 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_ERROR;
  		}
  	}
 +	if (mask_ok(nlctx, ETH_PARAMS_IM_CHANNELS)) {
-+		ret = show_channels(nlctx, tb[ETHA_PARAMS_CHANNELS]);
++		ret = show_channels(nlctx, tb[ETHTOOL_A_PARAMS_CHANNELS]);
 +		if ((ret < 0) && show_only(nlctx, ETH_PARAMS_IM_CHANNELS)) {
 +			nlctx->exit_code = 1;
 +			errno = -ret;
@@ -118,7 +118,7 @@ index b45aac166dcd..81547492532f 100644
  
  	return MNL_CB_OK;
  }
-@@ -177,3 +214,8 @@ int nl_gpause(struct cmd_context *ctx)
+@@ -179,3 +216,8 @@ int nl_gpause(struct cmd_context *ctx)
  {
  	return params_request(ctx, ETH_PARAMS_IM_PAUSE);
  }

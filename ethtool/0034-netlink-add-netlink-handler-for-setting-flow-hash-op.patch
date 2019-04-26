@@ -1,4 +1,4 @@
-From d13f3adff784bff28b3e3da13e9c9be79befe087 Mon Sep 17 00:00:00 2001
+From 2e72279c4c746265c9d608129e851d204d041c8f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 2 Nov 2018 19:41:56 +0100
 Subject: [PATCH 34/34] netlink: add netlink handler for setting flow hash
@@ -11,14 +11,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c        |   3 +-
  netlink/extapi.h |   1 +
- netlink/rxflow.c | 111 +++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 114 insertions(+), 1 deletion(-)
+ netlink/rxflow.c | 112 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 115 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index dee5320652dc..7e6790ad8273 100644
+index 85e632a0d4ef..60de86648551 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4945,6 +4945,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4997,6 +4997,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_grxfh	NULL
  #define nl_srxfh	NULL
  #define nl_grxclass	NULL
@@ -26,7 +26,7 @@ index dee5320652dc..7e6790ad8273 100644
  #endif
  
  static const struct option {
-@@ -5048,7 +5049,7 @@ static const struct option {
+@@ -5100,7 +5101,7 @@ static const struct option {
  	  "		[ rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 [context %d] |\n"
  	  "		  rule %d ]\n" },
@@ -48,10 +48,10 @@ index 30ec79f0e94e..c86a4c7d0aa3 100644
  
  void monitor_usage();
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
-index 55ed350210c2..8a44447cc3e4 100644
+index a60adb2d4719..316b17720e84 100644
 --- a/netlink/rxflow.c
 +++ b/netlink/rxflow.c
-@@ -800,3 +800,114 @@ out_free:
+@@ -803,3 +803,115 @@ out_free:
  	free(data.weight.weights);
  	return ret;
  }
@@ -83,11 +83,11 @@ index 55ed350210c2..8a44447cc3e4 100644
 +	int ret;
 +
 +	ret = ethnl_prep_get_request(ctx, ETHNL_CMD_SET_RXFLOW,
-+				     ETHA_RXFLOW_DEV);
++				     ETHTOOL_A_RXFLOW_DEV);
 +	if (ret < 0)
 +		return 2;
 +
-+	opts_attr = ethnla_nest_start(nlctx, ETHA_RXFLOW_HASH_OPTS);
++	opts_attr = ethnla_nest_start(nlctx, ETHTOOL_A_RXFLOW_HASH_OPTS);
 +	if (!opts_attr)
 +		return 2;
 +	while (nlctx->argc > 0) {
@@ -105,10 +105,10 @@ index 55ed350210c2..8a44447cc3e4 100644
 +			continue;
 +		}
 +
-+		opt_attr = ethnla_nest_start(nlctx, ETHA_RXHASHOPTS_OPT);
++		opt_attr = ethnla_nest_start(nlctx, ETHTOOL_A_RXHASHOPTS_OPT);
 +		if (!opts_attr)
 +			return 2;
-+		ret = nl_parse_lookup_u32(nlctx, ETHA_RXHASHOPT_FLOWTYPE,
++		ret = nl_parse_lookup_u32(nlctx, ETHTOOL_A_RXHASHOPT_FLOWTYPE,
 +					  flow_types, NULL);
 +		if (ret < 0)
 +			return 2;
@@ -117,10 +117,11 @@ index 55ed350210c2..8a44447cc3e4 100644
 +		if (ret < 0)
 +			return 2;
 +		if (flags.value & RXH_DISCARD)
-+			ret = ethnla_put_flag(nlctx, ETHA_RXHASHOPT_DISCARD,
++			ret = ethnla_put_flag(nlctx,
++					      ETHTOOL_A_RXHASHOPT_DISCARD,
 +					      true);
 +		else
-+			ret = ethnla_put(nlctx, ETHA_RXHASHOPT_FIELDS,
++			ret = ethnla_put(nlctx, ETHTOOL_A_RXHASHOPT_FIELDS,
 +					 sizeof(flags), &flags);
 +		if (ret < 0)
 +			return 2;

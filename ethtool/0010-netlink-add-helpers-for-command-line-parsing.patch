@@ -1,4 +1,4 @@
-From 54e9c8814c78de98cd5f19483ab56b14394bde69 Mon Sep 17 00:00:00 2001
+From f2ad278cf3c5776f6628e68b90de0445e79dc7af Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:42:26 +0100
 Subject: [PATCH 10/34] netlink: add helpers for command line parsing
@@ -11,17 +11,17 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |    1 +
  netlink/netlink.h |    4 +
- netlink/parser.c  | 1001 +++++++++++++++++++++++++++++++++++++++++++++
+ netlink/parser.c  | 1002 +++++++++++++++++++++++++++++++++++++++++++++
  netlink/parser.h  |   88 ++++
- 4 files changed, 1094 insertions(+)
+ 4 files changed, 1095 insertions(+)
  create mode 100644 netlink/parser.c
  create mode 100644 netlink/parser.h
 
 diff --git a/Makefile.am b/Makefile.am
-index d879cc498291..dbb9369a1a95 100644
+index 0330bb3ec32d..3634b39baab7 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -23,6 +23,7 @@ if ETHTOOL_ENABLE_NETLINK
+@@ -28,6 +28,7 @@ if ETHTOOL_ENABLE_NETLINK
  ethtool_SOURCES += \
  		  netlink/netlink.c netlink/netlink.h netlink/extapi.h \
  		  netlink/strset.c netlink/strset.h netlink/monitor.c \
@@ -46,10 +46,10 @@ index b911ed77fd20..355b71feb2a7 100644
  	bool is_monitor;
 diff --git a/netlink/parser.c b/netlink/parser.c
 new file mode 100644
-index 000000000000..3fe05bd642a9
+index 000000000000..ae0ddf8a2161
 --- /dev/null
 +++ b/netlink/parser.c
-@@ -0,0 +1,1001 @@
+@@ -0,0 +1,1002 @@
 +#include <string.h>
 +#include <stdlib.h>
 +#include <errno.h>
@@ -654,12 +654,12 @@ index 000000000000..3fe05bd642a9
 +		goto out_free;
 +	ret = -EMSGSIZE;
 +	if (!(nest = ethnla_nest_start(nlctx, type)) ||
-+	    ethnla_put_flag(nlctx, ETHA_BITSET_LIST, !mask) ||
-+	    ethnla_put_u32(nlctx, ETHA_BITSET_SIZE, nbits) ||
-+	    ethnla_put(nlctx, ETHA_BITSET_VALUE, nwords * sizeof(uint32_t),
++	    ethnla_put_flag(nlctx, ETHTOOL_A_BITSET_LIST, !mask) ||
++	    ethnla_put_u32(nlctx, ETHTOOL_A_BITSET_SIZE, nbits) ||
++	    ethnla_put(nlctx, ETHTOOL_A_BITSET_VALUE, nwords * sizeof(uint32_t),
 +		       value) ||
 +	    (mask &&
-+	     ethnla_put(nlctx, ETHA_BITSET_MASK, nwords * sizeof(uint32_t),
++	     ethnla_put(nlctx, ETHTOOL_A_BITSET_MASK, nwords * sizeof(uint32_t),
 +			mask)))
 +		goto out_free;
 +	mnl_attr_nest_end(nlctx->nlhdr, nest);
@@ -710,9 +710,9 @@ index 000000000000..3fe05bd642a9
 +	if (!bitset_attr)
 +		return -EMSGSIZE;
 +	ret = -EMSGSIZE;
-+	if (list && ethnla_put_flag(nlctx, ETHA_BITSET_LIST, true))
++	if (list && ethnla_put_flag(nlctx, ETHTOOL_A_BITSET_LIST, true))
 +		goto err;
-+	bits_attr = ethnla_nest_start(nlctx, ETHA_BITSET_BITS);
++	bits_attr = ethnla_nest_start(nlctx, ETHTOOL_A_BITSET_BITS);
 +	if (!bits_attr)
 +		goto err;
 +
@@ -736,12 +736,13 @@ index 000000000000..3fe05bd642a9
 +		}
 +
 +		ret = -EMSGSIZE;
-+		bit_attr = ethnla_nest_start(nlctx, ETHA_BITS_BIT);
++		bit_attr = ethnla_nest_start(nlctx, ETHTOOL_A_BITS_BIT);
 +		if (!bit_attr)
 +			goto err;
-+		if (ethnla_put_strz(nlctx, ETHA_BIT_NAME, nlctx->argp[0]))
++		if (ethnla_put_strz(nlctx, ETHTOOL_A_BIT_NAME, nlctx->argp[0]))
 +			goto err;
-+		if (!list && ethnla_put_flag(nlctx, ETHA_BIT_VALUE, bit_val))
++		if (!list &&
++		    ethnla_put_flag(nlctx, ETHTOOL_A_BIT_VALUE, bit_val))
 +			goto err;
 +		mnl_attr_nest_end(nlhdr, bit_attr);
 +
@@ -778,7 +779,7 @@ index 000000000000..3fe05bd642a9
 +
 +/* parse arguments to fill a bitset nested attribute; accepts either numeric
 + * representation or a simple list of flag names; resulting bitset will have
-+ * ETHA_BITSET_LIST flag and no mask; this handler can only put bitset
++ * ETHTOOL_A_BITSET_LIST flag and no mask; this handler can only put bitset
 + * representation into a message, dest is ignored
 + * @nlctx: netlink context
 + * @type: bitset attribute type to use
