@@ -1,17 +1,18 @@
-From 59528e1204450656e0a26335ede359678fb0989d Mon Sep 17 00:00:00 2001
+From 617fc8baceb33ec49e066963e375cb044f416412 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
 Subject: [PATCH 43/44] ethtool: implement SET_RXFLOW notification
 
 SET_RXFLOW notification message uses the same format as response to
-GET_RXFLOW request except for ETHA_RXFLOW_CTXOP attribute which may be
+GET_RXFLOW request except for ETHTOOL_A_RXFLOW_CTXOP attribute which may be
 set to
 
   - ETH_RXFLOW_CTXOP_NEW when new context is allocated;
-    ETHA_RXFLOW_CONTEXT then contains id of the newly allocated context
-  - ETH_RXFLOW_CTXOP_DEL when a context is deleted; ETHA_RXFLOW_CONTEXT
-    then contains id of the deleted context and other attributes (except
-    ETHA_RXFLOW_DEV) are omitted
+    ETHTOOL_A_RXFLOW_CONTEXT then contains id of the newly allocated
+    context
+  - ETH_RXFLOW_CTXOP_DEL when a context is deleted;
+    ETHTOOL_A_RXFLOW_CONTEXT then contains id of the deleted context and
+    other attributes (except ETHTOOL_A_RXFLOW_DEV) are omitted
 
 The notification is also sent if related data is modified using the ioctl
 interface (ETHTOOL_SRSSH, ETHTOOL_SRXFH or ETHTOOL_SRXFHINDIR command).
@@ -138,10 +139,10 @@ index 1d6c9099c1b8..de8bf1009849 100644
  	if (copy_to_user(useraddr + offsetof(struct ethtool_rxfh, rss_context),
  			 &rxfh.rss_context, sizeof(rxfh.rss_context)))
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index ecdbe24d3e96..a67049147abe 100644
+index 07ddaf9a718e..ce17468f1ebb 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -566,6 +566,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -567,6 +567,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,
  	[ETHNL_CMD_ACT_PHYS_ID]		= ethnl_physid_notify,
  	[ETHNL_CMD_ACT_RESET]		= ethnl_reset_notify,
@@ -150,7 +151,7 @@ index ecdbe24d3e96..a67049147abe 100644
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index df3d249b54a1..877a44e2d6dd 100644
+index 468fd9496bf1..8bdd305135ed 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -309,5 +309,7 @@ void ethnl_physid_notify(struct net_device *dev, struct netlink_ext_ack *extack,
@@ -162,7 +163,7 @@ index df3d249b54a1..877a44e2d6dd 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index d3cc3acd870e..c5493e60fb61 100644
+index a8e5b03671d5..a0eb34d4236c 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
 @@ -461,3 +461,73 @@ const struct get_request_ops rxflow_request_ops = {
@@ -208,19 +209,19 @@ index d3cc3acd870e..c5493e60fb61 100644
 +	if (!msg_payload)
 +		goto err_skb;
 +
-+	ret = ethnl_fill_dev(skb, dev, ETHA_RXFLOW_DEV);
++	ret = ethnl_fill_dev(skb, dev, ETHTOOL_A_RXFLOW_DEV);
 +	if (ret < 0)
 +		goto err_skb;
 +	if (ninfo) {
 +		ret = -EMSGSIZE;
 +		if (ninfo->ctx_op &&
-+		    nla_put_u32(skb, ETHA_RXFLOW_CTXOP, ninfo->ctx_op))
++		    nla_put_u32(skb, ETHTOOL_A_RXFLOW_CTXOP, ninfo->ctx_op))
 +			goto err_skb;
 +	}
 +
 +	if (ninfo && ninfo->ctx_op == ETH_RXFLOW_CTXOP_DEL) {
 +		ret = -EMSGSIZE;
-+		if (nla_put_u32(skb, ETHA_RXFLOW_CONTEXT, ninfo->context))
++		if (nla_put_u32(skb, ETHTOOL_A_RXFLOW_CONTEXT, ninfo->context))
 +			goto err_skb;
 +	} else {
 +		ret = fill_rxflow(skb, req_info);

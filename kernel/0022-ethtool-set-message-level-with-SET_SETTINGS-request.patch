@@ -1,9 +1,9 @@
-From a89510a979315994618f9295bba38e3f7732f2c7 Mon Sep 17 00:00:00 2001
+From 1f248184ee89777abc785aa6dd49882a8b91e744 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 18:01:46 +0100
 Subject: [PATCH 22/44] ethtool: set message level with SET_SETTINGS request
 
-Allow setting device message level using ETHA_SETTINGS_DEBUG nested
+Allow setting device message level using ETHTOOL_A_SETTINGS_DEBUG nested
 attribute.
 
 Unlike in ioctl interface "message level" is called "message mask" (as it
@@ -13,30 +13,30 @@ future extensions.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  8 +++-
- net/ethtool/settings.c                       | 45 +++++++++++++++++++-
- 2 files changed, 50 insertions(+), 3 deletions(-)
+ net/ethtool/settings.c                       | 44 ++++++++++++++++++++
+ 2 files changed, 50 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 603acfbefe29..20e43d42afdd 100644
+index 3f987165122c..b5ff1b9cca21 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -345,6 +345,8 @@ to be passed with SET_SETTINGS request:
-     ETHA_SETTINGS_WOL		(nested)	wake on LAN settings
-         ETHA_WOL_MODES			(bitfield32)	wake on LAN modes
-         ETHA_WOL_SOPASS			(binary)	SecureOn(tm) password
-+    ETHA_SETTINGS_DEBUG		(nested)	debugging
-+        ETHA_DEBUG_MSG_MASK		(bitfield32)	message mask
+     ETHTOOL_A_SETTINGS_WOL		(nested)	wake on LAN settings
+         ETHTOOL_A_WOL_MODES		    (bitfield32)    wake on LAN modes
+         ETHTOOL_A_WOL_SOPASS		    (binary)	    SecureOn password
++    ETHTOOL_A_SETTINGS_DEBUG		(nested)	debugging
++        ETHTOOL_A_DEBUG_MSG_MASK	    (bitfield32)    message mask
  
- ETHA_LINKMODES_OURS bit set allows setting advertised link modes. If
+ ETHTOOL_A_LINKMODES_OURS bit set allows setting advertised link modes. If
  autonegotiation is on (either set now or kept from before), advertised modes
-@@ -360,7 +362,9 @@ selector are set to 0 or 1 according to value. To allow the semantics of the
- ioctl interface where the whole bitmap is set rather than only modified,
+@@ -360,7 +362,9 @@ the selector are set to 0 or 1 according to value. To allow the semantics of
+ the ioctl interface where the whole bitmap is set rather than only modified,
  selectors may have also bits not supported by device set and an error is only
  issued if any of them is also set in the value (i.e. if userspace tries to
 -enable mode not supported by device).
-+enable mode not supported by device). ETHA_SETTINGS_MSGLEVEL bitfield also
-+allows bits not recognized by kernel in selector as long as the request does
-+not attempt to enable them.
++enable mode not supported by device). ETHTOOL_A_SETTINGS_MSGLEVEL bitfield
++also allows bits not recognized by kernel in selector as long as the request
++does not attempt to enable them.
  
  
  Request translation
@@ -50,45 +50,44 @@ index 603acfbefe29..20e43d42afdd 100644
  ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 53409dd8af34..bc7ca03aa205 100644
+index 740a6d665cde..c57f21889673 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -538,6 +538,12 @@ static const struct nla_policy set_wol_policy[ETHA_LINKINFO_MAX + 1] = {
+@@ -539,6 +539,12 @@ static const struct nla_policy set_wol_policy[ETHTOOL_A_LINKINFO_MAX + 1] = {
  					    .len = SOPASS_MAX },
  };
  
-+static const struct nla_policy set_debug_policy[ETHA_DEBUG_MAX + 1] = {
-+	[ETHA_DEBUG_UNSPEC]		= { .type = NLA_REJECT },
-+	[ETHA_DEBUG_MSG_MASK]		= { .type = NLA_BITFIELD32,
++static const struct nla_policy set_debug_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
++	[ETHTOOL_A_DEBUG_UNSPEC]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_DEBUG_MSG_MASK]	= { .type = NLA_BITFIELD32,
 +					    .validation_data = &all_bits },
 +};
 +
- static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
- 	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
- 	[ETHA_SETTINGS_DEV]		= { .type = NLA_NESTED },
-@@ -547,7 +553,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
- 	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
- 	[ETHA_SETTINGS_LINK_STATE]	= { .type = NLA_REJECT },
- 	[ETHA_SETTINGS_WOL]		= { .type = NLA_NESTED },
--	[ETHA_SETTINGS_DEBUG]		= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
+ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
+ 	[ETHTOOL_A_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_SETTINGS_DEV]		= { .type = NLA_NESTED },
+@@ -549,6 +555,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+ 	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -732,6 +738,36 @@ static int update_wol(struct genl_info *info, struct nlattr *nest,
+@@ -737,6 +744,36 @@ static int update_wol(struct genl_info *info, struct nlattr *nest,
  	return ret;
  }
  
 +static int update_debug(struct genl_info *info, struct nlattr *nest,
 +			struct net_device *dev)
 +{
-+	struct nlattr *tb[ETHA_DEBUG_MAX + 1];
++	struct nlattr *tb[ETHTOOL_A_DEBUG_MAX + 1];
 +	u32 msglevel;
 +	int ret;
 +
 +	if (!nest)
 +		return 0;
-+	ret = nla_parse_nested_strict(tb, ETHA_DEBUG_MAX, nest,
++	ret = nla_parse_nested_strict(tb, ETHTOOL_A_DEBUG_MAX, nest,
 +				      set_debug_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
@@ -101,7 +100,7 @@ index 53409dd8af34..bc7ca03aa205 100644
 +	}
 +	ret = 0;
 +	msglevel = dev->ethtool_ops->get_msglevel(dev);
-+	if (ethnl_update_bitfield32(&msglevel, tb[ETHA_DEBUG_MSG_MASK])) {
++	if (ethnl_update_bitfield32(&msglevel, tb[ETHTOOL_A_DEBUG_MSG_MASK])) {
 +		dev->ethtool_ops->set_msglevel(dev, msglevel);
 +		ret = 1;
 +	}
@@ -111,13 +110,13 @@ index 53409dd8af34..bc7ca03aa205 100644
 +
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
- 	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-@@ -766,6 +802,13 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+ 	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
+@@ -772,6 +809,13 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret)
  			req_mask |= ETH_SETTINGS_IM_WOL;
  	}
-+	if (tb[ETHA_SETTINGS_DEBUG]) {
-+		ret = update_debug(info, tb[ETHA_SETTINGS_DEBUG], dev);
++	if (tb[ETHTOOL_A_SETTINGS_DEBUG]) {
++		ret = update_debug(info, tb[ETHTOOL_A_SETTINGS_DEBUG], dev);
 +		if (ret < 0)
 +			goto out_ops;
 +		if (ret)

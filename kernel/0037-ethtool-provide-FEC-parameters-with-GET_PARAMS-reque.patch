@@ -1,4 +1,4 @@
-From 8919381eaecbad79c11c5ec09bb911667f543e1c Mon Sep 17 00:00:00 2001
+From f09d32cccab10b927f8ff946930729a4b641dc3e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:53:42 +0100
 Subject: [PATCH 37/44] ethtool: provide FEC parameters with GET_PARAMS request
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 72 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 047410852ee7..ada700eb2892 100644
+index ae8de7090ef7..7333db14ef9f 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -412,9 +412,10 @@ GET_PARAMS
@@ -45,11 +45,11 @@ index 047410852ee7..ada700eb2892 100644
  Response contents: On top level, there is one attribute for each of the
  information categories, the information is nested in it.
 @@ -488,6 +490,9 @@ information categories, the information is nested in it.
-         ETHA_EEE_ENABLED			(bool)
-         ETHA_EEE_TX_LPI_ENABLED			(bool)
-         ETHA_EEE_TX_LPI_TIMER			(u32)
-+    ETHA_PARAMS_FEC		(nested)	FEC parameters
-+        ETHA_FEC_MODES				(bitfield32)
+         ETHTOOL_A_EEE_ENABLED		    (bool)
+         ETHTOOL_A_EEE_TX_LPI_ENABLED	    (bool)
+         ETHTOOL_A_EEE_TX_LPI_TIMER	    (u32)
++    ETHTOOL_A_PARAMS_FEC		(nested)	FEC parameters
++        ETHTOOL_A_FEC_MODES		    (bitfield32)
 +		- active (value) and configured (selector) FEC encodings
  
  GET_PARAMS requests allow dumps and messages in the same format as response
@@ -62,17 +62,17 @@ index 047410852ee7..ada700eb2892 100644
 +ETHTOOL_GFECPARAM		ETHNL_CMD_GET_PARAMS
  ETHTOOL_SFECPARAM		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index dd61c027ba44..8aba49b83487 100644
+index e0e6368b7817..a0c7d90c971c 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -297,6 +297,7 @@ enum {
- 	ETHA_PARAMS_PAUSE,			/* nest - ETHA_PAUSE_* */
- 	ETHA_PARAMS_CHANNELS,			/* nest - ETHA_CHANNELS_* */
- 	ETHA_PARAMS_EEE,			/* nest - ETHA_EEE_* */
-+	ETHA_PARAMS_FEC,			/* nest - ETHA_FEC_* */
+ 	ETHTOOL_A_PARAMS_PAUSE,			/* nest - ETHTOOL_A_PAUSE_* */
+ 	ETHTOOL_A_PARAMS_CHANNELS,		/* nest - ETHTOOL_A_CHANNELS_* */
+ 	ETHTOOL_A_PARAMS_EEE,			/* nest - ETHTOOL_A_EEE_* */
++	ETHTOOL_A_PARAMS_FEC,			/* nest - ETHTOOL_A_FEC_* */
  
- 	__ETHA_PARAMS_CNT,
- 	ETHA_PARAMS_MAX = (__ETHA_PARAMS_CNT - 1)
+ 	__ETHTOOL_A_PARAMS_CNT,
+ 	ETHTOOL_A_PARAMS_MAX = (__ETHTOOL_A_PARAMS_CNT - 1)
 @@ -307,12 +308,14 @@ enum {
  #define ETH_PARAMS_IM_PAUSE			(1U << 2)
  #define ETH_PARAMS_IM_CHANNELS			(1U << 3)
@@ -88,17 +88,17 @@ index dd61c027ba44..8aba49b83487 100644
 +			   ETH_PARAMS_IM_FEC)
  
  enum {
- 	ETHA_COALESCE_UNSPEC,
+ 	ETHTOOL_A_COALESCE_UNSPEC,
 @@ -396,6 +399,14 @@ enum {
- 	ETHA_EEE_MAX = (__ETHA_EEE_CNT - 1)
+ 	ETHTOOL_A_EEE_MAX = (__ETHTOOL_A_EEE_CNT - 1)
  };
  
 +enum {
-+	ETHA_FEC_UNSPEC,
-+	ETHA_FEC_MODES,				/* bitfield32 */
++	ETHTOOL_A_FEC_UNSPEC,
++	ETHTOOL_A_FEC_MODES,			/* bitfield32 */
 +
-+	__ETHA_FEC_CNT,
-+	ETHA_FEC_MAX = (__ETHA_FEC_CNT - 1)
++	__ETHTOOL_A_FEC_CNT,
++	ETHTOOL_A_FEC_MAX = (__ETHTOOL_A_FEC_CNT - 1)
 +};
 +
  /* generic netlink info */
@@ -130,14 +130,14 @@ index af1337f0dc20..d14d8e7edf55 100644
  
  /* The main entry point in this file.  Called from net/core/dev_ioctl.c */
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 1af93a7a5b15..9ae4ccfe03ff 100644
+index 59506ecbd252..9e8f0a480a4b 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -14,6 +14,7 @@ static const struct nla_policy get_params_policy[ETHA_PARAMS_MAX + 1] = {
- 	[ETHA_PARAMS_PAUSE]		= { .type = NLA_REJECT },
- 	[ETHA_PARAMS_CHANNELS]		= { .type = NLA_REJECT },
- 	[ETHA_PARAMS_EEE]		= { .type = NLA_REJECT },
-+	[ETHA_PARAMS_FEC]		= { .type = NLA_REJECT },
+@@ -14,6 +14,7 @@ static const struct nla_policy get_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+ 	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_PARAMS_CHANNELS]		= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_PARAMS_EEE]			= { .type = NLA_REJECT },
++	[ETHTOOL_A_PARAMS_FEC]			= { .type = NLA_REJECT },
  };
  
  struct params_data {
@@ -198,17 +198,17 @@ index 1af93a7a5b15..9ae4ccfe03ff 100644
  
  	return len;
  }
-@@ -384,6 +407,22 @@ static int fill_eee(struct sk_buff *skb, struct ethtool_eee *data, bool compact)
+@@ -387,6 +410,22 @@ static int fill_eee(struct sk_buff *skb, struct ethtool_eee *data, bool compact)
  	return ret;
  }
  
 +static int fill_fec(struct sk_buff *skb, struct ethtool_fecparam *data)
 +{
-+	struct nlattr *nest = ethnl_nest_start(skb, ETHA_PARAMS_FEC);
++	struct nlattr *nest = ethnl_nest_start(skb, ETHTOOL_A_PARAMS_FEC);
 +
 +	if (!nest)
 +		return -EMSGSIZE;
-+	if (nla_put_bitfield32(skb, ETHA_FEC_MODES, data->active_fec,
++	if (nla_put_bitfield32(skb, ETHTOOL_A_FEC_MODES, data->active_fec,
 +			       data->fec)) {
 +		nla_nest_cancel(skb, nest);
 +		return -EMSGSIZE;
@@ -221,7 +221,7 @@ index 1af93a7a5b15..9ae4ccfe03ff 100644
  static int fill_params(struct sk_buff *skb,
  		       const struct common_req_info *req_info)
  {
-@@ -417,6 +456,11 @@ static int fill_params(struct sk_buff *skb,
+@@ -420,6 +459,11 @@ static int fill_params(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -233,14 +233,14 @@ index 1af93a7a5b15..9ae4ccfe03ff 100644
  
  	return 0;
  }
-@@ -446,6 +490,7 @@ static const struct nla_policy set_params_policy[ETHA_PARAMS_MAX + 1] = {
- 	[ETHA_PARAMS_PAUSE]		= { .type = NLA_NESTED },
- 	[ETHA_PARAMS_CHANNELS]		= { .type = NLA_NESTED },
- 	[ETHA_PARAMS_EEE]		= { .type = NLA_NESTED },
-+	[ETHA_PARAMS_FEC]		= { .type = NLA_REJECT },
+@@ -449,6 +493,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+ 	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_NESTED },
+ 	[ETHTOOL_A_PARAMS_CHANNELS]		= { .type = NLA_NESTED },
+ 	[ETHTOOL_A_PARAMS_EEE]			= { .type = NLA_NESTED },
++	[ETHTOOL_A_PARAMS_FEC]			= { .type = NLA_REJECT },
  };
  
- static const struct nla_policy coalesce_policy[ETHA_COALESCE_MAX + 1] = {
+ static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
 -- 
 2.21.0
 

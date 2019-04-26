@@ -1,4 +1,4 @@
-From f51fa2489d5d1e0da6811da21f30f8aeff80f22e Mon Sep 17 00:00:00 2001
+From 90af6e5c8055c98c52eb4bbb54bae490e82ccf8a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:30:12 +0100
 Subject: [PATCH 33/44] ethtool: provide channel counts in GET_PARAMS request
@@ -12,14 +12,14 @@ modified using the ioctl interface (ETHTOOL_SCHANNELS command).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 19 ++++++--
+ Documentation/networking/ethtool-netlink.txt | 19 +++++--
  include/uapi/linux/ethtool_netlink.h         | 20 +++++++-
  net/ethtool/ioctl.c                          |  7 ++-
- net/ethtool/params.c                         | 51 ++++++++++++++++++++
- 4 files changed, 91 insertions(+), 6 deletions(-)
+ net/ethtool/params.c                         | 53 ++++++++++++++++++++
+ 4 files changed, 93 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index f29c8c3a2fc7..e2b2263c0c17 100644
+index e3001102546f..b0c08bb38572 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -411,9 +411,10 @@ GET_PARAMS
@@ -45,18 +45,18 @@ index f29c8c3a2fc7..e2b2263c0c17 100644
  Response contents: On top level, there is one attribute for each of the
  information categories, the information is nested in it.
 @@ -467,6 +469,15 @@ information categories, the information is nested in it.
-         ETHA_PAUSE_AUTONEG			(bool)
-         ETHA_PAUSE_RX				(bool)
-         ETHA_PAUSE_TX				(bool)
-+    ETHA_PARAMS_CHANNELS	(nested)	channel counts
-+        ETHA_CHANNELS_MAX_RX			(u32)
-+        ETHA_CHANNELS_MAX_TX			(u32)
-+        ETHA_CHANNELS_MAX_OTHER			(u32)
-+        ETHA_CHANNELS_MAX_COMBINED		(u32)
-+        ETHA_CHANNELS_RX_COUNT			(u32)
-+        ETHA_CHANNELS_TX_COUNT			(u32)
-+        ETHA_CHANNELS_OTHER_COUNT		(u32)
-+        ETHA_CHANNELS_COMBINED_COUNT		(u32)
+         ETHTOOL_A_PAUSE_AUTONEG		    (bool)
+         ETHTOOL_A_PAUSE_RX		    (bool)
+         ETHTOOL_A_PAUSE_TX		    (bool)
++    ETHTOOL_A_PARAMS_CHANNELS		(nested)	channel counts
++        ETHTOOL_A_CHANNELS_MAX_RX	    (u32)
++        ETHTOOL_A_CHANNELS_MAX_TX	    (u32)
++        ETHTOOL_A_CHANNELS_MAX_OTHER	    (u32)
++        ETHTOOL_A_CHANNELS_MAX_COMBINED	    (u32)
++        ETHTOOL_A_CHANNELS_RX_COUNT	    (u32)
++        ETHTOOL_A_CHANNELS_TX_COUNT	    (u32)
++        ETHTOOL_A_CHANNELS_OTHER_COUNT	    (u32)
++        ETHTOOL_A_CHANNELS_COMBINED_COUNT   (u32)
  
  GET_PARAMS requests allow dumps and messages in the same format as response
  to them are broadcasted as notifications on change of these settings using
@@ -70,17 +70,17 @@ index f29c8c3a2fc7..e2b2263c0c17 100644
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index bc1fbcd6a007..8bbd62b59d6e 100644
+index 1313fd655991..41b95445fc97 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -295,6 +295,7 @@ enum {
- 	ETHA_PARAMS_COALESCE,			/* nest - ETHA_COALESCE_* */
- 	ETHA_PARAMS_RING,			/* nest - ETHA_RING_* */
- 	ETHA_PARAMS_PAUSE,			/* nest - ETHA_PAUSE_* */
-+	ETHA_PARAMS_CHANNELS,			/* nest - ETHA_CHANNELS_* */
+ 	ETHTOOL_A_PARAMS_COALESCE,		/* nest - ETHTOOL_A_COALESCE_* */
+ 	ETHTOOL_A_PARAMS_RING,			/* nest - ETHTOOL_A_RING_* */
+ 	ETHTOOL_A_PARAMS_PAUSE,			/* nest - ETHTOOL_A_PAUSE_* */
++	ETHTOOL_A_PARAMS_CHANNELS,		/* nest - ETHTOOL_A_CHANNELS_* */
  
- 	__ETHA_PARAMS_CNT,
- 	ETHA_PARAMS_MAX = (__ETHA_PARAMS_CNT - 1)
+ 	__ETHTOOL_A_PARAMS_CNT,
+ 	ETHTOOL_A_PARAMS_MAX = (__ETHTOOL_A_PARAMS_CNT - 1)
 @@ -303,10 +304,12 @@ enum {
  #define ETH_PARAMS_IM_COALESCE			(1U << 0)
  #define ETH_PARAMS_IM_RING			(1U << 1)
@@ -94,24 +94,24 @@ index bc1fbcd6a007..8bbd62b59d6e 100644
 +			   ETH_PARAMS_IM_CHANNELS)
  
  enum {
- 	ETHA_COALESCE_UNSPEC,
+ 	ETHTOOL_A_COALESCE_UNSPEC,
 @@ -362,6 +365,21 @@ enum {
- 	ETHA_PAUSE_MAX = (__ETHA_PAUSE_CNT - 1)
+ 	ETHTOOL_A_PAUSE_MAX = (__ETHTOOL_A_PAUSE_CNT - 1)
  };
  
 +enum {
-+	ETHA_CHANNELS_UNSPEC,
-+	ETHA_CHANNELS_MAX_RX,			/* u32 */
-+	ETHA_CHANNELS_MAX_TX,			/* u32 */
-+	ETHA_CHANNELS_MAX_OTHER,		/* u32 */
-+	ETHA_CHANNELS_MAX_COMBINED,		/* u32 */
-+	ETHA_CHANNELS_RX_COUNT,			/* u32 */
-+	ETHA_CHANNELS_TX_COUNT,			/* u32 */
-+	ETHA_CHANNELS_OTHER_COUNT,		/* u32 */
-+	ETHA_CHANNELS_COMBINED_COUNT,		/* u32 */
++	ETHTOOL_A_CHANNELS_UNSPEC,
++	ETHTOOL_A_CHANNELS_MAX_RX,		/* u32 */
++	ETHTOOL_A_CHANNELS_MAX_TX,		/* u32 */
++	ETHTOOL_A_CHANNELS_MAX_OTHER,		/* u32 */
++	ETHTOOL_A_CHANNELS_MAX_COMBINED,	/* u32 */
++	ETHTOOL_A_CHANNELS_RX_COUNT,		/* u32 */
++	ETHTOOL_A_CHANNELS_TX_COUNT,		/* u32 */
++	ETHTOOL_A_CHANNELS_OTHER_COUNT,		/* u32 */
++	ETHTOOL_A_CHANNELS_COMBINED_COUNT,	/* u32 */
 +
-+	__ETHA_CHANNELS_CNT,
-+	ETHA_CHANNELS_MAX = (__ETHA_CHANNELS_CNT - 1)
++	__ETHTOOL_A_CHANNELS_CNT,
++	ETHTOOL_A_CHANNELS_MAX = (__ETHTOOL_A_CHANNELS_CNT - 1)
 +};
 +
  /* generic netlink info */
@@ -143,14 +143,14 @@ index 0c08e9c0c8d4..484cde939527 100644
  
  static int ethtool_get_pauseparam(struct net_device *dev, void __user *useraddr)
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index ff4999fc279c..49613c881fd7 100644
+index b7813e879974..b313a9e242dc 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -10,6 +10,7 @@ static const struct nla_policy get_params_policy[ETHA_PARAMS_MAX + 1] = {
- 	[ETHA_PARAMS_COALESCE]		= { .type = NLA_REJECT },
- 	[ETHA_PARAMS_RING]		= { .type = NLA_REJECT },
- 	[ETHA_PARAMS_PAUSE]		= { .type = NLA_REJECT },
-+	[ETHA_PARAMS_CHANNELS]		= { .type = NLA_REJECT },
+@@ -10,6 +10,7 @@ static const struct nla_policy get_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+ 	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_PARAMS_CHANNELS]		= { .type = NLA_REJECT },
  };
  
  struct params_data {
@@ -211,24 +211,26 @@ index ff4999fc279c..49613c881fd7 100644
  
  	return len;
  }
-@@ -251,6 +274,28 @@ static int fill_pause(struct sk_buff *skb, struct ethtool_pauseparam *data)
+@@ -251,6 +274,30 @@ static int fill_pause(struct sk_buff *skb, struct ethtool_pauseparam *data)
  	return 0;
  }
  
 +static int fill_channels(struct sk_buff *skb, struct ethtool_channels *data)
 +{
-+	struct nlattr *nest = ethnl_nest_start(skb, ETHA_PARAMS_CHANNELS);
++	struct nlattr *nest = ethnl_nest_start(skb, ETHTOOL_A_PARAMS_CHANNELS);
 +
 +	if (!nest)
 +		return -EMSGSIZE;
-+	if (nla_put_u32(skb, ETHA_CHANNELS_MAX_RX, data->max_rx) ||
-+	    nla_put_u32(skb, ETHA_CHANNELS_MAX_TX, data->max_tx) ||
-+	    nla_put_u32(skb, ETHA_CHANNELS_MAX_OTHER, data->max_other) ||
-+	    nla_put_u32(skb, ETHA_CHANNELS_MAX_COMBINED, data->max_combined) ||
-+	    nla_put_u32(skb, ETHA_CHANNELS_RX_COUNT, data->rx_count) ||
-+	    nla_put_u32(skb, ETHA_CHANNELS_TX_COUNT, data->tx_count) ||
-+	    nla_put_u32(skb, ETHA_CHANNELS_OTHER_COUNT, data->other_count) ||
-+	    nla_put_u32(skb, ETHA_CHANNELS_COMBINED_COUNT,
++	if (nla_put_u32(skb, ETHTOOL_A_CHANNELS_MAX_RX, data->max_rx) ||
++	    nla_put_u32(skb, ETHTOOL_A_CHANNELS_MAX_TX, data->max_tx) ||
++	    nla_put_u32(skb, ETHTOOL_A_CHANNELS_MAX_OTHER, data->max_other) ||
++	    nla_put_u32(skb, ETHTOOL_A_CHANNELS_MAX_COMBINED,
++			data->max_combined) ||
++	    nla_put_u32(skb, ETHTOOL_A_CHANNELS_RX_COUNT, data->rx_count) ||
++	    nla_put_u32(skb, ETHTOOL_A_CHANNELS_TX_COUNT, data->tx_count) ||
++	    nla_put_u32(skb, ETHTOOL_A_CHANNELS_OTHER_COUNT,
++			data->other_count) ||
++	    nla_put_u32(skb, ETHTOOL_A_CHANNELS_COMBINED_COUNT,
 +			data->combined_count)) {
 +		return -EMSGSIZE;
 +	}
@@ -240,7 +242,7 @@ index ff4999fc279c..49613c881fd7 100644
  static int fill_params(struct sk_buff *skb,
  		       const struct common_req_info *req_info)
  {
-@@ -274,6 +319,11 @@ static int fill_params(struct sk_buff *skb,
+@@ -274,6 +321,11 @@ static int fill_params(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -252,14 +254,14 @@ index ff4999fc279c..49613c881fd7 100644
  
  	return 0;
  }
-@@ -301,6 +351,7 @@ static const struct nla_policy set_params_policy[ETHA_PARAMS_MAX + 1] = {
- 	[ETHA_PARAMS_COALESCE]		= { .type = NLA_NESTED },
- 	[ETHA_PARAMS_RING]		= { .type = NLA_NESTED },
- 	[ETHA_PARAMS_PAUSE]		= { .type = NLA_NESTED },
-+	[ETHA_PARAMS_CHANNELS]		= { .type = NLA_REJECT },
+@@ -301,6 +353,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+ 	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_NESTED },
+ 	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_NESTED },
+ 	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_NESTED },
++	[ETHTOOL_A_PARAMS_CHANNELS]		= { .type = NLA_REJECT },
  };
  
- static const struct nla_policy coalesce_policy[ETHA_COALESCE_MAX + 1] = {
+ static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
 -- 
 2.21.0
 

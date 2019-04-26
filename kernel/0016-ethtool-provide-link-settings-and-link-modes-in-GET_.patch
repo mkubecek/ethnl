@@ -1,4 +1,4 @@
-From 965ba0020dcf79540a3df03495e497f681306a82 Mon Sep 17 00:00:00 2001
+From 3a0e4bf33f9ee0f52da03386f8d8097cdb41b1e8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 16/44] ethtool: provide link settings and link modes in
@@ -27,12 +27,12 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/ioctl.c                          |  64 +----
  net/ethtool/netlink.c                        |   9 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/settings.c                       | 277 +++++++++++++++++++
- 10 files changed, 451 insertions(+), 53 deletions(-)
+ net/ethtool/settings.c                       | 278 +++++++++++++++++++
+ 10 files changed, 452 insertions(+), 53 deletions(-)
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 74c62f11810c..d723b3537c46 100644
+index bea6b83dc8bd..6ce33ac12c6d 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -131,6 +131,8 @@ List of message types
@@ -44,7 +44,7 @@ index 74c62f11810c..d723b3537c46 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -258,6 +260,50 @@ if no PHC is associated, the attribute is not present.
+@@ -258,6 +260,50 @@ value; if no PHC is associated, the attribute is not present.
  GET_INFO requests allow dumps.
  
  
@@ -57,9 +57,9 @@ index 74c62f11810c..d723b3537c46 100644
 +
 +Request attributes:
 +
-+    ETHA_SETTINGS_DEV		(nested)	device identification
-+    ETHA_SETTINGS_INFOMASK	(u32)		info mask
-+    ETHA_SETTINGS_COMPACT	(flag)		request compact bitsets
++    ETHTOOL_A_SETTINGS_DEV		(nested)	device identification
++    ETHTOOL_A_SETTINGS_INFOMASK		(u32)		info mask
++    ETHTOOL_A_SETTINGS_COMPACT		(flag)		compact bitsets
 +
 +Info mask bits meaning:
 +
@@ -68,24 +68,24 @@ index 74c62f11810c..d723b3537c46 100644
 +
 +Response contents:
 +
-+    ETHA_SETTINGS_DEV		(nested)	device identification
-+    ETHA_SETTINGS_LINK_INFO	(nested)	link settings
-+        ETHA_LINKINFO_PORT		(u8)		physical port
-+        ETHA_LINKINFO_PHYADDR		(u8)		MDIO address of phy
-+        ETHA_LINKINFO_TP_MDIX		(u8)		MDI(-X) status
-+        ETHA_LINKINFO_TP_MDIX_CTRL	(u8)		MDI(-X) control
-+        ETHA_LINKINFO_TRANSCEIVER	(u8)		transceiver
-+    ETHA_SETTINGS_LINK_MODES	(nested)	link modes
-+        ETHA_LINKMODES_AUTONEG		(u8)		autoneotiation status
-+        ETHA_LINKMODES_OURS		(bitset)	advertised link modes
-+        ETHA_LINKMODES_PEER		(bitset)	partner link modes
-+        ETHA_LINKMODES_SPEED		(u32)		link speed (Mb/s)
-+        ETHA_LINKMODES_DUPLEX		(u8)		duplex mode
++    ETHTOOL_A_SETTINGS_DEV		(nested)	device identification
++    ETHTOOL_A_SETTINGS_LINK_INFO	(nested)	link settings
++        ETHTOOL_A_LINKINFO_PORT		    (u8)	    physical port
++        ETHTOOL_A_LINKINFO_PHYADDR	    (u8)	    phy MDIO address
++        ETHTOOL_A_LINKINFO_TP_MDIX	    (u8)	    MDI(-X) status
++        ETHTOOL_A_LINKINFO_TP_MDIX_CTRL	    (u8)	    MDI(-X) control
++        ETHTOOL_A_LINKINFO_TRANSCEIVER	    (u8)	    transceiver
++    ETHTOOL_A_SETTINGS_LINK_MODES	(nested)	link modes
++        ETHTOOL_A_LINKMODES_AUTONEG	    (u8)	    autonegotiation status
++        ETHTOOL_A_LINKMODES_OURS	    (bitset)	    advertised link modes
++        ETHTOOL_A_LINKMODES_PEER	    (bitset)	    partner link modes
++        ETHTOOL_A_LINKMODES_SPEED	    (u32)	    link speed (Mb/s)
++        ETHTOOL_A_LINKMODES_DUPLEX	    (u8)	    duplex mode
 +
 +Most of the attributes and their values have the same meaning as matching
-+members of the corresponding ioctl structures. For ETHA_LINKMODES_OURS,
++members of the corresponding ioctl structures. For ETHTOOL_A_LINKMODES_OURS,
 +value represents advertised modes and mask represents supported modes.
-+ETHA_LINKMODES_PEER in the reply is a bit list.
++ETHTOOL_A_LINKMODES_PEER in the reply is a bit list.
 +
 +GET_SETTINGS requests allow dumps and messages in the same format as response
 +to them are broadcasted as notifications on change of these settings using
@@ -128,7 +128,7 @@ index 2a15e64a16f3..e770e6e9acca 100644
  	ETHNL_MCGRP_MONITOR,
  };
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index e7a6e813150b..895ba9cd8924 100644
+index 2c3eb9bc3aa1..7d99191b1389 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -18,6 +18,8 @@ enum {
@@ -141,21 +141,21 @@ index e7a6e813150b..895ba9cd8924 100644
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
 @@ -185,6 +187,50 @@ enum {
- 	ETHA_TSINFO_MAX = (__ETHA_TSINFO_CNT - 1)
+ 	ETHTOOL_A_TSINFO_MAX = (__ETHTOOL_A_TSINFO_CNT - 1)
  };
  
 +/* GET_SETTINGS / SET_SETTINGS */
 +
 +enum {
-+	ETHA_SETTINGS_UNSPEC,
-+	ETHA_SETTINGS_DEV,			/* nest - ETHA_DEV_* */
-+	ETHA_SETTINGS_INFOMASK,			/* u32 */
-+	ETHA_SETTINGS_COMPACT,			/* flag */
-+	ETHA_SETTINGS_LINK_INFO,		/* nest - ETHA_LINKINFO_* */
-+	ETHA_SETTINGS_LINK_MODES,		/* nest - ETHA_LINKMODES_* */
++	ETHTOOL_A_SETTINGS_UNSPEC,
++	ETHTOOL_A_SETTINGS_DEV,			/* nest - ETHTOOL_A_DEV_* */
++	ETHTOOL_A_SETTINGS_INFOMASK,		/* u32 */
++	ETHTOOL_A_SETTINGS_COMPACT,		/* flag */
++	ETHTOOL_A_SETTINGS_LINK_INFO,		/* nest - ETHTOOL_A_LINKINFO_* */
++	ETHTOOL_A_SETTINGS_LINK_MODES,		/* nest - ETHTOOL_A_LINKMODES_* */
 +
-+	__ETHA_SETTINGS_CNT,
-+	ETHA_SETTINGS_MAX = (__ETHA_SETTINGS_CNT - 1)
++	__ETHTOOL_A_SETTINGS_CNT,
++	ETHTOOL_A_SETTINGS_MAX = (__ETHTOOL_A_SETTINGS_CNT - 1)
 +};
 +
 +#define ETH_SETTINGS_IM_LINKINFO		(1U << 0)
@@ -165,27 +165,27 @@ index e7a6e813150b..895ba9cd8924 100644
 +			     ETH_SETTINGS_IM_LINKMODES)
 +
 +enum {
-+	ETHA_LINKINFO_UNSPEC,
-+	ETHA_LINKINFO_PORT,			/* u8 */
-+	ETHA_LINKINFO_PHYADDR,			/* u8 */
-+	ETHA_LINKINFO_TP_MDIX,			/* u8 */
-+	ETHA_LINKINFO_TP_MDIX_CTRL,		/* u8 */
-+	ETHA_LINKINFO_TRANSCEIVER,		/* u8 */
++	ETHTOOL_A_LINKINFO_UNSPEC,
++	ETHTOOL_A_LINKINFO_PORT,		/* u8 */
++	ETHTOOL_A_LINKINFO_PHYADDR,		/* u8 */
++	ETHTOOL_A_LINKINFO_TP_MDIX,		/* u8 */
++	ETHTOOL_A_LINKINFO_TP_MDIX_CTRL,	/* u8 */
++	ETHTOOL_A_LINKINFO_TRANSCEIVER,		/* u8 */
 +
-+	__ETHA_LINKINFO_CNT,
-+	ETHA_LINKINFO_MAX = (__ETHA_LINKINFO_CNT - 1)
++	__ETHTOOL_A_LINKINFO_CNT,
++	ETHTOOL_A_LINKINFO_MAX = (__ETHTOOL_A_LINKINFO_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_LINKMODES_UNSPEC,
-+	ETHA_LINKMODES_AUTONEG,			/* u8 */
-+	ETHA_LINKMODES_OURS,			/* bitset */
-+	ETHA_LINKMODES_PEER,			/* bitset */
-+	ETHA_LINKMODES_SPEED,			/* u32 */
-+	ETHA_LINKMODES_DUPLEX,			/* u8 */
++	ETHTOOL_A_LINKMODES_UNSPEC,
++	ETHTOOL_A_LINKMODES_AUTONEG,		/* u8 */
++	ETHTOOL_A_LINKMODES_OURS,		/* bitset */
++	ETHTOOL_A_LINKMODES_PEER,		/* bitset */
++	ETHTOOL_A_LINKMODES_SPEED,		/* u32 */
++	ETHTOOL_A_LINKMODES_DUPLEX,		/* u8 */
 +
-+	__ETHA_LINKMODES_CNT,
-+	ETHA_LINKMODES_MAX = (__ETHA_LINKMODES_CNT - 1)
++	__ETHTOOL_A_LINKMODES_CNT,
++	ETHTOOL_A_LINKMODES_MAX = (__ETHTOOL_A_LINKMODES_CNT - 1)
 +};
 +
  /* generic netlink info */
@@ -374,10 +374,10 @@ index d923aa183a9e..4a5df702955b 100644
  
  static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index f0385c30169b..9b4ad09799c5 100644
+index f378801071ce..89e62338c992 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -234,6 +234,7 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -235,6 +235,7 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
  	[ETHNL_CMD_GET_STRSET]		= &strset_request_ops,
  	[ETHNL_CMD_GET_INFO]		= &info_request_ops,
@@ -385,7 +385,7 @@ index f0385c30169b..9b4ad09799c5 100644
  };
  
  /**
-@@ -558,6 +559,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -559,6 +560,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  				       const void *data);
  
  ethnl_notify_handler_t ethnl_notify_handlers[] = {
@@ -393,7 +393,7 @@ index f0385c30169b..9b4ad09799c5 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -654,6 +656,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -657,6 +659,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -408,7 +408,7 @@ index f0385c30169b..9b4ad09799c5 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index ce60d7e18651..fd7a362d79fa 100644
+index 92c241595ef9..900b08ff8393 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -289,5 +289,6 @@ struct get_request_ops {
@@ -420,10 +420,10 @@ index ce60d7e18651..fd7a362d79fa 100644
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
-index 000000000000..5d0c44a58883
+index 000000000000..2a714bb28b55
 --- /dev/null
 +++ b/net/ethtool/settings.c
-@@ -0,0 +1,277 @@
+@@ -0,0 +1,278 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include "netlink.h"
@@ -440,38 +440,38 @@ index 000000000000..5d0c44a58883
 +	bool				lpm_empty;
 +};
 +
-+static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
-+	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_DEV]		= { .type = NLA_NESTED },
-+	[ETHA_SETTINGS_INFOMASK]	= { .type = NLA_U32 },
-+	[ETHA_SETTINGS_COMPACT]		= { .type = NLA_FLAG },
-+	[ETHA_SETTINGS_LINK_INFO]	= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_REJECT },
++static const struct nla_policy get_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
++	[ETHTOOL_A_SETTINGS_UNSPEC]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_SETTINGS_DEV]	= { .type = NLA_NESTED },
++	[ETHTOOL_A_SETTINGS_INFOMASK]	= { .type = NLA_U32 },
++	[ETHTOOL_A_SETTINGS_COMPACT]	= { .type = NLA_FLAG },
++	[ETHTOOL_A_SETTINGS_LINK_INFO]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_SETTINGS_LINK_MODES]	= { .type = NLA_REJECT },
 +};
 +
 +static int parse_settings(struct common_req_info *req_info,
 +			  struct sk_buff *skb, struct genl_info *info,
 +			  const struct nlmsghdr *nlhdr)
 +{
-+	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
++	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
 +	int ret;
 +
-+	ret = ethnlmsg_parse(nlhdr, tb, ETHA_SETTINGS_MAX, get_settings_policy,
-+			     info);
++	ret = ethnlmsg_parse(nlhdr, tb, ETHTOOL_A_SETTINGS_MAX,
++			     get_settings_policy, info);
 +	if (ret < 0)
 +		return ret;
 +
-+	if (tb[ETHA_SETTINGS_DEV]) {
-+		req_info->dev = ethnl_dev_get(info, tb[ETHA_SETTINGS_DEV]);
++	if (tb[ETHTOOL_A_SETTINGS_DEV]) {
++		req_info->dev = ethnl_dev_get(info, tb[ETHTOOL_A_SETTINGS_DEV]);
 +		if (IS_ERR(req_info->dev)) {
 +			ret = PTR_ERR(req_info->dev);
 +			req_info->dev = NULL;
 +			return ret;
 +		}
 +	}
-+	if (tb[ETHA_SETTINGS_INFOMASK])
-+		req_info->req_mask = nla_get_u32(tb[ETHA_SETTINGS_INFOMASK]);
-+	if (tb[ETHA_SETTINGS_COMPACT])
++	if (tb[ETHTOOL_A_SETTINGS_INFOMASK])
++		req_info->req_mask = nla_get_u32(tb[ETHTOOL_A_SETTINGS_INFOMASK]);
++	if (tb[ETHTOOL_A_SETTINGS_COMPACT])
 +		req_info->compact = true;
 +	if (req_info->req_mask == 0)
 +		req_info->req_mask = ETH_SETTINGS_IM_ALL;
@@ -573,8 +573,8 @@ index 000000000000..5d0c44a58883
 +}
 +
 +/* To keep things simple, reserve space for some attributes which may not
-+ * be added to the message (e.g. ETHA_SETTINGS_SOPASS); therefore the length
-+ * returned may be bigger than the actual length of the message sent
++ * be added to the message (e.g. ETHTOOL_A_SETTINGS_SOPASS); therefore the
++ * length returned may be bigger than the actual length of the message sent.
 + */
 +static int settings_size(const struct common_req_info *req_info)
 +{
@@ -600,18 +600,19 @@ index 000000000000..5d0c44a58883
 +static int fill_link_info(struct sk_buff *skb,
 +			  const struct ethtool_link_settings *lsettings)
 +{
-+	struct nlattr *nest = ethnl_nest_start(skb, ETHA_SETTINGS_LINK_INFO);
++	struct nlattr *nest = ethnl_nest_start(skb,
++					       ETHTOOL_A_SETTINGS_LINK_INFO);
 +
 +	if (!nest)
 +		return -EMSGSIZE;
-+	if (nla_put_u8(skb, ETHA_LINKINFO_PORT, lsettings->port) ||
-+	    nla_put_u8(skb, ETHA_LINKINFO_PHYADDR,
++	if (nla_put_u8(skb, ETHTOOL_A_LINKINFO_PORT, lsettings->port) ||
++	    nla_put_u8(skb, ETHTOOL_A_LINKINFO_PHYADDR,
 +		       lsettings->phy_address) ||
-+	    nla_put_u8(skb, ETHA_LINKINFO_TP_MDIX,
++	    nla_put_u8(skb, ETHTOOL_A_LINKINFO_TP_MDIX,
 +		       lsettings->eth_tp_mdix) ||
-+	    nla_put_u8(skb, ETHA_LINKINFO_TP_MDIX_CTRL,
++	    nla_put_u8(skb, ETHTOOL_A_LINKINFO_TP_MDIX_CTRL,
 +		       lsettings->eth_tp_mdix_ctrl) ||
-+	    nla_put_u8(skb, ETHA_LINKINFO_TRANSCEIVER,
++	    nla_put_u8(skb, ETHTOOL_A_LINKINFO_TRANSCEIVER,
 +		       lsettings->transceiver)) {
 +		nla_nest_cancel(skb, nest);
 +		return -EMSGSIZE;
@@ -633,19 +634,19 @@ index 000000000000..5d0c44a58883
 +	struct nlattr *nest;
 +	int ret;
 +
-+	nest = ethnl_nest_start(skb, ETHA_SETTINGS_LINK_MODES);
++	nest = ethnl_nest_start(skb, ETHTOOL_A_SETTINGS_LINK_MODES);
 +	if (!nest)
 +		return -EMSGSIZE;
-+	if (nla_put_u8(skb, ETHA_LINKMODES_AUTONEG, lsettings->autoneg))
++	if (nla_put_u8(skb, ETHTOOL_A_LINKMODES_AUTONEG, lsettings->autoneg))
 +		goto err;
 +
-+	ret = ethnl_put_bitset32(skb, ETHA_LINKMODES_OURS,
++	ret = ethnl_put_bitset32(skb, ETHTOOL_A_LINKMODES_OURS,
 +				 __ETHTOOL_LINK_MODE_MASK_NBITS, advertising,
 +				 supported, link_mode_names, flags);
 +	if (ret < 0)
 +		goto err;
 +	if (!lpm_empty) {
-+		ret = ethnl_put_bitset32(skb, ETHA_LINKMODES_PEER,
++		ret = ethnl_put_bitset32(skb, ETHTOOL_A_LINKMODES_PEER,
 +					 __ETHTOOL_LINK_MODE_MASK_NBITS,
 +					 lp_adv, NULL, link_mode_names,
 +					 flags | ETHNL_BITSET_LIST);
@@ -653,8 +654,8 @@ index 000000000000..5d0c44a58883
 +			goto err;
 +	}
 +
-+	if (nla_put_u32(skb, ETHA_LINKMODES_SPEED, lsettings->speed) ||
-+	    nla_put_u8(skb, ETHA_LINKMODES_DUPLEX, lsettings->duplex))
++	if (nla_put_u32(skb, ETHTOOL_A_LINKMODES_SPEED, lsettings->speed) ||
++	    nla_put_u8(skb, ETHTOOL_A_LINKMODES_DUPLEX, lsettings->duplex))
 +		goto err;
 +
 +	nla_nest_end(skb, nest);
@@ -692,7 +693,7 @@ index 000000000000..5d0c44a58883
 +const struct get_request_ops settings_request_ops = {
 +	.request_cmd		= ETHNL_CMD_GET_SETTINGS,
 +	.reply_cmd		= ETHNL_CMD_SET_SETTINGS,
-+	.dev_attrtype		= ETHA_SETTINGS_DEV,
++	.dev_attrtype		= ETHTOOL_A_SETTINGS_DEV,
 +	.data_size		= sizeof(struct settings_data),
 +	.repdata_offset		= offsetof(struct settings_data, repdata_base),
 +

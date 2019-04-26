@@ -1,4 +1,4 @@
-From 51558490272d825e4e7a20b97e111b89018ba6d8 Mon Sep 17 00:00:00 2001
+From 7d0404ca2946304b3f1421e1177280cef9b2627a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 05/44] ethtool: introduce ethtool netlink interface
@@ -25,7 +25,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 new file mode 100644
-index 000000000000..377d64c9b7fa
+index 000000000000..feef793dbafe
 --- /dev/null
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -0,0 +1,168 @@
@@ -69,7 +69,7 @@ index 000000000000..377d64c9b7fa
 +in "set" requests). For these attributes, the "true" value should be passed as
 +number 1 but any non-zero value should be understood as "true" by recipient.
 +
-+Some request types allow passing an attribute named ETHA_*_INFOMASK with
++Some request types allow passing an attribute named ETHTOOL_A_*_INFOMASK with
 +a bitmask telling kernel that we are only interested in some parts of the
 +information. If info mask is omitted, all available information is returned.
 +Meaning of info mask bits depends on request type and is listed below.
@@ -79,10 +79,10 @@ index 000000000000..377d64c9b7fa
 +---------------------
 +
 +When appropriate, network device is identified by a nested attribute named
-+ETHA_*_DEV. This attribute can contain
++ETHTOOL_A_*_DEV. This attribute can contain
 +
-+    ETHA_DEV_INDEX	(u32)		device ifindex
-+    ETHA_DEV_NAME	(string)	device name
++    ETHTOOL_A_DEV_INDEX		(u32)		device ifindex
++    ETHTOOL_A_DEV_NAME		(string)	device name
 +
 +In device related requests, one of these is sufficient; if both are used, they
 +must match (i.e. identify the same device). In device related replies both are

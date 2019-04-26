@@ -1,4 +1,4 @@
-From 94351124e700f64a6f4340cb3bb63f768ae07c85 Mon Sep 17 00:00:00 2001
+From 3fba8149be15a0553aa0813e987e9f4c6ee73896 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
 Subject: [PATCH 08/44] ethtool: support for netlink notifications
@@ -17,9 +17,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/linux/ethtool_netlink.h      |  5 ++++
  include/linux/netdevice.h            | 12 +++++++++
  include/uapi/linux/ethtool_netlink.h |  2 ++
- net/ethtool/netlink.c                | 37 ++++++++++++++++++++++++++++
+ net/ethtool/netlink.c                | 39 +++++++++++++++++++++++++++-
  net/ethtool/netlink.h                |  2 ++
- 5 files changed, 58 insertions(+)
+ 5 files changed, 59 insertions(+), 1 deletion(-)
 
 diff --git a/include/linux/ethtool_netlink.h b/include/linux/ethtool_netlink.h
 index 0412adb4f42f..2a15e64a16f3 100644
@@ -37,10 +37,10 @@ index 0412adb4f42f..2a15e64a16f3 100644
  
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index 521eb869555e..063f81145460 100644
+index c46d218a0456..bfb8fe582f49 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -4372,6 +4372,18 @@ struct netdev_notifier_bonding_info {
+@@ -4375,6 +4375,18 @@ struct netdev_notifier_bonding_info {
  void netdev_bonding_info_change(struct net_device *dev,
  				struct netdev_bonding_info *bonding_info);
  
@@ -60,7 +60,7 @@ index 521eb869555e..063f81145460 100644
  struct sk_buff *skb_gso_segment(struct sk_buff *skb, netdev_features_t features)
  {
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index de18e076ed69..91e4d117957b 100644
+index 71c6a648a030..428136f9f836 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -65,4 +65,6 @@ enum {
@@ -71,10 +71,10 @@ index de18e076ed69..91e4d117957b 100644
 +
  #endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index cc6829ba4331..4a31765165ea 100644
+index fbf577997a55..9ccf076e5f3b 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -4,6 +4,10 @@
+@@ -4,10 +4,14 @@
  #include <linux/ethtool_netlink.h>
  #include "netlink.h"
  
@@ -82,10 +82,15 @@ index cc6829ba4331..4a31765165ea 100644
 +
 +static bool ethnl_ok __read_mostly;
 +
- static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
- 	[ETHA_DEV_UNSPEC]	= { .type = NLA_REJECT },
- 	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -147,11 +151,41 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+ static const struct nla_policy dev_policy[ETHTOOL_A_DEV_MAX + 1] = {
+ 	[ETHTOOL_A_DEV_UNSPEC]	= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_DEV_INDEX]	= { .type = NLA_U32 },
+-	[ETHTOOL_A_DEV_NAME]		= { .type = NLA_NUL_STRING,
++	[ETHTOOL_A_DEV_NAME]	= { .type = NLA_NUL_STRING,
+ 				    .len = IFNAMSIZ - 1 },
+ };
+ 
+@@ -148,11 +152,41 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  	return NULL;
  }
  
@@ -127,7 +132,7 @@ index cc6829ba4331..4a31765165ea 100644
  struct genl_family ethtool_genl_family = {
  	.hdrsize	= 0,
  	.name		= ETHTOOL_GENL_NAME,
-@@ -160,6 +194,8 @@ struct genl_family ethtool_genl_family = {
+@@ -161,6 +195,8 @@ struct genl_family ethtool_genl_family = {
  	.parallel_ops	= true,
  	.ops		= ethtool_genl_ops,
  	.n_ops		= ARRAY_SIZE(ethtool_genl_ops),
@@ -136,7 +141,7 @@ index cc6829ba4331..4a31765165ea 100644
  };
  
  /* module setup */
-@@ -171,6 +207,7 @@ static int __init ethnl_init(void)
+@@ -172,6 +208,7 @@ static int __init ethnl_init(void)
  	ret = genl_register_family(&ethtool_genl_family);
  	if (WARN(ret < 0, "ethtool: genetlink family registration failed"))
  		return ret;
@@ -145,7 +150,7 @@ index cc6829ba4331..4a31765165ea 100644
  	return 0;
  }
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index b8a6cd3dc3e3..5f2299548915 100644
+index e73f36b79bc5..09bf5aca5d7f 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -11,6 +11,8 @@

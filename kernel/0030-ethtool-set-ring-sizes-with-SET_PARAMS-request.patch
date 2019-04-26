@@ -1,20 +1,20 @@
-From af0603afedd7e559b280a0fd36d51ea47668c4fc Mon Sep 17 00:00:00 2001
+From 6bcb7a329d31000b45c87cd4b62e42616ed11c56 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 07:53:54 +0100
 Subject: [PATCH 30/44] ethtool: set ring sizes with SET_PARAMS request
 
 Add support for setting device ring sizes using SET_SETTINGS request with
-ETHA_PARAMS_RING nested attribute. This is a replacement of
+ETHTOOL_A_PARAMS_RING nested attribute. This is a replacement of
 ETHTOOL_SRINGPARAM ioctl command.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt | 13 +++-
- net/ethtool/params.c                         | 73 +++++++++++++++++++-
- 2 files changed, 82 insertions(+), 4 deletions(-)
+ net/ethtool/params.c                         | 66 +++++++++++++++++++-
+ 2 files changed, 75 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 30176c8410a0..dd9a480d2723 100644
+index bb0169d1b3dd..5c8304805e79 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -472,8 +472,10 @@ SET_PARAMS
@@ -22,23 +22,23 @@ index 30176c8410a0..dd9a480d2723 100644
  
  SET_PARAMS request modifies the settings retrieved by GET_PARAMS, i.e. it
 -replaces ETHTOOL_SCOALESCE ioctl command. Relevant data attributes are
--contained in nest attribute ETHA_PARAMS_COALESCE.
+-contained in nest attribute ETHTOOL_A_PARAMS_COALESCE.
 +replaces ETHTOOL_SCOALESCE and ETHTOOL_SRINGPARAM ioctl commands. For each of
 +these, relevant data attributes are contained in a corresponding nest
 +attribute. Some of the attributes provided by GET_SETPARAMS are read only and
 +cannot be set by SET_PARAMS request.
  
-     ETHA_PARAMS_COALESCE	(nested)	coalescing parameters
-         ETHA_COALESCE_RX_USECS			(u32)
-@@ -498,6 +500,11 @@ contained in nest attribute ETHA_PARAMS_COALESCE.
-         ETHA_COALESCE_TX_USE_ADAPTIVE		(bool)
-         ETHA_COALESCE_RATE_SAMPLE_INTERVAL	(u32)
-         ETHA_COALESCE_STATS_BLOCK_USECS		(u32)
-+    ETHA_PARAMS_RING		(nested)	ring sizes
-+        ETHA_RING_RX_PENDING			(u32)
-+        ETHA_RING_RX_MINI_PENDING		(u32)
-+        ETHA_RING_RX_JUMBO_PENDING		(u32)
-+        ETHA_RING_TX_PENDING			(u32)
+     ETHTOOL_A_PARAMS_COALESCE		(nested)	coalescing parameters
+         ETHTOOL_A_COALESCE_RX_USECS	    (u32)
+@@ -498,6 +500,11 @@ contained in nest attribute ETHTOOL_A_PARAMS_COALESCE.
+         ETHTOOL_A_COALESCE_TX_USE_ADAPTIVE  (bool)
+         ETHTOOL_A_COALESCE_RATE_SAMPLE_INTERVAL	(u32)
+         ETHTOOL_A_COALESCE_STATS_BLOCK_USECS	(u32)
++    ETHTOOL_A_PARAMS_RING		(nested)	ring sizes
++        ETHTOOL_A_RING_RX_PENDING	    (u32)
++        ETHTOOL_A_RING_RX_MINI_PENDING	    (u32)
++        ETHTOOL_A_RING_RX_JUMBO_PENDING	    (u32)
++        ETHTOOL_A_RING_TX_PENDING	    (u32)
  
  
  Request translation
@@ -52,38 +52,38 @@ index 30176c8410a0..dd9a480d2723 100644
  ETHTOOL_SPAUSEPARAM		n/a
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 94f311e0e252..0bcf66608306 100644
+index ee8eb6fb42b9..9fc9d7ecd4ed 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -254,7 +254,7 @@ static const struct nla_policy set_params_policy[ETHA_PARAMS_MAX + 1] = {
- 	[ETHA_PARAMS_INFOMASK]		= { .type = NLA_REJECT },
- 	[ETHA_PARAMS_COMPACT]		= { .type = NLA_FLAG },
- 	[ETHA_PARAMS_COALESCE]		= { .type = NLA_NESTED },
--	[ETHA_PARAMS_RING]		= { .type = NLA_REJECT },
-+	[ETHA_PARAMS_RING]		= { .type = NLA_NESTED },
+@@ -254,7 +254,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+ 	[ETHTOOL_A_PARAMS_INFOMASK]		= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_PARAMS_COMPACT]		= { .type = NLA_FLAG },
+ 	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_NESTED },
+-	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_REJECT },
++	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_NESTED },
  };
  
- static const struct nla_policy coalesce_policy[ETHA_COALESCE_MAX + 1] = {
-@@ -377,6 +377,72 @@ static int update_coalesce(struct genl_info *info, struct net_device *dev,
+ static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
+@@ -377,6 +377,65 @@ static int update_coalesce(struct genl_info *info, struct net_device *dev,
  	return (ret < 0) ? ret : 1;
  }
  
-+static const struct nla_policy ring_policy[ETHA_RING_MAX + 1] = {
-+	[ETHA_RING_UNSPEC]			= { .type = NLA_REJECT },
-+	[ETHA_RING_RX_MAX_PENDING]		= { .type = NLA_U32 },
-+	[ETHA_RING_RX_MINI_MAX_PENDING]		= { .type = NLA_U32 },
-+	[ETHA_RING_RX_JUMBO_MAX_PENDING]	= { .type = NLA_U32 },
-+	[ETHA_RING_TX_MAX_PENDING]		= { .type = NLA_U32 },
-+	[ETHA_RING_RX_PENDING]			= { .type = NLA_U32 },
-+	[ETHA_RING_RX_MINI_PENDING]		= { .type = NLA_U32 },
-+	[ETHA_RING_RX_JUMBO_PENDING]		= { .type = NLA_U32 },
-+	[ETHA_RING_TX_PENDING]			= { .type = NLA_U32 },
++static const struct nla_policy ring_policy[ETHTOOL_A_RING_MAX + 1] = {
++	[ETHTOOL_A_RING_UNSPEC]			= { .type = NLA_REJECT },
++	[ETHTOOL_A_RING_RX_MAX_PENDING]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_RING_RX_MINI_MAX_PENDING]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_RING_RX_JUMBO_MAX_PENDING]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_RING_TX_MAX_PENDING]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_RING_RX_PENDING]		= { .type = NLA_U32 },
++	[ETHTOOL_A_RING_RX_MINI_PENDING]	= { .type = NLA_U32 },
++	[ETHTOOL_A_RING_RX_JUMBO_PENDING]	= { .type = NLA_U32 },
++	[ETHTOOL_A_RING_TX_PENDING]		= { .type = NLA_U32 },
 +};
 +
 +static int update_ring(struct genl_info *info, struct net_device *dev,
 +		       struct nlattr *nest)
 +{
-+	struct nlattr *tb[ETHA_RING_MAX + 1];
++	struct nlattr *tb[ETHTOOL_A_RING_MAX + 1];
 +	struct ethtool_ringparam data = {};
 +	bool mod = false;
 +	int ret;
@@ -95,27 +95,20 @@ index 94f311e0e252..0bcf66608306 100644
 +		return -EOPNOTSUPP;
 +	dev->ethtool_ops->get_ringparam(dev, &data);
 +
-+	ret = nla_parse_nested_strict(tb, ETHA_RING_MAX, nest, ring_policy,
++	ret = nla_parse_nested_strict(tb, ETHTOOL_A_RING_MAX, nest, ring_policy,
 +				      info->extack);
 +	if (ret < 0)
 +		return ret;
-+	/* read only attributes */
-+	if (tb[ETHA_RING_RX_MAX_PENDING] || tb[ETHA_RING_RX_MINI_MAX_PENDING] ||
-+	    tb[ETHA_RING_RX_JUMBO_MAX_PENDING] ||
-+	    tb[ETHA_RING_TX_MAX_PENDING]) {
-+		ETHNL_SET_ERRMSG(info, "attempt to set a read only attribute");
-+		return -EINVAL;
-+	}
 +
-+	if (ethnl_update_u32(&data.rx_pending, tb[ETHA_RING_RX_PENDING]))
++	if (ethnl_update_u32(&data.rx_pending, tb[ETHTOOL_A_RING_RX_PENDING]))
 +		mod = true;
 +	if (ethnl_update_u32(&data.rx_mini_pending,
-+			     tb[ETHA_RING_RX_MINI_PENDING]))
++			     tb[ETHTOOL_A_RING_RX_MINI_PENDING]))
 +		mod = true;
 +	if (ethnl_update_u32(&data.rx_jumbo_pending,
-+			     tb[ETHA_RING_RX_JUMBO_PENDING]))
++			     tb[ETHTOOL_A_RING_RX_JUMBO_PENDING]))
 +		mod = true;
-+	if (ethnl_update_u32(&data.tx_pending, tb[ETHA_RING_TX_PENDING]))
++	if (ethnl_update_u32(&data.tx_pending, tb[ETHTOOL_A_RING_TX_PENDING]))
 +		mod = true;
 +	if (!mod)
 +		return 0;
@@ -136,12 +129,12 @@ index 94f311e0e252..0bcf66608306 100644
 +
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  {
- 	struct nlattr *tb[ETHA_PARAMS_MAX + 1];
-@@ -401,6 +467,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+ 	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
+@@ -401,6 +460,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
  		req_mask |= ETH_PARAMS_IM_COALESCE;
-+	ret = update_ring(info, dev, tb[ETHA_PARAMS_RING]);
++	ret = update_ring(info, dev, tb[ETHTOOL_A_PARAMS_RING]);
 +	if (ret < 0)
 +		goto out_ops;
 +	if (ret)

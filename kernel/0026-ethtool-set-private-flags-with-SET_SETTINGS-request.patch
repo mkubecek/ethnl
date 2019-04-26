@@ -1,30 +1,30 @@
-From fd717838892904b84df722b1f86a0abfca654f1f Mon Sep 17 00:00:00 2001
+From 7a22081d2c0228b047073eb00f2e9f1f9fd907cb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 26/44] ethtool: set private flags with SET_SETTINGS request
 
 Add support for setting device private flags using ETHNL_CMD_SET_SETTINGS
-message. ETHA_SETTINGS_PRIV_FLAGS nested attribute is a bit set used to
-define either requested set of enabled flags or changes against current
+message. ETHTOOL_A_SETTINGS_PRIV_FLAGS nested attribute is a bit set used
+to define either requested set of enabled flags or changes against current
 state.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  3 +-
- net/ethtool/settings.c                       | 43 +++++++++++++++++++-
- 2 files changed, 44 insertions(+), 2 deletions(-)
+ net/ethtool/settings.c                       | 44 +++++++++++++++++++-
+ 2 files changed, 45 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index d8b6e13d6953..e9aca2a4285b 100644
+index 2abfee8a6724..500395836c25 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -373,6 +373,7 @@ to be passed with SET_SETTINGS request:
-     ETHA_SETTINGS_FEATURES	(nested)	device features
-         ETHA_FEATURES_WANTED		(bitset)	wanted features
-         ETHA_FEATURES_WANT_DIFF		(flag)		actual diff
-+    ETHA_SETTINGS_PRIV_FLAGS	(bitset)	device private flags
+     ETHTOOL_A_SETTINGS_FEATURES		(nested)	device features
+         ETHTOOL_A_FEATURES_WANTED	    (bitset)	    wanted features
+         ETHTOOL_A_FEATURES_WANT_DIFF	    (flag)	    actual diff
++    ETHTOOL_A_SETTINGS_PRIV_FLAGS	(bitset)	device private flags
  
- ETHA_LINKMODES_OURS bit set allows setting advertised link modes. If
+ ETHTOOL_A_LINKMODES_OURS bit set allows setting advertised link modes. If
  autonegotiation is on (either set now or kept from before), advertised modes
 @@ -451,7 +452,7 @@ ETHTOOL_SGSO			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
@@ -36,19 +36,19 @@ index d8b6e13d6953..e9aca2a4285b 100644
  ETHTOOL_SRXFH			n/a
  ETHTOOL_GGRO			ETHNL_CMD_GET_SETTINGS
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 3290eddcdbf3..06937d6d984c 100644
+index 71d23c66e85d..7e4a721d21e6 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -770,7 +770,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
- 	[ETHA_SETTINGS_WOL]		= { .type = NLA_NESTED },
- 	[ETHA_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
- 	[ETHA_SETTINGS_FEATURES]	= { .type = NLA_NESTED },
--	[ETHA_SETTINGS_PRIV_FLAGS]	= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_PRIV_FLAGS]	= { .type = NLA_NESTED },
+@@ -772,7 +772,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+ 	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
+ 	[ETHTOOL_A_SETTINGS_FEATURES]		= { .type = NLA_NESTED },
+-	[ETHTOOL_A_SETTINGS_PRIV_FLAGS]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_SETTINGS_PRIV_FLAGS]		= { .type = NLA_NESTED },
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -1119,6 +1119,39 @@ static int update_features(struct genl_info *info, struct net_device *dev,
+@@ -1127,6 +1127,39 @@ static int update_features(struct genl_info *info, struct net_device *dev,
  	return 0;
  }
  
@@ -87,13 +87,14 @@ index 3290eddcdbf3..06937d6d984c 100644
 +
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
- 	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-@@ -1171,6 +1204,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+ 	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
+@@ -1181,6 +1214,15 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret < 0)
  			goto out_ops;
  	}
-+	if (tb[ETHA_SETTINGS_PRIV_FLAGS]) {
-+		ret = update_priv_flags(info, dev, tb[ETHA_SETTINGS_PRIV_FLAGS],
++	if (tb[ETHTOOL_A_SETTINGS_PRIV_FLAGS]) {
++		ret = update_priv_flags(info, dev,
++					tb[ETHTOOL_A_SETTINGS_PRIV_FLAGS],
 +					&mod);
 +		if (mod)
 +			req_mask |= ETH_SETTINGS_IM_PRIVFLAGS;

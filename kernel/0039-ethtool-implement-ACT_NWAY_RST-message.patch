@@ -1,4 +1,4 @@
-From 9d45d72a185c2d0ca5205e59c349807180e679df Mon Sep 17 00:00:00 2001
+From c90870cc48bf5d022324e0e99cb7a4e9e07435c7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 39/44] ethtool: implement ACT_NWAY_RST message
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/actions.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 07238252c864..a2ed44e993c5 100644
+index 1abcf7a8ca9a..26559931ae19 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -135,6 +135,7 @@ List of message types
@@ -42,7 +42,7 @@ index 07238252c864..a2ed44e993c5 100644
 +
 +Request contents:
 +
-+    ETHA_NWAYRST_DEV		(nested)	device identification
++    ETHTOOL_A_NWAYRST_DEV		(nested)	device identification
 +
 +If successful, a notification in the same format is sent.
 +
@@ -60,7 +60,7 @@ index 07238252c864..a2ed44e993c5 100644
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 8aba49b83487..7df29675101e 100644
+index a0c7d90c971c..12415e73ac22 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -22,6 +22,7 @@ enum {
@@ -72,17 +72,17 @@ index 8aba49b83487..7df29675101e 100644
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
 @@ -407,6 +408,16 @@ enum {
- 	ETHA_FEC_MAX = (__ETHA_FEC_CNT - 1)
+ 	ETHTOOL_A_FEC_MAX = (__ETHTOOL_A_FEC_CNT - 1)
  };
  
 +/* ACT_NWAY_RST */
 +
 +enum {
-+	ETHA_NWAYRST_UNSPEC,
-+	ETHA_NWAYRST_DEV,			/* nest - ETHA_DEV_* */
++	ETHTOOL_A_NWAYRST_UNSPEC,
++	ETHTOOL_A_NWAYRST_DEV,			/* nest - ETHTOOL_A_DEV_* */
 +
-+	__ETHA_NWAYRST_CNT,
-+	ETHA_NWAYRST_MAX = (__ETHA_NWAYRST_CNT - 1)
++	__ETHTOOL_A_NWAYRST_CNT,
++	ETHTOOL_A_NWAYRST_MAX = (__ETHTOOL_A_NWAYRST_CNT - 1)
 +};
 +
  /* generic netlink info */
@@ -101,7 +101,7 @@ index 95e93c153cf6..b3e88cf0f4c0 100644
 +		   actions.o
 diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
 new file mode 100644
-index 000000000000..7cfe0025403a
+index 000000000000..73d009ef9c29
 --- /dev/null
 +++ b/net/ethtool/actions.c
 @@ -0,0 +1,75 @@
@@ -112,9 +112,9 @@ index 000000000000..7cfe0025403a
 +
 +/* ACT_NWAY_RST */
 +
-+static const struct nla_policy nwayrst_policy[ETHA_NWAYRST_MAX + 1] = {
-+	[ETHA_NWAYRST_UNSPEC]		= { .type = NLA_REJECT },
-+	[ETHA_NWAYRST_DEV]		= { .type = NLA_NESTED },
++static const struct nla_policy nwayrst_policy[ETHTOOL_A_NWAYRST_MAX + 1] = {
++	[ETHTOOL_A_NWAYRST_UNSPEC]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_NWAYRST_DEV]		= { .type = NLA_NESTED },
 +};
 +
 +void ethnl_nwayrst_notify(struct net_device *dev,
@@ -136,7 +136,7 @@ index 000000000000..7cfe0025403a
 +	if (!msg_payload)
 +		goto err_skb;
 +
-+	ret = ethnl_fill_dev(skb, dev, ETHA_NWAYRST_DEV);
++	ret = ethnl_fill_dev(skb, dev, ETHTOOL_A_NWAYRST_DEV);
 +	if (ret < 0)
 +		goto err_skb;
 +	genlmsg_end(skb, msg_payload);
@@ -150,15 +150,15 @@ index 000000000000..7cfe0025403a
 +
 +int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info)
 +{
-+	struct nlattr *tb[ETHA_NWAYRST_MAX + 1];
++	struct nlattr *tb[ETHTOOL_A_NWAYRST_MAX + 1];
 +	struct net_device *dev;
 +	int ret;
 +
-+	ret = ethnlmsg_parse(info->nlhdr, tb, ETHA_NWAYRST_MAX, nwayrst_policy,
-+			     info);
++	ret = ethnlmsg_parse(info->nlhdr, tb, ETHTOOL_A_NWAYRST_MAX,
++			     nwayrst_policy, info);
 +	if (ret < 0)
 +		return ret;
-+	dev = ethnl_dev_get(info, tb[ETHA_NWAYRST_DEV]);
++	dev = ethnl_dev_get(info, tb[ETHTOOL_A_NWAYRST_DEV]);
 +	if (IS_ERR(dev))
 +		return PTR_ERR(dev);
 +	ret = -EOPNOTSUPP;
@@ -202,10 +202,10 @@ index d14d8e7edf55..d34af84c1adf 100644
  
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 00cf6c27f10d..7345b9fad227 100644
+index 47a124e69a4e..2a87a0bd5559 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -562,6 +562,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -563,6 +563,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_SETTINGS]	= ethnl_std_notify,
  	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
@@ -213,7 +213,7 @@ index 00cf6c27f10d..7345b9fad227 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -693,6 +694,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -696,6 +697,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_params,
  	},
@@ -226,7 +226,7 @@ index 00cf6c27f10d..7345b9fad227 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 6faf512ed903..b5b824f8c1ce 100644
+index e29b001d839a..11f50fe4a396 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -294,5 +294,12 @@ extern const struct get_request_ops params_request_ops;

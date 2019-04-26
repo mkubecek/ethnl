@@ -1,4 +1,4 @@
-From 8b06d3ec0224f18bfe79debdf35f5a2449ac7a1e Mon Sep 17 00:00:00 2001
+From 65cc807783cafeed9599bdc7c5fd8fe2e36a818a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:43:01 +0100
 Subject: [PATCH 35/44] ethtool: provide EEE settings in GET_PARAMS request
@@ -15,11 +15,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt | 18 +++-
  include/uapi/linux/ethtool_netlink.h         | 18 +++-
  net/ethtool/ioctl.c                          |  7 +-
- net/ethtool/params.c                         | 93 ++++++++++++++++++++
- 4 files changed, 130 insertions(+), 6 deletions(-)
+ net/ethtool/params.c                         | 94 ++++++++++++++++++++
+ 4 files changed, 131 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 28c287c434b7..d8c1e36f2ca2 100644
+index f15dde7e554a..78706245d9ed 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -412,9 +412,9 @@ GET_PARAMS
@@ -44,18 +44,18 @@ index 28c287c434b7..d8c1e36f2ca2 100644
  Response contents: On top level, there is one attribute for each of the
  information categories, the information is nested in it.
 @@ -478,6 +479,15 @@ information categories, the information is nested in it.
-         ETHA_CHANNELS_TX_COUNT			(u32)
-         ETHA_CHANNELS_OTHER_COUNT		(u32)
-         ETHA_CHANNELS_COMBINED_COUNT		(u32)
-+    ETHA_PARAMS_EEE		(nested)	EEE settings
-+        ETHA_EEE_LINK_MODES			(bitset)
+         ETHTOOL_A_CHANNELS_TX_COUNT	    (u32)
+         ETHTOOL_A_CHANNELS_OTHER_COUNT	    (u32)
+         ETHTOOL_A_CHANNELS_COMBINED_COUNT   (u32)
++    ETHTOOL_A_PARAMS_EEE		(nested)	EEE settings
++        ETHTOOL_A_EEE_LINK_MODES	    (bitset)
 +		- modes for which EEE is advertised (value) or supported (mask)
-+        ETHA_EEE_PEER_MODES			(bitset)
++        ETHTOOL_A_EEE_PEER_MODES	    (bitset)
 +		- modes for which link partner advertises EEE
-+        ETHA_EEE_ACTIVE				(bool)
-+        ETHA_EEE_ENABLED			(bool)
-+        ETHA_EEE_TX_LPI_ENABLED			(bool)
-+        ETHA_EEE_TX_LPI_TIMER			(u32)
++        ETHTOOL_A_EEE_ACTIVE		    (bool)
++        ETHTOOL_A_EEE_ENABLED		    (bool)
++        ETHTOOL_A_EEE_TX_LPI_ENABLED	    (bool)
++        ETHTOOL_A_EEE_TX_LPI_TIMER	    (u32)
  
  GET_PARAMS requests allow dumps and messages in the same format as response
  to them are broadcasted as notifications on change of these settings using
@@ -69,17 +69,17 @@ index 28c287c434b7..d8c1e36f2ca2 100644
  ETHTOOL_GRSSH			n/a
  ETHTOOL_SRSSH			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 8bbd62b59d6e..dd61c027ba44 100644
+index 41b95445fc97..e0e6368b7817 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -296,6 +296,7 @@ enum {
- 	ETHA_PARAMS_RING,			/* nest - ETHA_RING_* */
- 	ETHA_PARAMS_PAUSE,			/* nest - ETHA_PAUSE_* */
- 	ETHA_PARAMS_CHANNELS,			/* nest - ETHA_CHANNELS_* */
-+	ETHA_PARAMS_EEE,			/* nest - ETHA_EEE_* */
+ 	ETHTOOL_A_PARAMS_RING,			/* nest - ETHTOOL_A_RING_* */
+ 	ETHTOOL_A_PARAMS_PAUSE,			/* nest - ETHTOOL_A_PAUSE_* */
+ 	ETHTOOL_A_PARAMS_CHANNELS,		/* nest - ETHTOOL_A_CHANNELS_* */
++	ETHTOOL_A_PARAMS_EEE,			/* nest - ETHTOOL_A_EEE_* */
  
- 	__ETHA_PARAMS_CNT,
- 	ETHA_PARAMS_MAX = (__ETHA_PARAMS_CNT - 1)
+ 	__ETHTOOL_A_PARAMS_CNT,
+ 	ETHTOOL_A_PARAMS_MAX = (__ETHTOOL_A_PARAMS_CNT - 1)
 @@ -305,11 +306,13 @@ enum {
  #define ETH_PARAMS_IM_RING			(1U << 1)
  #define ETH_PARAMS_IM_PAUSE			(1U << 2)
@@ -94,22 +94,22 @@ index 8bbd62b59d6e..dd61c027ba44 100644
 +			   ETH_PARAMS_IM_EEE)
  
  enum {
- 	ETHA_COALESCE_UNSPEC,
+ 	ETHTOOL_A_COALESCE_UNSPEC,
 @@ -380,6 +383,19 @@ enum {
- 	ETHA_CHANNELS_MAX = (__ETHA_CHANNELS_CNT - 1)
+ 	ETHTOOL_A_CHANNELS_MAX = (__ETHTOOL_A_CHANNELS_CNT - 1)
  };
  
 +enum {
-+	ETHA_EEE_UNSPEC,
-+	ETHA_EEE_LINK_MODES,			/* bitset */
-+	ETHA_EEE_PEER_MODES,			/* bitset */
-+	ETHA_EEE_ACTIVE,			/* u8 */
-+	ETHA_EEE_ENABLED,			/* u8 */
-+	ETHA_EEE_TX_LPI_ENABLED,		/* u8 */
-+	ETHA_EEE_TX_LPI_TIMER,			/* u32 */
++	ETHTOOL_A_EEE_UNSPEC,
++	ETHTOOL_A_EEE_LINK_MODES,		/* bitset */
++	ETHTOOL_A_EEE_PEER_MODES,		/* bitset */
++	ETHTOOL_A_EEE_ACTIVE,			/* u8 */
++	ETHTOOL_A_EEE_ENABLED,			/* u8 */
++	ETHTOOL_A_EEE_TX_LPI_ENABLED,		/* u8 */
++	ETHTOOL_A_EEE_TX_LPI_TIMER,		/* u32 */
 +
-+	__ETHA_EEE_CNT,
-+	ETHA_EEE_MAX = (__ETHA_EEE_CNT - 1)
++	__ETHTOOL_A_EEE_CNT,
++	ETHTOOL_A_EEE_MAX = (__ETHTOOL_A_EEE_CNT - 1)
 +};
 +
  /* generic netlink info */
@@ -141,7 +141,7 @@ index 3d04a11f1328..af1337f0dc20 100644
  
  static int ethtool_nway_reset(struct net_device *dev)
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index bf9e2a4427cb..1ec17d1c32cf 100644
+index e370cd3dbd38..4c35a4e8a221 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -2,6 +2,7 @@
@@ -150,13 +150,13 @@ index bf9e2a4427cb..1ec17d1c32cf 100644
  #include "common.h"
 +#include "bitset.h"
  
- static const struct nla_policy get_params_policy[ETHA_PARAMS_MAX + 1] = {
- 	[ETHA_PARAMS_UNSPEC]		= { .type = NLA_REJECT },
-@@ -12,6 +13,7 @@ static const struct nla_policy get_params_policy[ETHA_PARAMS_MAX + 1] = {
- 	[ETHA_PARAMS_RING]		= { .type = NLA_REJECT },
- 	[ETHA_PARAMS_PAUSE]		= { .type = NLA_REJECT },
- 	[ETHA_PARAMS_CHANNELS]		= { .type = NLA_REJECT },
-+	[ETHA_PARAMS_EEE]		= { .type = NLA_REJECT },
+ static const struct nla_policy get_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+ 	[ETHTOOL_A_PARAMS_UNSPEC]		= { .type = NLA_REJECT },
+@@ -12,6 +13,7 @@ static const struct nla_policy get_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+ 	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_PARAMS_CHANNELS]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_PARAMS_EEE]			= { .type = NLA_REJECT },
  };
  
  struct params_data {
@@ -244,35 +244,36 @@ index bf9e2a4427cb..1ec17d1c32cf 100644
  
  	return len;
  }
-@@ -297,6 +348,42 @@ static int fill_channels(struct sk_buff *skb, struct ethtool_channels *data)
+@@ -299,6 +350,43 @@ static int fill_channels(struct sk_buff *skb, struct ethtool_channels *data)
  	return 0;
  }
  
 +static int fill_eee(struct sk_buff *skb, struct ethtool_eee *data, bool compact)
 +{
 +	const unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
-+	struct nlattr *nest = ethnl_nest_start(skb, ETHA_PARAMS_EEE);
++	struct nlattr *nest = ethnl_nest_start(skb, ETHTOOL_A_PARAMS_EEE);
 +	int ret;
 +
 +	if (!nest)
 +		return -EMSGSIZE;
-+	ret = ethnl_put_bitset32(skb, ETHA_EEE_LINK_MODES,
++	ret = ethnl_put_bitset32(skb, ETHTOOL_A_EEE_LINK_MODES,
 +				 sizeof(data->advertised) * BITS_PER_BYTE,
 +				 &data->advertised, &data->supported,
 +				 link_mode_names, flags);
 +	if (ret < 0)
 +		goto err;
-+	ret = ethnl_put_bitset32(skb, ETHA_EEE_PEER_MODES,
++	ret = ethnl_put_bitset32(skb, ETHTOOL_A_EEE_PEER_MODES,
 +				 sizeof(data->lp_advertised) * BITS_PER_BYTE,
 +				 &data->lp_advertised, &data->lp_advertised,
 +				 link_mode_names, flags | ETHNL_BITSET_LIST);
 +	if (ret < 0)
 +		goto err;
 +
-+	if (nla_put_u8(skb, ETHA_EEE_ACTIVE, !!data->eee_active) ||
-+	    nla_put_u8(skb, ETHA_EEE_ENABLED, !!data->eee_enabled) ||
-+	    nla_put_u8(skb, ETHA_EEE_TX_LPI_ENABLED, !!data->tx_lpi_enabled) ||
-+	    nla_put_u32(skb, ETHA_EEE_TX_LPI_TIMER, data->tx_lpi_timer)) {
++	if (nla_put_u8(skb, ETHTOOL_A_EEE_ACTIVE, !!data->eee_active) ||
++	    nla_put_u8(skb, ETHTOOL_A_EEE_ENABLED, !!data->eee_enabled) ||
++	    nla_put_u8(skb, ETHTOOL_A_EEE_TX_LPI_ENABLED,
++		       !!data->tx_lpi_enabled) ||
++	    nla_put_u32(skb, ETHTOOL_A_EEE_TX_LPI_TIMER, data->tx_lpi_timer)) {
 +		ret = -EMSGSIZE;
 +		goto err;
 +	}
@@ -287,7 +288,7 @@ index bf9e2a4427cb..1ec17d1c32cf 100644
  static int fill_params(struct sk_buff *skb,
  		       const struct common_req_info *req_info)
  {
-@@ -325,6 +412,11 @@ static int fill_params(struct sk_buff *skb,
+@@ -327,6 +415,11 @@ static int fill_params(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -299,14 +300,14 @@ index bf9e2a4427cb..1ec17d1c32cf 100644
  
  	return 0;
  }
-@@ -353,6 +445,7 @@ static const struct nla_policy set_params_policy[ETHA_PARAMS_MAX + 1] = {
- 	[ETHA_PARAMS_RING]		= { .type = NLA_NESTED },
- 	[ETHA_PARAMS_PAUSE]		= { .type = NLA_NESTED },
- 	[ETHA_PARAMS_CHANNELS]		= { .type = NLA_NESTED },
-+	[ETHA_PARAMS_EEE]		= { .type = NLA_REJECT },
+@@ -355,6 +448,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+ 	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_NESTED },
+ 	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_NESTED },
+ 	[ETHTOOL_A_PARAMS_CHANNELS]		= { .type = NLA_NESTED },
++	[ETHTOOL_A_PARAMS_EEE]			= { .type = NLA_REJECT },
  };
  
- static const struct nla_policy coalesce_policy[ETHA_COALESCE_MAX + 1] = {
+ static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
 -- 
 2.21.0
 

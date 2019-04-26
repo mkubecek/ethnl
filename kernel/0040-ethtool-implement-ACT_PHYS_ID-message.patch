@@ -1,4 +1,4 @@
-From e522c0b212bdcf3aab3ef3b9fab496c71ab53620 Mon Sep 17 00:00:00 2001
+From a032fe53dc3aa6456228c398d1c1307bed7cb172 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 40/44] ethtool: implement ACT_PHYS_ID message
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 186 insertions(+), 47 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index a2ed44e993c5..b46534038476 100644
+index 26559931ae19..33001518020b 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -570,6 +570,28 @@ Request contents:
@@ -36,8 +36,8 @@ index a2ed44e993c5..b46534038476 100644
 +
 +Request contents:
 +
-+    ETHA_PHYSID_DEV		(nested)	device identification
-+    ETHA_PHYSID_LENGTH		(u32)		length in seconds
++    ETHTOOL_A_PHYSID_DEV		(nested)	device identification
++    ETHTOOL_A_PHYSID_LENGTH		(u32)		length in seconds
 +
 +If length is omitted, maximum length is used. Processing is synchronous, there
 +is no reply until requested time expires (returns zero) or processing is
@@ -63,7 +63,7 @@ index a2ed44e993c5..b46534038476 100644
  ETHTOOL_GTSO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_STSO			ETHNL_CMD_SET_SETTINGS
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 7df29675101e..17134284864b 100644
+index 12415e73ac22..ab84d768b45a 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -23,6 +23,7 @@ enum {
@@ -75,25 +75,25 @@ index 7df29675101e..17134284864b 100644
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
 @@ -418,6 +419,17 @@ enum {
- 	ETHA_NWAYRST_MAX = (__ETHA_NWAYRST_CNT - 1)
+ 	ETHTOOL_A_NWAYRST_MAX = (__ETHTOOL_A_NWAYRST_CNT - 1)
  };
  
 +/* ACT_PHYS_ID */
 +
 +enum {
-+	ETHA_PHYSID_UNSPEC,
-+	ETHA_PHYSID_DEV,			/* nest - ETHA_DEV_* */
-+	ETHA_PHYSID_LENGTH,			/* u32 */
++	ETHTOOL_A_PHYSID_UNSPEC,
++	ETHTOOL_A_PHYSID_DEV,			/* nest - ETHTOOL_A_DEV_* */
++	ETHTOOL_A_PHYSID_LENGTH,		/* u32 */
 +
-+	__ETHA_PHYSID_CNT,
-+	ETHA_PHYSID_MAX = (__ETHA_PHYSID_CNT - 1)
++	__ETHTOOL_A_PHYSID_CNT,
++	ETHTOOL_A_PHYSID_MAX = (__ETHTOOL_A_PHYSID_CNT - 1)
 +};
 +
  /* generic netlink info */
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
-index 7cfe0025403a..a131a92b7957 100644
+index 73d009ef9c29..de18291ec5cd 100644
 --- a/net/ethtool/actions.c
 +++ b/net/ethtool/actions.c
 @@ -73,3 +73,78 @@ int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info)
@@ -103,10 +103,10 @@ index 7cfe0025403a..a131a92b7957 100644
 +
 +/* ACT_PHYS_ID */
 +
-+static const struct nla_policy physid_policy[ETHA_PHYSID_MAX + 1] = {
-+	[ETHA_PHYSID_UNSPEC]		= { .type = NLA_REJECT },
-+	[ETHA_PHYSID_DEV]		= { .type = NLA_NESTED },
-+	[ETHA_PHYSID_LENGTH]		= { .type = NLA_U32 },
++static const struct nla_policy physid_policy[ETHTOOL_A_PHYSID_MAX + 1] = {
++	[ETHTOOL_A_PHYSID_UNSPEC]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_PHYSID_DEV]		= { .type = NLA_NESTED },
++	[ETHTOOL_A_PHYSID_LENGTH]	= { .type = NLA_U32 },
 +};
 +
 +void ethnl_physid_notify(struct net_device *dev,
@@ -129,10 +129,10 @@ index 7cfe0025403a..a131a92b7957 100644
 +	if (!msg_payload)
 +		goto err_skb;
 +
-+	ret = ethnl_fill_dev(skb, dev, ETHA_PHYSID_DEV);
++	ret = ethnl_fill_dev(skb, dev, ETHTOOL_A_PHYSID_DEV);
 +	if (ret < 0)
 +		goto err_skb;
-+	if (nla_put_u32(skb, ETHA_PHYSID_LENGTH, timeout))
++	if (nla_put_u32(skb, ETHTOOL_A_PHYSID_LENGTH, timeout))
 +		goto err_skb;
 +
 +	genlmsg_end(skb, msg_payload);
@@ -146,20 +146,20 @@ index 7cfe0025403a..a131a92b7957 100644
 +
 +int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info)
 +{
-+	struct nlattr *tb[ETHA_PHYSID_MAX + 1];
++	struct nlattr *tb[ETHTOOL_A_PHYSID_MAX + 1];
 +	unsigned long timeout = 0;
 +	struct net_device *dev;
 +	int ret;
 +
-+	ret = ethnlmsg_parse(info->nlhdr, tb, ETHA_PHYSID_MAX, physid_policy,
-+			     info);
++	ret = ethnlmsg_parse(info->nlhdr, tb, ETHTOOL_A_PHYSID_MAX,
++			     physid_policy, info);
 +	if (ret < 0)
 +		return ret;
-+	dev = ethnl_dev_get(info, tb[ETHA_PHYSID_DEV]);
++	dev = ethnl_dev_get(info, tb[ETHTOOL_A_PHYSID_DEV]);
 +	if (IS_ERR(dev))
 +		return PTR_ERR(dev);
-+	if (tb[ETHA_PHYSID_LENGTH])
-+		timeout = nla_get_u32(tb[ETHA_PHYSID_LENGTH]);
++	if (tb[ETHTOOL_A_PHYSID_LENGTH])
++		timeout = nla_get_u32(tb[ETHTOOL_A_PHYSID_LENGTH]);
 +
 +	rtnl_lock();
 +	ret = ethnl_before_ops(dev);
@@ -333,10 +333,10 @@ index d34af84c1adf..8a7fa834c3d8 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 7345b9fad227..654979f1c6b6 100644
+index 2a87a0bd5559..a3ffa27d62b3 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -563,6 +563,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -564,6 +564,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_SETTINGS]	= ethnl_std_notify,
  	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
  	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,
@@ -344,7 +344,7 @@ index 7345b9fad227..654979f1c6b6 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -699,6 +700,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -702,6 +703,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_act_nway_rst,
  	},
@@ -357,7 +357,7 @@ index 7345b9fad227..654979f1c6b6 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index b5b824f8c1ce..03a5560cf660 100644
+index 11f50fe4a396..cdf58a7b5612 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -295,11 +295,14 @@ extern const struct get_request_ops params_request_ops;

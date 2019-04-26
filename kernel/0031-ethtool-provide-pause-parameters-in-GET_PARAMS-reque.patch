@@ -1,4 +1,4 @@
-From 0cd28b2ebb2deb9c01314e5c7e8ec26f5f22f8d8 Mon Sep 17 00:00:00 2001
+From 8f3a7481a9919c8a13ee6eeefd27f6f14a3645ff Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:02:27 +0100
 Subject: [PATCH 31/44] ethtool: provide pause parameters in GET_PARAMS request
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 75 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index dd9a480d2723..a31883040474 100644
+index 5c8304805e79..52f60a9d21e1 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -411,9 +411,9 @@ GET_PARAMS
@@ -44,13 +44,13 @@ index dd9a480d2723..a31883040474 100644
  Response contents: On top level, there is one attribute for each of the
  information categories, the information is nested in it.
 @@ -462,6 +463,10 @@ information categories, the information is nested in it.
-         ETHA_RING_RX_MINI_PENDING		(u32)
-         ETHA_RING_RX_JUMBO_PENDING		(u32)
-         ETHA_RING_TX_PENDING			(u32)
-+    ETHA_PARAMS_PAUSE		(nested)	pause parameters
-+        ETHA_PAUSE_AUTONEG			(bool)
-+        ETHA_PAUSE_RX				(bool)
-+        ETHA_PAUSE_TX				(bool)
+         ETHTOOL_A_RING_RX_MINI_PENDING	    (u32)
+         ETHTOOL_A_RING_RX_JUMBO_PENDING	    (u32)
+         ETHTOOL_A_RING_TX_PENDING	    (u32)
++    ETHTOOL_A_PARAMS_PAUSE		(nested)	pause parameters
++        ETHTOOL_A_PAUSE_AUTONEG		    (bool)
++        ETHTOOL_A_PAUSE_RX		    (bool)
++        ETHTOOL_A_PAUSE_TX		    (bool)
  
  GET_PARAMS requests allow dumps and messages in the same format as response
  to them are broadcasted as notifications on change of these settings using
@@ -64,17 +64,17 @@ index dd9a480d2723..a31883040474 100644
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SRXCSUM			ETHNL_CMD_SET_SETTINGS
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index cc1aba2b3a11..bc1fbcd6a007 100644
+index 4c01b25cde88..1313fd655991 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -294,6 +294,7 @@ enum {
- 	ETHA_PARAMS_COMPACT,			/* flag */
- 	ETHA_PARAMS_COALESCE,			/* nest - ETHA_COALESCE_* */
- 	ETHA_PARAMS_RING,			/* nest - ETHA_RING_* */
-+	ETHA_PARAMS_PAUSE,			/* nest - ETHA_PAUSE_* */
+ 	ETHTOOL_A_PARAMS_COMPACT,		/* flag */
+ 	ETHTOOL_A_PARAMS_COALESCE,		/* nest - ETHTOOL_A_COALESCE_* */
+ 	ETHTOOL_A_PARAMS_RING,			/* nest - ETHTOOL_A_RING_* */
++	ETHTOOL_A_PARAMS_PAUSE,			/* nest - ETHTOOL_A_PAUSE_* */
  
- 	__ETHA_PARAMS_CNT,
- 	ETHA_PARAMS_MAX = (__ETHA_PARAMS_CNT - 1)
+ 	__ETHTOOL_A_PARAMS_CNT,
+ 	ETHTOOL_A_PARAMS_MAX = (__ETHTOOL_A_PARAMS_CNT - 1)
 @@ -301,9 +302,11 @@ enum {
  
  #define ETH_PARAMS_IM_COALESCE			(1U << 0)
@@ -87,19 +87,19 @@ index cc1aba2b3a11..bc1fbcd6a007 100644
 +			   ETH_PARAMS_IM_PAUSE)
  
  enum {
- 	ETHA_COALESCE_UNSPEC,
+ 	ETHTOOL_A_COALESCE_UNSPEC,
 @@ -349,6 +352,16 @@ enum {
- 	ETHA_RING_MAX = (__ETHA_RING_CNT - 1)
+ 	ETHTOOL_A_RING_MAX = (__ETHTOOL_A_RING_CNT - 1)
  };
  
 +enum {
-+	ETHA_PAUSE_UNSPEC,
-+	ETHA_PAUSE_AUTONEG,			/* u8 */
-+	ETHA_PAUSE_RX,				/* u8 */
-+	ETHA_PAUSE_TX,				/* u8 */
++	ETHTOOL_A_PAUSE_UNSPEC,
++	ETHTOOL_A_PAUSE_AUTONEG,		/* u8 */
++	ETHTOOL_A_PAUSE_RX,			/* u8 */
++	ETHTOOL_A_PAUSE_TX,			/* u8 */
 +
-+	__ETHA_PAUSE_CNT,
-+	ETHA_PAUSE_MAX = (__ETHA_PAUSE_CNT - 1)
++	__ETHTOOL_A_PAUSE_CNT,
++	ETHTOOL_A_PAUSE_MAX = (__ETHTOOL_A_PAUSE_CNT - 1)
 +};
 +
  /* generic netlink info */
@@ -131,14 +131,14 @@ index 0775f5810b9e..0c08e9c0c8d4 100644
  
  static int ethtool_self_test(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 0bcf66608306..bae4398ced74 100644
+index 9fc9d7ecd4ed..bff53af4db99 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -9,6 +9,7 @@ static const struct nla_policy get_params_policy[ETHA_PARAMS_MAX + 1] = {
- 	[ETHA_PARAMS_COMPACT]		= { .type = NLA_FLAG },
- 	[ETHA_PARAMS_COALESCE]		= { .type = NLA_REJECT },
- 	[ETHA_PARAMS_RING]		= { .type = NLA_REJECT },
-+	[ETHA_PARAMS_PAUSE]		= { .type = NLA_REJECT },
+@@ -9,6 +9,7 @@ static const struct nla_policy get_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+ 	[ETHTOOL_A_PARAMS_COMPACT]		= { .type = NLA_FLAG },
+ 	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_REJECT },
++	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_REJECT },
  };
  
  struct params_data {
@@ -205,13 +205,13 @@ index 0bcf66608306..bae4398ced74 100644
  
 +static int fill_pause(struct sk_buff *skb, struct ethtool_pauseparam *data)
 +{
-+	struct nlattr *nest = ethnl_nest_start(skb, ETHA_PARAMS_PAUSE);
++	struct nlattr *nest = ethnl_nest_start(skb, ETHTOOL_A_PARAMS_PAUSE);
 +
 +	if (!nest)
 +		return -EMSGSIZE;
-+	if (nla_put_u8(skb, ETHA_PAUSE_AUTONEG, !!data->autoneg) ||
-+	    nla_put_u8(skb, ETHA_PAUSE_RX, !!data->rx_pause) ||
-+	    nla_put_u8(skb, ETHA_PAUSE_TX, !!data->tx_pause)) {
++	if (nla_put_u8(skb, ETHTOOL_A_PAUSE_AUTONEG, !!data->autoneg) ||
++	    nla_put_u8(skb, ETHTOOL_A_PAUSE_RX, !!data->rx_pause) ||
++	    nla_put_u8(skb, ETHTOOL_A_PAUSE_TX, !!data->tx_pause)) {
 +		nla_nest_cancel(skb, nest);
 +		return -EMSGSIZE;
 +	}
@@ -235,14 +235,14 @@ index 0bcf66608306..bae4398ced74 100644
  
  	return 0;
  }
-@@ -255,6 +300,7 @@ static const struct nla_policy set_params_policy[ETHA_PARAMS_MAX + 1] = {
- 	[ETHA_PARAMS_COMPACT]		= { .type = NLA_FLAG },
- 	[ETHA_PARAMS_COALESCE]		= { .type = NLA_NESTED },
- 	[ETHA_PARAMS_RING]		= { .type = NLA_NESTED },
-+	[ETHA_PARAMS_PAUSE]		= { .type = NLA_REJECT },
+@@ -255,6 +300,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+ 	[ETHTOOL_A_PARAMS_COMPACT]		= { .type = NLA_FLAG },
+ 	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_NESTED },
+ 	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_NESTED },
++	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_REJECT },
  };
  
- static const struct nla_policy coalesce_policy[ETHA_COALESCE_MAX + 1] = {
+ static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
 -- 
 2.21.0
 

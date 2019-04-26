@@ -1,4 +1,4 @@
-From 66bd11e48f65f23af1ee08dd7ba329efa47ff8b3 Mon Sep 17 00:00:00 2001
+From 6807bcafca6b037c06b129a379bf7691278c11ae Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:50:30 +0100
 Subject: [PATCH 20/44] ethtool: set WoL settings with SET_SETTINGS request
@@ -6,36 +6,36 @@ Subject: [PATCH 20/44] ethtool: set WoL settings with SET_SETTINGS request
 Allow enabling and disabling wake on LAN modes using SET_SETTINGS
 request.
 
-ETHA_SETTINGS_WOL nested attribute is used to set or modify enabled WoL
+ETHTOOL_A_SETTINGS_WOL nested attribute is used to set or modify enabled WoL
 modes and SecureOn(tm) password.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt | 12 +++-
- net/ethtool/settings.c                       | 60 +++++++++++++++++++-
- 2 files changed, 70 insertions(+), 2 deletions(-)
+ net/ethtool/settings.c                       | 58 ++++++++++++++++++++
+ 2 files changed, 69 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index bc7f28f0182f..3568d35ad7ec 100644
+index 81cb29ef396d..82d72b54d269 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -335,6 +335,9 @@ to be passed with SET_SETTINGS request:
-         ETHA_LINKMODES_OURS		(bitset)	advertised link modes
-         ETHA_LINKMODES_SPEED		(u32)		link speed (Mb/s)
-         ETHA_LINKMODES_DUPLEX		(u8)		duplex mode
-+    ETHA_SETTINGS_WOL		(nested)	wake on LAN settings
-+        ETHA_WOL_MODES			(bitfield32)	wake on LAN modes
-+        ETHA_WOL_SOPASS			(binary)	SecureOn(tm) password
+         ETHTOOL_A_LINKMODES_OURS	    (bitset)	    advertised link modes
+         ETHTOOL_A_LINKMODES_SPEED	    (u32)	    link speed (Mb/s)
+         ETHTOOL_A_LINKMODES_DUPLEX	    (u8)	    duplex mode
++    ETHTOOL_A_SETTINGS_WOL		(nested)	wake on LAN settings
++        ETHTOOL_A_WOL_MODES		    (bitfield32)    wake on LAN modes
++        ETHTOOL_A_WOL_SOPASS		    (binary)	    SecureOn password
  
- ETHA_LINKMODES_OURS bit set allows setting advertised link modes. If
+ ETHTOOL_A_LINKMODES_OURS bit set allows setting advertised link modes. If
  autonegotiation is on (either set now or kept from before), advertised modes
 @@ -345,6 +348,13 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
  is supposed to allow requesting changes without knowing what exactly kernel
  supports.
  
-+ETHA_WOL_MODES bitfield is interpreted in the usual way, i.e. bits set in the
-+selector are set to 0 or 1 according to value. To allow the semantics of the
-+ioctl interface where the whole bitmap is set rather than only modified,
++ETHTOOL_A_WOL_MODES bitfield is interpreted in the usual way, i.e. bits set in
++the selector are set to 0 or 1 according to value. To allow the semantics of
++the ioctl interface where the whole bitmap is set rather than only modified,
 +selectors may have also bits not supported by device set and an error is only
 +issued if any of them is also set in the value (i.e. if userspace tries to
 +enable mode not supported by device).
@@ -53,7 +53,7 @@ index bc7f28f0182f..3568d35ad7ec 100644
  ETHTOOL_SMSGLVL			n/a
  ETHTOOL_NWAY_RST		n/a
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 56a045e5e916..ea5279dad826 100644
+index 7c14440fe84b..30b17b1f7845 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -108,6 +108,12 @@ static const struct link_mode_info link_mode_params[] = {
@@ -66,48 +66,39 @@ index 56a045e5e916..ea5279dad826 100644
 + */
 +static u32 all_bits = ~(u32)0;
 +
- static const struct nla_policy get_settings_policy[ETHA_SETTINGS_MAX + 1] = {
- 	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
- 	[ETHA_SETTINGS_DEV]		= { .type = NLA_NESTED },
-@@ -485,6 +491,14 @@ static const struct nla_policy set_linkmodes_policy[ETHA_LINKMODES_MAX + 1] = {
- 	[ETHA_LINKMODES_DUPLEX]		= { .type = NLA_U8 },
+ static const struct nla_policy get_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
+ 	[ETHTOOL_A_SETTINGS_UNSPEC]	= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_SETTINGS_DEV]	= { .type = NLA_NESTED },
+@@ -486,6 +492,14 @@ static const struct nla_policy set_linkmodes_policy[ETHTOOL_A_LINKMODES_MAX + 1]
+ 	[ETHTOOL_A_LINKMODES_DUPLEX]		= { .type = NLA_U8 },
  };
  
-+static const struct nla_policy set_wol_policy[ETHA_LINKINFO_MAX + 1] = {
-+	[ETHA_WOL_UNSPEC]		= { .type = NLA_REJECT },
-+	[ETHA_WOL_MODES]		= { .type = NLA_BITFIELD32,
++static const struct nla_policy set_wol_policy[ETHTOOL_A_LINKINFO_MAX + 1] = {
++	[ETHTOOL_A_WOL_UNSPEC]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_WOL_MODES]		= { .type = NLA_BITFIELD32,
 +					    .validation_data = &all_bits },
-+	[ETHA_WOL_SOPASS]		= { .type = NLA_BINARY,
++	[ETHTOOL_A_WOL_SOPASS]		= { .type = NLA_BINARY,
 +					    .len = SOPASS_MAX },
 +};
 +
- static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
- 	[ETHA_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
- 	[ETHA_SETTINGS_DEV]		= { .type = NLA_NESTED },
-@@ -493,7 +507,7 @@ static const struct nla_policy set_settings_policy[ETHA_SETTINGS_MAX + 1] = {
- 	[ETHA_SETTINGS_LINK_INFO]	= { .type = NLA_NESTED },
- 	[ETHA_SETTINGS_LINK_MODES]	= { .type = NLA_NESTED },
- 	[ETHA_SETTINGS_LINK_STATE]	= { .type = NLA_REJECT },
--	[ETHA_SETTINGS_WOL]		= { .type = NLA_REJECT },
-+	[ETHA_SETTINGS_WOL]		= { .type = NLA_NESTED },
- };
- 
- static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -641,6 +655,43 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
+ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
+ 	[ETHTOOL_A_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_SETTINGS_DEV]		= { .type = NLA_NESTED },
+@@ -646,6 +660,43 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
  	return 0;
  }
  
 +static int update_wol(struct genl_info *info, struct nlattr *nest,
 +		      struct net_device *dev)
 +{
-+	struct nlattr *tb[ETHA_WOL_MAX + 1];
++	struct nlattr *tb[ETHTOOL_A_WOL_MAX + 1];
 +	struct ethtool_wolinfo wolinfo = {};
 +	int ret;
 +
 +	if (!nest)
 +		return 0;
-+	ret = nla_parse_nested_strict(tb, ETHA_WOL_MAX, nest, set_wol_policy,
-+				      info->extack);
++	ret = nla_parse_nested_strict(tb, ETHTOOL_A_WOL_MAX, nest,
++				      set_wol_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +
@@ -118,10 +109,10 @@ index 56a045e5e916..ea5279dad826 100644
 +	}
 +
 +	ret = 0;
-+	if (ethnl_update_bitfield32(&wolinfo.wolopts, tb[ETHA_WOL_MODES]))
++	if (ethnl_update_bitfield32(&wolinfo.wolopts, tb[ETHTOOL_A_WOL_MODES]))
 +		ret = 1;
 +	if (ethnl_update_binary(wolinfo.sopass, SOPASS_MAX,
-+				tb[ETHA_WOL_SOPASS]))
++				tb[ETHTOOL_A_WOL_SOPASS]))
 +		ret = 1;
 +	if (ret) {
 +		int ret2 = dev->ethtool_ops->set_wol(dev, &wolinfo);
@@ -136,13 +127,13 @@ index 56a045e5e916..ea5279dad826 100644
 +
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
- 	struct nlattr *tb[ETHA_SETTINGS_MAX + 1];
-@@ -668,6 +719,13 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+ 	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
+@@ -674,6 +725,13 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret < 0)
  			goto out_ops;
  	}
-+	if (tb[ETHA_SETTINGS_WOL]) {
-+		ret = update_wol(info, tb[ETHA_SETTINGS_WOL], dev);
++	if (tb[ETHTOOL_A_SETTINGS_WOL]) {
++		ret = update_wol(info, tb[ETHTOOL_A_SETTINGS_WOL], dev);
 +		if (ret < 0)
 +			goto out_ops;
 +		if (ret)

@@ -1,4 +1,4 @@
-From f81f083b6d83ac91beb7361dd0868779ffa63813 Mon Sep 17 00:00:00 2001
+From 0515fc3bee659be4e522ab2f243750e188e937da Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 07/44] ethtool: netlink bitset handling
@@ -11,15 +11,15 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  63 ++
  include/uapi/linux/ethtool_netlink.h         |  32 +
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/bitset.c                         | 597 +++++++++++++++++++
+ net/ethtool/bitset.c                         | 601 +++++++++++++++++++
  net/ethtool/bitset.h                         |  40 ++
  net/ethtool/netlink.h                        |   9 +
- 6 files changed, 742 insertions(+), 1 deletion(-)
+ 6 files changed, 746 insertions(+), 1 deletion(-)
  create mode 100644 net/ethtool/bitset.c
  create mode 100644 net/ethtool/bitset.h
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 377d64c9b7fa..e97218d820c0 100644
+index feef793dbafe..c2f548889412 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -60,6 +60,69 @@ replies with one message per network device (only those for which the request
@@ -37,21 +37,21 @@ index 377d64c9b7fa..e97218d820c0 100644
 +
 +Compact form: nested (bitset) atrribute contents:
 +
-+    ETHA_BITSET_LIST	(flag)		no mask, only a list
-+    ETHA_BITSET_SIZE	(u32)		number of significant bits
-+    ETHA_BITSET_VALUE	(binary)	bitmap of bit values
-+    ETHA_BITSET_MASK	(binary)	bitmap of valid bits
++    ETHTOOL_A_BITSET_LIST	(flag)		no mask, only a list
++    ETHTOOL_A_BITSET_SIZE	(u32)		number of significant bits
++    ETHTOOL_A_BITSET_VALUE	(binary)	bitmap of bit values
++    ETHTOOL_A_BITSET_MASK	(binary)	bitmap of valid bits
 +
-+Value and mask must have length at least ETHA_BITSET_SIZE bits rounded up to
-+a multiple of 32 bits. They consist of 32-bit words in host byte order, words
-+ordered from least significant to most significant (i.e. the same way as
++Value and mask must have length at least ETHTOOL_A_BITSET_SIZE bits rounded up
++to a multiple of 32 bits. They consist of 32-bit words in host byte order,
++words ordered from least significant to most significant (i.e. the same way as
 +bitmaps are passed with ioctl interface).
 +
-+For compact form, ETHA_BITSET_SIZE and ETHA_BITSET_VALUE are mandatory.
-+Similar to BITFIELD32, a compact form bit set requests to set bits in the mask
-+to 1 (if the bit is set in value) or 0 (if not) and preserve the rest. If
-+ETHA_BITSET_LIST is present, there is no mask and bitset represents a simple
-+list of bits.
++For compact form, ETHTOOL_A_BITSET_SIZE and ETHTOOL_A_BITSET_VALUE are
++mandatory.  Similar to BITFIELD32, a compact form bit set requests to set bits
++in the mask to 1 (if the bit is set in value) or 0 (if not) and preserve the
++rest. If ETHTOOL_A_BITSET_LIST is present, there is no mask and bitset
++represents a simple list of bits.
 +
 +Kernel bit set length may differ from userspace length if older application is
 +used on newer kernel or vice versa. If userspace bitmap is longer, an error is
@@ -60,26 +60,26 @@ index 377d64c9b7fa..e97218d820c0 100644
 +
 +Bit-by-bit form: nested (bitset) attribute contents:
 +
-+    ETHA_BITSET_LIST	(flag)		no mask, only a list
-+    ETHA_BITSET_SIZE	(u32)		number of significant bits (optional)
-+    ETHA_BITSET_BITS	(nested)	array of bits
-+	ETHA_BITSET_BIT
-+	    ETHA_BIT_INDEX	(u32)		bit index (0 for LSB)
-+            ETHA_BIT_NAME	(string)	bit name
-+	    ETHA_BIT_VALUE	(flag)		present if bit is set
-+        ETHA_BITSET_BIT
++    ETHTOOL_A_BITSET_LIST	(flag)		no mask, only a list
++    ETHTOOL_A_BITSET_SIZE	(u32)		number of significant bits
++    ETHTOOL_A_BITSET_BITS	(nested)	array of bits
++	ETHTOOL_A_BITSET_BIT
++	    ETHTOOL_A_BIT_INDEX	(u32)		bit index (0 for LSB)
++            ETHTOOL_A_BIT_NAME	(string)	bit name
++	    ETHTOOL_A_BIT_VALUE	(flag)		present if bit is set
++        ETHTOOL_A_BITSET_BIT
 +	...
 +
-+Bit size is optional for bit-by-bit form. ETHA_BITSET_BITS nest can only
-+contain ETHA_BITS_BIT attributes but there can be an arbitrary number of them.
-+A bit may be identified by its index or by its name. When used in requests,
-+listed bits are set to 0 or 1 according to ETHA_BIT_VALUE, the rest is
-+preserved. A request fails if index exceeds kernel bit length or if name is
-+not recognized.
++Bit size is optional for bit-by-bit form. ETHTOOL_A_BITSET_BITS nest can only
++contain ETHTOOL_A_BITS_BIT attributes but there can be an arbitrary number of
++them.  A bit may be identified by its index or by its name. When used in
++requests, listed bits are set to 0 or 1 according to ETHTOOL_A_BIT_VALUE, the
++rest is preserved. A request fails if index exceeds kernel bit length or if
++name is not recognized.
 +
-+When ETHA_BITSET_LIST flag is present, bitset is interpreted as a simple bit
-+list. ETHA_BIT_VALUE attributes are not used in such case. Bit list represents
-+a bitmap with listed bits set and the rest zero.
++When ETHTOOL_A_BITSET_LIST flag is present, bitset is interpreted as a simple
++bit list. ETHTOOL_A_BIT_VALUE attributes are not used in such case. Bit list
++represents a bitmap with listed bits set and the rest zero.
 +
 +In requests, application can use either form. Form used by kernel in reply is
 +determined by a flag in flags field of request header. Semantics of value and
@@ -93,43 +93,43 @@ index 377d64c9b7fa..e97218d820c0 100644
  ---------------------
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 59240a2cda56..de18e076ed69 100644
+index a648f7368d4e..71c6a648a030 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -29,6 +29,38 @@ enum {
- 	ETHA_DEV_MAX = (__ETHA_DEV_CNT - 1)
+ 	ETHTOOL_A_DEV_MAX = (__ETHTOOL_A_DEV_CNT - 1)
  };
  
 +/* bit sets */
 +
 +enum {
-+	ETHA_BIT_UNSPEC,
-+	ETHA_BIT_INDEX,				/* u32 */
-+	ETHA_BIT_NAME,				/* string */
-+	ETHA_BIT_VALUE,				/* flag */
++	ETHTOOL_A_BIT_UNSPEC,
++	ETHTOOL_A_BIT_INDEX,			/* u32 */
++	ETHTOOL_A_BIT_NAME,			/* string */
++	ETHTOOL_A_BIT_VALUE,			/* flag */
 +
-+	__ETHA_BIT_CNT,
-+	ETHA_BIT_MAX = (__ETHA_BIT_CNT - 1)
++	__ETHTOOL_A_BIT_CNT,
++	ETHTOOL_A_BIT_MAX = (__ETHTOOL_A_BIT_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_BITS_UNSPEC,
-+	ETHA_BITS_BIT,
++	ETHTOOL_A_BITS_UNSPEC,
++	ETHTOOL_A_BITS_BIT,
 +
-+	__ETHA_BITS_CNT,
-+	ETHA_BITS_MAX = (__ETHA_BITS_CNT - 1)
++	__ETHTOOL_A_BITS_CNT,
++	ETHTOOL_A_BITS_MAX = (__ETHTOOL_A_BITS_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_BITSET_UNSPEC,
-+	ETHA_BITSET_LIST,			/* flag */
-+	ETHA_BITSET_SIZE,			/* u32 */
-+	ETHA_BITSET_BITS,			/* nest - ETHA_BITS_* */
-+	ETHA_BITSET_VALUE,			/* binary */
-+	ETHA_BITSET_MASK,			/* binary */
++	ETHTOOL_A_BITSET_UNSPEC,
++	ETHTOOL_A_BITSET_LIST,			/* flag */
++	ETHTOOL_A_BITSET_SIZE,			/* u32 */
++	ETHTOOL_A_BITSET_BITS,			/* nest - ETHTOOL_A_BITS_* */
++	ETHTOOL_A_BITSET_VALUE,			/* binary */
++	ETHTOOL_A_BITSET_MASK,			/* binary */
 +
-+	__ETHA_BITSET_CNT,
-+	ETHA_BITSET_MAX = (__ETHA_BITSET_CNT - 1)
++	__ETHTOOL_A_BITSET_CNT,
++	ETHTOOL_A_BITSET_MAX = (__ETHTOOL_A_BITSET_CNT - 1)
 +};
 +
  /* generic netlink info */
@@ -147,10 +147,10 @@ index f30e0da88be5..482fdb9380fa 100644
 +ethtool_nl-y	:= netlink.o bitset.o
 diff --git a/net/ethtool/bitset.c b/net/ethtool/bitset.c
 new file mode 100644
-index 000000000000..28d27a93e51e
+index 000000000000..0cdd50aadb5e
 --- /dev/null
 +++ b/net/ethtool/bitset.c
-@@ -0,0 +1,597 @@
+@@ -0,0 +1,601 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include <linux/ethtool_netlink.h>
@@ -318,19 +318,20 @@ index 000000000000..28d27a93e51e
 +		return -EMSGSIZE;
 +
 +	ret = -EMSGSIZE;
-+	if (is_list && nla_put_flag(skb, ETHA_BITSET_LIST))
++	if (is_list && nla_put_flag(skb, ETHTOOL_A_BITSET_LIST))
 +		goto err;
-+	if (nla_put_u32(skb, ETHA_BITSET_SIZE, size))
++	if (nla_put_u32(skb, ETHTOOL_A_BITSET_SIZE, size))
 +		goto err;
 +	if (compact) {
 +		unsigned int bytesize = DIV_ROUND_UP(size, 32) * sizeof(u32);
 +
-+		attr = nla_reserve(skb, ETHA_BITSET_VALUE, bytesize);
++		attr = nla_reserve(skb, ETHTOOL_A_BITSET_VALUE, bytesize);
 +		if (!attr)
 +			goto err;
 +		__bitmap_to_u32(nla_data(attr), val, size, is_u32);
 +		if (mask) {
-+			attr = nla_reserve(skb, ETHA_BITSET_MASK, bytesize);
++			attr = nla_reserve(skb, ETHTOOL_A_BITSET_MASK,
++					   bytesize);
 +			if (!attr)
 +				goto err;
 +			__bitmap_to_u32(nla_data(attr), mask, size, is_u32);
@@ -339,7 +340,7 @@ index 000000000000..28d27a93e51e
 +		struct nlattr *bits;
 +		unsigned int i;
 +
-+		bits = ethnl_nest_start(skb, ETHA_BITSET_BITS);
++		bits = ethnl_nest_start(skb, ETHTOOL_A_BITSET_BITS);
 +		if (!bits)
 +			goto err;
 +		for (i = 0; i < size; i++) {
@@ -348,13 +349,13 @@ index 000000000000..28d27a93e51e
 +			if ((is_list || mask) &&
 +			    !ethnl_test_bit(is_list ? val : mask, i, is_u32))
 +				continue;
-+			attr = ethnl_nest_start(skb, ETHA_BITS_BIT);
++			attr = ethnl_nest_start(skb, ETHTOOL_A_BITS_BIT);
 +			if (!attr ||
-+			    nla_put_u32(skb, ETHA_BIT_INDEX, i) ||
-+			    nla_put_string(skb, ETHA_BIT_NAME, name))
++			    nla_put_u32(skb, ETHTOOL_A_BIT_INDEX, i) ||
++			    nla_put_string(skb, ETHTOOL_A_BIT_NAME, name))
 +				goto err;
 +			if (!is_list && ethnl_test_bit(val, i, is_u32) &&
-+			    nla_put_flag(skb, ETHA_BIT_VALUE))
++			    nla_put_flag(skb, ETHTOOL_A_BIT_VALUE))
 +				goto err;
 +			nla_nest_end(skb, attr);
 +		}
@@ -384,20 +385,20 @@ index 000000000000..28d27a93e51e
 +				  flags | ETHNL_BITSET_U32);
 +}
 +
-+static const struct nla_policy bitset_policy[ETHA_BITSET_MAX + 1] = {
-+	[ETHA_BITSET_UNSPEC]		= { .type = NLA_REJECT },
-+	[ETHA_BITSET_LIST]		= { .type = NLA_FLAG },
-+	[ETHA_BITSET_SIZE]		= { .type = NLA_U32 },
-+	[ETHA_BITSET_BITS]		= { .type = NLA_NESTED },
-+	[ETHA_BITSET_VALUE]		= { .type = NLA_BINARY },
-+	[ETHA_BITSET_MASK]		= { .type = NLA_BINARY },
++static const struct nla_policy bitset_policy[ETHTOOL_A_BITSET_MAX + 1] = {
++	[ETHTOOL_A_BITSET_UNSPEC]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_BITSET_LIST]		= { .type = NLA_FLAG },
++	[ETHTOOL_A_BITSET_SIZE]		= { .type = NLA_U32 },
++	[ETHTOOL_A_BITSET_BITS]		= { .type = NLA_NESTED },
++	[ETHTOOL_A_BITSET_VALUE]	= { .type = NLA_BINARY },
++	[ETHTOOL_A_BITSET_MASK]		= { .type = NLA_BINARY },
 +};
 +
-+static const struct nla_policy bit_policy[ETHA_BIT_MAX + 1] = {
-+	[ETHA_BIT_UNSPEC]		= { .type = NLA_REJECT },
-+	[ETHA_BIT_INDEX]		= { .type = NLA_U32 },
-+	[ETHA_BIT_NAME]			= { .type = NLA_NUL_STRING },
-+	[ETHA_BIT_VALUE]		= { .type = NLA_FLAG },
++static const struct nla_policy bit_policy[ETHTOOL_A_BIT_MAX + 1] = {
++	[ETHTOOL_A_BIT_UNSPEC]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_BIT_INDEX]		= { .type = NLA_U32 },
++	[ETHTOOL_A_BIT_NAME]		= { .type = NLA_NUL_STRING },
++	[ETHTOOL_A_BIT_VALUE]		= { .type = NLA_FLAG },
 +};
 +
 +static int ethnl_name_to_idx(const void *names, bool legacy,
@@ -422,50 +423,50 @@ index 000000000000..28d27a93e51e
 +			    bool is_list, const void *names, bool legacy,
 +			    struct genl_info *info)
 +{
-+	struct nlattr *tb[ETHA_BIT_MAX + 1];
++	struct nlattr *tb[ETHTOOL_A_BIT_MAX + 1];
 +	int ret, idx;
 +
-+	if (nla_type(bit_attr) != ETHA_BITS_BIT) {
++	if (nla_type(bit_attr) != ETHTOOL_A_BITS_BIT) {
 +		ETHNL_SET_ERRMSG(info,
-+				 "ETHA_BITSET_BITS can contain only ETHA_BITS_BIT");
++				 "ETHTOOL_A_BITSET_BITS can contain only ETHTOOL_A_BITS_BIT");
 +		return genl_err_attr(info, -EINVAL, bit_attr);
 +	}
-+	ret = nla_parse_nested_strict(tb, ETHA_BIT_MAX, bit_attr, bit_policy,
-+				      info->extack);
++	ret = nla_parse_nested_strict(tb, ETHTOOL_A_BIT_MAX, bit_attr,
++				      bit_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +
-+	if (tb[ETHA_BIT_INDEX]) {
++	if (tb[ETHTOOL_A_BIT_INDEX]) {
 +		const char *name;
 +
-+		idx = nla_get_u32(tb[ETHA_BIT_INDEX]);
++		idx = nla_get_u32(tb[ETHTOOL_A_BIT_INDEX]);
 +		if (idx >= nbits) {
 +			ETHNL_SET_ERRMSG(info, "bit index too high");
 +			return genl_err_attr(info, -EOPNOTSUPP,
-+					     tb[ETHA_BIT_INDEX]);
++					     tb[ETHTOOL_A_BIT_INDEX]);
 +		}
 +		name = bit_name(names, legacy, idx);
-+		if (tb[ETHA_BIT_NAME] && name &&
-+		    strncmp(nla_data(tb[ETHA_BIT_NAME]), name,
-+			    nla_len(tb[ETHA_BIT_NAME]))) {
++		if (tb[ETHTOOL_A_BIT_NAME] && name &&
++		    strncmp(nla_data(tb[ETHTOOL_A_BIT_NAME]), name,
++			    nla_len(tb[ETHTOOL_A_BIT_NAME]))) {
 +			ETHNL_SET_ERRMSG(info, "bit index and name mismatch");
 +			return genl_err_attr(info, -EINVAL, bit_attr);
 +		}
-+	} else if (tb[ETHA_BIT_NAME]) {
++	} else if (tb[ETHTOOL_A_BIT_NAME]) {
 +		idx = ethnl_name_to_idx(names, legacy, nbits,
-+					nla_data(tb[ETHA_BIT_NAME]),
-+					nla_len(tb[ETHA_BIT_NAME]));
++					nla_data(tb[ETHTOOL_A_BIT_NAME]),
++					nla_len(tb[ETHTOOL_A_BIT_NAME]));
 +		if (idx >= nbits) {
 +			ETHNL_SET_ERRMSG(info, "bit name not found");
 +			return genl_err_attr(info, -EOPNOTSUPP,
-+					     tb[ETHA_BIT_NAME]);
++					     tb[ETHTOOL_A_BIT_NAME]);
 +		}
 +	} else {
 +		ETHNL_SET_ERRMSG(info, "neither bit index nor name specified");
 +		return genl_err_attr(info, -EINVAL, bit_attr);
 +	}
 +
-+	if (is_list || tb[ETHA_BIT_VALUE])
++	if (is_list || tb[ETHTOOL_A_BIT_VALUE])
 +		set_bit(idx, bitmap);
 +	else
 +		clear_bit(idx, bitmap);
@@ -476,21 +477,21 @@ index 000000000000..28d27a93e51e
 +
 +int ethnl_bitset_is_compact(const struct nlattr *bitset, bool *compact)
 +{
-+	struct nlattr *tb[ETHA_BITSET_MAX + 1];
++	struct nlattr *tb[ETHTOOL_A_BITSET_MAX + 1];
 +	int ret;
 +
-+	ret = nla_parse_nested_strict(tb, ETHA_BITSET_MAX, bitset,
++	ret = nla_parse_nested_strict(tb, ETHTOOL_A_BITSET_MAX, bitset,
 +				      bitset_policy, NULL);
 +	if (ret < 0)
 +		return ret;
 +
-+	if (tb[ETHA_BITSET_BITS]) {
-+		if (tb[ETHA_BITSET_VALUE] || tb[ETHA_BITSET_MASK])
++	if (tb[ETHTOOL_A_BITSET_BITS]) {
++		if (tb[ETHTOOL_A_BITSET_VALUE] || tb[ETHTOOL_A_BITSET_MASK])
 +			return -EINVAL;
 +		*compact = false;
 +		return 0;
 +	}
-+	if (!tb[ETHA_BITSET_SIZE] || !tb[ETHA_BITSET_VALUE])
++	if (!tb[ETHTOOL_A_BITSET_SIZE] || !tb[ETHTOOL_A_BITSET_VALUE])
 +		return -EINVAL;
 +
 +	*compact = true;
@@ -624,7 +625,7 @@ index 000000000000..28d27a93e51e
 +				  int *err, const void *names, bool legacy,
 +				  struct genl_info *info, bool is_u32)
 +{
-+	struct nlattr *tb[ETHA_BITSET_MAX + 1];
++	struct nlattr *tb[ETHTOOL_A_BITSET_MAX + 1];
 +	unsigned int change_bits = 0;
 +	unsigned int max_bits = 0;
 +	unsigned long *val, *mask;
@@ -634,19 +635,19 @@ index 000000000000..28d27a93e51e
 +	*err = 0;
 +	if (!attr)
 +		return mod;
-+	*err = nla_parse_nested_strict(tb, ETHA_BITSET_MAX, attr, bitset_policy,
-+				       info->extack);
++	*err = nla_parse_nested_strict(tb, ETHTOOL_A_BITSET_MAX, attr,
++				       bitset_policy, info->extack);
 +	if (*err < 0)
 +		return mod;
 +	*err = -EINVAL;
-+	if (tb[ETHA_BITSET_BITS] &&
-+	    (tb[ETHA_BITSET_VALUE] || tb[ETHA_BITSET_MASK]))
++	if (tb[ETHTOOL_A_BITSET_BITS] &&
++	    (tb[ETHTOOL_A_BITSET_VALUE] || tb[ETHTOOL_A_BITSET_MASK]))
 +		return mod;
-+	if (!tb[ETHA_BITSET_BITS] &&
-+	    (!tb[ETHA_BITSET_SIZE] || !tb[ETHA_BITSET_VALUE]))
++	if (!tb[ETHTOOL_A_BITSET_BITS] &&
++	    (!tb[ETHTOOL_A_BITSET_SIZE] || !tb[ETHTOOL_A_BITSET_VALUE]))
 +		return mod;
-+	is_list = (tb[ETHA_BITSET_LIST] != NULL);
-+	if (is_list && tb[ETHA_BITSET_MASK])
++	is_list = (tb[ETHTOOL_A_BITSET_LIST] != NULL);
++	if (is_list && tb[ETHTOOL_A_BITSET_MASK])
 +		return mod;
 +
 +	/* To let new userspace to work with old kernel, we allow bitmaps
@@ -654,13 +655,13 @@ index 000000000000..28d27a93e51e
 +	 * error if userspace actually tries to change a bit not existing
 +	 * in kernel.
 +	 */
-+	if (tb[ETHA_BITSET_SIZE])
-+		change_bits = nla_get_u32(tb[ETHA_BITSET_SIZE]);
++	if (tb[ETHTOOL_A_BITSET_SIZE])
++		change_bits = nla_get_u32(tb[ETHTOOL_A_BITSET_SIZE]);
 +	max_bits = max_t(unsigned int, nbits, change_bits);
 +	mask = bitmap_zalloc(max_bits, GFP_KERNEL);
 +	val = bitmap_zalloc(max_bits, GFP_KERNEL);
 +
-+	if (tb[ETHA_BITSET_BITS]) {
++	if (tb[ETHTOOL_A_BITSET_BITS]) {
 +		struct nlattr *bit_attr;
 +		int rem;
 +
@@ -670,7 +671,7 @@ index 000000000000..28d27a93e51e
 +			bitmap_from_arr32(val, bitmap, nbits);
 +		else
 +			bitmap_copy(val, bitmap, nbits);
-+		nla_for_each_nested(bit_attr, tb[ETHA_BITSET_BITS], rem) {
++		nla_for_each_nested(bit_attr, tb[ETHTOOL_A_BITSET_BITS], rem) {
 +			*err = ethnl_update_bit(val, mask, nbits, bit_attr,
 +						is_list, names, legacy, info);
 +			if (*err < 0)
@@ -682,19 +683,22 @@ index 000000000000..28d27a93e51e
 +		unsigned int change_words = DIV_ROUND_UP(change_bits, 32);
 +
 +		*err = 0;
-+		if (change_bits == 0 && tb[ETHA_BITSET_MASK])
++		if (change_bits == 0 && tb[ETHTOOL_A_BITSET_MASK])
 +			goto out_free;
 +		*err = -EINVAL;
-+		if (nla_len(tb[ETHA_BITSET_VALUE]) < change_words * sizeof(u32))
++		if (nla_len(tb[ETHTOOL_A_BITSET_VALUE]) <
++		    change_words * sizeof(u32))
 +			goto out_free;
-+		if (tb[ETHA_BITSET_MASK] &&
-+		    nla_len(tb[ETHA_BITSET_MASK]) < change_words * sizeof(u32))
++		if (tb[ETHTOOL_A_BITSET_MASK] &&
++		    nla_len(tb[ETHTOOL_A_BITSET_MASK]) <
++		    change_words * sizeof(u32))
 +			goto out_free;
 +
-+		bitmap_from_arr32(val, nla_data(tb[ETHA_BITSET_VALUE]),
++		bitmap_from_arr32(val, nla_data(tb[ETHTOOL_A_BITSET_VALUE]),
 +				  change_bits);
-+		if (tb[ETHA_BITSET_MASK])
-+			bitmap_from_arr32(mask, nla_data(tb[ETHA_BITSET_MASK]),
++		if (tb[ETHTOOL_A_BITSET_MASK])
++			bitmap_from_arr32(mask,
++					  nla_data(tb[ETHTOOL_A_BITSET_MASK]),
 +					  change_bits);
 +		else
 +			bitmap_fill(mask, nbits);
@@ -795,7 +799,7 @@ index 000000000000..761d0c47fe23
 +
 +#endif /* _NET_ETHTOOL_BITSET_H */
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index db90d95410b1..b8a6cd3dc3e3 100644
+index d0a875deb7ef..e73f36b79bc5 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -20,6 +20,15 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,

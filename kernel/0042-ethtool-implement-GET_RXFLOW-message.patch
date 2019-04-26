@@ -1,4 +1,4 @@
-From 7d52d9e5ed39b72639a41e1d2787f8a6c54c5a93 Mon Sep 17 00:00:00 2001
+From 532f820ee4aa652dad2fb26776581dc71fc5f925 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 42/44] ethtool: implement GET_RXFLOW message
@@ -16,17 +16,17 @@ for a device and potentially also RSS context.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 122 ++++-
+ Documentation/networking/ethtool-netlink.txt | 125 ++++-
  include/uapi/linux/ethtool_netlink.h         | 101 ++++
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/netlink.c                        |   8 +
  net/ethtool/netlink.h                        |   1 +
  net/ethtool/rxflow.c                         | 463 +++++++++++++++++++
- 6 files changed, 692 insertions(+), 5 deletions(-)
+ 6 files changed, 695 insertions(+), 5 deletions(-)
  create mode 100644 net/ethtool/rxflow.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 1be01b45b83b..7dc59ba86fa4 100644
+index 456272c15cb9..581b7135b3c9 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -136,6 +136,8 @@ List of message types
@@ -38,7 +38,7 @@ index 1be01b45b83b..7dc59ba86fa4 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -615,6 +617,118 @@ indicating which components _were_ actually reset (this is different from
+@@ -616,6 +618,121 @@ indicating which components _were_ actually reset (this is different from
  ioctl interface). The same message is also broadcasted as a notification.
  
  
@@ -48,11 +48,11 @@ index 1be01b45b83b..7dc59ba86fa4 100644
 +Request for receive flow hashing options provided by legacy commands
 +ETHTOOL_GRSSH and ETHTOOL_GRXFHINDIR. Request contents:
 +
-+    ETHA_RXFLOW_DEV		(nested)	device identification
-+    ETHA_RXFLOW_INFOMASK	(u32)		info mask
-+    ETHA_RXFLOW_COMPACT		(flag)		request compact bitsets
-+    ETHA_RXFLOW_CTXOP		(u32)		context operation
-+    ETHA_RXFLOW_CONTEXT		(u32)		context id
++    ETHTOOL_A_RXFLOW_DEV		(nested)	device identification
++    ETHTOOL_A_RXFLOW_INFOMASK		(u32)		info mask
++    ETHTOOL_A_RXFLOW_COMPACT		(flag)		request compact bitsets
++    ETHTOOL_A_RXFLOW_CTXOP		(u32)		context operation
++    ETHTOOL_A_RXFLOW_CONTEXT		(u32)		context id
 +
 +Info mask bits:
 +
@@ -60,104 +60,107 @@ index 1be01b45b83b..7dc59ba86fa4 100644
 +    ETH_RXFLOW_IM_HKEY			hash key
 +    ETH_RXFLOW_IM_INDTBL		indirection table
 +
-+If ETHA_RXFLOW_CONTEXT is omitted or zero, data for main context are returned.
++If ETHTOOL_A_RXFLOW_CONTEXT is omitted or zero, data for main context are returned.
 +Context id of ETH_RXFLOW_CTXOP_NEW (0xffffffff) is not allowed for
 +compatibility reasons. Note that most NICs do not support multiple contexts.
 +
 +Reply contents:
 +
-+    ETHA_RXFLOW_DEV		(nested)	device identification
-+    ETHA_RXFLOW_CONTEXT		(u32)		context id (only if not main)
-+    ETHA_RXFLOW_NRINGS		(u32)		number of Rx rings
-+    ETHA_RXFLOW_HASH_FN		(bitset)	hash function(s)
-+    ETHA_RXFLOW_HASH_KEY	(binary)	hash key
-+    ETHA_RXFLOW_HASH_OPTS	(nested)	flow hash options
-+        ETHA_RXHASHOPTS_OPT	    (nested)	    hash fields for a flow type
-+	    ETHA_RXHASHOPT_FLOWTYPE	(u32)		flow type
-+	    ETHA_RXHASHOPT_FIELDS	(bitfield32)	fields used for hash
-+	    ETHA_RXHASHOPT_DISCARD	(flag)		discard all packets
-+    ETHA_RXFLOW_INDTBL_SIZE	(u32)		indirection table size
-+    ETHA_RXFLOW_INDIR_TBL	(nested)	indirection table
++    ETHTOOL_A_RXFLOW_DEV		(nested)	device identification
++    ETHTOOL_A_RXFLOW_CONTEXT		(u32)		context id (only if not main)
++    ETHTOOL_A_RXFLOW_NRINGS		(u32)		number of Rx rings
++    ETHTOOL_A_RXFLOW_HASH_FN		(bitset)	hash function(s)
++    ETHTOOL_A_RXFLOW_HASH_KEY		(binary)	hash key
++    ETHTOOL_A_RXFLOW_HASH_OPTS		(nested)	flow hash options
++        ETHTOOL_A_RXHASHOPTS_OPT	    (nested)	    hash fields for a flow type
++	    ETHTOOL_A_RXHASHOPT_FLOWTYPE	(u32)		flow type
++	    ETHTOOL_A_RXHASHOPT_FIELDS		(bitfield32)	fields used for hash
++	    ETHTOOL_A_RXHASHOPT_DISCARD		(flag)		discard all packets
++    ETHTOOL_A_RXFLOW_INDTBL_SIZE	(u32)		indirection table size
++    ETHTOOL_A_RXFLOW_INDIR_TBL		(nested)	indirection table
 +
-+ETHA_RXFLOW_NRINGS is always present in the reply (regardless of request info
-+mask). For ETHA_RXFLOW_HASH_FN, mask contains all values supported by kernel,
-+value has the bit for active hash function set.
++ETHTOOL_A_RXFLOW_NRINGS is always present in the reply (regardless of request
++info mask). For ETHTOOL_A_RXFLOW_HASH_FN, mask contains all values supported
++by kernel, value has the bit for active hash function set.
 +
-+ETHA_RXFLOW_HASH_OPTS contains a series of ETHA_RXHASHOPTS_OPT attributes.
-+Each describes header fields used to calculate the hash for flow type
-+determined by ETHA_RXHASHOPT_FLOWTYPE (*_V{4,6}_FLOW constants). Flag
-+ETHA_RXHASHOPT_DISCARD means that all packets of this type are dropped,
-+othewise ETHA_RXHASHOPT_FIELDS lists fields used for hash (selector has bits
-+for all recognized fields set).
++ETHTOOL_A_RXFLOW_HASH_OPTS contains a series of ETHTOOL_A_RXHASHOPTS_OPT
++attributes.  Each describes header fields used to calculate the hash for flow
++type determined by ETHTOOL_A_RXHASHOPT_FLOWTYPE (*_V{4,6}_FLOW constants).
++Flag ETHTOOL_A_RXHASHOPT_DISCARD means that all packets of this type are
++dropped, othewise ETHTOOL_A_RXHASHOPT_FIELDS lists fields used for hash
++(selector has bits for all recognized fields set).
 +
-+ETHA_RXFLOW_INDIR_TBL is a nested attribute consisting of a series of
++ETHTOOL_A_RXFLOW_INDIR_TBL is a nested attribute consisting of a series of
 +"patches" of these types:
 +
-+    ETHA_INDTBL_BLOCK32			block of 32-bit values
-+    ETHA_INDTBL_BLOCK16			block of 16-bit values
-+    ETHA_INDTBL_BLOCK8			block of 8-bit values
-+    ETHA_INDTBL_PATTERN			block cycling over an interval
-+    ETHA_INDTBL_WEIGHTS			divide table according to weights
++    ETHTOOL_A_INDTBL_BLOCK32		block of 32-bit values
++    ETHTOOL_A_INDTBL_BLOCK16		block of 16-bit values
++    ETHTOOL_A_INDTBL_BLOCK8		block of 8-bit values
++    ETHTOOL_A_INDTBL_PATTERN		block cycling over an interval
++    ETHTOOL_A_INDTBL_WEIGHTS		divide table according to weights
 +
 +Currently kernel only uses one patch for the whole table which is
-+ETHA_INDTBL_BLOCK32, ETHA_INDTBL_BLOCK16 or ETHA_INDTBL_BLOCK8, depending on
-+the number of rings (smallest usable size is used). Userspace applications
-+should not rely on this, though, as the behaviour may change in the future.
++ETHTOOL_A_INDTBL_BLOCK32, ETHTOOL_A_INDTBL_BLOCK16 or ETHTOOL_A_INDTBL_BLOCK8,
++depending on the number of rings (smallest usable size is used). Userspace
++applications should not rely on this, though, as the behaviour may change in
++the future.
 +
 +Code interpreting indirection table starts with table filled with zeros and
 +then applies patches in the order in which they appear in the message.
 +
-+ETHA_INDTBL_BLOCK32 is a patch which overwrites a contiguous block in the
++ETHTOOL_A_INDTBL_BLOCK32 is a patch which overwrites a contiguous block in the
 +table. Allowed attributes are
 +
-+    ETHA_ITBLK_START		(u32)		starting offset of the block
-+    ETHA_ITBLK_LEN		(u32)		block length
-+    ETHA_ITBLK_DATA		(binary)	values to fill into the block
++    ETHTOOL_A_ITBLK_START		(u32)		starting offset of the block
++    ETHTOOL_A_ITBLK_LEN			(u32)		block length
++    ETHTOOL_A_ITBLK_DATA		(binary)	values to fill into the block
 +
-+If ETHA_ITBLK_START is omitted, 0 is used. If ETHA_ITBLK_LEN is omitted, the
-+block is assumed to span to the end of the table. ETHA_ITBLK_DATA consists of
-+an array of unsigned 32-bit values which are copied into the table starting at
-+the offset determined by ETHA_ITBLK_START (or zero). If the array is longer
-+than block length, it is truncated. If the array is shorted, its copies are
-+repeated to fill the whole block.
++If ETHTOOL_A_ITBLK_START is omitted, 0 is used. If ETHTOOL_A_ITBLK_LEN is
++omitted, the block is assumed to span to the end of the table.
++ETHTOOL_A_ITBLK_DATA consists of an array of unsigned 32-bit values which are
++copied into the table starting at the offset determined by
++ETHTOOL_A_ITBLK_START (or zero). If the array is longer than block length, it
++is truncated. If the array is shorted, its copies are repeated to fill the
++whole block.
 +
-+ETHA_INDTBL_BLOCK16 and ETHA_INDTBL_BLOCK8 are interpreted in the same way
-+except ETHA_ITBLK_DATA consists of an array of u16 and u8 values,
-+respectively.
++ETHTOOL_A_INDTBL_BLOCK16 and ETHTOOL_A_INDTBL_BLOCK8 are interpreted in the
++same way except ETHTOOL_A_ITBLK_DATA consists of an array of u16 and u8
++values, respectively.
 +
-+ETHA_INDTBL_PATTERN is a patch which overwrites a contiguous block by numbers
-+cycling over an interval. Allowed attributes are
++ETHTOOL_A_INDTBL_PATTERN is a patch which overwrites a contiguous block by
++numbers cycling over an interval. Allowed attributes are
 +
-+    ETHA_ITPAT_START		(u32)		starting offset of the block
-+    ETHA_ITPAT_LEN		(u32)		block length
-+    ETHA_ITPAT_MIN_RING		(u32)		minimum ring number to use
-+    ETHA_ITPAT_MAX_RING		(u32)		maximum ring number to use
-+    ETHA_ITPAT_OFFSET		(u32)		offset to shift values by
++    ETHTOOL_A_ITPAT_START		(u32)		starting offset of the block
++    ETHTOOL_A_ITPAT_LEN			(u32)		block length
++    ETHTOOL_A_ITPAT_MIN_RING		(u32)		minimum ring number to use
++    ETHTOOL_A_ITPAT_MAX_RING		(u32)		maximum ring number to use
++    ETHTOOL_A_ITPAT_OFFSET		(u32)		offset to shift values by
 +
-+ETHA_ITPAT_START and ETHA_ITPAT_END have the same meaning and defaults as
-+ETHA_ITBLK_* above. The block is filled by repeating values from
-+ETHA_ITPAT_MIN_RING (defaults to 0) to ETHA_ITPAT_MAX_RING (defaults to
-+maximum ring number). By default, the starting value is ETHA_ITPAT_MIN_RING;
-+if ETHA_ITPAT_OFFSET is used, its value is added (modulo interval length).
++ETHTOOL_A_ITPAT_START and ETHTOOL_A_ITPAT_END have the same meaning and
++defaults as ETHTOOL_A_ITBLK_* above. The block is filled by repeating values
++from ETHTOOL_A_ITPAT_MIN_RING (defaults to 0) to ETHTOOL_A_ITPAT_MAX_RING
++(defaults to maximum ring number). By default, the starting value is
++ETHTOOL_A_ITPAT_MIN_RING; if ETHTOOL_A_ITPAT_OFFSET is used, its value is
++added (modulo interval length).
 +
-+ETHA_INDTBL_WEIGHTS divides the whole table according to specified weights
-+(the exact result is supposed to be the same as traditional code for "weight"
-+option of "ethtool -X" produces). Allowed values are
++ETHTOOL_A_INDTBL_WEIGHTS divides the whole table according to specified
++weights (the exact result is supposed to be the same as traditional code for
++"weight" option of "ethtool -X" produces). Allowed values are
 +
-+    ETHA_ITWGHT_VALUES		(binary)	values to use
-+    ETHA_ITWGHT_WEIGHTS		(binary)	weights to divide by
++    ETHTOOL_A_ITWGHT_VALUES		(binary)	values to use
++    ETHTOOL_A_ITWGHT_WEIGHTS		(binary)	weights to divide by
 +
-+ETHA_ITWGHT_WEIGHTS is an array of u32 weights. The sum of all weights must be
-+strictly positive and must not exceed table size. If ETHA_ITWGHT_VALUES is
-+present, it must be an u32 array of equal size with values (ring numbers)
-+these weights correspond to. If ETHA_ITWGHT_VALUES is omitted, values from 0
-+to number of weights minus one are used.
++ETHTOOL_A_ITWGHT_WEIGHTS is an array of u32 weights. The sum of all weights
++must be strictly positive and must not exceed table size. If
++ETHTOOL_A_ITWGHT_VALUES is present, it must be an u32 array of equal size with
++values (ring numbers) these weights correspond to. If ETHTOOL_A_ITWGHT_VALUES
++is omitted, values from 0 to number of weights minus one are used.
 +
 +
  Request translation
  -------------------
  
-@@ -663,11 +777,11 @@ ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
+@@ -664,11 +781,11 @@ ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFLAGS			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GPFLAGS			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SPFLAGS			ETHNL_CMD_SET_SETTINGS
@@ -171,7 +174,7 @@ index 1be01b45b83b..7dc59ba86fa4 100644
  ETHTOOL_GRXCLSRLCNT		n/a
  ETHTOOL_GRXCLSRULE		n/a
  ETHTOOL_GRXCLSRLALL		n/a
-@@ -678,7 +792,7 @@ ETHTOOL_RESET			ETHNL_CMD_ACT_RESET
+@@ -679,7 +796,7 @@ ETHTOOL_RESET			ETHNL_CMD_ACT_RESET
  ETHTOOL_SRXNTUPLE		n/a
  ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
@@ -180,7 +183,7 @@ index 1be01b45b83b..7dc59ba86fa4 100644
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
-@@ -692,7 +806,7 @@ ETHTOOL_GMODULEINFO		n/a
+@@ -693,7 +810,7 @@ ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
  ETHTOOL_SEEE			ETHNL_CMD_SET_PARAMS
@@ -190,7 +193,7 @@ index 1be01b45b83b..7dc59ba86fa4 100644
  ETHTOOL_GTUNABLE		n/a
  ETHTOOL_STUNABLE		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 2c97fd8fca21..a7494f3a1515 100644
+index 85857101c0c0..d03bb4b56b10 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -25,6 +25,8 @@ enum {
@@ -203,27 +206,27 @@ index 2c97fd8fca21..a7494f3a1515 100644
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
 @@ -446,6 +448,105 @@ enum {
- 	ETHA_RESET_MAX = (__ETHA_RESET_CNT - 1)
+ 	ETHTOOL_A_RESET_MAX = (__ETHTOOL_A_RESET_CNT - 1)
  };
  
 +/* GET_RXFLOW / SET_RXFLOW */
 +
 +enum {
-+	ETHA_RXFLOW_UNSPEC,
-+	ETHA_RXFLOW_DEV,			/* nest - ETHA_DEV_* */
-+	ETHA_RXFLOW_INFOMASK,			/* u32 */
-+	ETHA_RXFLOW_COMPACT,			/* flag */
-+	ETHA_RXFLOW_CTXOP,			/* u32 - ETH_RXFLOW_CTXOP_* */
-+	ETHA_RXFLOW_CONTEXT,			/* u32 */
-+	ETHA_RXFLOW_NRINGS,			/* u32 */
-+	ETHA_RXFLOW_HASH_FN,			/* bitset */
-+	ETHA_RXFLOW_HASH_KEY,			/* binary */
-+	ETHA_RXFLOW_HASH_OPTS,			/* nest - ETHA_RXHASHOPTS_* */
-+	ETHA_RXFLOW_INDTBL_SIZE,		/* u32 */
-+	ETHA_RXFLOW_INDIR_TBL,			/* nest - ETHA_INDTBL_* */
++	ETHTOOL_A_RXFLOW_UNSPEC,
++	ETHTOOL_A_RXFLOW_DEV,			/* nest - ETHTOOL_A_DEV_* */
++	ETHTOOL_A_RXFLOW_INFOMASK,		/* u32 */
++	ETHTOOL_A_RXFLOW_COMPACT,		/* flag */
++	ETHTOOL_A_RXFLOW_CTXOP,			/* u32 - ETH_RXFLOW_CTXOP_* */
++	ETHTOOL_A_RXFLOW_CONTEXT,		/* u32 */
++	ETHTOOL_A_RXFLOW_NRINGS,		/* u32 */
++	ETHTOOL_A_RXFLOW_HASH_FN,		/* bitset */
++	ETHTOOL_A_RXFLOW_HASH_KEY,		/* binary */
++	ETHTOOL_A_RXFLOW_HASH_OPTS,		/* nest - ETHTOOL_A_RXHASHOPTS_* */
++	ETHTOOL_A_RXFLOW_INDTBL_SIZE,		/* u32 */
++	ETHTOOL_A_RXFLOW_INDIR_TBL,		/* nest - ETHTOOL_A_INDTBL_* */
 +
-+	__ETHA_RXFLOW_CNT,
-+	ETHA_RXFLOW_MAX = (__ETHA_RXFLOW_CNT - 1)
++	__ETHTOOL_A_RXFLOW_CNT,
++	ETHTOOL_A_RXFLOW_MAX = (__ETHTOOL_A_RXFLOW_CNT - 1)
 +};
 +
 +#define ETH_RXFLOW_IM_INFO			(1U << 0)
@@ -245,64 +248,64 @@ index 2c97fd8fca21..a7494f3a1515 100644
 +};
 +
 +enum {
-+	ETHA_RXHASHOPTS_UNSPEC,
-+	ETHA_RXHASHOPTS_OPT,			/* nest - ETH_RXHASHOPT_* */
++	ETHTOOL_A_RXHASHOPTS_UNSPEC,
++	ETHTOOL_A_RXHASHOPTS_OPT,		/* nest - ETH_RXHASHOPT_* */
 +
-+	__ETHA_RXHASHOPTS_CNT,
-+	ETHA_RXHASHOPTS_MAX = (__ETHA_RXHASHOPTS_CNT - 1)
++	__ETHTOOL_A_RXHASHOPTS_CNT,
++	ETHTOOL_A_RXHASHOPTS_MAX = (__ETHTOOL_A_RXHASHOPTS_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_RXHASHOPT_UNSPEC,
-+	ETHA_RXHASHOPT_FLOWTYPE,		/* u32 */
-+	ETHA_RXHASHOPT_FIELDS,			/* bitfield32 */
-+	ETHA_RXHASHOPT_DISCARD,			/* flag */
++	ETHTOOL_A_RXHASHOPT_UNSPEC,
++	ETHTOOL_A_RXHASHOPT_FLOWTYPE,		/* u32 */
++	ETHTOOL_A_RXHASHOPT_FIELDS,		/* bitfield32 */
++	ETHTOOL_A_RXHASHOPT_DISCARD,		/* flag */
 +
-+	__ETHA_RXHASHOPT_CNT,
-+	ETHA_RXHASHOPT_MAX = (__ETHA_RXHASHOPT_CNT - 1)
++	__ETHTOOL_A_RXHASHOPT_CNT,
++	ETHTOOL_A_RXHASHOPT_MAX = (__ETHTOOL_A_RXHASHOPT_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_INDTBL_UNSPEC,
-+	ETHA_INDTBL_BLOCK32,			/* nest - ETH_ITBLK_* */
-+	ETHA_INDTBL_BLOCK16,			/* nest - ETH_ITBLK_* */
-+	ETHA_INDTBL_BLOCK8,			/* nest - ETH_ITBLK_* */
-+	ETHA_INDTBL_PATTERN,			/* nest - ETH_ITPAT_* */
-+	ETHA_INDTBL_WEIGHTS,			/* nest - ETH_ITWGHT_* */
++	ETHTOOL_A_INDTBL_UNSPEC,
++	ETHTOOL_A_INDTBL_BLOCK32,		/* nest - ETH_ITBLK_* */
++	ETHTOOL_A_INDTBL_BLOCK16,		/* nest - ETH_ITBLK_* */
++	ETHTOOL_A_INDTBL_BLOCK8, 		/* nest - ETH_ITBLK_* */
++	ETHTOOL_A_INDTBL_PATTERN,		/* nest - ETH_ITPAT_* */
++	ETHTOOL_A_INDTBL_WEIGHTS,		/* nest - ETH_ITWGHT_* */
 +
-+	__ETHA_INDTBL_CNT,
-+	ETHA_INDTBL_MAX = (__ETHA_INDTBL_CNT - 1)
++	__ETHTOOL_A_INDTBL_CNT,
++	ETHTOOL_A_INDTBL_MAX = (__ETHTOOL_A_INDTBL_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_ITBLK_UNSPEC,
-+	ETHA_ITBLK_START,			/* u32 */
-+	ETHA_ITBLK_LEN,				/* u32 */
-+	ETHA_ITBLK_DATA,			/* binary */
++	ETHTOOL_A_ITBLK_UNSPEC,
++	ETHTOOL_A_ITBLK_START,			/* u32 */
++	ETHTOOL_A_ITBLK_LEN,			/* u32 */
++	ETHTOOL_A_ITBLK_DATA,			/* binary */
 +
-+	__ETHA_ITBLK_CNT,
-+	ETHA_ITBLK_MAX = (__ETHA_ITBLK_CNT - 1)
++	__ETHTOOL_A_ITBLK_CNT,
++	ETHTOOL_A_ITBLK_MAX = (__ETHTOOL_A_ITBLK_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_ITPAT_UNSPEC,
-+	ETHA_ITPAT_START,			/* u32 */
-+	ETHA_ITPAT_LEN,				/* u32 */
-+	ETHA_ITPAT_MIN_RING,			/* u32 */
-+	ETHA_ITPAT_MAX_RING,			/* u32 */
-+	ETHA_ITPAT_OFFSET,			/* u32 */
++	ETHTOOL_A_ITPAT_UNSPEC,
++	ETHTOOL_A_ITPAT_START,			/* u32 */
++	ETHTOOL_A_ITPAT_LEN,			/* u32 */
++	ETHTOOL_A_ITPAT_MIN_RING,		/* u32 */
++	ETHTOOL_A_ITPAT_MAX_RING,		/* u32 */
++	ETHTOOL_A_ITPAT_OFFSET,			/* u32 */
 +
-+	__ETHA_ITPAT_CNT,
-+	ETHA_ITPAT_MAX = (__ETHA_ITPAT_CNT - 1)
++	__ETHTOOL_A_ITPAT_CNT,
++	ETHTOOL_A_ITPAT_MAX = (__ETHTOOL_A_ITPAT_CNT - 1)
 +};
 +
 +enum {
-+	ETHA_ITWGHT_UNSPEC,
-+	ETHA_ITWGHT_VALUES,			/* binary */
-+	ETHA_ITWGHT_WEIGHTS,			/* binary */
++	ETHTOOL_A_ITWGHT_UNSPEC,
++	ETHTOOL_A_ITWGHT_VALUES,		/* binary */
++	ETHTOOL_A_ITWGHT_WEIGHTS,		/* binary */
 +
-+	__ETHA_ITWGHT_CNT,
-+	ETHA_ITWGHT_MAX = (__ETHA_ITWGHT_CNT - 1)
++	__ETHTOOL_A_ITWGHT_CNT,
++	ETHTOOL_A_ITWGHT_MAX = (__ETHTOOL_A_ITWGHT_CNT - 1)
 +};
 +
  /* generic netlink info */
@@ -319,10 +322,10 @@ index b3e88cf0f4c0..a6ace735f44f 100644
 -		   actions.o
 +		   actions.o rxflow.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 3a5417684622..ecdbe24d3e96 100644
+index b9011a71b77e..07ddaf9a718e 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -236,6 +236,7 @@ const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
+@@ -237,6 +237,7 @@ const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
  	[ETHNL_CMD_GET_INFO]		= &info_request_ops,
  	[ETHNL_CMD_GET_SETTINGS]	= &settings_request_ops,
  	[ETHNL_CMD_GET_PARAMS]		= &params_request_ops,
@@ -330,7 +333,7 @@ index 3a5417684622..ecdbe24d3e96 100644
  };
  
  /**
-@@ -711,6 +712,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -714,6 +715,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_ADMIN_PERM,
  		.doit	= ethnl_act_reset,
  	},
@@ -345,7 +348,7 @@ index 3a5417684622..ecdbe24d3e96 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index d7e8f7f0e952..df3d249b54a1 100644
+index 36fc265ba92a..468fd9496bf1 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -292,6 +292,7 @@ extern const struct get_request_ops strset_request_ops;
@@ -358,7 +361,7 @@ index d7e8f7f0e952..df3d249b54a1 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
 new file mode 100644
-index 000000000000..d3cc3acd870e
+index 000000000000..a8e5b03671d5
 --- /dev/null
 +++ b/net/ethtool/rxflow.c
 @@ -0,0 +1,463 @@
@@ -390,19 +393,19 @@ index 000000000000..d3cc3acd870e
 +#define RXH_ALL 0xfe
 +#define RXH_COUNT 8
 +
-+static const struct nla_policy get_rxflow_policy[ETHA_RXFLOW_MAX + 1] = {
-+	[ETHA_RXFLOW_UNSPEC]		= { .type = NLA_REJECT },
-+	[ETHA_RXFLOW_DEV]		= { .type = NLA_NESTED },
-+	[ETHA_RXFLOW_INFOMASK]		= { .type = NLA_U32 },
-+	[ETHA_RXFLOW_COMPACT]		= { .type = NLA_FLAG },
-+	[ETHA_RXFLOW_CTXOP]		= { .type = NLA_REJECT },
-+	[ETHA_RXFLOW_CONTEXT]		= { .type = NLA_U32 },
-+	[ETHA_RXFLOW_NRINGS]		= { .type = NLA_REJECT },
-+	[ETHA_RXFLOW_HASH_FN]		= { .type = NLA_REJECT },
-+	[ETHA_RXFLOW_HASH_KEY]		= { .type = NLA_REJECT },
-+	[ETHA_RXFLOW_HASH_OPTS]		= { .type = NLA_REJECT },
-+	[ETHA_RXFLOW_INDTBL_SIZE]	= { .type = NLA_REJECT },
-+	[ETHA_RXFLOW_INDIR_TBL]		= { .type = NLA_REJECT },
++static const struct nla_policy get_rxflow_policy[ETHTOOL_A_RXFLOW_MAX + 1] = {
++	[ETHTOOL_A_RXFLOW_UNSPEC]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_RXFLOW_DEV]		= { .type = NLA_NESTED },
++	[ETHTOOL_A_RXFLOW_INFOMASK]	= { .type = NLA_U32 },
++	[ETHTOOL_A_RXFLOW_COMPACT]	= { .type = NLA_FLAG },
++	[ETHTOOL_A_RXFLOW_CTXOP]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_RXFLOW_CONTEXT]	= { .type = NLA_U32 },
++	[ETHTOOL_A_RXFLOW_NRINGS]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_RXFLOW_HASH_FN]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_RXFLOW_HASH_KEY]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_RXFLOW_HASH_OPTS]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_RXFLOW_INDTBL_SIZE]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_RXFLOW_INDIR_TBL]	= { .type = NLA_REJECT },
 +};
 +
 +struct rxflow_data {
@@ -427,28 +430,28 @@ index 000000000000..d3cc3acd870e
 +{
 +	struct rxflow_data *data =
 +		container_of(req_info, struct rxflow_data, reqinfo_base);
-+	struct nlattr *tb[ETHA_RXFLOW_MAX + 1];
++	struct nlattr *tb[ETHTOOL_A_RXFLOW_MAX + 1];
 +	int ret;
 +
-+	ret = ethnlmsg_parse(nlhdr, tb, ETHA_RXFLOW_MAX, get_rxflow_policy,
++	ret = ethnlmsg_parse(nlhdr, tb, ETHTOOL_A_RXFLOW_MAX, get_rxflow_policy,
 +			     info);
 +	if (ret < 0)
 +		return ret;
 +
-+	if (tb[ETHA_RXFLOW_DEV]) {
-+		req_info->dev = ethnl_dev_get(info, tb[ETHA_RXFLOW_DEV]);
++	if (tb[ETHTOOL_A_RXFLOW_DEV]) {
++		req_info->dev = ethnl_dev_get(info, tb[ETHTOOL_A_RXFLOW_DEV]);
 +		if (IS_ERR(req_info->dev)) {
 +			ret = PTR_ERR(req_info->dev);
 +			req_info->dev = NULL;
 +			return ret;
 +		}
 +	}
-+	if (tb[ETHA_RXFLOW_INFOMASK])
-+		req_info->req_mask = nla_get_u32(tb[ETHA_RXFLOW_INFOMASK]);
-+	if (tb[ETHA_RXFLOW_COMPACT])
++	if (tb[ETHTOOL_A_RXFLOW_INFOMASK])
++		req_info->req_mask = nla_get_u32(tb[ETHTOOL_A_RXFLOW_INFOMASK]);
++	if (tb[ETHTOOL_A_RXFLOW_COMPACT])
 +		req_info->compact = true;
-+	if (tb[ETHA_RXFLOW_CONTEXT])
-+		data->req_context = nla_get_u32(tb[ETHA_RXFLOW_CONTEXT]);
++	if (tb[ETHTOOL_A_RXFLOW_CONTEXT])
++		data->req_context = nla_get_u32(tb[ETHTOOL_A_RXFLOW_CONTEXT]);
 +	if (req_info->req_mask == 0)
 +		req_info->req_mask = ETH_RXFLOW_IM_ALL;
 +
@@ -595,7 +598,7 @@ index 000000000000..d3cc3acd870e
 +	len = nla_total_size(data->indtbl_size * data->entry_size);
 +	/* block nest */
 +	len =  nla_total_size(2 *  nla_total_size(sizeof(u32)) + len);
-+	/* ETHA_RXFLOW_INDTBL_SIZE */
++	/* ETHTOOL_A_RXFLOW_INDTBL_SIZE */
 +	len += nla_total_size(sizeof(u32));
 +
 +	return len;
@@ -646,7 +649,7 @@ index 000000000000..d3cc3acd870e
 +	const u32 all_hashfn = RXFLOW_ALL_HASHFNS;
 +	int ret;
 +
-+	ret = ethnl_put_bitset32(skb, ETHA_RXFLOW_HASH_FN,
++	ret = ethnl_put_bitset32(skb, ETHTOOL_A_RXFLOW_HASH_FN,
 +				 ETH_RSS_HASH_FUNCS_COUNT, &data->hash_fn,
 +				 &all_hashfn, rss_hash_func_strings, flags);
 +	if (ret < 0)
@@ -662,7 +665,7 @@ index 000000000000..d3cc3acd870e
 +	unsigned int i;
 +	int ret;
 +
-+	attr_opts = ethnl_nest_start(skb, ETHA_RXFLOW_HASH_OPTS);
++	attr_opts = ethnl_nest_start(skb, ETHTOOL_A_RXFLOW_HASH_OPTS);
 +	if (!attr_opts)
 +		return -EMSGSIZE;
 +
@@ -670,17 +673,17 @@ index 000000000000..d3cc3acd870e
 +		if (!fields[i])
 +			continue;
 +		ret = -EMSGSIZE;
-+		attr_opt = ethnl_nest_start(skb, ETHA_RXHASHOPTS_OPT);
++		attr_opt = ethnl_nest_start(skb, ETHTOOL_A_RXHASHOPTS_OPT);
 +		if (!attr_opt)
 +			goto err;
 +
-+		if (nla_put_u32(skb, ETHA_RXHASHOPT_FLOWTYPE, i))
++		if (nla_put_u32(skb, ETHTOOL_A_RXHASHOPT_FLOWTYPE, i))
 +		       goto err;
 +		if (fields[i] & RXH_DISCARD) {
-+			if (nla_put_flag(skb, ETHA_RXHASHOPT_DISCARD))
++			if (nla_put_flag(skb, ETHTOOL_A_RXHASHOPT_DISCARD))
 +				goto err;
 +		} else {
-+			if (nla_put_bitfield32(skb, ETHA_RXHASHOPT_FIELDS,
++			if (nla_put_bitfield32(skb, ETHTOOL_A_RXHASHOPT_FIELDS,
 +					       fields[i], RXH_ALL))
 +				goto err;
 +		}
@@ -702,21 +705,21 @@ index 000000000000..d3cc3acd870e
 +	unsigned int i;
 +	int ret;
 +
-+	if (nla_put_u32(skb, ETHA_RXFLOW_INDTBL_SIZE, data->indtbl_size))
++	if (nla_put_u32(skb, ETHTOOL_A_RXFLOW_INDTBL_SIZE, data->indtbl_size))
 +		return -EMSGSIZE;
-+	tbl = ethnl_nest_start(skb, ETHA_RXFLOW_INDIR_TBL);
++	tbl = ethnl_nest_start(skb, ETHTOOL_A_RXFLOW_INDIR_TBL);
 +	if (!tbl)
 +		return -EMSGSIZE;
 +
 +	switch(data->entry_size) {
 +	case 4:
-+		block_attrtype = ETHA_INDTBL_BLOCK32;
++		block_attrtype = ETHTOOL_A_INDTBL_BLOCK32;
 +		break;
 +	case 2:
-+		block_attrtype = ETHA_INDTBL_BLOCK16;
++		block_attrtype = ETHTOOL_A_INDTBL_BLOCK16;
 +		break;
 +	case 1:
-+		block_attrtype = ETHA_INDTBL_BLOCK8;
++		block_attrtype = ETHTOOL_A_INDTBL_BLOCK8;
 +		break;
 +	default:
 +		WARN_ONCE(1, "invalid indir_tbl entry size %u\n",
@@ -728,18 +731,18 @@ index 000000000000..d3cc3acd870e
 +	if (!block)
 +		goto err;
 +
-+	if (nla_put_u32(skb, ETHA_ITBLK_START, 0) ||
-+	    nla_put_u32(skb, ETHA_ITBLK_LEN, data->indtbl_size))
++	if (nla_put_u32(skb, ETHTOOL_A_ITBLK_START, 0) ||
++	    nla_put_u32(skb, ETHTOOL_A_ITBLK_LEN, data->indtbl_size))
 +		goto err;
 +	switch(data->entry_size) {
 +	case 4:
-+		if (nla_put(skb, ETHA_ITBLK_DATA,
++		if (nla_put(skb, ETHTOOL_A_ITBLK_DATA,
 +			    data->indtbl_size * sizeof(u32),
 +			    data->indir_tbl))
 +			goto err;
 +		break;
 +	case 2:
-+		attr = nla_reserve(skb, ETHA_ITBLK_DATA,
++		attr = nla_reserve(skb, ETHTOOL_A_ITBLK_DATA,
 +				   data->indtbl_size * data->entry_size);
 +		if (!attr)
 +			goto err;
@@ -747,7 +750,7 @@ index 000000000000..d3cc3acd870e
 +			((u16 *)nla_data(attr))[i] = data->indir_tbl[i];
 +		break;
 +	case 1:
-+		attr = nla_reserve(skb, ETHA_ITBLK_DATA,
++		attr = nla_reserve(skb, ETHTOOL_A_ITBLK_DATA,
 +				   data->indtbl_size * data->entry_size);
 +		if (!attr)
 +			goto err;
@@ -774,10 +777,10 @@ index 000000000000..d3cc3acd870e
 +	int ret;
 +
 +	if (data->req_context &&
-+	    nla_put_u32(skb, ETHA_RXFLOW_CONTEXT, data->req_context))
++	    nla_put_u32(skb, ETHTOOL_A_RXFLOW_CONTEXT, data->req_context))
 +		return -EMSGSIZE;
 +	if ((info_mask & ETH_RXFLOW_IM_INFO) &&
-+	    nla_put_u32(skb, ETHA_RXFLOW_NRINGS, data->n_rings))
++	    nla_put_u32(skb, ETHTOOL_A_RXFLOW_NRINGS, data->n_rings))
 +		return -EMSGSIZE;
 +	if (info_mask & ETH_RXFLOW_IM_HASHFN) {
 +		ret = fill_rxflow_hashfn(skb, data);
@@ -785,7 +788,7 @@ index 000000000000..d3cc3acd870e
 +			return ret;
 +	}
 +	if (info_mask & ETH_RXFLOW_IM_HKEY) {
-+		if (nla_put(skb, ETHA_RXFLOW_HASH_KEY, data->hkey_size,
++		if (nla_put(skb, ETHTOOL_A_RXFLOW_HASH_KEY, data->hkey_size,
 +			    data->hkey))
 +			return -EMSGSIZE;
 +	}
@@ -815,7 +818,7 @@ index 000000000000..d3cc3acd870e
 +const struct get_request_ops rxflow_request_ops = {
 +	.request_cmd		= ETHNL_CMD_GET_RXFLOW,
 +	.reply_cmd		= ETHNL_CMD_SET_RXFLOW,
-+	.dev_attrtype		= ETHA_RXFLOW_DEV,
++	.dev_attrtype		= ETHTOOL_A_RXFLOW_DEV,
 +	.data_size		= sizeof(struct rxflow_data),
 +	.repdata_offset		= offsetof(struct rxflow_data, repdata_base),
 +

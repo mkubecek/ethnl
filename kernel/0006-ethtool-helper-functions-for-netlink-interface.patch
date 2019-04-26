@@ -1,4 +1,4 @@
-From c34cd58e2fe95df0edfa55fab83546afa110867a Mon Sep 17 00:00:00 2001
+From 951a181b32bb364c6bbb1973f237c055dc0c977c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 06/44] ethtool: helper functions for netlink interface
@@ -8,12 +8,12 @@ Various helpers used by ethtool netlink code.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  include/uapi/linux/ethtool_netlink.h |  11 ++
- net/ethtool/netlink.c                | 144 +++++++++++++++++++++++++++
- net/ethtool/netlink.h                | 144 +++++++++++++++++++++++++++
- 3 files changed, 299 insertions(+)
+ net/ethtool/netlink.c                | 145 +++++++++++++++++++++++++++
+ net/ethtool/netlink.h                | 144 ++++++++++++++++++++++++++
+ 3 files changed, 300 insertions(+)
 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 6aa267451542..59240a2cda56 100644
+index 6aa267451542..a648f7368d4e 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -18,6 +18,17 @@ enum {
@@ -23,32 +23,32 @@ index 6aa267451542..59240a2cda56 100644
 +/* device specification */
 +
 +enum {
-+	ETHA_DEV_UNSPEC,
-+	ETHA_DEV_INDEX,				/* u32 */
-+	ETHA_DEV_NAME,				/* string */
++	ETHTOOL_A_DEV_UNSPEC,
++	ETHTOOL_A_DEV_INDEX,			/* u32 */
++	ETHTOOL_A_DEV_NAME,			/* string */
 +
-+	__ETHA_DEV_CNT,
-+	ETHA_DEV_MAX = (__ETHA_DEV_CNT - 1)
++	__ETHTOOL_A_DEV_CNT,
++	ETHTOOL_A_DEV_MAX = (__ETHTOOL_A_DEV_CNT - 1)
 +};
 +
  /* generic netlink info */
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 85dd6dac71a2..cc6829ba4331 100644
+index 85dd6dac71a2..fbf577997a55 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -1,8 +1,152 @@
+@@ -1,8 +1,153 @@
  // SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
  
 +#include <net/sock.h>
  #include <linux/ethtool_netlink.h>
  #include "netlink.h"
  
-+static const struct nla_policy dev_policy[ETHA_DEV_MAX + 1] = {
-+	[ETHA_DEV_UNSPEC]	= { .type = NLA_REJECT },
-+	[ETHA_DEV_INDEX]	= { .type = NLA_U32 },
-+	[ETHA_DEV_NAME]		= { .type = NLA_NUL_STRING,
++static const struct nla_policy dev_policy[ETHTOOL_A_DEV_MAX + 1] = {
++	[ETHTOOL_A_DEV_UNSPEC]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_DEV_INDEX]	= { .type = NLA_U32 },
++	[ETHTOOL_A_DEV_NAME]		= { .type = NLA_NUL_STRING,
 +				    .len = IFNAMSIZ - 1 },
 +};
 +
@@ -57,8 +57,8 @@ index 85dd6dac71a2..cc6829ba4331 100644
 + * @info: genetlink info (also used for extack error reporting)
 + * @nest: nest attribute with device identification
 + *
-+ * Finds the network device identified by ETHA_DEV_INDEX (ifindex) or
-+ * ETHA_DEV_NAME (name) attributes in a nested attribute @nest. If both
++ * Finds the network device identified by ETHTOOL_A_DEV_INDEX (ifindex) or
++ * ETHTOOL_A_DEV_NAME (name) attributes in a nested attribute @nest. If both
 + * are supplied, they must identify the same device. If successful, takes
 + * a reference to the device which is to be released by caller.
 + *
@@ -67,7 +67,7 @@ index 85dd6dac71a2..cc6829ba4331 100644
 +struct net_device *ethnl_dev_get(struct genl_info *info, struct nlattr *nest)
 +{
 +	struct net *net = genl_info_net(info);
-+	struct nlattr *tb[ETHA_DEV_MAX + 1];
++	struct nlattr *tb[ETHTOOL_A_DEV_MAX + 1];
 +	struct net_device *dev;
 +	int ret;
 +
@@ -76,18 +76,19 @@ index 85dd6dac71a2..cc6829ba4331 100644
 +				 "mandatory device identification missing");
 +		return ERR_PTR(-EINVAL);
 +	}
-+	ret = nla_parse_nested_strict(tb, ETHA_DEV_MAX, nest, dev_policy,
++	ret = nla_parse_nested_strict(tb, ETHTOOL_A_DEV_MAX, nest, dev_policy,
 +				      info->extack);
 +	if (ret < 0)
 +		return ERR_PTR(ret);
 +
-+	if (tb[ETHA_DEV_INDEX]) {
-+		dev = dev_get_by_index(net, nla_get_u32(tb[ETHA_DEV_INDEX]));
++	if (tb[ETHTOOL_A_DEV_INDEX]) {
++		dev = dev_get_by_index(net,
++				       nla_get_u32(tb[ETHTOOL_A_DEV_INDEX]));
 +		if (!dev)
 +			return ERR_PTR(-ENODEV);
 +		/* if both ifindex and ifname are passed, they must match */
-+		if (tb[ETHA_DEV_NAME]) {
-+			const char *nl_name = nla_data(tb[ETHA_DEV_NAME]);
++		if (tb[ETHTOOL_A_DEV_NAME]) {
++			const char *nl_name = nla_data(tb[ETHTOOL_A_DEV_NAME]);
 +
 +			if (strncmp(dev->name, nl_name, IFNAMSIZ)) {
 +				dev_put(dev);
@@ -97,8 +98,8 @@ index 85dd6dac71a2..cc6829ba4331 100644
 +			}
 +		}
 +		return dev;
-+	} else if (tb[ETHA_DEV_NAME]) {
-+		dev = dev_get_by_name(net, nla_data(tb[ETHA_DEV_NAME]));
++	} else if (tb[ETHTOOL_A_DEV_NAME]) {
++		dev = dev_get_by_name(net, nla_data(tb[ETHTOOL_A_DEV_NAME]));
 +		if (!dev)
 +			return ERR_PTR(-ENODEV);
 +	} else {
@@ -134,9 +135,9 @@ index 85dd6dac71a2..cc6829ba4331 100644
 +	if (!nest)
 +		return -EMSGSIZE;
 +
-+	if (nla_put_u32(msg, ETHA_DEV_INDEX, (u32)dev->ifindex))
++	if (nla_put_u32(msg, ETHTOOL_A_DEV_INDEX, (u32)dev->ifindex))
 +		goto err;
-+	if (nla_put_string(msg, ETHA_DEV_NAME, dev->name))
++	if (nla_put_string(msg, ETHTOOL_A_DEV_NAME, dev->name))
 +		goto err;
 +
 +	nla_nest_end(msg, nest);
@@ -192,7 +193,7 @@ index 85dd6dac71a2..cc6829ba4331 100644
  
  static const struct genl_ops ethtool_genl_ops[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 63063b582ca2..db90d95410b1 100644
+index 63063b582ca2..d0a875deb7ef 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -6,7 +6,151 @@
@@ -336,9 +337,9 @@ index 63063b582ca2..db90d95410b1 100644
 +	return netlink_ns_capable(skb, net->user_ns, CAP_NET_ADMIN);
 +}
 +
-+/* total size of ETHA_*_DEV nested attribute; this is an upper estimate so that
-+ * we do not need to hold RTNL longer than necessary to prevent rename between
-+ * estimating the size and composing the message
++/* total size of ETHTOOL_A_*_DEV nested attribute; this is an upper estimate so
++ * that we do not need to hold RTNL longer than necessary to prevent rename
++ * between estimating the size and composing the message
 + */
 +static inline unsigned int dev_ident_size(void)
 +{
