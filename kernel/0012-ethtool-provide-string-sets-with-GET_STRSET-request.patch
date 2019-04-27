@@ -1,4 +1,4 @@
-From 8f6a126229e92cb864a3c9a6bbeda2d2c0773dc0 Mon Sep 17 00:00:00 2001
+From 30ad94094658746e617b9c2c73123f4a1aaff97d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 12/44] ethtool: provide string sets with GET_STRSET request
@@ -29,10 +29,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/strset.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 6b74de132904..8b44e8a19e09 100644
+index b1bf16372064..25d79568105e 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -127,6 +127,8 @@ List of message types
+@@ -123,6 +123,8 @@ List of message types
  ---------------------
  
      ETHNL_CMD_EVENT			notification only
@@ -41,7 +41,7 @@ index 6b74de132904..8b44e8a19e09 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -167,6 +169,46 @@ and also multiple events of the same type (e.g. two or more newly registered
+@@ -163,6 +165,46 @@ and also multiple events of the same type (e.g. two or more newly registered
  devices).
  
  
@@ -88,7 +88,7 @@ index 6b74de132904..8b44e8a19e09 100644
  Request translation
  -------------------
  
-@@ -201,7 +243,7 @@ ETHTOOL_STXCSUM			n/a
+@@ -197,7 +239,7 @@ ETHTOOL_STXCSUM			n/a
  ETHTOOL_GSG			n/a
  ETHTOOL_SSG			n/a
  ETHTOOL_TEST			n/a
@@ -97,7 +97,7 @@ index 6b74de132904..8b44e8a19e09 100644
  ETHTOOL_PHYS_ID			n/a
  ETHTOOL_GSTATS			n/a
  ETHTOOL_GTSO			n/a
-@@ -229,7 +271,7 @@ ETHTOOL_FLASHDEV		n/a
+@@ -225,7 +267,7 @@ ETHTOOL_FLASHDEV		n/a
  ETHTOOL_RESET			n/a
  ETHTOOL_SRXNTUPLE		n/a
  ETHTOOL_GRXNTUPLE		n/a
@@ -191,10 +191,10 @@ index 11782306593b..11ceb00821b3 100644
 -ethtool_nl-y	:= netlink.o bitset.o
 +ethtool_nl-y	:= netlink.o bitset.o strset.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index c9363c182e7a..87f517de6f32 100644
+index 1826d5e0e41d..315c9b09dc79 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -155,6 +155,7 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -168,6 +168,7 @@ static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)
  /* GET request helpers */
  
  const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
@@ -202,7 +202,7 @@ index c9363c182e7a..87f517de6f32 100644
  };
  
  /**
-@@ -563,6 +564,13 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -572,6 +573,13 @@ static struct notifier_block ethnl_netdev_notifier = {
  /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
@@ -217,10 +217,10 @@ index c9363c182e7a..87f517de6f32 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 0d1c14404b10..f6aff324b9ef 100644
+index ede578190bea..9f47a732f19a 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -275,4 +275,8 @@ struct get_request_ops {
+@@ -258,4 +258,8 @@ struct get_request_ops {
  	void (*cleanup)(struct common_req_info *req_info);
  };
  

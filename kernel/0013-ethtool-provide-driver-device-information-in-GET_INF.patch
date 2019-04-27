@@ -1,4 +1,4 @@
-From 8abae148ad573ed341cb2af195f4096cfdf637db Mon Sep 17 00:00:00 2001
+From fd321260192c076f94aa8fc1b897b561a27edeae Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 13/44] ethtool: provide driver/device information in GET_INFO
@@ -18,18 +18,18 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/common.c                         |  52 ++++++
  net/ethtool/common.h                         |   2 +
- net/ethtool/info.c                           | 161 +++++++++++++++++++
+ net/ethtool/info.c                           | 168 +++++++++++++++++++
  net/ethtool/ioctl.c                          |  50 +-----
  net/ethtool/netlink.c                        |   8 +
  net/ethtool/netlink.h                        |   1 +
- 9 files changed, 302 insertions(+), 47 deletions(-)
+ 9 files changed, 309 insertions(+), 47 deletions(-)
  create mode 100644 net/ethtool/info.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 8b44e8a19e09..a10c9b03154e 100644
+index 25d79568105e..8a9d6e6f7731 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -129,6 +129,8 @@ List of message types
+@@ -125,6 +125,8 @@ List of message types
      ETHNL_CMD_EVENT			notification only
      ETHNL_CMD_GET_STRSET
      ETHNL_CMD_SET_STRSET		response only
@@ -38,7 +38,7 @@ index 8b44e8a19e09..a10c9b03154e 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -209,6 +211,45 @@ Flag ETHTOOL_A_STRSET_COUNTS tells kernel to only return string counts of the
+@@ -205,6 +207,45 @@ Flag ETHTOOL_A_STRSET_COUNTS tells kernel to only return string counts of the
  sets, not the actual strings.
  
  
@@ -84,7 +84,7 @@ index 8b44e8a19e09..a10c9b03154e 100644
  Request translation
  -------------------
  
-@@ -220,7 +261,7 @@ ioctl command			netlink command
+@@ -216,7 +257,7 @@ ioctl command			netlink command
  ---------------------------------------------------------------------
  ETHTOOL_GSET			n/a
  ETHTOOL_SSET			n/a
@@ -237,10 +237,10 @@ index 41b2efc1e4e1..e87e58b3a274 100644
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
 new file mode 100644
-index 000000000000..f0123f6417a1
+index 000000000000..bf6ef8fb9456
 --- /dev/null
 +++ b/net/ethtool/info.c
-@@ -0,0 +1,161 @@
+@@ -0,0 +1,168 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include "netlink.h"
@@ -323,10 +323,14 @@ index 000000000000..f0123f6417a1
 +{
 +	int len = 0;
 +
-+	len += ethnl_str_ifne_size(drvinfo->driver);
-+	len += ethnl_str_ifne_size(drvinfo->fw_version);
-+	len += ethnl_str_ifne_size(drvinfo->bus_info);
-+	len += ethnl_str_ifne_size(drvinfo->erom_version);
++	if (drvinfo->driver[0])
++		len += ethnl_str_size(drvinfo->driver);
++	if (drvinfo->fw_version[0])
++		len += ethnl_str_size(drvinfo->fw_version);
++	if (drvinfo->bus_info[0])
++		len += ethnl_str_size(drvinfo->bus_info);
++	if (drvinfo->erom_version[0])
++		len += ethnl_str_size(drvinfo->erom_version);
 +
 +	return nla_total_size(len);
 +}
@@ -355,14 +359,17 @@ index 000000000000..f0123f6417a1
 +	if (!nest)
 +		return -EMSGSIZE;
 +	ret = -EMSGSIZE;
-+	if (ethnl_put_str_ifne(skb, ETHTOOL_A_DRVINFO_DRIVER,
-+			       drvinfo->driver) ||
-+	    ethnl_put_str_ifne(skb, ETHTOOL_A_DRVINFO_FWVERSION,
-+			       drvinfo->fw_version) ||
-+	    ethnl_put_str_ifne(skb, ETHTOOL_A_DRVINFO_BUSINFO,
-+			       drvinfo->bus_info) ||
-+	    ethnl_put_str_ifne(skb, ETHTOOL_A_DRVINFO_EROM_VER,
-+			       drvinfo->erom_version))
++	if ((drvinfo->driver[0] &&
++	     nla_put_string(skb, ETHTOOL_A_DRVINFO_DRIVER, drvinfo->driver)) ||
++	    (drvinfo->fw_version[0] &&
++	     nla_put_string(skb, ETHTOOL_A_DRVINFO_FWVERSION,
++			    drvinfo->fw_version)) ||
++	    (drvinfo->bus_info[0] &&
++	     nla_put_string(skb, ETHTOOL_A_DRVINFO_BUSINFO,
++			    drvinfo->bus_info)) ||
++	    (drvinfo->erom_version[0] &&
++	     nla_put_string(skb, ETHTOOL_A_DRVINFO_EROM_VER,
++			    drvinfo->erom_version)))
 +		goto err;
 +
 +	nla_nest_end(skb, nest);
@@ -467,10 +474,10 @@ index 10729878a56d..fec7d92a1b2a 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 87f517de6f32..af149f3b509b 100644
+index 315c9b09dc79..4369cf598f22 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -156,6 +156,7 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -169,6 +169,7 @@ static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)
  
  const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
  	[ETHNL_CMD_GET_STRSET]		= &strset_request_ops,
@@ -478,7 +485,7 @@ index 87f517de6f32..af149f3b509b 100644
  };
  
  /**
-@@ -571,6 +572,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -580,6 +581,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -493,10 +500,10 @@ index 87f517de6f32..af149f3b509b 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index f6aff324b9ef..09cd2b2919fe 100644
+index 9f47a732f19a..129a4c82e358 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -278,5 +278,6 @@ struct get_request_ops {
+@@ -261,5 +261,6 @@ struct get_request_ops {
  /* request handlers */
  
  extern const struct get_request_ops strset_request_ops;

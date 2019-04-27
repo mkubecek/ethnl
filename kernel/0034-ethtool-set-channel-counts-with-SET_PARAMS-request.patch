@@ -1,4 +1,4 @@
-From 1777b1055755de1af84c7f7f9f7ee4c3a3868916 Mon Sep 17 00:00:00 2001
+From c22ad52d620c17be2dd15472c899898b2fc1373c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:36:43 +0100
 Subject: [PATCH 34/44] ethtool: set channel counts with SET_PARAMS request
@@ -17,10 +17,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 139 insertions(+), 64 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index b0c08bb38572..f15dde7e554a 100644
+index ad21116016c3..b66b8870232b 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -488,10 +488,11 @@ SET_PARAMS
+@@ -484,10 +484,11 @@ SET_PARAMS
  ----------
  
  SET_PARAMS request modifies the settings retrieved by GET_PARAMS, i.e. it
@@ -36,7 +36,7 @@ index b0c08bb38572..f15dde7e554a 100644
  
      ETHTOOL_A_PARAMS_COALESCE		(nested)	coalescing parameters
          ETHTOOL_A_COALESCE_RX_USECS	    (u32)
-@@ -525,6 +526,11 @@ GET_SETPARAMS are read only and cannot be set by SET_PARAMS request.
+@@ -521,6 +522,11 @@ GET_SETPARAMS are read only and cannot be set by SET_PARAMS request.
          ETHTOOL_A_PAUSE_AUTONEG		    (bool)
          ETHTOOL_A_PAUSE_RX		    (bool)
          ETHTOOL_A_PAUSE_TX		    (bool)
@@ -48,7 +48,7 @@ index b0c08bb38572..f15dde7e554a 100644
  
  
  Request translation
-@@ -595,7 +601,7 @@ ETHTOOL_SRXFHINDIR		n/a
+@@ -591,7 +597,7 @@ ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GCHANNELS		ETHNL_CMD_GET_PARAMS

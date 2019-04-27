@@ -1,4 +1,4 @@
-From 6605c223c9225d1ef908f4b62e739c550501c53a Mon Sep 17 00:00:00 2001
+From 354bcf933384f124052b2f43968d5002ab5c06dd Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 24/44] ethtool: set device features with SET_SETTINGS
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 182 insertions(+), 10 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 6c5feabd2933..8a1eb43f7ebb 100644
+index 666cd418b567..b2e7eee4046c 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -363,6 +363,9 @@ to be passed with SET_SETTINGS request:
+@@ -359,6 +359,9 @@ to be passed with SET_SETTINGS request:
          ETHTOOL_A_WOL_SOPASS		    (binary)	    SecureOn password
      ETHTOOL_A_SETTINGS_DEBUG		(nested)	debugging
          ETHTOOL_A_DEBUG_MSG_MASK	    (bitfield32)    message mask
@@ -34,7 +34,7 @@ index 6c5feabd2933..8a1eb43f7ebb 100644
  
  ETHTOOL_A_LINKMODES_OURS bit set allows setting advertised link modes. If
  autonegotiation is on (either set now or kept from before), advertised modes
-@@ -382,6 +385,17 @@ enable mode not supported by device). ETHTOOL_A_SETTINGS_MSGLEVEL bitfield
+@@ -378,6 +381,17 @@ enable mode not supported by device). ETHTOOL_A_SETTINGS_MSGLEVEL bitfield
  also allows bits not recognized by kernel in selector as long as the request
  does not attempt to enable them.
  
@@ -52,7 +52,7 @@ index 6c5feabd2933..8a1eb43f7ebb 100644
  
  Request translation
  -------------------
-@@ -411,30 +425,30 @@ ETHTOOL_SRINGPARAM		n/a
+@@ -407,30 +421,30 @@ ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
  ETHTOOL_SPAUSEPARAM		n/a
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
@@ -91,7 +91,7 @@ index 6c5feabd2933..8a1eb43f7ebb 100644
  ETHTOOL_GRXRINGS		n/a
  ETHTOOL_GRXCLSRLCNT		n/a
  ETHTOOL_GRXCLSRULE		n/a
-@@ -449,7 +463,7 @@ ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
+@@ -445,7 +459,7 @@ ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
  ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS

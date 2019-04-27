@@ -1,4 +1,4 @@
-From 90af6e5c8055c98c52eb4bbb54bae490e82ccf8a Mon Sep 17 00:00:00 2001
+From 44a68b2f7230cc3bb7e69a6bf879e1a05f75766a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:30:12 +0100
 Subject: [PATCH 33/44] ethtool: provide channel counts in GET_PARAMS request
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 93 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index e3001102546f..b0c08bb38572 100644
+index 6a044246838d..ad21116016c3 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -411,9 +411,10 @@ GET_PARAMS
+@@ -407,9 +407,10 @@ GET_PARAMS
  ----------
  
  GET_PARAMS request retrieves information provided by ioctl comands
@@ -36,7 +36,7 @@ index e3001102546f..b0c08bb38572 100644
  
  Request contents:
  
-@@ -426,6 +427,7 @@ Info mask bits:
+@@ -422,6 +423,7 @@ Info mask bits:
      ETH_PARAMS_IM_COALESCE		coalescing parameters
      ETH_PARAMS_IM_RING			ring sizes
      ETH_PARAMS_IM_PAUSE			pause parameters
@@ -44,7 +44,7 @@ index e3001102546f..b0c08bb38572 100644
  
  Response contents: On top level, there is one attribute for each of the
  information categories, the information is nested in it.
-@@ -467,6 +469,15 @@ information categories, the information is nested in it.
+@@ -463,6 +465,15 @@ information categories, the information is nested in it.
          ETHTOOL_A_PAUSE_AUTONEG		    (bool)
          ETHTOOL_A_PAUSE_RX		    (bool)
          ETHTOOL_A_PAUSE_TX		    (bool)
@@ -60,7 +60,7 @@ index e3001102546f..b0c08bb38572 100644
  
  GET_PARAMS requests allow dumps and messages in the same format as response
  to them are broadcasted as notifications on change of these settings using
-@@ -583,7 +594,7 @@ ETHTOOL_GRXFHINDIR		n/a
+@@ -579,7 +590,7 @@ ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS

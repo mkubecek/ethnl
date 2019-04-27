@@ -1,4 +1,4 @@
-From 7db7c3aeabe177967c429b44710bac8e2e3665a6 Mon Sep 17 00:00:00 2001
+From 04baecfa35299c6ceaa594bb02d7553e3a7de66c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 44/44] ethtool: implement SET_RXFLOW message
@@ -25,10 +25,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 672 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 581b7135b3c9..6780eaab6cf2 100644
+index 590186764643..549f7340d9b4 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -137,7 +137,7 @@ List of message types
+@@ -133,7 +133,7 @@ List of message types
      ETHNL_CMD_SET_PARAMS
      ETHNL_CMD_ACT_NWAY_RST
      ETHNL_CMD_GET_RXFLOW
@@ -37,7 +37,7 @@ index 581b7135b3c9..6780eaab6cf2 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -733,6 +733,44 @@ values (ring numbers) these weights correspond to. If ETHTOOL_A_ITWGHT_VALUES
+@@ -729,6 +729,44 @@ values (ring numbers) these weights correspond to. If ETHTOOL_A_ITWGHT_VALUES
  is omitted, values from 0 to number of weights minus one are used.
  
  
@@ -82,7 +82,7 @@ index 581b7135b3c9..6780eaab6cf2 100644
  Request translation
  -------------------
  
-@@ -797,7 +835,7 @@ ETHTOOL_SRXNTUPLE		n/a
+@@ -793,7 +831,7 @@ ETHTOOL_SRXNTUPLE		n/a
  ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
  ETHTOOL_GRXFHINDIR		ETHNL_CMD_GET_RXFLOW
@@ -91,7 +91,7 @@ index 581b7135b3c9..6780eaab6cf2 100644
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GCHANNELS		ETHNL_CMD_GET_PARAMS
-@@ -811,7 +849,7 @@ ETHTOOL_GMODULEEEPROM		n/a
+@@ -807,7 +845,7 @@ ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
  ETHTOOL_SEEE			ETHNL_CMD_SET_PARAMS
  ETHTOOL_GRSSH			ETHNL_CMD_GET_RXFLOW
@@ -114,10 +114,10 @@ index d03bb4b56b10..f33d1bab3c0c 100644
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index ce17468f1ebb..851fc7a2c0d4 100644
+index f57d3b83399a..30c053680c0e 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -723,6 +723,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -732,6 +732,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -130,10 +130,10 @@ index ce17468f1ebb..851fc7a2c0d4 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 8bdd305135ed..d12735924977 100644
+index d9e976351cb4..e6f348d52d2f 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -296,6 +296,7 @@ extern const struct get_request_ops rxflow_request_ops;
+@@ -281,6 +281,7 @@ extern const struct get_request_ops rxflow_request_ops;
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
@@ -142,10 +142,10 @@ index 8bdd305135ed..d12735924977 100644
  int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_reset(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index a0eb34d4236c..b3b147e7328c 100644
+index ebf5f71a6e99..de4a6f583d92 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
-@@ -531,3 +531,627 @@ void ethnl_rxflow_notify(struct net_device *dev,
+@@ -528,3 +528,627 @@ void ethnl_rxflow_notify(struct net_device *dev,
  err_data:
  	rxflow_cleanup(req_info);
  }

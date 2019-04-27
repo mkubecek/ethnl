@@ -1,4 +1,4 @@
-From 9e5fbd2e5a3c7a32e65a1cb8dd74fabcd2937054 Mon Sep 17 00:00:00 2001
+From c5a76b53de531bf2dace57d9c7d3fd3d9ad7ec50 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 16:19:21 +0100
 Subject: [PATCH 25/44] ethtool: provide private flags in GET_SETTINGS request
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 114 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 8a1eb43f7ebb..2abfee8a6724 100644
+index b2e7eee4046c..abbce979b885 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -281,6 +281,7 @@ Info mask bits meaning:
+@@ -277,6 +277,7 @@ Info mask bits meaning:
      ETH_SETTINGS_IM_WOL			struct ethtool_wolinfo
      ETH_SETTINGS_IM_DEBUG		debugging
      ETH_SETTINGS_IM_FEATURES		features
@@ -30,7 +30,7 @@ index 8a1eb43f7ebb..2abfee8a6724 100644
  
  Response contents:
  
-@@ -309,6 +310,7 @@ Response contents:
+@@ -305,6 +306,7 @@ Response contents:
          ETHTOOL_A_FEATURES_WANTED	    (bitset)	    dev->wanted_features
          ETHTOOL_A_FEATURES_ACTIVE	    (bitset)	    dev->features
          ETHTOOL_A_FEATURES_NOCHANGE	    (bitset)	    NETIF_F_NEVER_CHANGE
@@ -38,7 +38,7 @@ index 8a1eb43f7ebb..2abfee8a6724 100644
  
  Most of the attributes and their values have the same meaning as matching
  members of the corresponding ioctl structures. For ETHTOOL_A_LINKMODES_OURS,
-@@ -331,6 +333,11 @@ itself. ETHTOOL_A_FEATURES_HW uses mask consisting of all features recognized
+@@ -327,6 +329,11 @@ itself. ETHTOOL_A_FEATURES_HW uses mask consisting of all features recognized
  by kernel (to provide all names when using verbose bitmap format), remaining
  three use mask equal to value (to save space).
  
@@ -50,7 +50,7 @@ index 8a1eb43f7ebb..2abfee8a6724 100644
  GET_SETTINGS request is allowed for unprivileged user but ETHTOOL_A_WOL_SOPASS
  is only provided by kernel in response to privileged (netns CAP_NET_ADMIN)
  requests.
-@@ -443,7 +450,7 @@ ETHTOOL_GGSO			ETHNL_CMD_GET_SETTINGS
+@@ -439,7 +446,7 @@ ETHTOOL_GGSO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SGSO			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFLAGS			ETHNL_CMD_SET_SETTINGS

@@ -1,4 +1,4 @@
-From ae0be9f884655ba6a25bd16ed062ee78ebfcc708 Mon Sep 17 00:00:00 2001
+From dbf81ba9d866475405b99e34d408e35c9a97405f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 41/44] ethtool: implement ACT_RESET message
@@ -9,21 +9,21 @@ If successful and at least one component was reset, send a notification.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  26 +-
+ Documentation/networking/ethtool-netlink.txt |  26 ++-
  include/uapi/linux/ethtool.h                 |   3 +
  include/uapi/linux/ethtool_netlink.h         |  16 ++
- net/ethtool/actions.c                        | 236 +++++++++++++++++++
+ net/ethtool/actions.c                        | 233 +++++++++++++++++++
  net/ethtool/ioctl.c                          |   5 +
  net/ethtool/netlink.c                        |   6 +
  net/ethtool/netlink.h                        |   4 +
  net/ethtool/strset.c                         |   6 +
- 8 files changed, 301 insertions(+), 1 deletion(-)
+ 8 files changed, 298 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 33001518020b..456272c15cb9 100644
+index 6c14349e0747..3da6e4ddb9e4 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -592,6 +592,30 @@ other ACT_PHYS_ID requests for any device fail with EBUSY. The same holds for
+@@ -588,6 +588,30 @@ other ACT_PHYS_ID requests for any device fail with EBUSY. The same holds for
  requests using ETHTOOL_PHYS_ID ioctl command.
  
  
@@ -54,7 +54,7 @@ index 33001518020b..456272c15cb9 100644
  Request translation
  -------------------
  
-@@ -651,7 +675,7 @@ ETHTOOL_GRXCLSRLALL		n/a
+@@ -647,7 +671,7 @@ ETHTOOL_GRXCLSRLALL		n/a
  ETHTOOL_SRXCLSRLDEL		n/a
  ETHTOOL_SRXCLSRLINS		n/a
  ETHTOOL_FLASHDEV		n/a
@@ -126,7 +126,7 @@ index ab84d768b45a..85857101c0c0 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
-index de18291ec5cd..affd8e1eff5d 100644
+index 722eb933036d..abe6a06d6d61 100644
 --- a/net/ethtool/actions.c
 +++ b/net/ethtool/actions.c
 @@ -2,6 +2,7 @@
@@ -137,7 +137,7 @@ index de18291ec5cd..affd8e1eff5d 100644
  
  /* ACT_NWAY_RST */
  
-@@ -148,3 +149,238 @@ int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info)
+@@ -142,3 +143,235 @@ int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info)
  	dev_put(dev);
  	return ret;
  }
@@ -246,9 +246,7 @@ index de18291ec5cd..affd8e1eff5d 100644
 +	skb = genlmsg_new(msg_len, GFP_KERNEL);
 +	if (!skb)
 +		return;
-+	msg_payload = genlmsg_put(skb, 0, ++ethnl_bcast_seq,
-+				  &ethtool_genl_family, 0,
-+				  ETHNL_CMD_ACT_RESET);
++	msg_payload = ethnl_bcastmsg_put(skb, ETHNL_CMD_ACT_RESET);
 +	if (!msg_payload)
 +		goto err_skb;
 +
@@ -260,8 +258,7 @@ index de18291ec5cd..affd8e1eff5d 100644
 +		goto err_skb;
 +
 +	genlmsg_end(skb, msg_payload);
-+	genlmsg_multicast(&ethtool_genl_family, skb, 0, ETHNL_MCGRP_MONITOR,
-+			  GFP_KERNEL);
++	ethnl_multicast(skb, dev);
 +	return;
 +
 +err_skb:
@@ -403,10 +400,10 @@ index 8a7fa834c3d8..1d6c9099c1b8 100644
  	if (copy_to_user(useraddr, &reset, sizeof(reset)))
  		return -EFAULT;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index a3ffa27d62b3..b9011a71b77e 100644
+index 2b3acd0bdbba..e850f94f0a42 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -565,6 +565,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -576,6 +576,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
  	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,
  	[ETHNL_CMD_ACT_PHYS_ID]		= ethnl_physid_notify,
@@ -414,7 +411,7 @@ index a3ffa27d62b3..b9011a71b77e 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -708,6 +709,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -717,6 +718,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_act_phys_id,
  	},
@@ -427,10 +424,10 @@ index a3ffa27d62b3..b9011a71b77e 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index cdf58a7b5612..36fc265ba92a 100644
+index a0c7d8ef9bdc..0dd680065c61 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -24,6 +24,7 @@ extern const char *const so_timestamping_labels[];
+@@ -20,6 +20,7 @@ extern const char *const so_timestamping_labels[];
  extern const char *const tstamp_tx_type_labels[];
  extern const char *const tstamp_rx_filter_labels[];
  extern const char *const link_mode_names[];
@@ -438,7 +435,7 @@ index cdf58a7b5612..36fc265ba92a 100644
  
  struct net_device *ethnl_dev_get(struct genl_info *info, struct nlattr *nest);
  int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
-@@ -296,6 +297,7 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
+@@ -281,6 +282,7 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
@@ -446,7 +443,7 @@ index cdf58a7b5612..36fc265ba92a 100644
  
  /* notify handlers */
  
-@@ -304,5 +306,7 @@ void ethnl_nwayrst_notify(struct net_device *dev,
+@@ -289,5 +291,7 @@ void ethnl_nwayrst_notify(struct net_device *dev,
  			  u32 req_mask, const void *data);
  void ethnl_physid_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  			 unsigned int cmd, u32 req_mask, const void *data);

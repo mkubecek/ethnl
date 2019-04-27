@@ -1,4 +1,4 @@
-From 7d0404ca2946304b3f1421e1177280cef9b2627a Mon Sep 17 00:00:00 2001
+From 12126e2cac85eaf547f09306ec7b816a1351917e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 05/44] ethtool: introduce ethtool netlink interface
@@ -9,14 +9,14 @@ option. Add interface description into Documentation/networking.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 168 +++++++++++++++++++
+ Documentation/networking/ethtool-netlink.txt | 164 +++++++++++++++++++
  include/linux/ethtool_netlink.h              |   9 +
  include/uapi/linux/ethtool_netlink.h         |  25 +++
  net/Kconfig                                  |   8 +
  net/ethtool/Makefile                         |   6 +-
- net/ethtool/netlink.c                        |  34 ++++
- net/ethtool/netlink.h                        |  12 ++
- 7 files changed, 261 insertions(+), 1 deletion(-)
+ net/ethtool/netlink.c                        |  33 ++++
+ net/ethtool/netlink.h                        |  10 ++
+ 7 files changed, 254 insertions(+), 1 deletion(-)
  create mode 100644 Documentation/networking/ethtool-netlink.txt
  create mode 100644 include/linux/ethtool_netlink.h
  create mode 100644 include/uapi/linux/ethtool_netlink.h
@@ -25,10 +25,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 new file mode 100644
-index 000000000000..feef793dbafe
+index 000000000000..aadbf250c883
 --- /dev/null
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -0,0 +1,168 @@
+@@ -0,0 +1,164 @@
 +                        Netlink interface for ethtool
 +                        =============================
 +
@@ -42,10 +42,6 @@ index 000000000000..feef793dbafe
 +a specific header, all information in requests and replies is passed using
 +netlink attributes.
 +
-+In requests, device can be identified by ifindex or by name; if both are used,
-+they must match. In replies, kernel fills both. The meaning of flags,
-+info_mask and index fields depends on request type.
-+
 +The ethtool netlink interface uses extended ACK for error and warning
 +reporting, userspace application developers are encouraged to make these
 +messages available to user in a suitable way.
@@ -54,7 +50,7 @@ index 000000000000..feef793dbafe
 +"set" (setting parameters) and "action" (invoking an action).
 +
 +All "set" and "action" type requests require admin privileges (CAP_NET_ADMIN
-+in the namespace). Most "get" type request are allowed for anyone but there
++in the namespace). Most "get" type requests are allowed for anyone but there
 +are exceptions (where the response contains sensitive information). In some
 +cases, the request as such is allowed for anyone but unprivileged users have
 +attributes with sensitive information (e.g. wake-on-lan password) omitted.
@@ -277,10 +273,10 @@ index 3ebfab2bca66..f30e0da88be5 100644
 +ethtool_nl-y	:= netlink.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
 new file mode 100644
-index 000000000000..85dd6dac71a2
+index 000000000000..3c98b41f04e5
 --- /dev/null
 +++ b/net/ethtool/netlink.c
-@@ -0,0 +1,34 @@
+@@ -0,0 +1,33 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include <linux/ethtool_netlink.h>
@@ -291,8 +287,7 @@ index 000000000000..85dd6dac71a2
 +static const struct genl_ops ethtool_genl_ops[] = {
 +};
 +
-+struct genl_family ethtool_genl_family = {
-+	.hdrsize	= 0,
++static struct genl_family ethtool_genl_family = {
 +	.name		= ETHTOOL_GENL_NAME,
 +	.version	= ETHTOOL_GENL_VERSION,
 +	.netnsok	= true,
@@ -317,10 +312,10 @@ index 000000000000..85dd6dac71a2
 +subsys_initcall(ethnl_init);
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
 new file mode 100644
-index 000000000000..63063b582ca2
+index 000000000000..257ae55ccc82
 --- /dev/null
 +++ b/net/ethtool/netlink.h
-@@ -0,0 +1,12 @@
+@@ -0,0 +1,10 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#ifndef _NET_ETHTOOL_NETLINK_H
@@ -329,8 +324,6 @@ index 000000000000..63063b582ca2
 +#include <linux/ethtool_netlink.h>
 +#include <linux/netdevice.h>
 +#include <net/genetlink.h>
-+
-+extern struct genl_family ethtool_genl_family;
 +
 +#endif /* _NET_ETHTOOL_NETLINK_H */
 -- 

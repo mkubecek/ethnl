@@ -1,4 +1,4 @@
-From 617fc8baceb33ec49e066963e375cb044f416412 Mon Sep 17 00:00:00 2001
+From 5c5c25dda3a68a4210453079231461ec3bf27435 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
 Subject: [PATCH 43/44] ethtool: implement SET_RXFLOW notification
@@ -20,11 +20,11 @@ interface (ETHTOOL_SRSSH, ETHTOOL_SRXFH or ETHTOOL_SRXFHINDIR command).
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  include/linux/ethtool_netlink.h |  6 +++
- net/ethtool/ioctl.c             | 32 ++++++++++++++-
+ net/ethtool/ioctl.c             | 32 +++++++++++++++-
  net/ethtool/netlink.c           |  1 +
  net/ethtool/netlink.h           |  2 +
- net/ethtool/rxflow.c            | 70 +++++++++++++++++++++++++++++++++
- 5 files changed, 110 insertions(+), 1 deletion(-)
+ net/ethtool/rxflow.c            | 67 +++++++++++++++++++++++++++++++++
+ 5 files changed, 107 insertions(+), 1 deletion(-)
 
 diff --git a/include/linux/ethtool_netlink.h b/include/linux/ethtool_netlink.h
 index e770e6e9acca..288e90f4dbb9 100644
@@ -139,10 +139,10 @@ index 1d6c9099c1b8..de8bf1009849 100644
  	if (copy_to_user(useraddr + offsetof(struct ethtool_rxfh, rss_context),
  			 &rxfh.rss_context, sizeof(rxfh.rss_context)))
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 07ddaf9a718e..ce17468f1ebb 100644
+index 4237f931bf38..f57d3b83399a 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -567,6 +567,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -578,6 +578,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,
  	[ETHNL_CMD_ACT_PHYS_ID]		= ethnl_physid_notify,
  	[ETHNL_CMD_ACT_RESET]		= ethnl_reset_notify,
@@ -151,10 +151,10 @@ index 07ddaf9a718e..ce17468f1ebb 100644
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 468fd9496bf1..8bdd305135ed 100644
+index 63ff58a612e0..d9e976351cb4 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -309,5 +309,7 @@ void ethnl_physid_notify(struct net_device *dev, struct netlink_ext_ack *extack,
+@@ -294,5 +294,7 @@ void ethnl_physid_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  			 unsigned int cmd, u32 req_mask, const void *data);
  void ethnl_reset_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  			unsigned int cmd, u32 req_mask, const void *data);
@@ -163,10 +163,10 @@ index 468fd9496bf1..8bdd305135ed 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index a8e5b03671d5..a0eb34d4236c 100644
+index a8e5b03671d5..ebf5f71a6e99 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
-@@ -461,3 +461,73 @@ const struct get_request_ops rxflow_request_ops = {
+@@ -461,3 +461,70 @@ const struct get_request_ops rxflow_request_ops = {
  	.fill_reply		= fill_rxflow,
  	.cleanup		= rxflow_cleanup,
  };
@@ -203,9 +203,7 @@ index a8e5b03671d5..a0eb34d4236c 100644
 +	skb = genlmsg_new(msg_len, GFP_KERNEL);
 +	if (!skb)
 +		goto err_data;
-+	msg_payload = genlmsg_put(skb, 0, ++ethnl_bcast_seq,
-+				  &ethtool_genl_family, 0,
-+				  ETHNL_CMD_SET_RXFLOW);
++	msg_payload = ethnl_bcastmsg_put(skb, ETHNL_CMD_SET_RXFLOW);
 +	if (!msg_payload)
 +		goto err_skb;
 +
@@ -231,8 +229,7 @@ index a8e5b03671d5..a0eb34d4236c 100644
 +	rxflow_cleanup(req_info);
 +	genlmsg_end(skb, msg_payload);
 +
-+	genlmsg_multicast(&ethtool_genl_family, skb, 0, ETHNL_MCGRP_MONITOR,
-+			  GFP_KERNEL);
++	ethnl_multicast(skb, dev);
 +	return;
 +
 +err_skb:

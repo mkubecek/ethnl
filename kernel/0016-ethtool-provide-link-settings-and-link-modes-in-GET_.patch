@@ -1,4 +1,4 @@
-From 3a0e4bf33f9ee0f52da03386f8d8097cdb41b1e8 Mon Sep 17 00:00:00 2001
+From 267d31e01d11ade0e61b4c67b40520f86125f756 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 16/44] ethtool: provide link settings and link modes in
@@ -32,10 +32,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index bea6b83dc8bd..6ce33ac12c6d 100644
+index 2a098577a7e5..ded867028115 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -131,6 +131,8 @@ List of message types
+@@ -127,6 +127,8 @@ List of message types
      ETHNL_CMD_SET_STRSET		response only
      ETHNL_CMD_GET_INFO
      ETHNL_CMD_SET_INFO			response only
@@ -44,7 +44,7 @@ index bea6b83dc8bd..6ce33ac12c6d 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -258,6 +260,50 @@ value; if no PHC is associated, the attribute is not present.
+@@ -254,6 +256,50 @@ value; if no PHC is associated, the attribute is not present.
  GET_INFO requests allow dumps.
  
  
@@ -95,7 +95,7 @@ index bea6b83dc8bd..6ce33ac12c6d 100644
  Request translation
  -------------------
  
-@@ -267,7 +313,7 @@ have their netlink replacement yet.
+@@ -263,7 +309,7 @@ have their netlink replacement yet.
  
  ioctl command			netlink command
  ---------------------------------------------------------------------
@@ -104,7 +104,7 @@ index bea6b83dc8bd..6ce33ac12c6d 100644
  ETHTOOL_SSET			n/a
  ETHTOOL_GDRVINFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GREGS			n/a
-@@ -341,7 +387,7 @@ ETHTOOL_GTUNABLE		n/a
+@@ -337,7 +383,7 @@ ETHTOOL_GTUNABLE		n/a
  ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
@@ -374,10 +374,10 @@ index d923aa183a9e..4a5df702955b 100644
  
  static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index f378801071ce..89e62338c992 100644
+index 98a21d9da4a5..b0e88b5e879d 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -235,6 +235,7 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -248,6 +248,7 @@ static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)
  const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
  	[ETHNL_CMD_GET_STRSET]		= &strset_request_ops,
  	[ETHNL_CMD_GET_INFO]		= &info_request_ops,
@@ -385,7 +385,7 @@ index f378801071ce..89e62338c992 100644
  };
  
  /**
-@@ -559,6 +560,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -570,6 +571,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  				       const void *data);
  
  ethnl_notify_handler_t ethnl_notify_handlers[] = {
@@ -393,7 +393,7 @@ index f378801071ce..89e62338c992 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -657,6 +659,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -666,6 +668,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -408,10 +408,10 @@ index f378801071ce..89e62338c992 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 92c241595ef9..900b08ff8393 100644
+index f6ae234a8f74..2cf398b45002 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -289,5 +289,6 @@ struct get_request_ops {
+@@ -272,5 +272,6 @@ struct get_request_ops {
  
  extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops info_request_ops;

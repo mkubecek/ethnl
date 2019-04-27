@@ -1,4 +1,4 @@
-From 6807bcafca6b037c06b129a379bf7691278c11ae Mon Sep 17 00:00:00 2001
+From 69a508c6340f3329f2ca04019764edb363dfdce2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:50:30 +0100
 Subject: [PATCH 20/44] ethtool: set WoL settings with SET_SETTINGS request
@@ -16,10 +16,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 69 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 81cb29ef396d..82d72b54d269 100644
+index 45d50ed855a0..60369c5d6820 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -335,6 +335,9 @@ to be passed with SET_SETTINGS request:
+@@ -331,6 +331,9 @@ to be passed with SET_SETTINGS request:
          ETHTOOL_A_LINKMODES_OURS	    (bitset)	    advertised link modes
          ETHTOOL_A_LINKMODES_SPEED	    (u32)	    link speed (Mb/s)
          ETHTOOL_A_LINKMODES_DUPLEX	    (u8)	    duplex mode
@@ -29,7 +29,7 @@ index 81cb29ef396d..82d72b54d269 100644
  
  ETHTOOL_A_LINKMODES_OURS bit set allows setting advertised link modes. If
  autonegotiation is on (either set now or kept from before), advertised modes
-@@ -345,6 +348,13 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
+@@ -341,6 +344,13 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
  is supposed to allow requesting changes without knowing what exactly kernel
  supports.
  
@@ -43,7 +43,7 @@ index 81cb29ef396d..82d72b54d269 100644
  
  Request translation
  -------------------
-@@ -360,7 +370,7 @@ ETHTOOL_SSET			ETHNL_CMD_SET_SETTINGS
+@@ -356,7 +366,7 @@ ETHTOOL_SSET			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GDRVINFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GREGS			n/a
  ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS

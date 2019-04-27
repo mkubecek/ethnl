@@ -1,4 +1,4 @@
-From 0515fc3bee659be4e522ab2f243750e188e937da Mon Sep 17 00:00:00 2001
+From 01990ee2794ff61bcb1289cc6cf8d845780d49a9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 07/44] ethtool: netlink bitset handling
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/bitset.h
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index feef793dbafe..c2f548889412 100644
+index aadbf250c883..20017e101fdd 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -60,6 +60,69 @@ replies with one message per network device (only those for which the request
+@@ -56,6 +56,69 @@ replies with one message per network device (only those for which the request
  is supported).
  
  
@@ -799,10 +799,10 @@ index 000000000000..761d0c47fe23
 +
 +#endif /* _NET_ETHTOOL_BITSET_H */
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index d0a875deb7ef..e73f36b79bc5 100644
+index b68b91654c19..0a796d856a69 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -20,6 +20,15 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -18,6 +18,15 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  				 u16 dev_attrtype, struct genl_info *info,
  				 void **ehdrp);
  

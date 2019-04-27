@@ -1,4 +1,4 @@
-From 7a22081d2c0228b047073eb00f2e9f1f9fd907cb Mon Sep 17 00:00:00 2001
+From f41a1d684808a94e6ae1346a887983aad9860999 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 26/44] ethtool: set private flags with SET_SETTINGS request
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 45 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 2abfee8a6724..500395836c25 100644
+index abbce979b885..ec7675941a7b 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -373,6 +373,7 @@ to be passed with SET_SETTINGS request:
+@@ -369,6 +369,7 @@ to be passed with SET_SETTINGS request:
      ETHTOOL_A_SETTINGS_FEATURES		(nested)	device features
          ETHTOOL_A_FEATURES_WANTED	    (bitset)	    wanted features
          ETHTOOL_A_FEATURES_WANT_DIFF	    (flag)	    actual diff
@@ -26,7 +26,7 @@ index 2abfee8a6724..500395836c25 100644
  
  ETHTOOL_A_LINKMODES_OURS bit set allows setting advertised link modes. If
  autonegotiation is on (either set now or kept from before), advertised modes
-@@ -451,7 +452,7 @@ ETHTOOL_SGSO			ETHNL_CMD_SET_SETTINGS
+@@ -447,7 +448,7 @@ ETHTOOL_SGSO			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GFLAGS			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFLAGS			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GPFLAGS			ETHNL_CMD_GET_SETTINGS

@@ -1,4 +1,4 @@
-From 65cc807783cafeed9599bdc7c5fd8fe2e36a818a Mon Sep 17 00:00:00 2001
+From 4f7729301ae399d4578cf43e888b4f8aac6ce1cf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:43:01 +0100
 Subject: [PATCH 35/44] ethtool: provide EEE settings in GET_PARAMS request
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 131 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index f15dde7e554a..78706245d9ed 100644
+index b66b8870232b..41d78a4611d1 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -412,9 +412,9 @@ GET_PARAMS
+@@ -408,9 +408,9 @@ GET_PARAMS
  
  GET_PARAMS request retrieves information provided by ioctl comands
  ETHTOOL_GCOALESCE (coalescing parameters), ETHTOOL_GRINGPARAM (ring sizes),
@@ -35,7 +35,7 @@ index f15dde7e554a..78706245d9ed 100644
  
  Request contents:
  
-@@ -428,6 +428,7 @@ Info mask bits:
+@@ -424,6 +424,7 @@ Info mask bits:
      ETH_PARAMS_IM_RING			ring sizes
      ETH_PARAMS_IM_PAUSE			pause parameters
      ETH_PARAMS_IM_CHANNELS		channel counts
@@ -43,7 +43,7 @@ index f15dde7e554a..78706245d9ed 100644
  
  Response contents: On top level, there is one attribute for each of the
  information categories, the information is nested in it.
-@@ -478,6 +479,15 @@ information categories, the information is nested in it.
+@@ -474,6 +475,15 @@ information categories, the information is nested in it.
          ETHTOOL_A_CHANNELS_TX_COUNT	    (u32)
          ETHTOOL_A_CHANNELS_OTHER_COUNT	    (u32)
          ETHTOOL_A_CHANNELS_COMBINED_COUNT   (u32)
@@ -59,7 +59,7 @@ index f15dde7e554a..78706245d9ed 100644
  
  GET_PARAMS requests allow dumps and messages in the same format as response
  to them are broadcasted as notifications on change of these settings using
-@@ -608,7 +618,7 @@ ETHTOOL_GET_DUMP_DATA		n/a
+@@ -604,7 +614,7 @@ ETHTOOL_GET_DUMP_DATA		n/a
  ETHTOOL_GET_TS_INFO		ETHNL_CMD_GET_INFO
  ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a

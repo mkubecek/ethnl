@@ -1,4 +1,4 @@
-From 165b872f290394d107465e201c9a2f05a4af92b5 Mon Sep 17 00:00:00 2001
+From 43c5b73ae9cb826ccfefc425fd67e1b66a1d2181 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 21:27:19 +0100
 Subject: [PATCH 28/44] ethtool: set coalescing parameters with SET_PARAMS
@@ -17,10 +17,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 206 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 2d90c947dfb6..b72592f02f9e 100644
+index 5671b05b19bf..2677b5db2ca5 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -134,7 +134,7 @@ List of message types
+@@ -130,7 +130,7 @@ List of message types
      ETHNL_CMD_GET_SETTINGS
      ETHNL_CMD_SET_SETTINGS
      ETHNL_CMD_GET_PARAMS
@@ -29,7 +29,7 @@ index 2d90c947dfb6..b72592f02f9e 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -456,6 +456,38 @@ to them are broadcasted as notifications on change of these settings using
+@@ -452,6 +452,38 @@ to them are broadcasted as notifications on change of these settings using
  netlink or ioctl ethtool interface.
  
  
@@ -68,7 +68,7 @@ index 2d90c947dfb6..b72592f02f9e 100644
  Request translation
  -------------------
  
-@@ -478,7 +510,7 @@ ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
+@@ -474,7 +506,7 @@ ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		ETHNL_CMD_GET_PARAMS
@@ -78,10 +78,10 @@ index 2d90c947dfb6..b72592f02f9e 100644
  ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 085bcac4fe8b..47a124e69a4e 100644
+index a28c0b52f730..5115b972bf95 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -691,6 +691,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -700,6 +700,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -94,10 +94,10 @@ index 085bcac4fe8b..47a124e69a4e 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 3cea8ab332e0..e29b001d839a 100644
+index 85a942d490a9..ca08a8f36049 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -293,5 +293,6 @@ extern const struct get_request_ops settings_request_ops;
+@@ -276,5 +276,6 @@ extern const struct get_request_ops settings_request_ops;
  extern const struct get_request_ops params_request_ops;
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);

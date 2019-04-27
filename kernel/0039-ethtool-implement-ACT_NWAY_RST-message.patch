@@ -1,4 +1,4 @@
-From c90870cc48bf5d022324e0e99cb7a4e9e07435c7 Mon Sep 17 00:00:00 2001
+From c4377de0d80e36cbb0cc159d90a04b8ccb063449 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 39/44] ethtool: implement ACT_NWAY_RST message
@@ -12,18 +12,18 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt | 15 +++-
  include/uapi/linux/ethtool_netlink.h         | 11 +++
  net/ethtool/Makefile                         |  3 +-
- net/ethtool/actions.c                        | 75 ++++++++++++++++++++
+ net/ethtool/actions.c                        | 72 ++++++++++++++++++++
  net/ethtool/ioctl.c                          |  7 +-
- net/ethtool/netlink.c                        |  6 ++
- net/ethtool/netlink.h                        |  7 ++
- 7 files changed, 121 insertions(+), 3 deletions(-)
+ net/ethtool/netlink.c                        | 10 ++-
+ net/ethtool/netlink.h                        |  9 +++
+ 7 files changed, 122 insertions(+), 5 deletions(-)
  create mode 100644 net/ethtool/actions.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 1abcf7a8ca9a..26559931ae19 100644
+index 19cd89ce0dfa..2cf912f3fb6d 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -135,6 +135,7 @@ List of message types
+@@ -131,6 +131,7 @@ List of message types
      ETHNL_CMD_SET_SETTINGS
      ETHNL_CMD_GET_PARAMS
      ETHNL_CMD_SET_PARAMS
@@ -31,7 +31,7 @@ index 1abcf7a8ca9a..26559931ae19 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -557,6 +558,18 @@ cannot be set by SET_PARAMS request.
+@@ -553,6 +554,18 @@ cannot be set by SET_PARAMS request.
  		- change configured FEC encodings
  
  
@@ -50,7 +50,7 @@ index 1abcf7a8ca9a..26559931ae19 100644
  Request translation
  -------------------
  
-@@ -574,7 +587,7 @@ ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
+@@ -570,7 +583,7 @@ ETHTOOL_GWOL			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SWOL			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GMSGLVL			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SMSGLVL			ETHNL_CMD_SET_SETTINGS
@@ -101,10 +101,10 @@ index 95e93c153cf6..b3e88cf0f4c0 100644
 +		   actions.o
 diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
 new file mode 100644
-index 000000000000..73d009ef9c29
+index 000000000000..4467885ed92e
 --- /dev/null
 +++ b/net/ethtool/actions.c
-@@ -0,0 +1,75 @@
+@@ -0,0 +1,72 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
@@ -130,9 +130,7 @@ index 000000000000..73d009ef9c29
 +	skb = genlmsg_new(msg_len, GFP_KERNEL);
 +	if (!skb)
 +		return;
-+	msg_payload = genlmsg_put(skb, 0, ++ethnl_bcast_seq,
-+				  &ethtool_genl_family, 0,
-+				  ETHNL_CMD_ACT_NWAY_RST);
++	msg_payload = ethnl_bcastmsg_put(skb, ETHNL_CMD_ACT_NWAY_RST);
 +	if (!msg_payload)
 +		goto err_skb;
 +
@@ -140,8 +138,7 @@ index 000000000000..73d009ef9c29
 +	if (ret < 0)
 +		goto err_skb;
 +	genlmsg_end(skb, msg_payload);
-+	genlmsg_multicast(&ethtool_genl_family, skb, 0, ETHNL_MCGRP_MONITOR,
-+			  GFP_KERNEL);
++	ethnl_multicast(skb, dev);
 +	return;
 +
 +err_skb:
@@ -202,10 +199,26 @@ index d14d8e7edf55..d34af84c1adf 100644
  
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 47a124e69a4e..2a87a0bd5559 100644
+index 5115b972bf95..d3caed2b185b 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -563,6 +563,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -231,13 +231,13 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+ 	return NULL;
+ }
+ 
+-static void *ethnl_bcastmsg_put(struct sk_buff *skb, u8 cmd)
++void *ethnl_bcastmsg_put(struct sk_buff *skb, u8 cmd)
+ {
+ 	return genlmsg_put(skb, 0, ++ethnl_bcast_seq, &ethtool_genl_family, 0,
+ 			   cmd);
+ }
+ 
+-static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)
++int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)
+ {
+ 	return genlmsg_multicast_netns(&ethtool_genl_family, dev_net(dev), skb,
+ 				       0, ETHNL_MCGRP_MONITOR, GFP_KERNEL);
+@@ -574,6 +574,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_SETTINGS]	= ethnl_std_notify,
  	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
@@ -213,7 +226,7 @@ index 47a124e69a4e..2a87a0bd5559 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -696,6 +697,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -705,6 +706,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_params,
  	},
@@ -226,10 +239,19 @@ index 47a124e69a4e..2a87a0bd5559 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index e29b001d839a..11f50fe4a396 100644
+index ca08a8f36049..f26f7afcaa78 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -294,5 +294,12 @@ extern const struct get_request_ops params_request_ops;
+@@ -27,6 +27,8 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
+ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+ 				 u16 dev_attrtype, struct genl_info *info,
+ 				 void **ehdrp);
++void *ethnl_bcastmsg_put(struct sk_buff *skb, u8 cmd);
++int ethnl_multicast(struct sk_buff *skb, struct net_device *dev);
+ 
+ #if BITS_PER_LONG == 64 && defined(__BIG_ENDIAN)
+ void ethnl_bitmap_to_u32(unsigned long *bitmap, unsigned int nwords);
+@@ -277,5 +279,12 @@ extern const struct get_request_ops params_request_ops;
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);

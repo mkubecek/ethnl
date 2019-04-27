@@ -1,4 +1,4 @@
-From a032fe53dc3aa6456228c398d1c1307bed7cb172 Mon Sep 17 00:00:00 2001
+From 97d823266b9c5d8b8c5d5eee5977c1ba09e43b03 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 40/44] ethtool: implement ACT_PHYS_ID message
@@ -12,19 +12,19 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt | 24 ++++++-
  include/uapi/linux/ethtool_netlink.h         | 12 ++++
- net/ethtool/actions.c                        | 75 ++++++++++++++++++++
- net/ethtool/common.c                         | 65 +++++++++++++++++
+ net/ethtool/actions.c                        | 72 ++++++++++++++++++++
+ net/ethtool/common.c                         | 65 ++++++++++++++++++
  net/ethtool/common.h                         |  1 +
- net/ethtool/ioctl.c                          | 47 +-----------
+ net/ethtool/ioctl.c                          | 47 +------------
  net/ethtool/netlink.c                        |  6 ++
  net/ethtool/netlink.h                        |  3 +
- 8 files changed, 186 insertions(+), 47 deletions(-)
+ 8 files changed, 183 insertions(+), 47 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 26559931ae19..33001518020b 100644
+index 2cf912f3fb6d..6c14349e0747 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -570,6 +570,28 @@ Request contents:
+@@ -566,6 +566,28 @@ Request contents:
  If successful, a notification in the same format is sent.
  
  
@@ -53,7 +53,7 @@ index 26559931ae19..33001518020b 100644
  Request translation
  -------------------
  
-@@ -605,7 +627,7 @@ ETHTOOL_GSG			ETHNL_CMD_GET_SETTINGS
+@@ -601,7 +623,7 @@ ETHTOOL_GSG			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SSG			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_TEST			n/a
  ETHTOOL_GSTRINGS		ETHNL_CMD_GET_STRSET
@@ -93,10 +93,10 @@ index 12415e73ac22..ab84d768b45a 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
-index 73d009ef9c29..de18291ec5cd 100644
+index 4467885ed92e..722eb933036d 100644
 --- a/net/ethtool/actions.c
 +++ b/net/ethtool/actions.c
-@@ -73,3 +73,78 @@ int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info)
+@@ -70,3 +70,75 @@ int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info)
  	dev_put(dev);
  	return ret;
  }
@@ -123,9 +123,7 @@ index 73d009ef9c29..de18291ec5cd 100644
 +	skb = genlmsg_new(msg_len, GFP_KERNEL);
 +	if (!skb)
 +		return;
-+	msg_payload = genlmsg_put(skb, 0, ++ethnl_bcast_seq,
-+				  &ethtool_genl_family, 0,
-+				  ETHNL_CMD_ACT_PHYS_ID);
++	msg_payload = ethnl_bcastmsg_put(skb, ETHNL_CMD_ACT_PHYS_ID);
 +	if (!msg_payload)
 +		goto err_skb;
 +
@@ -136,8 +134,7 @@ index 73d009ef9c29..de18291ec5cd 100644
 +		goto err_skb;
 +
 +	genlmsg_end(skb, msg_payload);
-+	genlmsg_multicast(&ethtool_genl_family, skb, 0, ETHNL_MCGRP_MONITOR,
-+			  GFP_KERNEL);
++	ethnl_multicast(skb, dev);
 +	return;
 +
 +err_skb:
@@ -333,10 +330,10 @@ index d34af84c1adf..8a7fa834c3d8 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 2a87a0bd5559..a3ffa27d62b3 100644
+index d3caed2b185b..2b3acd0bdbba 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -564,6 +564,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -575,6 +575,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_SETTINGS]	= ethnl_std_notify,
  	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
  	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,
@@ -344,7 +341,7 @@ index 2a87a0bd5559..a3ffa27d62b3 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -702,6 +703,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -711,6 +712,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_act_nway_rst,
  	},
@@ -357,10 +354,10 @@ index 2a87a0bd5559..a3ffa27d62b3 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 11f50fe4a396..cdf58a7b5612 100644
+index f26f7afcaa78..a0c7d8ef9bdc 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -295,11 +295,14 @@ extern const struct get_request_ops params_request_ops;
+@@ -280,11 +280,14 @@ extern const struct get_request_ops params_request_ops;
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info);

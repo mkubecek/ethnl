@@ -1,4 +1,4 @@
-From 012ed60f3e761184f96d9c143a908a300b14cc77 Mon Sep 17 00:00:00 2001
+From e4f1c30179b00265c81e01ffc33c9e0aad6fcf35 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 10/44] ethtool: generic handlers for GET requests
@@ -16,16 +16,16 @@ These callback are defined in an instance of struct get_request_ops.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/ethtool/netlink.c | 319 ++++++++++++++++++++++++++++++++++++++++++
+ net/ethtool/netlink.c | 317 ++++++++++++++++++++++++++++++++++++++++++
  net/ethtool/netlink.h | 111 +++++++++++++++
- 2 files changed, 430 insertions(+)
+ 2 files changed, 428 insertions(+)
 
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 44336fa8b96e..c9363c182e7a 100644
+index 1a5a09318001..1826d5e0e41d 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -152,6 +152,325 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
- 	return NULL;
+@@ -165,6 +165,323 @@ static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)
+ 				       0, ETHNL_MCGRP_MONITOR, GFP_KERNEL);
  }
  
 +/* GET request helpers */
@@ -323,8 +323,7 @@ index 44336fa8b96e..c9363c182e7a 100644
 +	skb = genlmsg_new(reply_len, GFP_KERNEL);
 +	if (!skb)
 +		goto err_data;
-+	reply_payload = genlmsg_put(skb, 0, ++ethnl_bcast_seq,
-+				    &ethtool_genl_family, 0, ops->reply_cmd);
++	reply_payload = ethnl_bcastmsg_put(skb, ops->reply_cmd);
 +	if (!reply_payload)
 +		goto err_skb;
 +
@@ -337,8 +336,7 @@ index 44336fa8b96e..c9363c182e7a 100644
 +	ethnl_free_get_data(ops, req_info);
 +	genlmsg_end(skb, reply_payload);
 +
-+	genlmsg_multicast(&ethtool_genl_family, skb, 0, ETHNL_MCGRP_MONITOR,
-+			  GFP_KERNEL);
++	ethnl_multicast(skb, dev);
 +	return;
 +
 +err_skb:
@@ -351,10 +349,10 @@ index 44336fa8b96e..c9363c182e7a 100644
  
  typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 09bf5aca5d7f..0d1c14404b10 100644
+index 0a796d856a69..ede578190bea 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -164,4 +164,115 @@ static inline unsigned int dev_ident_size(void)
+@@ -147,4 +147,115 @@ static inline unsigned int dev_ident_size(void)
  			      nla_total_size(IFNAMSIZ));
  }
  

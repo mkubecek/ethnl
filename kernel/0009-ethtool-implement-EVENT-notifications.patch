@@ -1,4 +1,4 @@
-From 53e8a6ed3aef71763876b339ff27f2e22501dbf1 Mon Sep 17 00:00:00 2001
+From 091e33e8cfba6c4a69942ef20a5d377a26fa2eb2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 09/44] ethtool: implement EVENT notifications
@@ -18,16 +18,16 @@ having to open another socket for rtnetlink.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 27 ++++++++
- include/uapi/linux/ethtool_netlink.h         | 37 +++++++++++
- net/ethtool/netlink.c                        | 67 +++++++++++++++++++-
- 3 files changed, 130 insertions(+), 1 deletion(-)
+ Documentation/networking/ethtool-netlink.txt | 27 +++++++
+ include/uapi/linux/ethtool_netlink.h         | 37 ++++++++++
+ net/ethtool/netlink.c                        | 78 +++++++++++++++++++-
+ 3 files changed, 141 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index c2f548889412..6b74de132904 100644
+index 20017e101fdd..b1bf16372064 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -126,6 +126,8 @@ which the request applies.
+@@ -122,6 +122,8 @@ which the request applies.
  List of message types
  ---------------------
  
@@ -36,7 +36,7 @@ index c2f548889412..6b74de132904 100644
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
  
-@@ -137,9 +139,34 @@ messages marked as "response only" in the table above. "Get" messages with
+@@ -133,9 +135,34 @@ messages marked as "response only" in the table above. "Get" messages with
  NLM_F_DUMP flags and no device identification dump the information for all
  devices supporting the request.
  
@@ -127,10 +127,37 @@ index 428136f9f836..1414ca7d5713 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 9ccf076e5f3b..44336fa8b96e 100644
+index bdb5f78f0598..1a5a09318001 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -178,6 +178,69 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
+@@ -7,6 +7,7 @@
+ static struct genl_family ethtool_genl_family;
+ 
+ static bool ethnl_ok __read_mostly;
++static u32 ethnl_bcast_seq;
+ 
+ static const struct nla_policy dev_policy[ETHTOOL_A_DEV_MAX + 1] = {
+ 	[ETHTOOL_A_DEV_UNSPEC]	= { .type = NLA_REJECT },
+@@ -152,6 +153,18 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+ 	return NULL;
+ }
+ 
++static void *ethnl_bcastmsg_put(struct sk_buff *skb, u8 cmd)
++{
++	return genlmsg_put(skb, 0, ++ethnl_bcast_seq, &ethtool_genl_family, 0,
++			   cmd);
++}
++
++static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)
++{
++	return genlmsg_multicast_netns(&ethtool_genl_family, dev_net(dev), skb,
++				       0, ETHNL_MCGRP_MONITOR, GFP_KERNEL);
++}
++
+ /* notifications */
+ 
+ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -178,6 +191,67 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  }
  EXPORT_SYMBOL(ethtool_notify);
  
@@ -152,8 +179,7 @@ index 9ccf076e5f3b..44336fa8b96e 100644
 +	skb = genlmsg_new(dev_notify_size(), GFP_KERNEL);
 +	if (!skb)
 +		return;
-+	ehdr = genlmsg_put(skb, 0, ++ethnl_bcast_seq, &ethtool_genl_family, 0,
-+			   ETHNL_CMD_EVENT);
++	ehdr = ethnl_bcastmsg_put(skb, ETHNL_CMD_EVENT);
 +	if (!ehdr)
 +		goto out_skb;
 +	nest = ethnl_nest_start(skb, ev_type);
@@ -165,8 +191,7 @@ index 9ccf076e5f3b..44336fa8b96e 100644
 +	nla_nest_end(skb, nest);
 +	genlmsg_end(skb, ehdr);
 +
-+	genlmsg_multicast(&ethtool_genl_family, skb, 0, ETHNL_MCGRP_MONITOR,
-+			  GFP_KERNEL);
++	ethnl_multicast(skb, dev);
 +	return;
 +out_skb:
 +	nlmsg_free(skb);
@@ -200,7 +225,7 @@ index 9ccf076e5f3b..44336fa8b96e 100644
  /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -210,7 +273,9 @@ static int __init ethnl_init(void)
+@@ -209,7 +283,9 @@ static int __init ethnl_init(void)
  		return ret;
  	ethnl_ok = true;
  
