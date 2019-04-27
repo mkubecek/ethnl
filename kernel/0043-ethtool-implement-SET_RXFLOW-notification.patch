@@ -1,4 +1,4 @@
-From 4563864b5aae5cf57b3525423ea96ccf73059737 Mon Sep 17 00:00:00 2001
+From 02641ad561b8b6454abf62d24e65adbc83d82118 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
 Subject: [PATCH 43/44] ethtool: implement SET_RXFLOW notification
@@ -139,10 +139,10 @@ index 1d6c9099c1b8..de8bf1009849 100644
  	if (copy_to_user(useraddr + offsetof(struct ethtool_rxfh, rss_context),
  			 &rxfh.rss_context, sizeof(rxfh.rss_context)))
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index f7cea73731fc..89425e2aceae 100644
+index cad558fc8da6..1286bd00a7dc 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -587,6 +587,7 @@ ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -587,6 +587,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,
  	[ETHNL_CMD_ACT_PHYS_ID]		= ethnl_physid_notify,
  	[ETHNL_CMD_ACT_RESET]		= ethnl_reset_notify,
@@ -163,7 +163,7 @@ index 18cad5541c02..9ab94ec2da11 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index a8e5b03671d5..ebf5f71a6e99 100644
+index 2acb99cf99d6..402b95c76983 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
 @@ -461,3 +461,70 @@ const struct get_request_ops rxflow_request_ops = {

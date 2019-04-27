@@ -1,4 +1,4 @@
-From 9031418e61159a1ee3b46a25a501fb2718ae4aaa Mon Sep 17 00:00:00 2001
+From 72223f08ae2f13c935aa26776659873cb7aba2f7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 39/44] ethtool: implement ACT_NWAY_RST message
@@ -199,7 +199,7 @@ index d14d8e7edf55..d34af84c1adf 100644
  
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index f3bea7091ba8..572db1ed81cb 100644
+index 175817de604d..6dda3023b816 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -240,13 +240,13 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
@@ -219,7 +219,7 @@ index f3bea7091ba8..572db1ed81cb 100644
  	return genlmsg_multicast_netns(&ethtool_genl_family, dev_net(dev), skb,
  				       0, ETHNL_MCGRP_MONITOR, GFP_KERNEL);
 @@ -583,6 +583,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
- ethnl_notify_handler_t ethnl_notify_handlers[] = {
+ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_SETTINGS]	= ethnl_std_notify,
  	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
 +	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,

@@ -1,4 +1,4 @@
-From 919073d6b2d30b1009970bfb605e8ce2be6e5aa4 Mon Sep 17 00:00:00 2001
+From 92d26d49e9c8a0ac7d7f97a5039c35fce0d08300 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 07:40:58 +0100
 Subject: [PATCH 29/44] ethtool: provide ring sizes in GET_PARAMS request

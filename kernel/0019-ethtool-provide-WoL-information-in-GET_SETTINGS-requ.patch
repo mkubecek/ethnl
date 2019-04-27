@@ -1,4 +1,4 @@
-From 2c09b5a5956e7272fb5f552a7721cb7f89c8ac2e Mon Sep 17 00:00:00 2001
+From 3c2ad32f313c2744858b70eae4814dfaa36fadd7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:08:55 +0100
 Subject: [PATCH 19/44] ethtool: provide WoL information in GET_SETTINGS
@@ -170,7 +170,7 @@ index c77e655dc371..b8ce0ee4cebe 100644
  	return 0;
  }
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index a7867564a432..60abff2439ee 100644
+index ab9348bece99..53c3fd78000d 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -6,10 +6,12 @@
@@ -258,7 +258,7 @@ index a7867564a432..60abff2439ee 100644
  
  	return len;
  }
-@@ -362,6 +392,33 @@ static int fill_link_state(struct sk_buff *skb, u8 link)
+@@ -362,6 +392,33 @@ static int fill_link_state(struct sk_buff *skb, int link)
  	return -EMSGSIZE;
  }
  

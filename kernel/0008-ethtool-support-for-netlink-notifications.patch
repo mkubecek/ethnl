@@ -1,4 +1,4 @@
-From afc47da5d84019d62890c745a9f9f9e112a2e622 Mon Sep 17 00:00:00 2001
+From 9433f0eca2165dcab268bcacd7fba09c3e1f0ded Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
 Subject: [PATCH 08/44] ethtool: support for netlink notifications
@@ -70,7 +70,7 @@ index 71c6a648a030..428136f9f836 100644
 +
  #endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 90d3db27a18c..20f5c39e6dec 100644
+index 90d3db27a18c..f01d71e61654 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -6,6 +6,8 @@
@@ -93,7 +93,7 @@ index 90d3db27a18c..20f5c39e6dec 100644
 +				       unsigned int cmd, u32 req_mask,
 +				       const void *data);
 +
-+ethnl_notify_handler_t ethnl_notify_handlers[] = {
++static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
 +};
 +
 +void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,

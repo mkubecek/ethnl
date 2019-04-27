@@ -1,4 +1,4 @@
-From 0792a90ea3485682bd4f325efdc6bfeb4bc375fc Mon Sep 17 00:00:00 2001
+From 16263f17048c65cf63bff0b24b1dc6aeac0c1bf2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:50:07 +0100
 Subject: [PATCH 15/44] ethtool: provide link mode names as a string set
@@ -51,7 +51,7 @@ index bdf36c041486..986bbc20a930 100644
  	ETH_SS_COUNT
  };
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index c86a57d2b6e1..bc6821bf681c 100644
+index e0cab8df69c5..8cc0b0659f8b 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -9,6 +9,84 @@ static struct genl_family ethtool_genl_family;

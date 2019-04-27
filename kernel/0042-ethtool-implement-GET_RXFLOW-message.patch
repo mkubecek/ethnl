@@ -1,4 +1,4 @@
-From 1cfab7fea296f44c7f369d64d44b26e56a28d9c4 Mon Sep 17 00:00:00 2001
+From 719b4cfe5664c14007e5f37dce752400cca50a20 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 42/44] ethtool: implement GET_RXFLOW message
@@ -322,7 +322,7 @@ index b3e88cf0f4c0..a6ace735f44f 100644
 -		   actions.o
 +		   actions.o rxflow.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index a13f1e4037a8..f7cea73731fc 100644
+index 18abe89cd9d1..cad558fc8da6 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -259,6 +259,7 @@ const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
@@ -361,7 +361,7 @@ index 85e29c622d4f..18cad5541c02 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
 new file mode 100644
-index 000000000000..a8e5b03671d5
+index 000000000000..2acb99cf99d6
 --- /dev/null
 +++ b/net/ethtool/rxflow.c
 @@ -0,0 +1,463 @@
@@ -806,7 +806,7 @@ index 000000000000..a8e5b03671d5
 +	return 0;
 +}
 +
-+void rxflow_cleanup(struct common_req_info *req_info)
++static void rxflow_cleanup(struct common_req_info *req_info)
 +{
 +	struct rxflow_data *data =
 +		container_of(req_info, struct rxflow_data, reqinfo_base);

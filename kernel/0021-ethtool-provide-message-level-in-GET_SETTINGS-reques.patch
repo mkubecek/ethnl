@@ -1,4 +1,4 @@
-From 8d821c7db84ef7950db87fb595231b68656ee0eb Mon Sep 17 00:00:00 2001
+From 6c89efcc572d57aeaa6433347d589822ea59d628 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:19:02 +0100
 Subject: [PATCH 21/44] ethtool: provide message level in GET_SETTINGS request
@@ -135,7 +135,7 @@ index b8ce0ee4cebe..1351832ff1c9 100644
  	case ETHTOOL_GEEE:
  		rc = ethtool_get_eee(dev, useraddr);
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 5459f76c927e..8495534a60fd 100644
+index 46e024d0466f..678f630c6d92 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,7 @@ struct settings_data {

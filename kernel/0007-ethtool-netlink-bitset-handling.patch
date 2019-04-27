@@ -1,4 +1,4 @@
-From 29433f9f0db4ed54c2a8202406cadcd88fa23e84 Mon Sep 17 00:00:00 2001
+From d7be2fb2710e6b92dcf09a983d6658b635ad7a8c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 07/44] ethtool: netlink bitset handling
@@ -11,10 +11,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  63 ++
  include/uapi/linux/ethtool_netlink.h         |  32 +
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/bitset.c                         | 605 +++++++++++++++++++
+ net/ethtool/bitset.c                         | 606 +++++++++++++++++++
  net/ethtool/bitset.h                         |  40 ++
  net/ethtool/netlink.h                        |   9 +
- 6 files changed, 750 insertions(+), 1 deletion(-)
+ 6 files changed, 751 insertions(+), 1 deletion(-)
  create mode 100644 net/ethtool/bitset.c
  create mode 100644 net/ethtool/bitset.h
 
@@ -147,10 +147,10 @@ index f30e0da88be5..482fdb9380fa 100644
 +ethtool_nl-y	:= netlink.o bitset.o
 diff --git a/net/ethtool/bitset.c b/net/ethtool/bitset.c
 new file mode 100644
-index 000000000000..ef00eb7c6b0f
+index 000000000000..60c0c1a93c11
 --- /dev/null
 +++ b/net/ethtool/bitset.c
-@@ -0,0 +1,605 @@
+@@ -0,0 +1,606 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include <linux/ethtool_netlink.h>
@@ -204,7 +204,8 @@ index 000000000000..ef00eb7c6b0f
 +}
 +#endif
 +
-+static const char *bit_name(const void *names, bool legacy, unsigned int idx)
++static const char *bit_name(const void *const names, bool legacy,
++			    unsigned int idx)
 +{
 +	const char (*const legacy_names)[ETH_GSTRING_LEN] = names;
 +	const char *const *simple_names = names;

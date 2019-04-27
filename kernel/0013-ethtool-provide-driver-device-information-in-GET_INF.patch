@@ -1,4 +1,4 @@
-From 607883bb1f72ac1129d135c507ccb88f32dee83b Mon Sep 17 00:00:00 2001
+From c80b6b637f402ec0b2f68500776684dbe4d5a085 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 13/44] ethtool: provide driver/device information in GET_INFO
@@ -474,7 +474,7 @@ index 10729878a56d..fec7d92a1b2a 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index afe1daf9eae1..c86a57d2b6e1 100644
+index 4f43921b9caa..e0cab8df69c5 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -178,6 +178,7 @@ static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)

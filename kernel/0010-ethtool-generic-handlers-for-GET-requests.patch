@@ -1,4 +1,4 @@
-From 5b5b76be0aed71b5a8ba27a77c203bbb349137d9 Mon Sep 17 00:00:00 2001
+From 67b757d7567d5382f818f4765ce02b86e398b220 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 10/44] ethtool: generic handlers for GET requests
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 428 insertions(+)
 
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 79f8b91ff7fa..57e78df9828f 100644
+index 0992b8a6d751..3ddab19dd240 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -174,6 +174,323 @@ static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)

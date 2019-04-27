@@ -1,4 +1,4 @@
-From 42be021d20b214c2f86f339b08a83b35390a656f Mon Sep 17 00:00:00 2001
+From 8b8c998393c5e8bda0845250045605044942ae10 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 44/44] ethtool: implement SET_RXFLOW message
@@ -114,7 +114,7 @@ index d03bb4b56b10..f33d1bab3c0c 100644
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 89425e2aceae..e69ef42d0380 100644
+index 1286bd00a7dc..f042801c7c03 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -741,6 +741,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
@@ -142,7 +142,7 @@ index 9ab94ec2da11..8bdad9748c39 100644
  int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_reset(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index ebf5f71a6e99..1bbe5d577e66 100644
+index 402b95c76983..34969314ce50 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
 @@ -528,3 +528,635 @@ void ethnl_rxflow_notify(struct net_device *dev,
@@ -215,7 +215,7 @@ index ebf5f71a6e99..1bbe5d577e66 100644
 +
 +static const u32 all_bits = ~(u32)0;
 +
-+const struct nla_policy rxhashopt_policy[] = {
++static const struct nla_policy rxhashopt_policy[ETHTOOL_A_RXHASHOPT_MAX + 1] = {
 +	[ETHTOOL_A_RXHASHOPT_UNSPEC]	= { .type = NLA_REJECT },
 +	[ETHTOOL_A_RXHASHOPT_FLOWTYPE]	= { .type = NLA_U32 },
 +	[ETHTOOL_A_RXHASHOPT_FIELDS]	= { .type = NLA_BITFIELD32,

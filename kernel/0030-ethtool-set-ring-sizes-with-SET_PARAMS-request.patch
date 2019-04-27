@@ -1,4 +1,4 @@
-From b7184a0dd0d75add2d51d9973b6aa5ddec861876 Mon Sep 17 00:00:00 2001
+From 043ba91b845a6ea66228553018a8d113df0112e3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 07:53:54 +0100
 Subject: [PATCH 30/44] ethtool: set ring sizes with SET_PARAMS request
