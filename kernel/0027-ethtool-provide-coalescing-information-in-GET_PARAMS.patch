@@ -1,4 +1,4 @@
-From be12cc6c5b8a099f56f8b6efe71252b58c3c8537 Mon Sep 17 00:00:00 2001
+From b1373064eebd51909c341d5713a04f1dc283e5f4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 20:41:44 +0100
 Subject: [PATCH 27/44] ethtool: provide coalescing information in GET_PARAMS
@@ -204,10 +204,10 @@ index e391652130d8..ee326a10991b 100644
  
  static int ethtool_get_ringparam(struct net_device *dev, void __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index dc2a20f89569..a28c0b52f730 100644
+index 9cf10cde3fc8..9982a64e6e7e 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -249,6 +249,7 @@ const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
+@@ -258,6 +258,7 @@ const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
  	[ETHNL_CMD_GET_STRSET]		= &strset_request_ops,
  	[ETHNL_CMD_GET_INFO]		= &info_request_ops,
  	[ETHNL_CMD_GET_SETTINGS]	= &settings_request_ops,
@@ -215,7 +215,7 @@ index dc2a20f89569..a28c0b52f730 100644
  };
  
  /**
-@@ -572,6 +573,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -581,6 +582,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  
  ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_SETTINGS]	= ethnl_std_notify,
@@ -223,7 +223,7 @@ index dc2a20f89569..a28c0b52f730 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -691,6 +693,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -700,6 +702,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_settings,
  	},
@@ -238,10 +238,10 @@ index dc2a20f89569..a28c0b52f730 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 4a5c649844e1..85a942d490a9 100644
+index 49489334fe60..feda93afb989 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -273,6 +273,7 @@ struct get_request_ops {
+@@ -272,6 +272,7 @@ struct get_request_ops {
  extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops info_request_ops;
  extern const struct get_request_ops settings_request_ops;

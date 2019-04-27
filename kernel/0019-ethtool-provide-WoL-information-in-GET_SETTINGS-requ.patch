@@ -1,4 +1,4 @@
-From cdffde604bc4269179024fccace4fecd82e442fa Mon Sep 17 00:00:00 2001
+From 2c09b5a5956e7272fb5f552a7721cb7f89c8ac2e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:08:55 +0100
 Subject: [PATCH 19/44] ethtool: provide WoL information in GET_SETTINGS
@@ -170,7 +170,7 @@ index c77e655dc371..b8ce0ee4cebe 100644
  	return 0;
  }
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 048f23c16ed4..7c14440fe84b 100644
+index a7867564a432..60abff2439ee 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -6,10 +6,12 @@
@@ -216,8 +216,8 @@ index 048f23c16ed4..7c14440fe84b 100644
 +{
 +	int ret = __ethtool_get_wol(dev, wolinfo);
 +
-+	if (ret < 0)
-+		ETHNL_SET_ERRMSG(info, "failed to retrieve wol info");
++	if (ret < 0 && info)
++		GENL_SET_ERR_MSG(info, "failed to retrieve wol info");
 +	return ret;
 +}
 +

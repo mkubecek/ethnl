@@ -1,4 +1,4 @@
-From 27b5462fdfad315f2ead9e4fbc6ad84924091131 Mon Sep 17 00:00:00 2001
+From 39233e2c26e70a64c10216d7ef4a2ed2fdb16680 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:56:10 +0100
 Subject: [PATCH 38/44] ethtool: set FEC parameters with SET_PARAMS request
@@ -49,7 +49,7 @@ index e2180cf48302..19cd89ce0dfa 100644
 -ETHTOOL_SFECPARAM		n/a
 +ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 9e8f0a480a4b..df6bc186354d 100644
+index 60789da3bce4..1a3014d51a18 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -493,7 +493,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
@@ -61,7 +61,7 @@ index 9e8f0a480a4b..df6bc186354d 100644
  };
  
  static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
-@@ -825,6 +825,42 @@ static int update_eee(struct genl_info *info, struct net_device *dev,
+@@ -819,6 +819,42 @@ static int update_eee(struct genl_info *info, struct net_device *dev,
  	return (ret < 0) ? ret : 1;
  }
  
@@ -104,7 +104,7 @@ index 9e8f0a480a4b..df6bc186354d 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
-@@ -869,6 +905,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+@@ -863,6 +899,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
  		req_mask |= ETH_PARAMS_IM_EEE;

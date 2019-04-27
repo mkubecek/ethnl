@@ -1,4 +1,4 @@
-From 44a68b2f7230cc3bb7e69a6bf879e1a05f75766a Mon Sep 17 00:00:00 2001
+From add7d0f94e3b2f696fd99b42939201378ac37082 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:30:12 +0100
 Subject: [PATCH 33/44] ethtool: provide channel counts in GET_PARAMS request
@@ -143,7 +143,7 @@ index 0c08e9c0c8d4..484cde939527 100644
  
  static int ethtool_get_pauseparam(struct net_device *dev, void __user *useraddr)
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index b7813e879974..b313a9e242dc 100644
+index 5fda53234c62..6381fb0a634c 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -10,6 +10,7 @@ static const struct nla_policy get_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {

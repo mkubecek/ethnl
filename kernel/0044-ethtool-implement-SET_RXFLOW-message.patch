@@ -1,4 +1,4 @@
-From 04baecfa35299c6ceaa594bb02d7553e3a7de66c Mon Sep 17 00:00:00 2001
+From 42be021d20b214c2f86f339b08a83b35390a656f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 44/44] ethtool: implement SET_RXFLOW message
@@ -21,8 +21,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool_netlink.h         |   2 +-
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/rxflow.c                         | 624 +++++++++++++++++++
- 5 files changed, 672 insertions(+), 4 deletions(-)
+ net/ethtool/rxflow.c                         | 632 +++++++++++++++++++
+ 5 files changed, 680 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 590186764643..549f7340d9b4 100644
@@ -114,10 +114,10 @@ index d03bb4b56b10..f33d1bab3c0c 100644
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index f57d3b83399a..30c053680c0e 100644
+index 89425e2aceae..e69ef42d0380 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -732,6 +732,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -741,6 +741,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -130,10 +130,10 @@ index f57d3b83399a..30c053680c0e 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index d9e976351cb4..e6f348d52d2f 100644
+index 9ab94ec2da11..8bdad9748c39 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -281,6 +281,7 @@ extern const struct get_request_ops rxflow_request_ops;
+@@ -280,6 +280,7 @@ extern const struct get_request_ops rxflow_request_ops;
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
@@ -142,10 +142,10 @@ index d9e976351cb4..e6f348d52d2f 100644
  int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_reset(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index ebf5f71a6e99..de4a6f583d92 100644
+index ebf5f71a6e99..1bbe5d577e66 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
-@@ -528,3 +528,627 @@ void ethnl_rxflow_notify(struct net_device *dev,
+@@ -528,3 +528,635 @@ void ethnl_rxflow_notify(struct net_device *dev,
  err_data:
  	rxflow_cleanup(req_info);
  }
@@ -170,38 +170,43 @@ index ebf5f71a6e99..de4a6f583d92 100644
 +static int set_rxflow_sanity_checks(struct nlattr *tb[], struct genl_info *info,
 +				    u32 ctxop, u32 context)
 +{
++	struct nlattr *err_attr;
++
 +	switch(ctxop) {
 +	case ETH_RXFLOW_CTXOP_SET:
 +		break;
 +	case ETH_RXFLOW_CTXOP_NEW:
 +		if (context) {
-+			ETHNL_SET_ERRMSG(info,
-+					 "cannot set context id for new context");
++			NL_SET_ERR_MSG_ATTR(info->extack,
++					    tb[ETHTOOL_A_RXFLOW_CONTEXT],
++					    "cannot set context id for new context");
 +			return -EINVAL;
 +		}
 +		if (tb[ETHTOOL_A_RXFLOW_HASH_OPTS]) {
-+			ETHNL_SET_ERRMSG(info,
-+					 "hash options not allowed with new context");
++			NL_SET_ERR_MSG_ATTR(info->extack,
++					    tb[ETHTOOL_A_RXFLOW_HASH_OPTS],
++					    "hash options not allowed with new context");
 +			return -EINVAL;
 +		}
 +		break;
 +	case ETH_RXFLOW_CTXOP_DEL:
 +		if (!context) {
-+			ETHNL_SET_ERRMSG(info,
-+					 "cannot delete main context");
++			GENL_SET_ERR_MSG(info, "cannot delete main context");
 +			return -EINVAL;
 +		}
-+		if (tb[ETHTOOL_A_RXFLOW_HASH_FN] ||
-+		    tb[ETHTOOL_A_RXFLOW_HASH_KEY] ||
-+		    tb[ETHTOOL_A_RXFLOW_HASH_OPTS] ||
-+		    tb[ETHTOOL_A_RXFLOW_INDIR_TBL]) {
-+			ETHNL_SET_ERRMSG(info,
-+					 "data passed when deleting context");
++		err_attr = tb[ETHTOOL_A_RXFLOW_HASH_FN] ?:
++			   (tb[ETHTOOL_A_RXFLOW_HASH_KEY] ?:
++			    (tb[ETHTOOL_A_RXFLOW_HASH_OPTS] ?:
++			     tb[ETHTOOL_A_RXFLOW_INDIR_TBL]));
++		if (err_attr) {
++			NL_SET_ERR_MSG_ATTR(info->extack, err_attr,
++					    "data passed when deleting context");
 +			return -EINVAL;
 +		}
 +		break;
 +	default:
-+		ETHNL_SET_ERRMSG(info, "unknown context operation");
++		NL_SET_ERR_MSG_ATTR(info->extack, tb[ETHTOOL_A_RXFLOW_CTXOP],
++				    "unknown context operation");
 +		return -EOPNOTSUPP;
 +	}
 +
@@ -240,9 +245,9 @@ index ebf5f71a6e99..de4a6f583d92 100644
 +		};
 +
 +		if (nla_type(opt_attr) != ETHTOOL_A_RXHASHOPTS_OPT) {
-+			ETHNL_SET_ERRMSG(info,
-+					 "unexpected attribute in ETHTOOL_A_RXFLOW_HASH_OPTS");
-+			return genl_err_attr(info, -EINVAL, opt_attr);
++				NL_SET_ERR_MSG_ATTR(info->extack, opt_attr,
++						    "unexpected attribute in ETHTOOL_A_RXFLOW_HASH_OPTS");
++			return -EINVAL;
 +		}
 +		ret = nla_parse_nested_strict(tb, ETHTOOL_A_RXHASHOPT_MAX,
 +					      opt_attr, rxhashopt_policy,
@@ -306,8 +311,8 @@ index ebf5f71a6e99..de4a6f583d92 100644
 +	if (ret < 0)
 +		return ret;
 +	if (hash_fn > U8_MAX) {
-+		ETHNL_SET_ERRMSG(info,
-+				 "only first 8 hash functions supported");
++		NL_SET_ERR_MSG_ATTR(info->extack, attr,
++				    "only first 8 hash functions supported");
 +		ret = -EINVAL;
 +	} else {
 +		*phashfn = mod ? (u8)hash_fn : ETH_RSS_HASH_NO_CHANGE;
@@ -331,7 +336,8 @@ index ebf5f71a6e99..de4a6f583d92 100644
 +	if (!hkey_size)
 +		return -EOPNOTSUPP;
 +	if (nla_len(attr) != hkey_size) {
-+		ETHNL_SET_ERRMSG(info, "hash key size does not match");
++		NL_SET_ERR_MSG_ATTR(info->extack, attr,
++				    "hash key size does not match");
 +		return -EINVAL;
 +	}
 +
@@ -407,7 +413,8 @@ index ebf5f71a6e99..de4a6f583d92 100644
 +
 +	return 0;
 +data_err:
-+	ETHNL_SET_ERRMSG(info, "indtbl entry exceeds max ring number");
++	NL_SET_ERR_MSG_ATTR(info->extack, tb[ETHTOOL_A_ITBLK_DATA],
++			    "indtbl entry exceeds max ring number");
 +	return -EINVAL;
 +}
 +
@@ -585,8 +592,9 @@ index ebf5f71a6e99..de4a6f583d92 100644
 +			ret = apply_weights(table, size, patch, nrings, info);
 +			break;
 +		default:
-+			ETHNL_SET_ERRMSG(info, "unknown indir table patch type");
-+			ret = genl_err_attr(info, -EINVAL, patch);
++			NL_SET_ERR_MSG_ATTR(info->extack, attr,
++					    "unknown indir table patch type");
++			return -EOPNOTSUPP;
 +		}
 +		if (ret < 0) {
 +			kfree(table);
@@ -663,8 +671,8 @@ index ebf5f71a6e99..de4a6f583d92 100644
 +
 +int ethnl_set_rxflow(struct sk_buff *skb, struct genl_info *info)
 +{
-+	unsigned int ctxop = ETH_RXFLOW_CTXOP_SET;
 +	struct nlattr *tb[ETHTOOL_A_RXFLOW_MAX + 1];
++	unsigned int ctxop = ETH_RXFLOW_CTXOP_SET;
 +	const struct ethtool_ops *ops;
 +	struct net_device *dev;
 +	u32 *indtbl = NULL;
@@ -750,7 +758,7 @@ index ebf5f71a6e99..de4a6f583d92 100644
 +	if (ctxop == ETH_RXFLOW_CTXOP_NEW && ret == 0) {
 +		ret = send_set_rxflow_reply(dev, info, context);
 +		if (ret < 0) {
-+			ETHNL_SET_ERRMSG(info, "failed to send reply message");
++			GENL_SET_ERR_MSG(info, "failed to send reply message");
 +			ret = 0;
 +		}
 +	}

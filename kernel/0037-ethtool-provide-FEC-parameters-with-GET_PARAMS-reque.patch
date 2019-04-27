@@ -1,4 +1,4 @@
-From cb9dfb22039553e0ec31fc801e9aa00781e2644f Mon Sep 17 00:00:00 2001
+From e27e9196bcefef53a5a35754cb6965cd76a49ac0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:53:42 +0100
 Subject: [PATCH 37/44] ethtool: provide FEC parameters with GET_PARAMS request
@@ -130,7 +130,7 @@ index af1337f0dc20..d14d8e7edf55 100644
  
  /* The main entry point in this file.  Called from net/core/dev_ioctl.c */
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 59506ecbd252..9e8f0a480a4b 100644
+index 7eca33351b09..60789da3bce4 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -14,6 +14,7 @@ static const struct nla_policy get_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {

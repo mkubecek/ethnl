@@ -1,4 +1,4 @@
-From bfbd6cf0486f4de007a2c6c10b5d886dd41a80cd Mon Sep 17 00:00:00 2001
+From 477ca12c043f127b7b49b3fb454148c6bcca1ab0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 06/44] ethtool: helper functions for netlink interface
@@ -8,9 +8,9 @@ Various helpers used by ethtool netlink code.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  include/uapi/linux/ethtool_netlink.h |  11 ++
- net/ethtool/netlink.c                | 147 +++++++++++++++++++++++++++
- net/ethtool/netlink.h                | 131 ++++++++++++++++++++++++
- 3 files changed, 289 insertions(+)
+ net/ethtool/netlink.c                | 156 +++++++++++++++++++++++++++
+ net/ethtool/netlink.h                | 130 ++++++++++++++++++++++
+ 3 files changed, 297 insertions(+)
 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 index 6aa267451542..a648f7368d4e 100644
@@ -35,10 +35,10 @@ index 6aa267451542..a648f7368d4e 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 3c98b41f04e5..21b648c6c288 100644
+index 3c98b41f04e5..90d3db27a18c 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -1,8 +1,155 @@
+@@ -1,8 +1,164 @@
  // SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
  
 +#include <net/sock.h>
@@ -74,8 +74,7 @@ index 3c98b41f04e5..21b648c6c288 100644
 +	int ret;
 +
 +	if (!nest) {
-+		ETHNL_SET_ERRMSG(info,
-+				 "mandatory device identification missing");
++		GENL_SET_ERR_MSG(info, "device identification missing");
 +		return ERR_PTR(-EINVAL);
 +	}
 +	ret = nla_parse_nested_strict(tb, ETHTOOL_A_DEV_MAX, nest, dev_policy,
@@ -86,34 +85,44 @@ index 3c98b41f04e5..21b648c6c288 100644
 +	if (tb[ETHTOOL_A_DEV_INDEX]) {
 +		dev = dev_get_by_index(net,
 +				       nla_get_u32(tb[ETHTOOL_A_DEV_INDEX]));
-+		if (!dev)
++		if (!dev) {
++			NL_SET_ERR_MSG_ATTR(info->extack,
++					    tb[ETHTOOL_A_DEV_INDEX],
++					    "no device matches ifindex");
 +			return ERR_PTR(-ENODEV);
++		}
 +		/* if both ifindex and ifname are passed, they must match */
 +		if (tb[ETHTOOL_A_DEV_NAME]) {
 +			const char *nl_name = nla_data(tb[ETHTOOL_A_DEV_NAME]);
 +
 +			if (strncmp(dev->name, nl_name, IFNAMSIZ)) {
 +				dev_put(dev);
-+				ETHNL_SET_ERRMSG(info,
-+						 "ifindex and ifname do not match");
++				NL_SET_ERR_MSG_ATTR(info->extack, nest,
++						    "ifindex and name do not match");
 +				return ERR_PTR(-ENODEV);
 +			}
 +		}
 +		return dev;
 +	} else if (tb[ETHTOOL_A_DEV_NAME]) {
 +		dev = dev_get_by_name(net, nla_data(tb[ETHTOOL_A_DEV_NAME]));
-+		if (!dev)
++		if (!dev) {
++			NL_SET_ERR_MSG_ATTR(info->extack,
++					    tb[ETHTOOL_A_DEV_NAME],
++					    "no device matches name");
 +			return ERR_PTR(-ENODEV);
++		}
 +	} else {
-+		ETHNL_SET_ERRMSG(info, "either ifindex or ifname required");
++		NL_SET_ERR_MSG_ATTR(info->extack, nest,
++				    "neither ifindex nor name specified");
 +		return ERR_PTR(-EINVAL);
 +	}
 +
 +	if (!netif_device_present(dev)) {
 +		dev_put(dev);
-+		ETHNL_SET_ERRMSG(info, "device not present");
++		GENL_SET_ERR_MSG(info, "device not present");
 +		return ERR_PTR(-ENODEV);
 +	}
++
 +	return dev;
 +}
 +
@@ -163,31 +172,31 @@ index 3c98b41f04e5..21b648c6c288 100644
 +				 u16 dev_attrtype, struct genl_info *info,
 +				 void **ehdrp)
 +{
-+	struct sk_buff *rskb;
++	struct sk_buff *skb;
 +	void *ehdr;
 +
-+	rskb = genlmsg_new(payload, GFP_KERNEL);
-+	if (!rskb) {
-+		ETHNL_SET_ERRMSG(info,
-+				 "failed to allocate reply message");
-+		return NULL;
-+	}
++	skb = genlmsg_new(payload, GFP_KERNEL);
++	if (!skb)
++		goto err_alloc;
 +
-+	ehdr = genlmsg_put_reply(rskb, info, &ethtool_genl_family, 0, cmd);
++	ehdr = genlmsg_put_reply(skb, info, &ethtool_genl_family, 0, cmd);
 +	if (!ehdr)
 +		goto err;
 +	if (ehdrp)
 +		*ehdrp = ehdr;
 +	if (dev) {
-+		int ret = ethnl_fill_dev(rskb, dev, dev_attrtype);
++		int ret = ethnl_fill_dev(skb, dev, dev_attrtype);
 +
 +		if (ret < 0)
 +			goto err;
 +	}
++	return skb;
 +
-+	return rskb;
++err_alloc:
++	nlmsg_free(skb);
 +err:
-+	nlmsg_free(rskb);
++	if (info)
++		GENL_SET_ERR_MSG(info, "failed to allocate reply message");
 +	return NULL;
 +}
 +
@@ -195,17 +204,14 @@ index 3c98b41f04e5..21b648c6c288 100644
  
  static const struct genl_ops ethtool_genl_ops[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 257ae55ccc82..b68b91654c19 100644
+index 257ae55ccc82..f7f449982cbd 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -6,5 +6,136 @@
+@@ -6,5 +6,135 @@
  #include <linux/ethtool_netlink.h>
  #include <linux/netdevice.h>
  #include <net/genetlink.h>
 +#include <net/sock.h>
-+
-+#define ETHNL_SET_ERRMSG(info, msg) \
-+	do { if (info) GENL_SET_ERR_MSG(info, msg); } while (0)
 +
 +struct net_device *ethnl_dev_get(struct genl_info *info, struct nlattr *nest);
 +int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
@@ -310,7 +316,9 @@ index 257ae55ccc82..b68b91654c19 100644
 +
 +static inline void warn_partial_info(struct genl_info *info)
 +{
-+	ETHNL_SET_ERRMSG(info, "not all requested data could be retrieved");
++	if (!info)
++		return;
++	GENL_SET_ERR_MSG(info, "not all requested data could be retrieved");
 +}
 +
 +/* Check user privileges explicitly to allow finer access control based on

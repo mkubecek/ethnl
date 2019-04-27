@@ -1,4 +1,4 @@
-From 354bcf933384f124052b2f43968d5002ab5c06dd Mon Sep 17 00:00:00 2001
+From 07a38dcda38273c7b6df50d4950d3716401e0764 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 24/44] ethtool: set device features with SET_SETTINGS
@@ -113,7 +113,7 @@ index 8df79c4feb9b..58193b4878e0 100644
  	__ETHTOOL_A_FEATURES_CNT,
  	ETHTOOL_A_FEATURES_MAX = (__ETHTOOL_A_FEATURES_CNT - 1)
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index c9647b5ab516..4c4df96e6b12 100644
+index fe6328af3a4a..823b879db067 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -653,6 +653,15 @@ static const struct nla_policy set_debug_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
@@ -141,7 +141,7 @@ index c9647b5ab516..4c4df96e6b12 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -883,11 +892,148 @@ static int update_debug(struct genl_info *info, struct nlattr *nest,
+@@ -881,11 +890,148 @@ static int update_debug(struct genl_info *info, struct nlattr *nest,
  	return ret;
  }
  
@@ -204,7 +204,7 @@ index c9647b5ab516..4c4df96e6b12 100644
 +	if (ret < 0)
 +		return ret;
 +	if (features_from_bitmap(req_mask) & ~NETIF_F_ETHTOOL_BITS) {
-+		ETHNL_SET_ERRMSG(info,
++		GENL_SET_ERR_MSG(info,
 +				 "attempt to change non-ethtool features");
 +		return -EINVAL;
 +	}
@@ -277,7 +277,7 @@ index c9647b5ab516..4c4df96e6b12 100644
 +	if (rskb)
 +		nlmsg_free(rskb);
 +	if (ret < 0)
-+		ETHNL_SET_ERRMSG(info, "failed to send reply message");
++		GENL_SET_ERR_MSG(info, "failed to send reply message");
 +	return 0;
 +}
 +
@@ -290,7 +290,7 @@ index c9647b5ab516..4c4df96e6b12 100644
  	int ret;
  
  	ret = ethnlmsg_parse(info->nlhdr, tb, ETHTOOL_A_SETTINGS_MAX,
-@@ -925,6 +1071,17 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -923,6 +1069,17 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret)
  			req_mask |= ETH_SETTINGS_IM_DEBUG;
  	}

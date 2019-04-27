@@ -1,4 +1,4 @@
-From c298af45cb3ae32a307a80c3ef1e83acc7714006 Mon Sep 17 00:00:00 2001
+From 58b4fbab1e1249407a1803934cbdeabf2a964220 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 15 Feb 2019 11:50:56 +0100
 Subject: [PATCH 11/44] ethtool: move string arrays into common file

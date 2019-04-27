@@ -1,4 +1,4 @@
-From a1091f4c1996d571cc0f91e78fdd66767249202d Mon Sep 17 00:00:00 2001
+From 1156146405455b237018c15c9dde6d97f3d8d84f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
 Subject: [PATCH 17/44] ethtool: set link settings and link modes with
@@ -87,10 +87,10 @@ index ded867028115..6beb385ea053 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index b0e88b5e879d..601c56a0825e 100644
+index 20a6a63d026b..19361943cdc2 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -675,6 +675,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -684,6 +684,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -103,10 +103,10 @@ index b0e88b5e879d..601c56a0825e 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 2cf398b45002..4a5c649844e1 100644
+index 1ef5fe9a4f6b..49489334fe60 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -274,4 +274,6 @@ extern const struct get_request_ops strset_request_ops;
+@@ -273,4 +273,6 @@ extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops info_request_ops;
  extern const struct get_request_ops settings_request_ops;
  
@@ -114,7 +114,7 @@ index 2cf398b45002..4a5c649844e1 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 2a714bb28b55..1013535f8803 100644
+index 9abc4b04d8fb..06b081865bf8 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,97 @@ struct settings_data {
@@ -256,7 +256,7 @@ index 2a714bb28b55..1013535f8803 100644
 +	int ret = dev->ethtool_ops->set_link_ksettings(dev, ksettings);
 +
 +	if (ret < 0)
-+		ETHNL_SET_ERRMSG(info, "link settings update failed");
++		GENL_SET_ERR_MSG(info, "link settings update failed");
 +	return ret;
 +}
 +

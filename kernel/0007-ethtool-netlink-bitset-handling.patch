@@ -1,4 +1,4 @@
-From 01990ee2794ff61bcb1289cc6cf8d845780d49a9 Mon Sep 17 00:00:00 2001
+From 29433f9f0db4ed54c2a8202406cadcd88fa23e84 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 07/44] ethtool: netlink bitset handling
@@ -11,10 +11,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  63 ++
  include/uapi/linux/ethtool_netlink.h         |  32 +
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/bitset.c                         | 601 +++++++++++++++++++
+ net/ethtool/bitset.c                         | 605 +++++++++++++++++++
  net/ethtool/bitset.h                         |  40 ++
  net/ethtool/netlink.h                        |   9 +
- 6 files changed, 746 insertions(+), 1 deletion(-)
+ 6 files changed, 750 insertions(+), 1 deletion(-)
  create mode 100644 net/ethtool/bitset.c
  create mode 100644 net/ethtool/bitset.h
 
@@ -147,10 +147,10 @@ index f30e0da88be5..482fdb9380fa 100644
 +ethtool_nl-y	:= netlink.o bitset.o
 diff --git a/net/ethtool/bitset.c b/net/ethtool/bitset.c
 new file mode 100644
-index 000000000000..0cdd50aadb5e
+index 000000000000..ef00eb7c6b0f
 --- /dev/null
 +++ b/net/ethtool/bitset.c
-@@ -0,0 +1,601 @@
+@@ -0,0 +1,605 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include <linux/ethtool_netlink.h>
@@ -427,9 +427,9 @@ index 000000000000..0cdd50aadb5e
 +	int ret, idx;
 +
 +	if (nla_type(bit_attr) != ETHTOOL_A_BITS_BIT) {
-+		ETHNL_SET_ERRMSG(info,
-+				 "ETHTOOL_A_BITSET_BITS can contain only ETHTOOL_A_BITS_BIT");
-+		return genl_err_attr(info, -EINVAL, bit_attr);
++		NL_SET_ERR_MSG_ATTR(info->extack, bit_attr,
++				    "ETHTOOL_A_BITSET_BITS can contain only ETHTOOL_A_BITS_BIT");
++		return -EINVAL;
 +	}
 +	ret = nla_parse_nested_strict(tb, ETHTOOL_A_BIT_MAX, bit_attr,
 +				      bit_policy, info->extack);
@@ -441,29 +441,33 @@ index 000000000000..0cdd50aadb5e
 +
 +		idx = nla_get_u32(tb[ETHTOOL_A_BIT_INDEX]);
 +		if (idx >= nbits) {
-+			ETHNL_SET_ERRMSG(info, "bit index too high");
-+			return genl_err_attr(info, -EOPNOTSUPP,
-+					     tb[ETHTOOL_A_BIT_INDEX]);
++			NL_SET_ERR_MSG_ATTR(info->extack,
++					    tb[ETHTOOL_A_BIT_INDEX],
++					    "bit index too high");
++			return -EOPNOTSUPP;
 +		}
 +		name = bit_name(names, legacy, idx);
 +		if (tb[ETHTOOL_A_BIT_NAME] && name &&
 +		    strncmp(nla_data(tb[ETHTOOL_A_BIT_NAME]), name,
 +			    nla_len(tb[ETHTOOL_A_BIT_NAME]))) {
-+			ETHNL_SET_ERRMSG(info, "bit index and name mismatch");
-+			return genl_err_attr(info, -EINVAL, bit_attr);
++			NL_SET_ERR_MSG_ATTR(info->extack, bit_attr,
++					    "bit index and name mismatch");
++			return -EINVAL;
 +		}
 +	} else if (tb[ETHTOOL_A_BIT_NAME]) {
 +		idx = ethnl_name_to_idx(names, legacy, nbits,
 +					nla_data(tb[ETHTOOL_A_BIT_NAME]),
 +					nla_len(tb[ETHTOOL_A_BIT_NAME]));
 +		if (idx >= nbits) {
-+			ETHNL_SET_ERRMSG(info, "bit name not found");
-+			return genl_err_attr(info, -EOPNOTSUPP,
-+					     tb[ETHTOOL_A_BIT_NAME]);
++			NL_SET_ERR_MSG_ATTR(info->extack,
++					    tb[ETHTOOL_A_BIT_NAME],
++					    "bit name not found");
++			return -EOPNOTSUPP;
 +		}
 +	} else {
-+		ETHNL_SET_ERRMSG(info, "neither bit index nor name specified");
-+		return genl_err_attr(info, -EINVAL, bit_attr);
++		NL_SET_ERR_MSG_ATTR(info->extack, bit_attr,
++				    "neither bit index nor name specified");
++		return -EINVAL;
 +	}
 +
 +	if (is_list || tb[ETHTOOL_A_BIT_VALUE])
@@ -799,10 +803,10 @@ index 000000000000..761d0c47fe23
 +
 +#endif /* _NET_ETHTOOL_BITSET_H */
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index b68b91654c19..0a796d856a69 100644
+index f7f449982cbd..599c445face1 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -18,6 +18,15 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -15,6 +15,15 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  				 u16 dev_attrtype, struct genl_info *info,
  				 void **ehdrp);
  

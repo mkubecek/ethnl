@@ -1,4 +1,4 @@
-From c54fee5b8df0f1a8dc47c4960f2893e20c363d85 Mon Sep 17 00:00:00 2001
+From 411a43dcd99984b7892a4bd21c8295dbda8fe6f7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:47:45 +0100
 Subject: [PATCH 36/44] ethtool: set EEE settings with SET_PARAMS request
@@ -10,8 +10,8 @@ ETHTOOL_SEEE ioctl command.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt | 18 ++++--
- net/ethtool/params.c                         | 65 +++++++++++++++++++-
- 2 files changed, 76 insertions(+), 7 deletions(-)
+ net/ethtool/params.c                         | 60 +++++++++++++++++++-
+ 2 files changed, 71 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 41d78a4611d1..7c99b95faa2a 100644
@@ -57,7 +57,7 @@ index 41d78a4611d1..7c99b95faa2a 100644
  ETHTOOL_SRSSH			n/a
  ETHTOOL_GTUNABLE		n/a
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 4c35a4e8a221..59506ecbd252 100644
+index 5b62f14e7844..7eca33351b09 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -448,7 +448,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
@@ -69,15 +69,15 @@ index 4c35a4e8a221..59506ecbd252 100644
  };
  
  static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
-@@ -722,6 +722,64 @@ static int update_channels(struct genl_info *info, struct net_device *dev,
+@@ -721,6 +721,59 @@ static int update_channels(struct genl_info *info, struct net_device *dev,
  	return (ret < 0) ? ret : 1;
  }
  
 +static const struct nla_policy eee_policy[ETHTOOL_A_EEE_MAX + 1] = {
 +	[ETHTOOL_A_EEE_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHTOOL_A_EEE_LINK_MODES]	= { .type = NLA_NESTED },
-+	[ETHTOOL_A_EEE_PEER_MODES]	= { .type = NLA_NESTED },
-+	[ETHTOOL_A_EEE_ACTIVE]		= { .type = NLA_U8 },
++	[ETHTOOL_A_EEE_PEER_MODES]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_EEE_ACTIVE]		= { .type = NLA_REJECT },
 +	[ETHTOOL_A_EEE_ENABLED]		= { .type = NLA_U8 },
 +	[ETHTOOL_A_EEE_TX_LPI_ENABLED]	= { .type = NLA_U8 },
 +	[ETHTOOL_A_EEE_TX_LPI_TIMER]	= { .type = NLA_U32 },
@@ -104,11 +104,6 @@ index 4c35a4e8a221..59506ecbd252 100644
 +				      info->extack);
 +	if (ret < 0)
 +		return ret;
-+	/* read only attributes */
-+	if (tb[ETHTOOL_A_EEE_PEER_MODES] || tb[ETHTOOL_A_EEE_ACTIVE]) {
-+		ETHNL_SET_ERRMSG(info, "attempt to set a read only attribute");
-+		return -EINVAL;
-+	}
 +
 +	if (ethnl_update_bitset32(&data.advertised, NULL, 32,
 +				  tb[ETHTOOL_A_EEE_LINK_MODES], &ret,
@@ -134,7 +129,7 @@ index 4c35a4e8a221..59506ecbd252 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
-@@ -761,6 +819,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+@@ -760,6 +813,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
  		req_mask |= ETH_PARAMS_IM_CHANNELS;

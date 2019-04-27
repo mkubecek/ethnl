@@ -1,4 +1,4 @@
-From c22ad52d620c17be2dd15472c899898b2fc1373c Mon Sep 17 00:00:00 2001
+From 57f79f94ab0b6a662f1d4505ba653aa43447e02c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:36:43 +0100
 Subject: [PATCH 34/44] ethtool: set channel counts with SET_PARAMS request
@@ -243,7 +243,7 @@ index 484cde939527..3d04a11f1328 100644
  		ethtool_notify(dev, NULL, ETHNL_CMD_SET_PARAMS,
  			       ETH_PARAMS_IM_CHANNELS, NULL);
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index b313a9e242dc..e370cd3dbd38 100644
+index 6381fb0a634c..73dc2111c32a 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -1,6 +1,7 @@
@@ -263,7 +263,7 @@ index b313a9e242dc..e370cd3dbd38 100644
  };
  
  static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
-@@ -575,6 +576,58 @@ static int update_pause(struct genl_info *info, struct net_device *dev,
+@@ -574,6 +575,58 @@ static int update_pause(struct genl_info *info, struct net_device *dev,
  	return (ret < 0) ? ret : 1;
  }
  
@@ -322,7 +322,7 @@ index b313a9e242dc..e370cd3dbd38 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
-@@ -609,6 +662,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+@@ -608,6 +661,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
  		req_mask |= ETH_PARAMS_IM_PAUSE;
