@@ -1,4 +1,4 @@
-From 17f90e849ac84becc2a574728d7c0726e9ba07c1 Mon Sep 17 00:00:00 2001
+From 50780274bd20e69324be0e5c6571d05c7dc3a163 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 24/44] ethtool: set device features with SET_SETTINGS
@@ -113,7 +113,7 @@ index 8df79c4feb9b..58193b4878e0 100644
  	__ETHTOOL_A_FEATURES_CNT,
  	ETHTOOL_A_FEATURES_MAX = (__ETHTOOL_A_FEATURES_CNT - 1)
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index aa623b044713..9b49da5c7307 100644
+index 6fad2a14ead4..ed5e8ccefbe2 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -654,6 +654,15 @@ static const struct nla_policy set_debug_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
@@ -132,16 +132,16 @@ index aa623b044713..9b49da5c7307 100644
  static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_DEV]		= { .type = NLA_NESTED },
-@@ -665,7 +674,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
- 	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_REJECT },
- 	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_REJECT },
+@@ -664,7 +673,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+ 	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
 -	[ETHTOOL_A_SETTINGS_FEATURES]		= { .type = NLA_REJECT },
 +	[ETHTOOL_A_SETTINGS_FEATURES]		= { .type = NLA_NESTED },
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -882,11 +891,148 @@ static int update_debug(struct genl_info *info, struct nlattr *nest,
+@@ -881,11 +890,148 @@ static int update_debug(struct genl_info *info, struct nlattr *nest,
  	return ret;
  }
  
@@ -290,7 +290,7 @@ index aa623b044713..9b49da5c7307 100644
  	int ret;
  
  	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb,
-@@ -925,6 +1071,17 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -924,6 +1070,17 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret)
  			req_mask |= ETH_SETTINGS_IM_DEBUG;
  	}

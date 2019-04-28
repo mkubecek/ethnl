@@ -1,4 +1,4 @@
-From 395c79fc0850dd41f0056dadc691c52fe367f85a Mon Sep 17 00:00:00 2001
+From 3cb0baac5316d2895bc07859444aa51aa83d77c4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:19:02 +0100
 Subject: [PATCH 21/44] ethtool: provide message level in GET_SETTINGS request
@@ -135,7 +135,7 @@ index b8ce0ee4cebe..1351832ff1c9 100644
  	case ETHTOOL_GEEE:
  		rc = ethtool_get_eee(dev, useraddr);
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index de8d4fa0b88e..4c43b2213f55 100644
+index 3bfca6f10537..26150e7714f2 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,7 @@ struct settings_data {
@@ -236,7 +236,7 @@ index de8d4fa0b88e..4c43b2213f55 100644
 @@ -510,6 +549,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_LINK_MODES]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
- 	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
 +	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_REJECT },
  };
  

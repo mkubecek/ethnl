@@ -1,4 +1,4 @@
-From ffcc94eb3fe5820e9a9d4e9b5ca22980f63a79cb Mon Sep 17 00:00:00 2001
+From 27a9628175e239a74de984e83ebb4935dbe2524a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 16:19:21 +0100
 Subject: [PATCH 25/44] ethtool: provide private flags in GET_SETTINGS request
@@ -103,7 +103,7 @@ index c5d3096bcb9b..e391652130d8 100644
  	case ETHTOOL_GRXFH:
  	case ETHTOOL_GRXRINGS:
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 9b49da5c7307..7731e289f3d6 100644
+index ed5e8ccefbe2..4bd9074d8856 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -21,6 +21,9 @@ struct settings_data {
@@ -264,8 +264,8 @@ index 9b49da5c7307..7731e289f3d6 100644
  };
  
  /* SET_SETTINGS */
-@@ -675,6 +773,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
- 	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_REJECT },
+@@ -674,6 +772,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+ 	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_FEATURES]		= { .type = NLA_NESTED },
 +	[ETHTOOL_A_SETTINGS_PRIV_FLAGS]		= { .type = NLA_REJECT },

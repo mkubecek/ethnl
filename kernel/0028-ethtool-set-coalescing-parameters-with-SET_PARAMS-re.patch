@@ -1,4 +1,4 @@
-From dff3ae8021030a3703deda1f1cddb658c1825ab4 Mon Sep 17 00:00:00 2001
+From 2351767befcce778ee1fc0ce43323282f7f39d4e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 21:27:19 +0100
 Subject: [PATCH 28/44] ethtool: set coalescing parameters with SET_PARAMS

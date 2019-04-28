@@ -1,4 +1,4 @@
-From 8ed4042c68fa75e65b163c5dc5f78346ddca35b4 Mon Sep 17 00:00:00 2001
+From 6821cb79a0257c7a3b005c3af2db4f101a3ebec7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
 Subject: [PATCH 43/44] ethtool: implement SET_RXFLOW notification

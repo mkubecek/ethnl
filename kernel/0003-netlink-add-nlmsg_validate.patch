@@ -1,4 +1,4 @@
-From 0cc3f410fe78a9102efcbfdb4e40a9de92103132 Mon Sep 17 00:00:00 2001
+From ce608cbc43c5f1f930aab785fb543b6f0fbe0dc4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 28 Apr 2019 02:25:01 +0200
 Subject: [PATCH 03/44] netlink: add nlmsg_validate()

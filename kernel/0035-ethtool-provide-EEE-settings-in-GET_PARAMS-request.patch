@@ -1,4 +1,4 @@
-From 3754f3eb2a166e9800864594b2d8e3c31acceb6f Mon Sep 17 00:00:00 2001
+From d2df5d3aac83217d2270e05f2fca87c54f300ad6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:43:01 +0100
 Subject: [PATCH 35/44] ethtool: provide EEE settings in GET_PARAMS request

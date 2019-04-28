@@ -1,4 +1,4 @@
-From 73d23221daf39b7b5788c39bf404ece7496df367 Mon Sep 17 00:00:00 2001
+From f49e62cec0e9e76eeab016fc86c123c0e63575df Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 23/44] ethtool: provide device features in GET_SETTINGS
@@ -225,7 +225,7 @@ index e8b78cd10c91..bcc4cfc21f52 100644
  
  	return NOTIFY_DONE;
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 347fc5671fe8..aa623b044713 100644
+index ebf6a40e037e..6fad2a14ead4 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -15,6 +15,12 @@ struct settings_data {
@@ -392,9 +392,9 @@ index 347fc5671fe8..aa623b044713 100644
  
  	return 0;
  }
-@@ -557,6 +665,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
- 	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_REJECT },
- 	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_REJECT },
+@@ -556,6 +664,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+ 	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
 +	[ETHTOOL_A_SETTINGS_FEATURES]		= { .type = NLA_REJECT },
  };
