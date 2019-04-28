@@ -1,4 +1,4 @@
-From 477ca12c043f127b7b49b3fb454148c6bcca1ab0 Mon Sep 17 00:00:00 2001
+From 41614336290c181b14e55d1fc713689687bf64b0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 06/44] ethtool: helper functions for netlink interface
@@ -9,8 +9,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  include/uapi/linux/ethtool_netlink.h |  11 ++
  net/ethtool/netlink.c                | 156 +++++++++++++++++++++++++++
- net/ethtool/netlink.h                | 130 ++++++++++++++++++++++
- 3 files changed, 297 insertions(+)
+ net/ethtool/netlink.h                | 115 ++++++++++++++++++++
+ 3 files changed, 282 insertions(+)
 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 index 6aa267451542..a648f7368d4e 100644
@@ -35,7 +35,7 @@ index 6aa267451542..a648f7368d4e 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 3c98b41f04e5..90d3db27a18c 100644
+index 3c98b41f04e5..7347a7c50838 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -1,8 +1,164 @@
@@ -77,8 +77,8 @@ index 3c98b41f04e5..90d3db27a18c 100644
 +		GENL_SET_ERR_MSG(info, "device identification missing");
 +		return ERR_PTR(-EINVAL);
 +	}
-+	ret = nla_parse_nested_strict(tb, ETHTOOL_A_DEV_MAX, nest, dev_policy,
-+				      info->extack);
++	ret = nla_parse_nested(tb, ETHTOOL_A_DEV_MAX, nest, dev_policy,
++			       info->extack);
 +	if (ret < 0)
 +		return ERR_PTR(ret);
 +
@@ -142,7 +142,7 @@ index 3c98b41f04e5..90d3db27a18c 100644
 +	struct nlattr *nest;
 +	int ret = -EMSGSIZE;
 +
-+	nest = ethnl_nest_start(msg, attrtype);
++	nest = nla_nest_start(msg, attrtype);
 +	if (!nest)
 +		return -EMSGSIZE;
 +
@@ -204,10 +204,10 @@ index 3c98b41f04e5..90d3db27a18c 100644
  
  static const struct genl_ops ethtool_genl_ops[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 257ae55ccc82..f7f449982cbd 100644
+index 257ae55ccc82..a37414ad0434 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -6,5 +6,135 @@
+@@ -6,5 +6,120 @@
  #include <linux/ethtool_netlink.h>
  #include <linux/netdevice.h>
  #include <net/genetlink.h>
@@ -223,21 +223,6 @@ index 257ae55ccc82..f7f449982cbd 100644
 +static inline int ethnl_str_size(const char *s)
 +{
 +	return nla_total_size(strlen(s) + 1);
-+}
-+
-+static inline struct nlattr *ethnl_nest_start(struct sk_buff *skb,
-+					      int attrtype)
-+{
-+	return nla_nest_start(skb, attrtype | NLA_F_NESTED);
-+}
-+
-+static inline int ethnlmsg_parse(const struct nlmsghdr *nlh,
-+				 struct nlattr *tb[], int maxtype,
-+				 const struct nla_policy *policy,
-+				 struct genl_info *info)
-+{
-+	return nlmsg_parse_strict(nlh, GENL_HDRLEN, tb, maxtype, policy,
-+				  info ? info->extack : NULL);
 +}
 +
 +/* ethnl_update_* return true if the value is changed */

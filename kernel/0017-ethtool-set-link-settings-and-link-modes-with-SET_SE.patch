@@ -1,4 +1,4 @@
-From 0ace651692c3a998ad47631fd1da7a670089963e Mon Sep 17 00:00:00 2001
+From 35ac52d5dff454709e7b3bc704247ce40a434a98 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
 Subject: [PATCH 17/44] ethtool: set link settings and link modes with
@@ -17,8 +17,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  34 +-
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   2 +
- net/ethtool/settings.c                       | 310 +++++++++++++++++++
- 4 files changed, 348 insertions(+), 3 deletions(-)
+ net/ethtool/settings.c                       | 311 +++++++++++++++++++
+ 4 files changed, 349 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index ded867028115..6beb385ea053 100644
@@ -87,7 +87,7 @@ index ded867028115..6beb385ea053 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 775ddd8ea403..feac3f05e95f 100644
+index 07d7d62aa533..e8b78cd10c91 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -684,6 +684,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
@@ -103,10 +103,10 @@ index 775ddd8ea403..feac3f05e95f 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 1ef5fe9a4f6b..49489334fe60 100644
+index 381dc5e58a00..ec224707bd40 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -273,4 +273,6 @@ extern const struct get_request_ops strset_request_ops;
+@@ -258,4 +258,6 @@ extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops info_request_ops;
  extern const struct get_request_ops settings_request_ops;
  
@@ -114,7 +114,7 @@ index 1ef5fe9a4f6b..49489334fe60 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 9abc4b04d8fb..06b081865bf8 100644
+index 9a4c750927be..84f77108e4f8 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,97 @@ struct settings_data {
@@ -215,7 +215,7 @@ index 9abc4b04d8fb..06b081865bf8 100644
  static const struct nla_policy get_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_DEV]	= { .type = NLA_NESTED },
-@@ -276,3 +367,222 @@ const struct get_request_ops settings_request_ops = {
+@@ -277,3 +368,223 @@ const struct get_request_ops settings_request_ops = {
  	.reply_size		= settings_size,
  	.fill_reply		= fill_settings,
  };
@@ -301,8 +301,8 @@ index 9abc4b04d8fb..06b081865bf8 100644
 +
 +	if (!nest)
 +		return 0;
-+	ret = nla_parse_nested_strict(tb, ETHTOOL_A_LINKINFO_MAX, nest,
-+				      set_linkinfo_policy, info->extack);
++	ret = nla_parse_nested(tb, ETHTOOL_A_LINKINFO_MAX, nest,
++			       set_linkinfo_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +
@@ -330,8 +330,8 @@ index 9abc4b04d8fb..06b081865bf8 100644
 +
 +	if (!nest)
 +		return 0;
-+	ret = nla_parse_nested_strict(tb, ETHTOOL_A_LINKMODES_MAX, nest,
-+				      set_linkmodes_policy, info->extack);
++	ret = nla_parse_nested(tb, ETHTOOL_A_LINKMODES_MAX, nest,
++			       set_linkmodes_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +	req_speed = tb[ETHTOOL_A_LINKMODES_SPEED];
@@ -405,8 +405,9 @@ index 9abc4b04d8fb..06b081865bf8 100644
 +	u32 req_mask = 0;
 +	int ret;
 +
-+	ret = ethnlmsg_parse(info->nlhdr, tb, ETHTOOL_A_SETTINGS_MAX,
-+			     set_settings_policy, info);
++	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb,
++			  ETHTOOL_A_SETTINGS_MAX, set_settings_policy,
++			  info->extack);
 +	if (ret < 0)
 +		return ret;
 +	dev = ethnl_dev_get(info, tb[ETHTOOL_A_SETTINGS_DEV]);

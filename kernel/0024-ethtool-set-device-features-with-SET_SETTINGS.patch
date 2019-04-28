@@ -1,4 +1,4 @@
-From d92c0317355bed7d6a55a08dd89193ea1c575066 Mon Sep 17 00:00:00 2001
+From 17f90e849ac84becc2a574728d7c0726e9ba07c1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 24/44] ethtool: set device features with SET_SETTINGS
@@ -113,10 +113,10 @@ index 8df79c4feb9b..58193b4878e0 100644
  	__ETHTOOL_A_FEATURES_CNT,
  	ETHTOOL_A_FEATURES_MAX = (__ETHTOOL_A_FEATURES_CNT - 1)
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 0050a07b8cc9..470b23d3ef26 100644
+index aa623b044713..9b49da5c7307 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -653,6 +653,15 @@ static const struct nla_policy set_debug_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
+@@ -654,6 +654,15 @@ static const struct nla_policy set_debug_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
  					    .validation_data = &all_bits },
  };
  
@@ -132,7 +132,7 @@ index 0050a07b8cc9..470b23d3ef26 100644
  static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_DEV]		= { .type = NLA_NESTED },
-@@ -664,7 +673,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -665,7 +674,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
@@ -141,7 +141,7 @@ index 0050a07b8cc9..470b23d3ef26 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -881,11 +890,148 @@ static int update_debug(struct genl_info *info, struct nlattr *nest,
+@@ -882,11 +891,148 @@ static int update_debug(struct genl_info *info, struct nlattr *nest,
  	return ret;
  }
  
@@ -188,8 +188,8 @@ index 0050a07b8cc9..470b23d3ef26 100644
 +	int ret;
 +
 +	*changed = false;
-+	ret = nla_parse_nested_strict(tb, ETHTOOL_A_FEATURES_MAX, nest,
-+				      set_features_policy, info->extack);
++	ret = nla_parse_nested(tb, ETHTOOL_A_FEATURES_MAX, nest,
++			       set_features_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +	if (!tb[ETHTOOL_A_FEATURES_WANTED])
@@ -251,7 +251,7 @@ index 0050a07b8cc9..470b23d3ef26 100644
 +		goto err;
 +
 +	ret = -EMSGSIZE;
-+	feat_attr = ethnl_nest_start(rskb, ETHTOOL_A_SETTINGS_FEATURES);
++	feat_attr = nla_nest_start(rskb, ETHTOOL_A_SETTINGS_FEATURES);
 +	if (!feat_attr)
 +		goto err;
 +	ret = ethnl_put_bitset(rskb, ETHTOOL_A_FEATURES_WANTED,
@@ -289,8 +289,8 @@ index 0050a07b8cc9..470b23d3ef26 100644
 +	bool mod;
  	int ret;
  
- 	ret = ethnlmsg_parse(info->nlhdr, tb, ETHTOOL_A_SETTINGS_MAX,
-@@ -923,6 +1069,17 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+ 	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb,
+@@ -925,6 +1071,17 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret)
  			req_mask |= ETH_SETTINGS_IM_DEBUG;
  	}

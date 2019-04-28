@@ -1,4 +1,4 @@
-From 72223f08ae2f13c935aa26776659873cb7aba2f7 Mon Sep 17 00:00:00 2001
+From 31bb60bd7b695be4ab6efb26f467ea7588fdb2ed Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 39/44] ethtool: implement ACT_NWAY_RST message
@@ -101,7 +101,7 @@ index 95e93c153cf6..b3e88cf0f4c0 100644
 +		   actions.o
 diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
 new file mode 100644
-index 000000000000..4467885ed92e
+index 000000000000..2f3f9e85016d
 --- /dev/null
 +++ b/net/ethtool/actions.c
 @@ -0,0 +1,72 @@
@@ -151,8 +151,8 @@ index 000000000000..4467885ed92e
 +	struct net_device *dev;
 +	int ret;
 +
-+	ret = ethnlmsg_parse(info->nlhdr, tb, ETHTOOL_A_NWAYRST_MAX,
-+			     nwayrst_policy, info);
++	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb, ETHTOOL_A_NWAYRST_MAX,
++			  nwayrst_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +	dev = ethnl_dev_get(info, tb[ETHTOOL_A_NWAYRST_DEV]);
@@ -199,7 +199,7 @@ index d14d8e7edf55..d34af84c1adf 100644
  
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 175817de604d..6dda3023b816 100644
+index 0f6def083d73..dcf4f16210fa 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -240,13 +240,13 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
@@ -239,7 +239,7 @@ index 175817de604d..6dda3023b816 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 3df505eb060d..cc0b2dd5d877 100644
+index ba71dc367869..52b4d692fca2 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -24,6 +24,8 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
@@ -251,7 +251,7 @@ index 3df505eb060d..cc0b2dd5d877 100644
  
  #if BITS_PER_LONG == 64 && defined(__BIG_ENDIAN)
  void ethnl_bitmap_to_u32(unsigned long *bitmap, unsigned int nwords);
-@@ -276,5 +278,12 @@ extern const struct get_request_ops params_request_ops;
+@@ -261,5 +263,12 @@ extern const struct get_request_ops params_request_ops;
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);

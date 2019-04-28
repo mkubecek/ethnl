@@ -1,4 +1,4 @@
-From b0875f8757a28f1ba66fde944677cadfb62b9470 Mon Sep 17 00:00:00 2001
+From 05d3f8732d7c2ecb051f86eb9718a5dc8a418a91 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 12/44] ethtool: provide string sets with GET_STRSET request
@@ -191,7 +191,7 @@ index 11782306593b..11ceb00821b3 100644
 -ethtool_nl-y	:= netlink.o bitset.o
 +ethtool_nl-y	:= netlink.o bitset.o strset.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 3ddab19dd240..4f43921b9caa 100644
+index 4ea7471b650a..ea77df1f4686 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -177,6 +177,7 @@ static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)
@@ -217,10 +217,10 @@ index 3ddab19dd240..4f43921b9caa 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index e4fc0728e5ec..486742f47a97 100644
+index 700837854e7c..4bea6ee2f6d1 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -257,4 +257,8 @@ struct get_request_ops {
+@@ -242,4 +242,8 @@ struct get_request_ops {
  	void (*cleanup)(struct common_req_info *req_info);
  };
  
@@ -231,7 +231,7 @@ index e4fc0728e5ec..486742f47a97 100644
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
 new file mode 100644
-index 000000000000..cae38195305e
+index 000000000000..1a80d66337d1
 --- /dev/null
 +++ b/net/ethtool/strset.c
 @@ -0,0 +1,448 @@
@@ -369,9 +369,8 @@ index 000000000000..cae38195305e
 +	struct nlattr *tb[ETHTOOL_A_STRINGSET_MAX + 1];
 +	int ret;
 +
-+	ret = nla_parse_nested_strict(tb, ETHTOOL_A_STRINGSET_MAX, nest,
-+				      get_stringset_policy,
-+				      info ? info->extack : NULL);
++	ret = nla_parse_nested(tb, ETHTOOL_A_STRINGSET_MAX, nest,
++			       get_stringset_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +	if (!tb[ETHTOOL_A_STRINGSET_ID])
@@ -601,8 +600,9 @@ index 000000000000..cae38195305e
 +static int fill_string(struct sk_buff *skb, const struct strset_info *info,
 +		       u32 idx)
 +{
-+	struct nlattr *string = ethnl_nest_start(skb, ETHTOOL_A_STRINGS_STRING);
++	struct nlattr *string;
 +
++	string = nla_nest_start(skb, ETHTOOL_A_STRINGS_STRING);
 +	if (!string)
 +		return -EMSGSIZE;
 +	if (nla_put_u32(skb, ETHTOOL_A_STRING_INDEX, idx) ||
@@ -624,7 +624,7 @@ index 000000000000..cae38195305e
 +		return -EOPNOTSUPP;
 +	if (info->count == 0)
 +		return 0;
-+	nest = ethnl_nest_start(skb, ETHTOOL_A_STRSET_STRINGSET);
++	nest = nla_nest_start(skb, ETHTOOL_A_STRSET_STRINGSET);
 +	if (!nest)
 +		return -EMSGSIZE;
 +
@@ -633,7 +633,7 @@ index 000000000000..cae38195305e
 +		goto err;
 +
 +	if (!data->counts_only) {
-+		strings = ethnl_nest_start(skb, ETHTOOL_A_STRINGSET_STRINGS);
++		strings = nla_nest_start(skb, ETHTOOL_A_STRINGSET_STRINGS);
 +		if (!strings)
 +			goto err;
 +		for (i = 0; i < info->count; i++) {

@@ -1,4 +1,4 @@
-From 782ca564480a397cb58813137a431ca911821962 Mon Sep 17 00:00:00 2001
+From 648bc656efc526d8495f124538537b273b7390ee Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:07:38 +0100
 Subject: [PATCH 32/44] ethtool: set pause parameters with SET_PARAMS request
@@ -53,10 +53,10 @@ index 8c3d6a55af35..6a044246838d 100644
  ETHTOOL_SRXCSUM			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GTXCSUM			ETHNL_CMD_GET_SETTINGS
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index b7abf98debfc..5fda53234c62 100644
+index 3158c8b2a473..4d63b4c37278 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -300,7 +300,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+@@ -303,7 +303,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_COMPACT]		= { .type = NLA_FLAG },
  	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_NESTED },
@@ -65,7 +65,7 @@ index b7abf98debfc..5fda53234c62 100644
  };
  
  static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
-@@ -481,6 +481,46 @@ static int update_ring(struct genl_info *info, struct net_device *dev,
+@@ -484,6 +484,46 @@ static int update_ring(struct genl_info *info, struct net_device *dev,
  	return (ret < 0) ? ret : 1;
  }
  
@@ -91,8 +91,8 @@ index b7abf98debfc..5fda53234c62 100644
 +		return -EOPNOTSUPP;
 +	dev->ethtool_ops->get_pauseparam(dev, &data);
 +
-+	ret = nla_parse_nested_strict(tb, ETHTOOL_A_PAUSE_MAX, nest,
-+				      pause_policy, info->extack);
++	ret = nla_parse_nested(tb, ETHTOOL_A_PAUSE_MAX, nest, pause_policy,
++			       info->extack);
 +	if (ret < 0)
 +		return ret;
 +
@@ -112,7 +112,7 @@ index b7abf98debfc..5fda53234c62 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
-@@ -510,6 +550,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+@@ -513,6 +553,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
  		req_mask |= ETH_PARAMS_IM_RING;

@@ -1,4 +1,4 @@
-From 92d26d49e9c8a0ac7d7f97a5039c35fce0d08300 Mon Sep 17 00:00:00 2001
+From b706b828f555ffb679be82972ea02fef78c9fa6b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 07:40:58 +0100
 Subject: [PATCH 29/44] ethtool: provide ring sizes in GET_PARAMS request
@@ -15,8 +15,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt | 18 +++++-
  include/uapi/linux/ethtool_netlink.h         | 20 ++++++-
  net/ethtool/ioctl.c                          |  7 ++-
- net/ethtool/params.c                         | 59 ++++++++++++++++++++
- 4 files changed, 99 insertions(+), 5 deletions(-)
+ net/ethtool/params.c                         | 60 ++++++++++++++++++++
+ 4 files changed, 100 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 2677b5db2ca5..ad45028e940a 100644
@@ -139,7 +139,7 @@ index ee326a10991b..0775f5810b9e 100644
  
  static noinline_for_stack int ethtool_get_channels(struct net_device *dev,
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 3d4fd562dc87..ee8eb6fb42b9 100644
+index 34d8861ad4fe..afd87e0412fc 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -8,6 +8,7 @@ static const struct nla_policy get_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
@@ -207,14 +207,15 @@ index 3d4fd562dc87..ee8eb6fb42b9 100644
  
  	return len;
  }
-@@ -158,6 +181,36 @@ static int fill_coalesce(struct sk_buff *skb, struct ethtool_coalesce *data)
+@@ -159,6 +182,37 @@ static int fill_coalesce(struct sk_buff *skb, struct ethtool_coalesce *data)
  	return 0;
  }
  
 +static int fill_ring(struct sk_buff *skb, struct ethtool_ringparam *data)
 +{
-+	struct nlattr *nest = ethnl_nest_start(skb, ETHTOOL_A_PARAMS_RING);
++	struct nlattr *nest;
 +
++	nest = nla_nest_start(skb, ETHTOOL_A_PARAMS_RING);
 +	if (!nest)
 +		return -EMSGSIZE;
 +	if (nla_put_u32(skb, ETHTOOL_A_RING_RX_MAX_PENDING,
@@ -244,7 +245,7 @@ index 3d4fd562dc87..ee8eb6fb42b9 100644
  static int fill_params(struct sk_buff *skb,
  		       const struct common_req_info *req_info)
  {
-@@ -171,6 +224,11 @@ static int fill_params(struct sk_buff *skb,
+@@ -172,6 +226,11 @@ static int fill_params(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -256,7 +257,7 @@ index 3d4fd562dc87..ee8eb6fb42b9 100644
  
  	return 0;
  }
-@@ -196,6 +254,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+@@ -197,6 +256,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_INFOMASK]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_PARAMS_COMPACT]		= { .type = NLA_FLAG },
  	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_NESTED },

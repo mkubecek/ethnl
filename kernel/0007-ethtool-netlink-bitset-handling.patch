@@ -1,4 +1,4 @@
-From d7be2fb2710e6b92dcf09a983d6658b635ad7a8c Mon Sep 17 00:00:00 2001
+From bdb789d7832397d56bf195099e2993083e40e9fc Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 07/44] ethtool: netlink bitset handling
@@ -147,7 +147,7 @@ index f30e0da88be5..482fdb9380fa 100644
 +ethtool_nl-y	:= netlink.o bitset.o
 diff --git a/net/ethtool/bitset.c b/net/ethtool/bitset.c
 new file mode 100644
-index 000000000000..60c0c1a93c11
+index 000000000000..cf7b81b95948
 --- /dev/null
 +++ b/net/ethtool/bitset.c
 @@ -0,0 +1,606 @@
@@ -314,7 +314,7 @@ index 000000000000..60c0c1a93c11
 +
 +	if (WARN_ON(!compact && !names))
 +		return -EINVAL;
-+	nest = ethnl_nest_start(skb, attrtype);
++	nest = nla_nest_start(skb, attrtype);
 +	if (!nest)
 +		return -EMSGSIZE;
 +
@@ -341,7 +341,7 @@ index 000000000000..60c0c1a93c11
 +		struct nlattr *bits;
 +		unsigned int i;
 +
-+		bits = ethnl_nest_start(skb, ETHTOOL_A_BITSET_BITS);
++		bits = nla_nest_start(skb, ETHTOOL_A_BITSET_BITS);
 +		if (!bits)
 +			goto err;
 +		for (i = 0; i < size; i++) {
@@ -350,7 +350,7 @@ index 000000000000..60c0c1a93c11
 +			if ((is_list || mask) &&
 +			    !ethnl_test_bit(is_list ? val : mask, i, is_u32))
 +				continue;
-+			attr = ethnl_nest_start(skb, ETHTOOL_A_BITS_BIT);
++			attr = nla_nest_start(skb, ETHTOOL_A_BITS_BIT);
 +			if (!attr ||
 +			    nla_put_u32(skb, ETHTOOL_A_BIT_INDEX, i) ||
 +			    nla_put_string(skb, ETHTOOL_A_BIT_NAME, name))
@@ -432,8 +432,8 @@ index 000000000000..60c0c1a93c11
 +				    "ETHTOOL_A_BITSET_BITS can contain only ETHTOOL_A_BITS_BIT");
 +		return -EINVAL;
 +	}
-+	ret = nla_parse_nested_strict(tb, ETHTOOL_A_BIT_MAX, bit_attr,
-+				      bit_policy, info->extack);
++	ret = nla_parse_nested(tb, ETHTOOL_A_BIT_MAX, bit_attr, bit_policy,
++			       info->extack);
 +	if (ret < 0)
 +		return ret;
 +
@@ -485,8 +485,8 @@ index 000000000000..60c0c1a93c11
 +	struct nlattr *tb[ETHTOOL_A_BITSET_MAX + 1];
 +	int ret;
 +
-+	ret = nla_parse_nested_strict(tb, ETHTOOL_A_BITSET_MAX, bitset,
-+				      bitset_policy, NULL);
++	ret = nla_parse_nested(tb, ETHTOOL_A_BITSET_MAX, bitset,
++			       bitset_policy, NULL);
 +	if (ret < 0)
 +		return ret;
 +
@@ -640,8 +640,8 @@ index 000000000000..60c0c1a93c11
 +	*err = 0;
 +	if (!attr)
 +		return mod;
-+	*err = nla_parse_nested_strict(tb, ETHTOOL_A_BITSET_MAX, attr,
-+				       bitset_policy, info->extack);
++	*err = nla_parse_nested(tb, ETHTOOL_A_BITSET_MAX, attr, bitset_policy,
++				info->extack);
 +	if (*err < 0)
 +		return mod;
 +	*err = -EINVAL;
@@ -804,7 +804,7 @@ index 000000000000..761d0c47fe23
 +
 +#endif /* _NET_ETHTOOL_BITSET_H */
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index f7f449982cbd..599c445face1 100644
+index a37414ad0434..19f3aacf815d 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -15,6 +15,15 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,

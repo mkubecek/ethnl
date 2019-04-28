@@ -1,4 +1,4 @@
-From c63620d76f6d086c6c7caedfd27a09f54f242516 Mon Sep 17 00:00:00 2001
+From 4d367c727f7e4336cda34eaf7e683228eb42a0b0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 16/44] ethtool: provide link settings and link modes in
@@ -27,8 +27,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/ioctl.c                          |  64 +----
  net/ethtool/netlink.c                        |   9 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/settings.c                       | 278 +++++++++++++++++++
- 10 files changed, 452 insertions(+), 53 deletions(-)
+ net/ethtool/settings.c                       | 279 +++++++++++++++++++
+ 10 files changed, 453 insertions(+), 53 deletions(-)
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -374,7 +374,7 @@ index d923aa183a9e..4a5df702955b 100644
  
  static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 8cc0b0659f8b..775ddd8ea403 100644
+index 72ce3d6fbe13..07d7d62aa533 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -257,6 +257,7 @@ static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)
@@ -408,10 +408,10 @@ index 8cc0b0659f8b..775ddd8ea403 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index b0b6c610721a..1ef5fe9a4f6b 100644
+index c740e4b8e911..381dc5e58a00 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -271,5 +271,6 @@ struct get_request_ops {
+@@ -256,5 +256,6 @@ struct get_request_ops {
  
  extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops info_request_ops;
@@ -420,10 +420,10 @@ index b0b6c610721a..1ef5fe9a4f6b 100644
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
-index 000000000000..9abc4b04d8fb
+index 000000000000..9a4c750927be
 --- /dev/null
 +++ b/net/ethtool/settings.c
-@@ -0,0 +1,278 @@
+@@ -0,0 +1,279 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include "netlink.h"
@@ -456,8 +456,8 @@ index 000000000000..9abc4b04d8fb
 +	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
 +	int ret;
 +
-+	ret = ethnlmsg_parse(nlhdr, tb, ETHTOOL_A_SETTINGS_MAX,
-+			     get_settings_policy, info);
++	ret = nlmsg_parse(nlhdr, GENL_HDRLEN, tb, ETHTOOL_A_SETTINGS_MAX,
++			  get_settings_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +
@@ -600,11 +600,12 @@ index 000000000000..9abc4b04d8fb
 +static int fill_link_info(struct sk_buff *skb,
 +			  const struct ethtool_link_settings *lsettings)
 +{
-+	struct nlattr *nest = ethnl_nest_start(skb,
-+					       ETHTOOL_A_SETTINGS_LINK_INFO);
++	struct nlattr *nest;
 +
++	nest = nla_nest_start(skb, ETHTOOL_A_SETTINGS_LINK_INFO);
 +	if (!nest)
 +		return -EMSGSIZE;
++
 +	if (nla_put_u8(skb, ETHTOOL_A_LINKINFO_PORT, lsettings->port) ||
 +	    nla_put_u8(skb, ETHTOOL_A_LINKINFO_PHYADDR,
 +		       lsettings->phy_address) ||
@@ -634,7 +635,7 @@ index 000000000000..9abc4b04d8fb
 +	struct nlattr *nest;
 +	int ret;
 +
-+	nest = ethnl_nest_start(skb, ETHTOOL_A_SETTINGS_LINK_MODES);
++	nest = nla_nest_start(skb, ETHTOOL_A_SETTINGS_LINK_MODES);
 +	if (!nest)
 +		return -EMSGSIZE;
 +	if (nla_put_u8(skb, ETHTOOL_A_LINKMODES_AUTONEG, lsettings->autoneg))

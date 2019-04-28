@@ -1,4 +1,4 @@
-From 8b8c998393c5e8bda0845250045605044942ae10 Mon Sep 17 00:00:00 2001
+From 5cfc6c826df3a62c7c27db897f5e6072a584dbbb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 44/44] ethtool: implement SET_RXFLOW message
@@ -21,8 +21,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool_netlink.h         |   2 +-
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/rxflow.c                         | 632 +++++++++++++++++++
- 5 files changed, 680 insertions(+), 4 deletions(-)
+ net/ethtool/rxflow.c                         | 631 +++++++++++++++++++
+ 5 files changed, 679 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 590186764643..549f7340d9b4 100644
@@ -114,7 +114,7 @@ index d03bb4b56b10..f33d1bab3c0c 100644
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 1286bd00a7dc..f042801c7c03 100644
+index a97a6cece7b7..e26d6d98ccc4 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -741,6 +741,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
@@ -130,10 +130,10 @@ index 1286bd00a7dc..f042801c7c03 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 9ab94ec2da11..8bdad9748c39 100644
+index d95e103259b9..cb7dce82cc7e 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -280,6 +280,7 @@ extern const struct get_request_ops rxflow_request_ops;
+@@ -265,6 +265,7 @@ extern const struct get_request_ops rxflow_request_ops;
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
@@ -142,10 +142,10 @@ index 9ab94ec2da11..8bdad9748c39 100644
  int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_reset(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index 402b95c76983..34969314ce50 100644
+index 6520add3a8c9..75b546fb49f3 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
-@@ -528,3 +528,635 @@ void ethnl_rxflow_notify(struct net_device *dev,
+@@ -528,3 +528,634 @@ void ethnl_rxflow_notify(struct net_device *dev,
  err_data:
  	rxflow_cleanup(req_info);
  }
@@ -249,9 +249,8 @@ index 402b95c76983..34969314ce50 100644
 +						    "unexpected attribute in ETHTOOL_A_RXFLOW_HASH_OPTS");
 +			return -EINVAL;
 +		}
-+		ret = nla_parse_nested_strict(tb, ETHTOOL_A_RXHASHOPT_MAX,
-+					      opt_attr, rxhashopt_policy,
-+					      info->extack);
++		ret = nla_parse_nested(tb, ETHTOOL_A_RXHASHOPT_MAX, opt_attr,
++				       rxhashopt_policy, info->extack);
 +		if (ret < 0)
 +			return ret;
 +		if (tb[ETHTOOL_A_RXHASHOPT_DISCARD] &&
@@ -364,8 +363,8 @@ index 402b95c76983..34969314ce50 100644
 +	unsigned int start, blen, i;
 +	int ret;
 +
-+	ret = nla_parse_nested_strict(tb, ETHTOOL_A_ITBLK_MAX, block,
-+				      indtbl_block_policy, info->extack);
++	ret = nla_parse_nested(tb, ETHTOOL_A_ITBLK_MAX, block,
++			       indtbl_block_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +	if (tb[ETHTOOL_A_ITBLK_DATA])
@@ -439,8 +438,8 @@ index 402b95c76983..34969314ce50 100644
 +	unsigned int start = 0;
 +	int ret;
 +
-+	ret = nla_parse_nested_strict(tb, ETHTOOL_A_ITPAT_MAX, pattern,
-+				      indtbl_pattern_policy, info->extack);
++	ret = nla_parse_nested(tb, ETHTOOL_A_ITPAT_MAX, pattern,
++			       indtbl_pattern_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +
@@ -495,8 +494,8 @@ index 402b95c76983..34969314ce50 100644
 +	int ring, ret, i;
 +	s64 balance;
 +
-+	ret = nla_parse_nested_strict(tb, ETHTOOL_A_ITWGHT_MAX, attr,
-+				      indtbl_weights_policy, info->extack);
++	ret = nla_parse_nested(tb, ETHTOOL_A_ITWGHT_MAX, attr,
++			       indtbl_weights_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +	if (!tb[ETHTOOL_A_ITWGHT_WEIGHTS] ||
@@ -684,8 +683,8 @@ index 402b95c76983..34969314ce50 100644
 +	u8 *hkey;
 +	int ret;
 +
-+	ret = ethnlmsg_parse(info->nlhdr, tb, ETHTOOL_A_RXFLOW_MAX,
-+			     set_rxflow_policy, info);
++	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb, ETHTOOL_A_RXFLOW_MAX,
++			  set_rxflow_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +	if (tb[ETHTOOL_A_RXFLOW_CONTEXT])

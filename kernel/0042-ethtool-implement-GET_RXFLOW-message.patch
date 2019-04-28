@@ -1,4 +1,4 @@
-From 719b4cfe5664c14007e5f37dce752400cca50a20 Mon Sep 17 00:00:00 2001
+From d285b25474919b8f5388880aec263ac3cba644e4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 42/44] ethtool: implement GET_RXFLOW message
@@ -322,7 +322,7 @@ index b3e88cf0f4c0..a6ace735f44f 100644
 -		   actions.o
 +		   actions.o rxflow.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 18abe89cd9d1..cad558fc8da6 100644
+index 4eef2d403ccb..a5f1a53a9db0 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -259,6 +259,7 @@ const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
@@ -348,10 +348,10 @@ index 18abe89cd9d1..cad558fc8da6 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 85e29c622d4f..18cad5541c02 100644
+index 0c3f045b8473..ac29fcb25449 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -276,6 +276,7 @@ extern const struct get_request_ops strset_request_ops;
+@@ -261,6 +261,7 @@ extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops info_request_ops;
  extern const struct get_request_ops settings_request_ops;
  extern const struct get_request_ops params_request_ops;
@@ -361,7 +361,7 @@ index 85e29c622d4f..18cad5541c02 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
 new file mode 100644
-index 000000000000..2acb99cf99d6
+index 000000000000..17dac7a05664
 --- /dev/null
 +++ b/net/ethtool/rxflow.c
 @@ -0,0 +1,463 @@
@@ -433,8 +433,8 @@ index 000000000000..2acb99cf99d6
 +	struct nlattr *tb[ETHTOOL_A_RXFLOW_MAX + 1];
 +	int ret;
 +
-+	ret = ethnlmsg_parse(nlhdr, tb, ETHTOOL_A_RXFLOW_MAX, get_rxflow_policy,
-+			     info);
++	ret = nlmsg_parse(nlhdr, GENL_HDRLEN, tb, ETHTOOL_A_RXFLOW_MAX,
++			  get_rxflow_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +
@@ -665,7 +665,7 @@ index 000000000000..2acb99cf99d6
 +	unsigned int i;
 +	int ret;
 +
-+	attr_opts = ethnl_nest_start(skb, ETHTOOL_A_RXFLOW_HASH_OPTS);
++	attr_opts = nla_nest_start(skb, ETHTOOL_A_RXFLOW_HASH_OPTS);
 +	if (!attr_opts)
 +		return -EMSGSIZE;
 +
@@ -673,7 +673,7 @@ index 000000000000..2acb99cf99d6
 +		if (!fields[i])
 +			continue;
 +		ret = -EMSGSIZE;
-+		attr_opt = ethnl_nest_start(skb, ETHTOOL_A_RXHASHOPTS_OPT);
++		attr_opt = nla_nest_start(skb, ETHTOOL_A_RXHASHOPTS_OPT);
 +		if (!attr_opt)
 +			goto err;
 +
@@ -707,7 +707,7 @@ index 000000000000..2acb99cf99d6
 +
 +	if (nla_put_u32(skb, ETHTOOL_A_RXFLOW_INDTBL_SIZE, data->indtbl_size))
 +		return -EMSGSIZE;
-+	tbl = ethnl_nest_start(skb, ETHTOOL_A_RXFLOW_INDIR_TBL);
++	tbl = nla_nest_start(skb, ETHTOOL_A_RXFLOW_INDIR_TBL);
 +	if (!tbl)
 +		return -EMSGSIZE;
 +
@@ -727,7 +727,7 @@ index 000000000000..2acb99cf99d6
 +		return -EFAULT;
 +	}
 +	ret = -EMSGSIZE;
-+	block = ethnl_nest_start(skb, block_attrtype);
++	block = nla_nest_start(skb, block_attrtype);
 +	if (!block)
 +		goto err;
 +

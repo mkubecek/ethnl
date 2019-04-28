@@ -1,4 +1,4 @@
-From 00bc9a3d421d68a294799dc6826e5e9386b6f656 Mon Sep 17 00:00:00 2001
+From 2dfb53a36a69832095ebc4b6bee8fc012e4b7275 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 40/44] ethtool: implement ACT_PHYS_ID message
@@ -93,7 +93,7 @@ index 12415e73ac22..ab84d768b45a 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
-index 4467885ed92e..722eb933036d 100644
+index 2f3f9e85016d..5369e9b045d1 100644
 --- a/net/ethtool/actions.c
 +++ b/net/ethtool/actions.c
 @@ -70,3 +70,75 @@ int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info)
@@ -148,8 +148,8 @@ index 4467885ed92e..722eb933036d 100644
 +	struct net_device *dev;
 +	int ret;
 +
-+	ret = ethnlmsg_parse(info->nlhdr, tb, ETHTOOL_A_PHYSID_MAX,
-+			     physid_policy, info);
++	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb, ETHTOOL_A_PHYSID_MAX,
++			  physid_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +	dev = ethnl_dev_get(info, tb[ETHTOOL_A_PHYSID_DEV]);
@@ -330,7 +330,7 @@ index d34af84c1adf..8a7fa834c3d8 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 6dda3023b816..70e59c222b64 100644
+index dcf4f16210fa..f89ed17b97eb 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -584,6 +584,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
@@ -354,10 +354,10 @@ index 6dda3023b816..70e59c222b64 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index cc0b2dd5d877..a663f6e59de4 100644
+index 52b4d692fca2..c231283c45c4 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -279,11 +279,14 @@ extern const struct get_request_ops params_request_ops;
+@@ -264,11 +264,14 @@ extern const struct get_request_ops params_request_ops;
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info);

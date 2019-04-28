@@ -1,4 +1,4 @@
-From 8726a563ea68b30ff545db0fbf7bf03140bb5960 Mon Sep 17 00:00:00 2001
+From c045a74463b70c916bbec80de532b15628e64051 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:36:43 +0100
 Subject: [PATCH 34/44] ethtool: set channel counts with SET_PARAMS request
@@ -243,7 +243,7 @@ index 484cde939527..3d04a11f1328 100644
  		ethtool_notify(dev, NULL, ETHNL_CMD_SET_PARAMS,
  			       ETH_PARAMS_IM_CHANNELS, NULL);
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 6381fb0a634c..73dc2111c32a 100644
+index 12ef592aa162..35ab47cd3b74 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -1,6 +1,7 @@
@@ -254,7 +254,7 @@ index 6381fb0a634c..73dc2111c32a 100644
  
  static const struct nla_policy get_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_UNSPEC]		= { .type = NLA_REJECT },
-@@ -353,7 +354,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+@@ -357,7 +358,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_NESTED },
@@ -263,7 +263,7 @@ index 6381fb0a634c..73dc2111c32a 100644
  };
  
  static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
-@@ -574,6 +575,58 @@ static int update_pause(struct genl_info *info, struct net_device *dev,
+@@ -578,6 +579,58 @@ static int update_pause(struct genl_info *info, struct net_device *dev,
  	return (ret < 0) ? ret : 1;
  }
  
@@ -297,8 +297,8 @@ index 6381fb0a634c..73dc2111c32a 100644
 +	new = old;
 +	new.cmd = ETHTOOL_SCHANNELS;
 +
-+	ret = nla_parse_nested_strict(tb, ETHTOOL_A_CHANNELS_MAX, nest,
-+				      channels_policy, info->extack);
++	ret = nla_parse_nested(tb, ETHTOOL_A_CHANNELS_MAX, nest,
++			       channels_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +
@@ -322,7 +322,7 @@ index 6381fb0a634c..73dc2111c32a 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
-@@ -608,6 +661,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+@@ -612,6 +665,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
  		req_mask |= ETH_PARAMS_IM_PAUSE;

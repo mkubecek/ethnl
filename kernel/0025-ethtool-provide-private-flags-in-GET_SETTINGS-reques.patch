@@ -1,4 +1,4 @@
-From db83d6ce1ed5104060756081df3174eaad8facf6 Mon Sep 17 00:00:00 2001
+From ffcc94eb3fe5820e9a9d4e9b5ca22980f63a79cb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 16:19:21 +0100
 Subject: [PATCH 25/44] ethtool: provide private flags in GET_SETTINGS request
@@ -103,7 +103,7 @@ index c5d3096bcb9b..e391652130d8 100644
  	case ETHTOOL_GRXFH:
  	case ETHTOOL_GRXRINGS:
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 470b23d3ef26..5a7882534c72 100644
+index 9b49da5c7307..7731e289f3d6 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -21,6 +21,9 @@ struct settings_data {
@@ -213,7 +213,7 @@ index 470b23d3ef26..5a7882534c72 100644
  
  	return len;
  }
-@@ -562,6 +634,18 @@ static int fill_features(struct sk_buff *skb, const struct settings_data *data)
+@@ -563,6 +635,18 @@ static int fill_features(struct sk_buff *skb, const struct settings_data *data)
  	return 0;
  }
  
@@ -232,7 +232,7 @@ index 470b23d3ef26..5a7882534c72 100644
  static int fill_settings(struct sk_buff *skb,
  			 const struct common_req_info *req_info)
  {
-@@ -602,10 +686,23 @@ static int fill_settings(struct sk_buff *skb,
+@@ -603,10 +687,23 @@ static int fill_settings(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -256,7 +256,7 @@ index 470b23d3ef26..5a7882534c72 100644
  const struct get_request_ops settings_request_ops = {
  	.request_cmd		= ETHNL_CMD_GET_SETTINGS,
  	.reply_cmd		= ETHNL_CMD_SET_SETTINGS,
-@@ -617,6 +714,7 @@ const struct get_request_ops settings_request_ops = {
+@@ -618,6 +715,7 @@ const struct get_request_ops settings_request_ops = {
  	.prepare_data		= prepare_settings,
  	.reply_size		= settings_size,
  	.fill_reply		= fill_settings,
@@ -264,7 +264,7 @@ index 470b23d3ef26..5a7882534c72 100644
  };
  
  /* SET_SETTINGS */
-@@ -674,6 +772,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -675,6 +773,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_FEATURES]		= { .type = NLA_NESTED },

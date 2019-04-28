@@ -1,4 +1,4 @@
-From 0e48942570f3aaa0145fd77e6fbc1a0eeba23db2 Mon Sep 17 00:00:00 2001
+From dff3ae8021030a3703deda1f1cddb658c1825ab4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 21:27:19 +0100
 Subject: [PATCH 28/44] ethtool: set coalescing parameters with SET_PARAMS
@@ -78,7 +78,7 @@ index 5671b05b19bf..2677b5db2ca5 100644
  ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 87c1e597032d..175817de604d 100644
+index d237b8a5348a..0f6def083d73 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -709,6 +709,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
@@ -94,10 +94,10 @@ index 87c1e597032d..175817de604d 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index feda93afb989..3df505eb060d 100644
+index ab508379c728..ba71dc367869 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -275,5 +275,6 @@ extern const struct get_request_ops settings_request_ops;
+@@ -260,5 +260,6 @@ extern const struct get_request_ops settings_request_ops;
  extern const struct get_request_ops params_request_ops;
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
@@ -105,10 +105,10 @@ index feda93afb989..3df505eb060d 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 54e4e4999b58..3d4fd562dc87 100644
+index f3ba6ffb678c..34d8861ad4fe 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -187,3 +187,169 @@ const struct get_request_ops params_request_ops = {
+@@ -188,3 +188,169 @@ const struct get_request_ops params_request_ops = {
  	.reply_size		= params_size,
  	.fill_reply		= fill_params,
  };
@@ -165,8 +165,8 @@ index 54e4e4999b58..3d4fd562dc87 100644
 +	if (ret < 0)
 +		return ret;
 +
-+	ret = nla_parse_nested_strict(tb, ETHTOOL_A_COALESCE_MAX, nest,
-+				      coalesce_policy, info->extack);
++	ret = nla_parse_nested(tb, ETHTOOL_A_COALESCE_MAX, nest,
++			       coalesce_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +
@@ -250,8 +250,8 @@ index 54e4e4999b58..3d4fd562dc87 100644
 +	u32 req_mask = 0;
 +	int ret;
 +
-+	ret = ethnlmsg_parse(info->nlhdr, tb, ETHTOOL_A_PARAMS_MAX,
-+			     set_params_policy, info);
++	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb, ETHTOOL_A_PARAMS_MAX,
++			  set_params_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +	dev = ethnl_dev_get(info, tb[ETHTOOL_A_PARAMS_DEV]);

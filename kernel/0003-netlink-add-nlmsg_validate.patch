@@ -1,0 +1,69 @@
+From 0cc3f410fe78a9102efcbfdb4e40a9de92103132 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Sun, 28 Apr 2019 02:25:01 +0200
+Subject: [PATCH 03/44] netlink: add nlmsg_validate()
+
+Add nlmsg_validate() helper which validates all attributes in a netlink
+message but unlike nlmsg_validate_deprecated(), it does so in strict mode.
+
+Also add description of nlmsg_validate_deprecated() to distinguish these
+two functions.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ include/net/netlink.h | 32 ++++++++++++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
+
+diff --git a/include/net/netlink.h b/include/net/netlink.h
+index 3489436883ba..a6f83e840cd8 100644
+--- a/include/net/netlink.h
++++ b/include/net/netlink.h
+@@ -789,6 +789,12 @@ static inline int nla_validate(const struct nlattr *head, int len, int maxtype,
+  * @maxtype: maximum attribute type to be expected
+  * @policy: validation policy
+  * @extack: extended ACK report struct
++ *
++ * Validates all attributes in a netlink message against the specified policy.
++ * Validation is done in liberal mode. See documentation of struct nla_policy
++ * for mor details.
++ *
++ * Returns 0 on success or a negative error code.
+  */
+ static inline int nlmsg_validate_deprecated(const struct nlmsghdr *nlh,
+ 					    int hdrlen, int maxtype,
+@@ -803,6 +809,32 @@ static inline int nlmsg_validate_deprecated(const struct nlmsghdr *nlh,
+ 			      policy, NL_VALIDATE_LIBERAL, extack);
+ }
+ 
++/**
++ * nlmsg_validate - validate a netlink message including attributes
++ * @nlh: netlinket message header
++ * @hdrlen: length of familiy specific header
++ * @maxtype: maximum attribute type to be expected
++ * @policy: validation policy
++ * @extack: extended ACK report struct
++ *
++ * Validates all attributes in a netlink message against the specified policy.
++ * Validation is done in strict mode. See documentation of struct nla_policy
++ * for mor details.
++ *
++ * Returns 0 on success or a negative error code.
++ */
++static inline int nlmsg_validate(const struct nlmsghdr *nlh, int hdrlen,
++				 int maxtype, const struct nla_policy *policy,
++				 struct netlink_ext_ack *extack)
++{
++	if (nlh->nlmsg_len < nlmsg_msg_size(hdrlen))
++		return -EINVAL;
++
++	return __nla_validate(nlmsg_attrdata(nlh, hdrlen),
++			      nlmsg_attrlen(nlh, hdrlen), maxtype,
++			      policy, NL_VALIDATE_STRICT, extack);
++}
++
+ 
+ 
+ /**
+-- 
+2.21.0
+

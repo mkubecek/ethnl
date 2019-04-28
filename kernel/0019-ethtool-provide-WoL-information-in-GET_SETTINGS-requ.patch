@@ -1,4 +1,4 @@
-From 3c2ad32f313c2744858b70eae4814dfaa36fadd7 Mon Sep 17 00:00:00 2001
+From 5cbc188224ba43864cc29a9a0436e89fcaa3d8d2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:08:55 +0100
 Subject: [PATCH 19/44] ethtool: provide WoL information in GET_SETTINGS
@@ -170,7 +170,7 @@ index c77e655dc371..b8ce0ee4cebe 100644
  	return 0;
  }
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index ab9348bece99..53c3fd78000d 100644
+index 9f278691b5fd..aa021249a039 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -6,10 +6,12 @@
@@ -204,8 +204,8 @@ index ab9348bece99..53c3fd78000d 100644
  
 +	data->privileged = ethnl_is_privileged(skb);
 +
- 	ret = ethnlmsg_parse(nlhdr, tb, ETHTOOL_A_SETTINGS_MAX,
- 			     get_settings_policy, info);
+ 	ret = nlmsg_parse(nlhdr, GENL_HDRLEN, tb, ETHTOOL_A_SETTINGS_MAX,
+ 			  get_settings_policy, info->extack);
  	if (ret < 0)
 @@ -159,6 +166,16 @@ static int ethnl_get_link_ksettings(struct genl_info *info,
  	return ret;
@@ -258,7 +258,7 @@ index ab9348bece99..53c3fd78000d 100644
  
  	return len;
  }
-@@ -362,6 +392,33 @@ static int fill_link_state(struct sk_buff *skb, int link)
+@@ -363,6 +393,33 @@ static int fill_link_state(struct sk_buff *skb, int link)
  	return -EMSGSIZE;
  }
  
@@ -267,7 +267,7 @@ index ab9348bece99..53c3fd78000d 100644
 +{
 +	struct nlattr *nest;
 +
-+	nest = ethnl_nest_start(skb, ETHTOOL_A_SETTINGS_WOL);
++	nest = nla_nest_start(skb, ETHTOOL_A_SETTINGS_WOL);
 +	if (!nest)
 +		return -EMSGSIZE;
 +	if (nla_put_bitfield32(skb, ETHTOOL_A_WOL_MODES, wolinfo->wolopts,
@@ -292,7 +292,7 @@ index ab9348bece99..53c3fd78000d 100644
  static int fill_settings(struct sk_buff *skb,
  			 const struct common_req_info *req_info)
  {
-@@ -387,6 +444,11 @@ static int fill_settings(struct sk_buff *skb,
+@@ -388,6 +445,11 @@ static int fill_settings(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -304,7 +304,7 @@ index ab9348bece99..53c3fd78000d 100644
  
  	return 0;
  }
-@@ -432,6 +494,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -433,6 +495,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_LINK_INFO]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_MODES]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },

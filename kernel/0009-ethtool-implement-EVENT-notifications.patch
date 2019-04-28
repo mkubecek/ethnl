@@ -1,4 +1,4 @@
-From 165e53b4614dff77be7ef20319ccb11e076263c7 Mon Sep 17 00:00:00 2001
+From 4a4eec70992209b08830f798d003a5c80ccc0dd6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 09/44] ethtool: implement EVENT notifications
@@ -127,7 +127,7 @@ index 428136f9f836..1414ca7d5713 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index f01d71e61654..0992b8a6d751 100644
+index d4b60112b6db..0fe15b202698 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -7,6 +7,7 @@
@@ -182,7 +182,7 @@ index f01d71e61654..0992b8a6d751 100644
 +	ehdr = ethnl_bcastmsg_put(skb, ETHNL_CMD_EVENT);
 +	if (!ehdr)
 +		goto out_skb;
-+	nest = ethnl_nest_start(skb, ev_type);
++	nest = nla_nest_start(skb, ev_type);
 +	if (!nest)
 +		goto out_skb;
 +	ret = ethnl_fill_dev(skb, dev, dev_attr);

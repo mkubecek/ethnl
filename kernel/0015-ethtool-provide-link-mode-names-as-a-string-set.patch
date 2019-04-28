@@ -1,4 +1,4 @@
-From 16263f17048c65cf63bff0b24b1dc6aeac0c1bf2 Mon Sep 17 00:00:00 2001
+From 9369679e7a17f1579fa457b79123c612ece6a550 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:50:07 +0100
 Subject: [PATCH 15/44] ethtool: provide link mode names as a string set
@@ -51,7 +51,7 @@ index bdf36c041486..986bbc20a930 100644
  	ETH_SS_COUNT
  };
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index e0cab8df69c5..8cc0b0659f8b 100644
+index e082239483bc..72ce3d6fbe13 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -9,6 +9,84 @@ static struct genl_family ethtool_genl_family;
@@ -150,7 +150,7 @@ index e0cab8df69c5..8cc0b0659f8b 100644
  	if (WARN(ret < 0, "ethtool: genetlink family registration failed"))
  		return ret;
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 80833bb7cd1a..b0b6c610721a 100644
+index fd18d732a725..c740e4b8e911 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -16,6 +16,7 @@
@@ -162,7 +162,7 @@ index 80833bb7cd1a..b0b6c610721a 100644
  struct net_device *ethnl_dev_get(struct genl_info *info, struct nlattr *nest);
  int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index 26b386741fd7..4667b7ed7ad1 100644
+index fb71c24fc619..5fd4695f58ed 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -85,6 +85,12 @@ static const struct strset_info info_template[] = {

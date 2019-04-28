@@ -1,4 +1,4 @@
-From 1168ad3f88a249bc2801dd42196df7ae9dd4dfb7 Mon Sep 17 00:00:00 2001
+From 73d23221daf39b7b5788c39bf404ece7496df367 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 23/44] ethtool: provide device features in GET_SETTINGS
@@ -196,7 +196,7 @@ index 1351832ff1c9..c5d3096bcb9b 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index feac3f05e95f..20afc636e763 100644
+index e8b78cd10c91..bcc4cfc21f52 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -635,6 +635,14 @@ static void ethnl_notify_devlist(struct netdev_notifier_info *info,
@@ -225,7 +225,7 @@ index feac3f05e95f..20afc636e763 100644
  
  	return NOTIFY_DONE;
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index fa729ae63e2c..0050a07b8cc9 100644
+index 347fc5671fe8..aa623b044713 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -15,6 +15,12 @@ struct settings_data {
@@ -335,7 +335,7 @@ index fa729ae63e2c..0050a07b8cc9 100644
  
  	return len;
  }
-@@ -459,6 +524,44 @@ static int fill_debug(struct sk_buff *skb, u32 msglevel)
+@@ -460,6 +525,44 @@ static int fill_debug(struct sk_buff *skb, u32 msglevel)
  	return -EMSGSIZE;
  }
  
@@ -347,7 +347,7 @@ index fa729ae63e2c..0050a07b8cc9 100644
 +	struct nlattr *feat_attr;
 +	int ret;
 +
-+	feat_attr = ethnl_nest_start(skb, ETHTOOL_A_SETTINGS_FEATURES);
++	feat_attr = nla_nest_start(skb, ETHTOOL_A_SETTINGS_FEATURES);
 +	if (!feat_attr)
 +		return -EMSGSIZE;
 +
@@ -380,7 +380,7 @@ index fa729ae63e2c..0050a07b8cc9 100644
  static int fill_settings(struct sk_buff *skb,
  			 const struct common_req_info *req_info)
  {
-@@ -494,6 +597,11 @@ static int fill_settings(struct sk_buff *skb,
+@@ -495,6 +598,11 @@ static int fill_settings(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -392,7 +392,7 @@ index fa729ae63e2c..0050a07b8cc9 100644
  
  	return 0;
  }
-@@ -556,6 +664,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -557,6 +665,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },

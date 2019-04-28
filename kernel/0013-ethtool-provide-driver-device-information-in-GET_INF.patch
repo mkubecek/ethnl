@@ -1,4 +1,4 @@
-From c80b6b637f402ec0b2f68500776684dbe4d5a085 Mon Sep 17 00:00:00 2001
+From 1c8261fb1a07ff5be4f7d68415f9b40f7cdf64ac Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 13/44] ethtool: provide driver/device information in GET_INFO
@@ -18,11 +18,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/common.c                         |  52 ++++++
  net/ethtool/common.h                         |   2 +
- net/ethtool/info.c                           | 168 +++++++++++++++++++
+ net/ethtool/info.c                           | 169 +++++++++++++++++++
  net/ethtool/ioctl.c                          |  50 +-----
  net/ethtool/netlink.c                        |   8 +
  net/ethtool/netlink.h                        |   1 +
- 9 files changed, 309 insertions(+), 47 deletions(-)
+ 9 files changed, 310 insertions(+), 47 deletions(-)
  create mode 100644 net/ethtool/info.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -237,10 +237,10 @@ index 41b2efc1e4e1..e87e58b3a274 100644
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
 new file mode 100644
-index 000000000000..bf6ef8fb9456
+index 000000000000..ed3033354b26
 --- /dev/null
 +++ b/net/ethtool/info.c
-@@ -0,0 +1,168 @@
+@@ -0,0 +1,169 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include "netlink.h"
@@ -270,8 +270,8 @@ index 000000000000..bf6ef8fb9456
 +	struct nlattr *tb[ETHTOOL_A_INFO_MAX + 1];
 +	int ret;
 +
-+	ret = ethnlmsg_parse(nlhdr, tb, ETHTOOL_A_INFO_MAX, get_info_policy,
-+			     info);
++	ret = nlmsg_parse(nlhdr, GENL_HDRLEN, tb, ETHTOOL_A_INFO_MAX,
++			  get_info_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +
@@ -353,9 +353,10 @@ index 000000000000..bf6ef8fb9456
 +static int fill_drvinfo(struct sk_buff *skb,
 +			const struct ethtool_drvinfo *drvinfo)
 +{
-+	struct nlattr *nest = ethnl_nest_start(skb, ETHTOOL_A_INFO_DRVINFO);
++	struct nlattr *nest;
 +	int ret;
 +
++	nest = nla_nest_start(skb, ETHTOOL_A_INFO_DRVINFO);
 +	if (!nest)
 +		return -EMSGSIZE;
 +	ret = -EMSGSIZE;
@@ -474,7 +475,7 @@ index 10729878a56d..fec7d92a1b2a 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 4f43921b9caa..e0cab8df69c5 100644
+index ea77df1f4686..e082239483bc 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -178,6 +178,7 @@ static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)
@@ -500,10 +501,10 @@ index 4f43921b9caa..e0cab8df69c5 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 486742f47a97..89efb50842e8 100644
+index 4bea6ee2f6d1..479d950de5f0 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -260,5 +260,6 @@ struct get_request_ops {
+@@ -245,5 +245,6 @@ struct get_request_ops {
  /* request handlers */
  
  extern const struct get_request_ops strset_request_ops;

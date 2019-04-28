@@ -1,4 +1,4 @@
-From 6c89efcc572d57aeaa6433347d589822ea59d628 Mon Sep 17 00:00:00 2001
+From 395c79fc0850dd41f0056dadc691c52fe367f85a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:19:02 +0100
 Subject: [PATCH 21/44] ethtool: provide message level in GET_SETTINGS request
@@ -66,10 +66,10 @@ index 60369c5d6820..aa698a6a0157 100644
  ETHTOOL_NWAY_RST		n/a
  ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index bfb8fe582f49..1bf3420bddb8 100644
+index c6d2595b99de..3ebbe567cb85 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -3881,6 +3881,8 @@ enum {
+@@ -3860,6 +3860,8 @@ enum {
  	NETIF_MSG_PKTDATA	= 0x1000,
  	NETIF_MSG_HW		= 0x2000,
  	NETIF_MSG_WOL		= 0x4000,
@@ -135,7 +135,7 @@ index b8ce0ee4cebe..1351832ff1c9 100644
  	case ETHTOOL_GEEE:
  		rc = ethtool_get_eee(dev, useraddr);
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 46e024d0466f..678f630c6d92 100644
+index de8d4fa0b88e..4c43b2213f55 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,7 @@ struct settings_data {
@@ -196,7 +196,7 @@ index 46e024d0466f..678f630c6d92 100644
  
  	return len;
  }
-@@ -425,6 +441,24 @@ static int fill_wolinfo(struct sk_buff *skb,
+@@ -426,6 +442,24 @@ static int fill_wolinfo(struct sk_buff *skb,
  	return -EMSGSIZE;
  }
  
@@ -204,7 +204,7 @@ index 46e024d0466f..678f630c6d92 100644
 +{
 +	struct nlattr *nest;
 +
-+	nest = ethnl_nest_start(skb, ETHTOOL_A_SETTINGS_DEBUG);
++	nest = nla_nest_start(skb, ETHTOOL_A_SETTINGS_DEBUG);
 +	if (!nest)
 +		return -EMSGSIZE;
 +	if (nla_put_bitfield32(skb, ETHTOOL_A_DEBUG_MSG_MASK, msglevel,
@@ -221,7 +221,7 @@ index 46e024d0466f..678f630c6d92 100644
  static int fill_settings(struct sk_buff *skb,
  			 const struct common_req_info *req_info)
  {
-@@ -455,6 +489,11 @@ static int fill_settings(struct sk_buff *skb,
+@@ -456,6 +490,11 @@ static int fill_settings(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -233,7 +233,7 @@ index 46e024d0466f..678f630c6d92 100644
  
  	return 0;
  }
-@@ -509,6 +548,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -510,6 +549,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_LINK_MODES]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_REJECT },

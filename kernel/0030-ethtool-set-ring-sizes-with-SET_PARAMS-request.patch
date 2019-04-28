@@ -1,4 +1,4 @@
-From 043ba91b845a6ea66228553018a8d113df0112e3 Mon Sep 17 00:00:00 2001
+From 809c0d33a0f902ed48fa4d4363194c4e999ce3a7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 07:53:54 +0100
 Subject: [PATCH 30/44] ethtool: set ring sizes with SET_PARAMS request
@@ -52,10 +52,10 @@ index ad45028e940a..7c9161ef781d 100644
  ETHTOOL_SPAUSEPARAM		n/a
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index ee8eb6fb42b9..ef2b0c52dfe7 100644
+index afd87e0412fc..60e06d3e282d 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -254,7 +254,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+@@ -256,7 +256,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_INFOMASK]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_PARAMS_COMPACT]		= { .type = NLA_FLAG },
  	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_NESTED },
@@ -64,7 +64,7 @@ index ee8eb6fb42b9..ef2b0c52dfe7 100644
  };
  
  static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
-@@ -377,6 +377,64 @@ static int update_coalesce(struct genl_info *info, struct net_device *dev,
+@@ -379,6 +379,64 @@ static int update_coalesce(struct genl_info *info, struct net_device *dev,
  	return (ret < 0) ? ret : 1;
  }
  
@@ -95,8 +95,8 @@ index ee8eb6fb42b9..ef2b0c52dfe7 100644
 +		return -EOPNOTSUPP;
 +	dev->ethtool_ops->get_ringparam(dev, &data);
 +
-+	ret = nla_parse_nested_strict(tb, ETHTOOL_A_RING_MAX, nest, ring_policy,
-+				      info->extack);
++	ret = nla_parse_nested(tb, ETHTOOL_A_RING_MAX, nest, ring_policy,
++			       info->extack);
 +	if (ret < 0)
 +		return ret;
 +
@@ -129,7 +129,7 @@ index ee8eb6fb42b9..ef2b0c52dfe7 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
-@@ -401,6 +459,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+@@ -403,6 +461,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
  		req_mask |= ETH_PARAMS_IM_COALESCE;
