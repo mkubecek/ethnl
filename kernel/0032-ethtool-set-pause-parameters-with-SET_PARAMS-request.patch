@@ -1,4 +1,4 @@
-From fffd98ee54ba2bb1277d5b499a45e10e46bce6a8 Mon Sep 17 00:00:00 2001
+From 9bbd05ae67cf9ad823e7198c72f0252c28860540 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:07:38 +0100
 Subject: [PATCH 32/44] ethtool: set pause parameters with SET_PARAMS request
@@ -53,7 +53,7 @@ index 8c3d6a55af35..6a044246838d 100644
  ETHTOOL_SRXCSUM			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GTXCSUM			ETHNL_CMD_GET_SETTINGS
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 3158c8b2a473..4d63b4c37278 100644
+index 1ba7a9a80c2b..9a4dab76eb17 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -303,7 +303,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
@@ -65,7 +65,7 @@ index 3158c8b2a473..4d63b4c37278 100644
  };
  
  static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
-@@ -484,6 +484,46 @@ static int update_ring(struct genl_info *info, struct net_device *dev,
+@@ -493,6 +493,46 @@ static int update_ring(struct genl_info *info, struct net_device *dev,
  	return (ret < 0) ? ret : 1;
  }
  
@@ -112,7 +112,7 @@ index 3158c8b2a473..4d63b4c37278 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
-@@ -513,6 +553,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+@@ -522,6 +562,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
  		req_mask |= ETH_PARAMS_IM_RING;
