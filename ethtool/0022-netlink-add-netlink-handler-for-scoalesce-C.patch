@@ -1,4 +1,4 @@
-From 3f00a7ed4226b5f50734a5d246e97c381fe6dd8b Mon Sep 17 00:00:00 2001
+From 5cb22540554d742dde61343789bbbd620ebba308 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 07:27:00 +0100
 Subject: [PATCH 22/34] netlink: add netlink handler for scoalesce (-C)
@@ -47,12 +47,12 @@ index c2676d492c75..41c8f5487062 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index d50924510930..7b5a0881c946 100644
+index fe0541bbe9f8..ba8577aae3f2 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -333,3 +333,184 @@ int nl_gfec(struct cmd_context *ctx)
  {
- 	return params_request(ctx, ETH_PARAMS_IM_FEC);
+ 	return params_request(ctx, ETHTOOL_IM_PARAMS_FEC);
  }
 +
 +/* SET_PARAMS */

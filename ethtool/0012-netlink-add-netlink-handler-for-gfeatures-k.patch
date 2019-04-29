@@ -1,10 +1,10 @@
-From e06b7f109054d9951659732f733ce3c9225ef654 Mon Sep 17 00:00:00 2001
+From fcaae4f334f336355b18eef383be5d6fc12c8a27 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
 Subject: [PATCH 12/34] netlink: add netlink handler for gfeatures (-k)
 
 Implement "ethtool -k <dev>" subcommand using netlink interface command
-ETHNL_CMD_GET_SETTINGS with ETH_SETTINGS_IM_FEATURES mask.
+ETHNL_CMD_GET_SETTINGS with ETHTOOL_IM_SETTINGS_FEATURES mask.
 
 The implementation tries to emulate legacy flags but the result is not
 exactly equal to the ioctl code. In particular, we map netdev features to
@@ -258,24 +258,24 @@ index 4f9e60c2fca8..f4bbb0b456ef 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 48c971091bfe..21779cfad8cb 100644
+index b4587c238b11..7a9c56c5f072 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -155,6 +155,12 @@ static struct monitor_option monitor_opts[] = {
- 				  ETH_SETTINGS_IM_DEBUG |
- 				  ETH_SETTINGS_IM_WOL,
+ 				  ETHTOOL_IM_SETTINGS_DEBUG |
+ 				  ETHTOOL_IM_SETTINGS_WOL,
  	},
 +	{
 +		.pattern	= "-k|--show-features|--show-offload|"
 +				  "-K|--features|--offload",
 +		.cmd		= ETHNL_CMD_SET_SETTINGS,
-+		.info_mask	= ETH_SETTINGS_IM_FEATURES,
++		.info_mask	= ETHTOOL_IM_SETTINGS_FEATURES,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/settings.c b/netlink/settings.c
-index b8fdeff266f5..ea081e9cfb62 100644
+index 18cefc488d26..b6024dc285b8 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -252,6 +252,7 @@ static int dump_wol_info(struct nl_context *nlctx, const struct nlattr *nest,
@@ -508,12 +508,12 @@ index b8fdeff266f5..ea081e9cfb62 100644
  int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1] = {};
-@@ -352,6 +568,15 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -353,6 +569,15 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  		if (ret == 0)
  			allfail = false;
  	};
 +	if (tb[ETHTOOL_A_SETTINGS_FEATURES] &&
-+	    mask_ok(nlctx, ETH_SETTINGS_IM_FEATURES)) {
++	    mask_ok(nlctx, ETHTOOL_IM_SETTINGS_FEATURES)) {
 +		int ret;
 +
 +		printf("Features for %s:\n", nlctx->devname);
@@ -524,13 +524,13 @@ index b8fdeff266f5..ea081e9cfb62 100644
  
  	if (allfail && !nlctx->is_monitor && !nlctx->is_dump) {
  		fputs("No data available\n", stdout);
-@@ -392,6 +617,11 @@ int nl_gset(struct cmd_context *ctx)
+@@ -393,6 +618,11 @@ int nl_gset(struct cmd_context *ctx)
  	return (ret < 0) ? 75 : 0;
  }
  
 +int nl_gfeatures(struct cmd_context *ctx)
 +{
-+	return settings_request(ctx, ETH_SETTINGS_IM_FEATURES);
++	return settings_request(ctx, ETHTOOL_IM_SETTINGS_FEATURES);
 +}
 +
  /* SET_SETTINGS */

@@ -1,4 +1,4 @@
-From b386b55379d0645b3f90a3e94871e4b2f5a4a2ca Mon Sep 17 00:00:00 2001
+From d7d670e8a9c98a9b24494089695c77c74eb7ce8f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 04/34] netlink: add netlink interface
@@ -1491,7 +1491,7 @@ index 25777cb7bb2b..ea4a6f42e028 100644
  
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..ed032e2015e1
+index 000000000000..d01db2425055
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
 @@ -0,0 +1,556 @@
@@ -1663,11 +1663,11 @@ index 000000000000..ed032e2015e1
 +	ETHTOOL_A_INFO_MAX = (__ETHTOOL_A_INFO_CNT - 1)
 +};
 +
-+#define ETH_INFO_IM_DRVINFO			(1U << 0)
-+#define ETH_INFO_IM_TSINFO			(1U << 1)
++#define ETHTOOL_IM_INFO_DRVINFO			(1U << 0)
++#define ETHTOOL_IM_INFO_TSINFO			(1U << 1)
 +
-+#define ETH_INFO_IM_ALL (ETH_INFO_IM_DRVINFO | \
-+			 ETH_INFO_IM_TSINFO)
++#define ETHTOOL_IM_INFO_ALL (ETHTOOL_IM_INFO_DRVINFO | \
++			     ETHTOOL_IM_INFO_TSINFO)
 +
 +enum {
 +	ETHTOOL_A_DRVINFO_UNSPEC,
@@ -1710,21 +1710,21 @@ index 000000000000..ed032e2015e1
 +	ETHTOOL_A_SETTINGS_MAX = (__ETHTOOL_A_SETTINGS_CNT - 1)
 +};
 +
-+#define ETH_SETTINGS_IM_LINKINFO		(1U << 0)
-+#define ETH_SETTINGS_IM_LINKMODES		(1U << 1)
-+#define ETH_SETTINGS_IM_LINKSTATE		(1U << 2)
-+#define ETH_SETTINGS_IM_WOL			(1U << 3)
-+#define ETH_SETTINGS_IM_DEBUG			(1U << 4)
-+#define ETH_SETTINGS_IM_FEATURES		(1U << 5)
-+#define ETH_SETTINGS_IM_PRIVFLAGS		(1U << 6)
++#define ETHTOOL_IM_SETTINGS_LINKINFO		(1U << 0)
++#define ETHTOOL_IM_SETTINGS_LINKMODES		(1U << 1)
++#define ETHTOOL_IM_SETTINGS_LINKSTATE		(1U << 2)
++#define ETHTOOL_IM_SETTINGS_WOL			(1U << 3)
++#define ETHTOOL_IM_SETTINGS_DEBUG		(1U << 4)
++#define ETHTOOL_IM_SETTINGS_FEATURES		(1U << 5)
++#define ETHTOOL_IM_SETTINGS_PRIVFLAGS		(1U << 6)
 +
-+#define ETH_SETTINGS_IM_ALL (ETH_SETTINGS_IM_LINKINFO | \
-+			     ETH_SETTINGS_IM_LINKMODES | \
-+			     ETH_SETTINGS_IM_LINKSTATE | \
-+			     ETH_SETTINGS_IM_WOL | \
-+			     ETH_SETTINGS_IM_DEBUG | \
-+			     ETH_SETTINGS_IM_FEATURES | \
-+			     ETH_SETTINGS_IM_PRIVFLAGS)
++#define ETHTOOL_IM_SETTINGS_ALL (ETHTOOL_IM_SETTINGS_LINKINFO | \
++				 ETHTOOL_IM_SETTINGS_LINKMODES | \
++				 ETHTOOL_IM_SETTINGS_LINKSTATE | \
++				 ETHTOOL_IM_SETTINGS_WOL | \
++				 ETHTOOL_IM_SETTINGS_DEBUG | \
++				 ETHTOOL_IM_SETTINGS_FEATURES | \
++				 ETHTOOL_IM_SETTINGS_PRIVFLAGS)
 +
 +enum {
 +	ETHTOOL_A_LINKINFO_UNSPEC,
@@ -1805,19 +1805,19 @@ index 000000000000..ed032e2015e1
 +	ETHTOOL_A_PARAMS_MAX = (__ETHTOOL_A_PARAMS_CNT - 1)
 +};
 +
-+#define ETH_PARAMS_IM_COALESCE			(1U << 0)
-+#define ETH_PARAMS_IM_RING			(1U << 1)
-+#define ETH_PARAMS_IM_PAUSE			(1U << 2)
-+#define ETH_PARAMS_IM_CHANNELS			(1U << 3)
-+#define ETH_PARAMS_IM_EEE			(1U << 4)
-+#define ETH_PARAMS_IM_FEC			(1U << 5)
++#define ETHTOOL_IM_PARAMS_COALESCE		(1U << 0)
++#define ETHTOOL_IM_PARAMS_RING			(1U << 1)
++#define ETHTOOL_IM_PARAMS_PAUSE			(1U << 2)
++#define ETHTOOL_IM_PARAMS_CHANNELS		(1U << 3)
++#define ETHTOOL_IM_PARAMS_EEE			(1U << 4)
++#define ETHTOOL_IM_PARAMS_FEC			(1U << 5)
 +
-+#define ETH_PARAMS_IM_ALL (ETH_PARAMS_IM_COALESCE | \
-+			   ETH_PARAMS_IM_RING | \
-+			   ETH_PARAMS_IM_PAUSE | \
-+			   ETH_PARAMS_IM_CHANNELS | \
-+			   ETH_PARAMS_IM_EEE | \
-+			   ETH_PARAMS_IM_FEC)
++#define ETHTOOL_IM_PARAMS_ALL (ETHTOOL_IM_PARAMS_COALESCE | \
++			       ETHTOOL_IM_PARAMS_RING | \
++			       ETHTOOL_IM_PARAMS_PAUSE | \
++			       ETHTOOL_IM_PARAMS_CHANNELS | \
++			       ETHTOOL_IM_PARAMS_EEE | \
++			       ETHTOOL_IM_PARAMS_FEC)
 +
 +enum {
 +	ETHTOOL_A_COALESCE_UNSPEC,
@@ -1952,7 +1952,7 @@ index 000000000000..ed032e2015e1
 +	ETHTOOL_A_RXFLOW_DEV,			/* nest - ETHTOOL_A_DEV_* */
 +	ETHTOOL_A_RXFLOW_INFOMASK,		/* u32 */
 +	ETHTOOL_A_RXFLOW_COMPACT,		/* flag */
-+	ETHTOOL_A_RXFLOW_CTXOP,			/* u32 - ETH_RXFLOW_CTXOP_* */
++	ETHTOOL_A_RXFLOW_CTXOP,			/* u32 - ETHTOOL_RXFLOW_CTXOP_* */
 +	ETHTOOL_A_RXFLOW_CONTEXT,		/* u32 */
 +	ETHTOOL_A_RXFLOW_NRINGS,		/* u32 */
 +	ETHTOOL_A_RXFLOW_HASH_FN,		/* bitset */
@@ -1965,22 +1965,22 @@ index 000000000000..ed032e2015e1
 +	ETHTOOL_A_RXFLOW_MAX = (__ETHTOOL_A_RXFLOW_CNT - 1)
 +};
 +
-+#define ETH_RXFLOW_IM_INFO			(1U << 0)
-+#define ETH_RXFLOW_IM_HASHFN			(1U << 1)
-+#define ETH_RXFLOW_IM_HKEY			(1U << 2)
-+#define ETH_RXFLOW_IM_HASHOPTS			(1U << 3)
-+#define ETH_RXFLOW_IM_INDTBL			(1U << 4)
++#define ETHTOOL_IM_RXFLOW_INFO			(1U << 0)
++#define ETHTOOL_IM_RXFLOW_HASHFN		(1U << 1)
++#define ETHTOOL_IM_RXFLOW_HKEY			(1U << 2)
++#define ETHTOOL_IM_RXFLOW_HASHOPTS		(1U << 3)
++#define ETHTOOL_IM_RXFLOW_INDTBL		(1U << 4)
 +
-+#define ETH_RXFLOW_IM_ALL (ETH_RXFLOW_IM_INFO | \
-+			   ETH_RXFLOW_IM_HASHFN | \
-+			   ETH_RXFLOW_IM_HKEY | \
-+			   ETH_RXFLOW_IM_HASHOPTS | \
-+			   ETH_RXFLOW_IM_INDTBL)
++#define ETHTOOL_IM_RXFLOW_ALL (ETHTOOL_IM_RXFLOW_INFO | \
++			       ETHTOOL_IM_RXFLOW_HASHFN | \
++			       ETHTOOL_IM_RXFLOW_HKEY | \
++			       ETHTOOL_IM_RXFLOW_HASHOPTS | \
++			       ETHTOOL_IM_RXFLOW_INDTBL)
 +
 +enum {
-+	ETH_RXFLOW_CTXOP_SET,			/* set context data */
-+	ETH_RXFLOW_CTXOP_NEW,			/* create new context */
-+	ETH_RXFLOW_CTXOP_DEL,			/* delete existing context */
++	ETHTOOL_RXFLOW_CTXOP_SET,		/* set context data */
++	ETHTOOL_RXFLOW_CTXOP_NEW,		/* create new context */
++	ETHTOOL_RXFLOW_CTXOP_DEL,		/* delete existing context */
 +};
 +
 +enum {

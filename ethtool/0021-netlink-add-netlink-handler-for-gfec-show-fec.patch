@@ -1,11 +1,11 @@
-From e4173691712633e5220817df0d2ac4cc0c0df196 Mon Sep 17 00:00:00 2001
+From 42d52348f7c8b1eb8985522f4b28bdf045dc0bc5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
 Subject: [PATCH 21/34] netlink: add netlink handler for gfec (--show-fec)
 
 Implement "ethtool --show-fec <dev>" subcommand showing Forward Error
 Correction (FEC) settings using netlink interface command
-ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_FEC mask.
+ETHNL_CMD_GET_PARAMS with ETHTOOL_IM_PARAMS_FEC mask.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -85,23 +85,23 @@ index 2d0ce8649052..c2676d492c75 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index e76768862ae3..c8adbd2b88a9 100644
+index 99fc7f3d9fce..869c4adf5bf7 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -196,6 +196,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
- 		.info_mask	= ETH_PARAMS_IM_EEE,
+ 		.info_mask	= ETHTOOL_IM_PARAMS_EEE,
  	},
 +	{
 +		.pattern	= "--show-fec|--set-fec",
 +		.cmd		= ETHNL_CMD_SET_PARAMS,
-+		.info_mask	= ETH_PARAMS_IM_FEC,
++		.info_mask	= ETHTOOL_IM_PARAMS_FEC,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index a5f6c13be656..d50924510930 100644
+index 4c196ed215fd..fe0541bbe9f8 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -190,6 +190,35 @@ static int show_eee(struct nl_context *nlctx, const struct nlattr *nest)
@@ -144,9 +144,9 @@ index a5f6c13be656..d50924510930 100644
  			return MNL_CB_ERROR;
  		}
  	}
-+	if (mask_ok(nlctx, ETH_PARAMS_IM_FEC)) {
++	if (mask_ok(nlctx, ETHTOOL_IM_PARAMS_FEC)) {
 +		ret = show_fec(nlctx, tb[ETHTOOL_A_PARAMS_FEC]);
-+		if ((ret < 0) && show_only(nlctx, ETH_PARAMS_IM_FEC)) {
++		if ((ret < 0) && show_only(nlctx, ETHTOOL_IM_PARAMS_FEC)) {
 +			nlctx->exit_code = 1;
 +			errno = -ret;
 +			perror("Cannot get device FEC settings");
@@ -158,12 +158,12 @@ index a5f6c13be656..d50924510930 100644
  }
 @@ -290,3 +328,8 @@ int nl_geee(struct cmd_context *ctx)
  {
- 	return params_request(ctx, ETH_PARAMS_IM_EEE);
+ 	return params_request(ctx, ETHTOOL_IM_PARAMS_EEE);
  }
 +
 +int nl_gfec(struct cmd_context *ctx)
 +{
-+	return params_request(ctx, ETH_PARAMS_IM_FEC);
++	return params_request(ctx, ETHTOOL_IM_PARAMS_FEC);
 +}
 -- 
 2.21.0

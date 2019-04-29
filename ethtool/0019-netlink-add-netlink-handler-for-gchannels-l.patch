@@ -1,10 +1,10 @@
-From d69a16f0a6d72d6297e540e000e20dd242a219db Mon Sep 17 00:00:00 2001
+From 2f7362ff1ac25a9d3c0c781c90178bda56f30ee0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:05:40 +0100
 Subject: [PATCH 19/34] netlink: add netlink handler for gchannels (-l)
 
 Implement "ethtool -l <dev>" subcommand using netlink interface command
-ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_CHANNELS mask.
+ETHNL_CMD_GET_PARAMS with ETHTOOL_IM_PARAMS_CHANNELS mask.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -48,23 +48,23 @@ index 24d19dde5fc3..2ca01fb4c9ea 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 338ebf939430..c9a850f5c3c8 100644
+index 77358968d7e9..08bc96fc91e6 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -186,6 +186,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
- 		.info_mask	= ETH_PARAMS_IM_PAUSE,
+ 		.info_mask	= ETHTOOL_IM_PARAMS_PAUSE,
  	},
 +	{
 +		.pattern	= "-l|--show-channels|-L|--set-channels",
 +		.cmd		= ETHNL_CMD_SET_PARAMS,
-+		.info_mask	= ETH_PARAMS_IM_CHANNELS,
++		.info_mask	= ETHTOOL_IM_PARAMS_CHANNELS,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index 63913956c1b6..4535cd52367a 100644
+index cc29dac9b1e1..a9735c49456f 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -107,6 +107,34 @@ static int show_pause(struct nl_context *nlctx, const struct nlattr *nest)
@@ -106,9 +106,9 @@ index 63913956c1b6..4535cd52367a 100644
  			return MNL_CB_ERROR;
  		}
  	}
-+	if (mask_ok(nlctx, ETH_PARAMS_IM_CHANNELS)) {
++	if (mask_ok(nlctx, ETHTOOL_IM_PARAMS_CHANNELS)) {
 +		ret = show_channels(nlctx, tb[ETHTOOL_A_PARAMS_CHANNELS]);
-+		if ((ret < 0) && show_only(nlctx, ETH_PARAMS_IM_CHANNELS)) {
++		if ((ret < 0) && show_only(nlctx, ETHTOOL_IM_PARAMS_CHANNELS)) {
 +			nlctx->exit_code = 1;
 +			errno = -ret;
 +			perror("Cannot get device channel parameters");
@@ -120,12 +120,12 @@ index 63913956c1b6..4535cd52367a 100644
  }
 @@ -179,3 +216,8 @@ int nl_gpause(struct cmd_context *ctx)
  {
- 	return params_request(ctx, ETH_PARAMS_IM_PAUSE);
+ 	return params_request(ctx, ETHTOOL_IM_PARAMS_PAUSE);
  }
 +
 +int nl_gchannels(struct cmd_context *ctx)
 +{
-+	return params_request(ctx, ETH_PARAMS_IM_CHANNELS);
++	return params_request(ctx, ETHTOOL_IM_PARAMS_CHANNELS);
 +}
 -- 
 2.21.0

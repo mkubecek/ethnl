@@ -1,4 +1,4 @@
-From 8a6e30d70839acc16b2ea06f0c92fdb91055cc19 Mon Sep 17 00:00:00 2001
+From 2e1111e4e34f4413da013a473f7c913424b21b3a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:25:31 +0200
 Subject: [PATCH 13/34] netlink: add netlink handler for sfeatures (-K)
@@ -54,10 +54,10 @@ index f4bbb0b456ef..d0199cb440f8 100644
  
  void monitor_usage();
 diff --git a/netlink/settings.c b/netlink/settings.c
-index ea081e9cfb62..0be442235add 100644
+index b6024dc285b8..585a10eb4589 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -791,3 +791,295 @@ int nl_sset(struct cmd_context *ctx)
+@@ -792,3 +792,295 @@ int nl_sset(struct cmd_context *ctx)
  		return 0;
  	return nlctx->exit_code ?: 75;
  }

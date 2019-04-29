@@ -1,10 +1,10 @@
-From 5c484179003a26bdcc52244085d5f47a35027fb7 Mon Sep 17 00:00:00 2001
+From 26e923b83ed7592bf8a6ae23425ae7b3c8f0ff47 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:59:50 +0100
 Subject: [PATCH 17/34] netlink: add netlink handler for gring (-g)
 
 Implement "ethtool -g <dev>" subcommand using netlink interface command
-ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_RING mask.
+ETHNL_CMD_GET_PARAMS with ETHTOOL_IM_PARAMS_RING mask.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -48,23 +48,23 @@ index a63f79eee2c8..deba845b52ae 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index ca03840acf6f..680af2d8f1d4 100644
+index 463c016894f1..966ec621fe29 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -176,6 +176,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
- 		.info_mask	= ETH_PARAMS_IM_COALESCE,
+ 		.info_mask	= ETHTOOL_IM_PARAMS_COALESCE,
  	},
 +	{
 +		.pattern	= "-g|--show-ring|-G|--set-ring",
 +		.cmd		= ETHNL_CMD_SET_PARAMS,
-+		.info_mask	= ETH_PARAMS_IM_RING,
++		.info_mask	= ETHTOOL_IM_PARAMS_RING,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index 77e30894db97..15a16d0f61a1 100644
+index 8755a8aae9a8..299b43f9d18e 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -57,6 +57,34 @@ static int show_coalesce(struct nl_context *nlctx, const struct nlattr *nest)
@@ -106,9 +106,9 @@ index 77e30894db97..15a16d0f61a1 100644
  			return MNL_CB_ERROR;
  		}
  	}
-+	if (mask_ok(nlctx, ETH_PARAMS_IM_RING)) {
++	if (mask_ok(nlctx, ETHTOOL_IM_PARAMS_RING)) {
 +		ret = show_ring(nlctx, tb[ETHTOOL_A_PARAMS_RING]);
-+		if ((ret < 0) && show_only(nlctx, ETH_PARAMS_IM_RING)) {
++		if ((ret < 0) && show_only(nlctx, ETHTOOL_IM_PARAMS_RING)) {
 +			nlctx->exit_code = 76;
 +			errno = -ret;
 +			perror("Cannot get device ring settings");
@@ -120,12 +120,12 @@ index 77e30894db97..15a16d0f61a1 100644
  }
 @@ -101,3 +138,8 @@ int nl_gcoalesce(struct cmd_context *ctx)
  {
- 	return params_request(ctx, ETH_PARAMS_IM_COALESCE);
+ 	return params_request(ctx, ETHTOOL_IM_PARAMS_COALESCE);
  }
 +
 +int nl_gring(struct cmd_context *ctx)
 +{
-+	return params_request(ctx, ETH_PARAMS_IM_RING);
++	return params_request(ctx, ETHTOOL_IM_PARAMS_RING);
 +}
 -- 
 2.21.0

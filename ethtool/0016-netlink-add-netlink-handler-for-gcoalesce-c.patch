@@ -1,10 +1,10 @@
-From fce900ab252ef2bf8aaa731b6ded60195e93db76 Mon Sep 17 00:00:00 2001
+From 41e9ff0f121497a567928d0919ffd7118b9edec9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
 Subject: [PATCH 16/34] netlink: add netlink handler for gcoalesce (-c)
 
 Implement "ethtool -c <dev>" subcommand using netlink interface command
-ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_COALESCE mask.
+ETHNL_CMD_GET_PARAMS with ETHTOOL_IM_PARAMS_COALESCE mask.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -63,7 +63,7 @@ index f89c6d0e169c..a63f79eee2c8 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 4f3bbd0a84b0..ca03840acf6f 100644
+index 3f2e3b08009d..463c016894f1 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -96,6 +96,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -87,19 +87,19 @@ index 4f3bbd0a84b0..ca03840acf6f 100644
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
 @@ -166,6 +171,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_SETTINGS,
- 		.info_mask	= ETH_SETTINGS_IM_PRIVFLAGS,
+ 		.info_mask	= ETHTOOL_IM_SETTINGS_PRIVFLAGS,
  	},
 +	{
 +		.pattern	= "-c|--show-coalesce|-C|--coalesce",
 +		.cmd		= ETHNL_CMD_SET_PARAMS,
-+		.info_mask	= ETH_PARAMS_IM_COALESCE,
++		.info_mask	= ETHTOOL_IM_PARAMS_COALESCE,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
 new file mode 100644
-index 000000000000..77e30894db97
+index 000000000000..8755a8aae9a8
 --- /dev/null
 +++ b/netlink/params.c
 @@ -0,0 +1,103 @@
@@ -176,9 +176,9 @@ index 000000000000..77e30894db97
 +	if (!dev_ok(nlctx))
 +		return MNL_CB_OK;
 +
-+	if (mask_ok(nlctx, ETH_PARAMS_IM_COALESCE)) {
++	if (mask_ok(nlctx, ETHTOOL_IM_PARAMS_COALESCE)) {
 +		ret = show_coalesce(nlctx, tb[ETHTOOL_A_PARAMS_COALESCE]);
-+		if ((ret < 0) && show_only(nlctx, ETH_PARAMS_IM_COALESCE)) {
++		if ((ret < 0) && show_only(nlctx, ETHTOOL_IM_PARAMS_COALESCE)) {
 +			nlctx->exit_code = 82;
 +			errno = -ret;
 +			perror("Cannot get device coalesce settings");
@@ -204,7 +204,7 @@ index 000000000000..77e30894db97
 +
 +int nl_gcoalesce(struct cmd_context *ctx)
 +{
-+	return params_request(ctx, ETH_PARAMS_IM_COALESCE);
++	return params_request(ctx, ETHTOOL_IM_PARAMS_COALESCE);
 +}
 -- 
 2.21.0

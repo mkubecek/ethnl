@@ -1,4 +1,4 @@
-From 2e72279c4c746265c9d608129e851d204d041c8f Mon Sep 17 00:00:00 2001
+From 1a821ebe99e2dd74f24050d9783d92621165f4d3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 2 Nov 2018 19:41:56 +0100
 Subject: [PATCH 34/34] netlink: add netlink handler for setting flow hash
@@ -48,7 +48,7 @@ index 30ec79f0e94e..c86a4c7d0aa3 100644
  
  void monitor_usage();
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
-index a60adb2d4719..316b17720e84 100644
+index ec841edd05ef..32ce6531f341 100644
 --- a/netlink/rxflow.c
 +++ b/netlink/rxflow.c
 @@ -803,3 +803,115 @@ out_free:

@@ -1,4 +1,4 @@
-From 73912ba75150654bbaaecc6d4e7dd45ceb11961e Mon Sep 17 00:00:00 2001
+From d7273cd2c1d7eaf343ef5eb98615e7e40b171899 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:04:49 +0100
 Subject: [PATCH 23/34] netlink: add netlink handler for sring (-G)
@@ -47,7 +47,7 @@ index 41c8f5487062..5b13a28ac5e6 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index 7b5a0881c946..38c02fa017cc 100644
+index ba8577aae3f2..bb7410414036 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -514,3 +514,36 @@ int nl_scoalesce(struct cmd_context *ctx)

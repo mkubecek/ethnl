@@ -1,4 +1,4 @@
-From 3d10bdbbc2719dcaab1235aebbbe83f846da4828 Mon Sep 17 00:00:00 2001
+From 3d1c9481835c43f48311bb99221d5cc43c6d1e69 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 09/34] netlink: add netlink handler for gset (no option)
@@ -19,8 +19,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  netlink/monitor.c  |  14 ++
  netlink/netlink.c  | 120 ++++++++++++++
  netlink/netlink.h  |   4 +
- netlink/settings.c | 392 +++++++++++++++++++++++++++++++++++++++++++++
- 9 files changed, 881 insertions(+), 145 deletions(-)
+ netlink/settings.c | 393 +++++++++++++++++++++++++++++++++++++++++++++
+ 9 files changed, 882 insertions(+), 145 deletions(-)
  create mode 100644 netlink/settings.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -631,7 +631,7 @@ index 9e9dfa11aead..5500835372b3 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 3b5f9475c6e4..48c971091bfe 100644
+index 3b5f9475c6e4..b4587c238b11 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -95,6 +95,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -660,11 +660,11 @@ index 3b5f9475c6e4..48c971091bfe 100644
 +	{
 +		.pattern	= "-s|--change",
 +		.cmd		= ETHNL_CMD_SET_SETTINGS,
-+		.info_mask	= ETH_SETTINGS_IM_LINKINFO |
-+				  ETH_SETTINGS_IM_LINKMODES |
-+				  ETH_SETTINGS_IM_LINKSTATE |
-+				  ETH_SETTINGS_IM_DEBUG |
-+				  ETH_SETTINGS_IM_WOL,
++		.info_mask	= ETHTOOL_IM_SETTINGS_LINKINFO |
++				  ETHTOOL_IM_SETTINGS_LINKMODES |
++				  ETHTOOL_IM_SETTINGS_LINKSTATE |
++				  ETHTOOL_IM_SETTINGS_DEBUG |
++				  ETHTOOL_IM_SETTINGS_WOL,
 +	},
  };
  
@@ -826,10 +826,10 @@ index 601437acc8e4..b911ed77fd20 100644
  int attr_cb(const struct nlattr *attr, void *data);
 diff --git a/netlink/settings.c b/netlink/settings.c
 new file mode 100644
-index 000000000000..17109bc5091f
+index 000000000000..c09ab026fe6b
 --- /dev/null
 +++ b/netlink/settings.c
-@@ -0,0 +1,392 @@
+@@ -0,0 +1,393 @@
 +#include <errno.h>
 +#include <string.h>
 +#include <stdio.h>
@@ -1151,32 +1151,33 @@ index 000000000000..17109bc5091f
 +	if (!dev_ok(nlctx))
 +		return MNL_CB_OK;
 +
-+	if (mask_ok(nlctx, ETH_SETTINGS_IM_LINKMODES)) {
++	if (mask_ok(nlctx, ETHTOOL_IM_SETTINGS_LINKMODES)) {
 +		ret = dump_modes(nlctx, tb[ETHTOOL_A_SETTINGS_LINK_MODES],
 +				 &first,
 +				 &lm_autoneg);
 +		if (ret == 0)
 +			allfail = false;
 +	}
-+	if (mask_ok(nlctx, ETH_SETTINGS_IM_LINKINFO)) {
++	if (mask_ok(nlctx, ETHTOOL_IM_SETTINGS_LINKINFO)) {
 +		ret = dump_link_info(nlctx, tb[ETHTOOL_A_SETTINGS_LINK_INFO],
 +				     &first, lm_autoneg);
 +		if (ret == 0)
 +			allfail = false;
 +	}
-+	if (tb[ETHTOOL_A_SETTINGS_WOL] && mask_ok(nlctx, ETH_SETTINGS_IM_WOL)) {
++	if (tb[ETHTOOL_A_SETTINGS_WOL] &&
++	    mask_ok(nlctx, ETHTOOL_IM_SETTINGS_WOL)) {
 +		ret = dump_wol_info(nlctx, tb[ETHTOOL_A_SETTINGS_WOL], &first);
 +		if (ret == 0)
 +			allfail = false;
 +	}
 +	if (tb[ETHTOOL_A_SETTINGS_DEBUG] &&
-+	    mask_ok(nlctx, ETH_SETTINGS_IM_DEBUG)) {
++	    mask_ok(nlctx, ETHTOOL_IM_SETTINGS_DEBUG)) {
 +		ret = dump_debug(nlctx, tb[ETHTOOL_A_SETTINGS_DEBUG], &first);
 +		if (ret == 0)
 +			allfail = false;
 +	}
 +	if (tb[ETHTOOL_A_SETTINGS_LINK_STATE] &&
-+	    mask_ok(nlctx, ETH_SETTINGS_IM_LINKSTATE)) {
++	    mask_ok(nlctx, ETHTOOL_IM_SETTINGS_LINKSTATE)) {
 +		ret = dump_link_state(nlctx,
 +				      tb[ETHTOOL_A_SETTINGS_LINK_STATE],
 +				      &first);
@@ -1194,7 +1195,7 @@ index 000000000000..17109bc5091f
 +
 +int settings_request(struct cmd_context *ctx, uint32_t info_mask)
 +{
-+	bool compact = info_mask & ETH_SETTINGS_IM_FEATURES;
++	bool compact = info_mask & ETHTOOL_IM_SETTINGS_FEATURES;
 +	struct nl_context *nlctx = ctx->nlctx;
 +	int ret;
 +
@@ -1215,11 +1216,11 @@ index 000000000000..17109bc5091f
 +{
 +	int ret;
 +
-+	ret = settings_request(ctx, ETH_SETTINGS_IM_LINKINFO |
-+				    ETH_SETTINGS_IM_LINKMODES |
-+				    ETH_SETTINGS_IM_LINKSTATE |
-+				    ETH_SETTINGS_IM_DEBUG |
-+				    ETH_SETTINGS_IM_WOL);
++	ret = settings_request(ctx, ETHTOOL_IM_SETTINGS_LINKINFO |
++				    ETHTOOL_IM_SETTINGS_LINKMODES |
++				    ETHTOOL_IM_SETTINGS_LINKSTATE |
++				    ETHTOOL_IM_SETTINGS_DEBUG |
++				    ETHTOOL_IM_SETTINGS_WOL);
 +	return (ret < 0) ? 75 : 0;
 +}
 -- 

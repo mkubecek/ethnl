@@ -1,4 +1,4 @@
-From 2132fc2a077a197d4edb1236fce75563de8c2e99 Mon Sep 17 00:00:00 2001
+From 516699f8997860a533c3f8f3bbc33d19fadeae0c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 16:43:40 +0200
 Subject: [PATCH 29/34] netlink: add netlink handler for phys_id (-p)
@@ -135,7 +135,7 @@ index b301964a5cf8..c8c621ce6c21 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index e21830555686..04e19afd4210 100644
+index 5148e3f5d2be..52a14e46960a 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -98,6 +98,7 @@ int info_reply_cb(const struct nlmsghdr *nlhdr, void *data);

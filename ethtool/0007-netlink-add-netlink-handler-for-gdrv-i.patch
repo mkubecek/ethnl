@@ -1,4 +1,4 @@
-From 6b9662012742365a645d7722ef053cf027723d27 Mon Sep 17 00:00:00 2001
+From cd88df09d3039080ba3818e98e14a27085c75ab7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
 Subject: [PATCH 07/34] netlink: add netlink handler for gdrv (-i)
@@ -63,7 +63,7 @@ index c6a65e3222cd..2612f1752b56 100644
  void monitor_usage();
 diff --git a/netlink/info.c b/netlink/info.c
 new file mode 100644
-index 000000000000..34f3dd486061
+index 000000000000..7155d9f822e7
 --- /dev/null
 +++ b/netlink/info.c
 @@ -0,0 +1,170 @@
@@ -201,9 +201,9 @@ index 000000000000..34f3dd486061
 +	if (!dev_ok(nlctx))
 +		return MNL_CB_OK;
 +
-+	if (mask_ok(nlctx, ETH_INFO_IM_DRVINFO)) {
++	if (mask_ok(nlctx, ETHTOOL_IM_INFO_DRVINFO)) {
 +		ret = show_drvinfo(nlctx, tb[ETHTOOL_A_INFO_DRVINFO]);
-+		if ((ret < 0) && show_only(nlctx, ETH_INFO_IM_DRVINFO)) {
++		if ((ret < 0) && show_only(nlctx, ETHTOOL_IM_INFO_DRVINFO)) {
 +			nlctx->exit_code = 1;
 +			errno = -ret;
 +			perror("Cannot get device driver info");
@@ -218,7 +218,7 @@ index 000000000000..34f3dd486061
 +{
 +	int ret;
 +
-+	if (info_mask & ETH_INFO_IM_DRVINFO) {
++	if (info_mask & ETHTOOL_IM_INFO_DRVINFO) {
 +		ret = init_aux_nlctx(ctx->nlctx);
 +		if (ret < 0)
 +			return ret;
@@ -235,7 +235,7 @@ index 000000000000..34f3dd486061
 +
 +int nl_gdrv(struct cmd_context *ctx)
 +{
-+	return info_request(ctx, ETH_INFO_IM_DRVINFO);
++	return info_request(ctx, ETHTOOL_IM_INFO_DRVINFO);
 +}
 diff --git a/netlink/monitor.c b/netlink/monitor.c
 index 15625661ca61..3b5f9475c6e4 100644

@@ -1,4 +1,4 @@
-From 6e8302a2fa1f59d7341f6ea2ee85fde023622fb6 Mon Sep 17 00:00:00 2001
+From 5a2f4377df2c15c2336db3c79340398d91b1562f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:29:46 +0200
 Subject: [PATCH 28/34] netlink: add netlink handler for nway_rst (-r)
@@ -122,7 +122,7 @@ index 40715beaf07f..b301964a5cf8 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index c8adbd2b88a9..e21830555686 100644
+index 869c4adf5bf7..5148e3f5d2be 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -97,6 +97,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -146,7 +146,7 @@ index c8adbd2b88a9..e21830555686 100644
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
 @@ -201,6 +206,10 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
- 		.info_mask	= ETH_PARAMS_IM_FEC,
+ 		.info_mask	= ETHTOOL_IM_PARAMS_FEC,
  	},
 +	{
 +		.pattern	= "-r|--negotiate",

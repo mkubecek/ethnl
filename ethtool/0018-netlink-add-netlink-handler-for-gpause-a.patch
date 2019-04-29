@@ -1,10 +1,10 @@
-From 51b5d83944e8545b1ed848647cdc3b4e4840b561 Mon Sep 17 00:00:00 2001
+From 01411ec5c70d9c6f28a9960690f97be76e0529e0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:04:09 +0100
 Subject: [PATCH 18/34] netlink: add netlink handler for gpause (-a)
 
 Implement "ethtool -a <dev>" subcommand using netlink interface command
-ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_PAUSE mask.
+ETHNL_CMD_GET_PARAMS with ETHTOOL_IM_PARAMS_PAUSE mask.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -48,23 +48,23 @@ index deba845b52ae..24d19dde5fc3 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 680af2d8f1d4..338ebf939430 100644
+index 966ec621fe29..77358968d7e9 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -181,6 +181,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
- 		.info_mask	= ETH_PARAMS_IM_RING,
+ 		.info_mask	= ETHTOOL_IM_PARAMS_RING,
  	},
 +	{
 +		.pattern	= "-a|--show-pause|-A|--pause",
 +		.cmd		= ETHNL_CMD_SET_PARAMS,
-+		.info_mask	= ETH_PARAMS_IM_PAUSE,
++		.info_mask	= ETHTOOL_IM_PARAMS_PAUSE,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index 15a16d0f61a1..63913956c1b6 100644
+index 299b43f9d18e..cc29dac9b1e1 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -85,6 +85,28 @@ static int show_ring(struct nl_context *nlctx, const struct nlattr *nest)
@@ -100,9 +100,9 @@ index 15a16d0f61a1..63913956c1b6 100644
  			return MNL_CB_ERROR;
  		}
  	}
-+	if (mask_ok(nlctx, ETH_PARAMS_IM_PAUSE)) {
++	if (mask_ok(nlctx, ETHTOOL_IM_PARAMS_PAUSE)) {
 +		ret = show_pause(nlctx, tb[ETHTOOL_A_PARAMS_PAUSE]);
-+		if ((ret < 0) && show_only(nlctx, ETH_PARAMS_IM_PAUSE)) {
++		if ((ret < 0) && show_only(nlctx, ETHTOOL_IM_PARAMS_PAUSE)) {
 +			nlctx->exit_code = 76;
 +			errno = -ret;
 +			perror("Cannot get device pause settings");
@@ -114,12 +114,12 @@ index 15a16d0f61a1..63913956c1b6 100644
  }
 @@ -143,3 +174,8 @@ int nl_gring(struct cmd_context *ctx)
  {
- 	return params_request(ctx, ETH_PARAMS_IM_RING);
+ 	return params_request(ctx, ETHTOOL_IM_PARAMS_RING);
  }
 +
 +int nl_gpause(struct cmd_context *ctx)
 +{
-+	return params_request(ctx, ETH_PARAMS_IM_PAUSE);
++	return params_request(ctx, ETHTOOL_IM_PARAMS_PAUSE);
 +}
 -- 
 2.21.0

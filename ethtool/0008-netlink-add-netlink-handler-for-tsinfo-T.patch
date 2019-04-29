@@ -1,4 +1,4 @@
-From 17d2594001a0404cf871cf26ee22e5b3f82e2ad0 Mon Sep 17 00:00:00 2001
+From 92e869907a771ab344d8a2877925195e2accd83a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Aug 2018 23:26:42 +0200
 Subject: [PATCH 08/34] netlink: add netlink handler for tsinfo (-T)
@@ -155,7 +155,7 @@ index 2612f1752b56..9e9dfa11aead 100644
  
  void monitor_usage();
 diff --git a/netlink/info.c b/netlink/info.c
-index 34f3dd486061..45ab17226576 100644
+index 7155d9f822e7..2a7beb9783b3 100644
 --- a/netlink/info.c
 +++ b/netlink/info.c
 @@ -2,6 +2,8 @@
@@ -267,9 +267,9 @@ index 34f3dd486061..45ab17226576 100644
  			return MNL_CB_ERROR;
  		}
  	}
-+	if (mask_ok(nlctx, ETH_INFO_IM_TSINFO)) {
++	if (mask_ok(nlctx, ETHTOOL_IM_INFO_TSINFO)) {
 +		ret = show_tsinfo(nlctx, tb[ETHTOOL_A_INFO_TSINFO]);
-+		if ((ret < 0) && show_only(nlctx, ETH_INFO_IM_TSINFO)) {
++		if ((ret < 0) && show_only(nlctx, ETHTOOL_IM_INFO_TSINFO)) {
 +			nlctx->exit_code = 1;
 +			errno = -ret;
 +			perror("Cannot get device time stamping settings");
@@ -281,12 +281,12 @@ index 34f3dd486061..45ab17226576 100644
  }
 @@ -168,3 +268,8 @@ int nl_gdrv(struct cmd_context *ctx)
  {
- 	return info_request(ctx, ETH_INFO_IM_DRVINFO);
+ 	return info_request(ctx, ETHTOOL_IM_INFO_DRVINFO);
  }
 +
 +int nl_tsinfo(struct cmd_context *ctx)
 +{
-+	return info_request(ctx, ETH_INFO_IM_TSINFO);
++	return info_request(ctx, ETHTOOL_IM_INFO_TSINFO);
 +}
 -- 
 2.21.0

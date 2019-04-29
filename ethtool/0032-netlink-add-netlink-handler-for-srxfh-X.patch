@@ -1,4 +1,4 @@
-From cf02bb63561ac58d968deced283f4960ce8300d1 Mon Sep 17 00:00:00 2001
+From 623955a32be5bc832e9b45ec8b305d7d6b1dd733 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:24:40 +0200
 Subject: [PATCH 32/34] netlink: add netlink handler for srxfh (-X)
@@ -48,7 +48,7 @@ index ef4981ce29c8..952a79e92188 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 185952d79da2..dd71e0e47f28 100644
+index 7c9dddb95dbd..5874d3aa1bb4 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -100,6 +100,7 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data);
@@ -83,7 +83,7 @@ index 185952d79da2..dd71e0e47f28 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
-index 67504b0c94cb..24479e6bc910 100644
+index 19e74a01c644..b187f896c345 100644
 --- a/netlink/rxflow.c
 +++ b/netlink/rxflow.c
 @@ -285,3 +285,331 @@ int nl_grxfh(struct cmd_context *ctx)
@@ -361,13 +361,13 @@ index 67504b0c94cb..24479e6bc910 100644
 +
 +static int fill_srxfh(struct nl_context *nlctx, const struct srxfh_data *data)
 +{
-+	uint32_t op = ETH_RXFLOW_CTXOP_SET;
++	uint32_t op = ETHTOOL_RXFLOW_CTXOP_SET;
 +	uint32_t context = data->context;
 +
 +	/* context delete request is special, handle it separately */
 +	if (data->ctx_delete) {
 +		if (ethnla_put_u32(nlctx, ETHTOOL_A_RXFLOW_CTXOP,
-+				   ETH_RXFLOW_CTXOP_DEL))
++				   ETHTOOL_RXFLOW_CTXOP_DEL))
 +			return -EMSGSIZE;
 +		if (ethnla_put_u32(nlctx, ETHTOOL_A_RXFLOW_CONTEXT, context))
 +			return -EMSGSIZE;
@@ -375,7 +375,7 @@ index 67504b0c94cb..24479e6bc910 100644
 +	}
 +
 +	if (context == ETH_RXFH_CONTEXT_ALLOC) {
-+		op = ETH_RXFLOW_CTXOP_NEW;
++		op = ETHTOOL_RXFLOW_CTXOP_NEW;
 +		context = 0;
 +	}
 +	if (ethnla_put_u32(nlctx, ETHTOOL_A_RXFLOW_CTXOP, op))

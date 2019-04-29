@@ -1,10 +1,10 @@
-From 5f8513e7f7fb91f406e286e7e14dc6eb67a17607 Mon Sep 17 00:00:00 2001
+From 30392ada2f981a125625e0b688f29e86173d5781 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:08:21 +0100
 Subject: [PATCH 20/34] netlink: add netlink handler for geee (--show-eee)
 
 Implement "ethtool --show-eee <dev>" subcommand using netlink interface
-command ETHNL_CMD_GET_PARAMS with ETH_PARAMS_IM_EEE mask.
+command ETHNL_CMD_GET_PARAMS with ETHTOOL_IM_PARAMS_EEE mask.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -48,23 +48,23 @@ index 2ca01fb4c9ea..2d0ce8649052 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index c9a850f5c3c8..e76768862ae3 100644
+index 08bc96fc91e6..99fc7f3d9fce 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -191,6 +191,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
- 		.info_mask	= ETH_PARAMS_IM_CHANNELS,
+ 		.info_mask	= ETHTOOL_IM_PARAMS_CHANNELS,
  	},
 +	{
 +		.pattern	= "--show-eee|--set-eee",
 +		.cmd		= ETHNL_CMD_SET_PARAMS,
-+		.info_mask	= ETH_PARAMS_IM_EEE,
++		.info_mask	= ETHTOOL_IM_PARAMS_EEE,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index 4535cd52367a..a5f6c13be656 100644
+index a9735c49456f..4c196ed215fd 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -135,6 +135,61 @@ static int show_channels(struct nl_context *nlctx, const struct nlattr *nest)
@@ -133,9 +133,9 @@ index 4535cd52367a..a5f6c13be656 100644
  			return MNL_CB_ERROR;
  		}
  	}
-+	if (mask_ok(nlctx, ETH_PARAMS_IM_EEE)) {
++	if (mask_ok(nlctx, ETHTOOL_IM_PARAMS_EEE)) {
 +		ret = show_eee(nlctx, tb[ETHTOOL_A_PARAMS_EEE]);
-+		if ((ret < 0) && show_only(nlctx, ETH_PARAMS_IM_EEE)) {
++		if ((ret < 0) && show_only(nlctx, ETHTOOL_IM_PARAMS_EEE)) {
 +			nlctx->exit_code = 1;
 +			errno = -ret;
 +			perror("Cannot get device EEE settings");
@@ -147,12 +147,12 @@ index 4535cd52367a..a5f6c13be656 100644
  }
 @@ -221,3 +285,8 @@ int nl_gchannels(struct cmd_context *ctx)
  {
- 	return params_request(ctx, ETH_PARAMS_IM_CHANNELS);
+ 	return params_request(ctx, ETHTOOL_IM_PARAMS_CHANNELS);
  }
 +
 +int nl_geee(struct cmd_context *ctx)
 +{
-+	return params_request(ctx, ETH_PARAMS_IM_EEE);
++	return params_request(ctx, ETHTOOL_IM_PARAMS_EEE);
 +}
 -- 
 2.21.0

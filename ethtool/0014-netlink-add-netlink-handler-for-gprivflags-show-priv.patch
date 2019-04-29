@@ -1,11 +1,11 @@
-From a1ab2208ba67ad2851b85e0079df5eed239c991b Mon Sep 17 00:00:00 2001
+From c0ad3d14fd81d935b5f950f1a4a81ab3389ead88 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:20:18 +0200
 Subject: [PATCH 14/34] netlink: add netlink handler for gprivflags
  (--show-priv-flags)
 
 Implement "ethtool --show-priv-flags <dev>" subcommand using netlink
-interface command ETHNL_CMD_GET_SETTINGS with ETH_SETTINGS_IM_PRIVFLAGS
+interface command ETHNL_CMD_GET_SETTINGS with ETHTOOL_IM_SETTINGS_PRIVFLAGS
 mask. Also support corresponding notification in monitor.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
@@ -50,23 +50,23 @@ index d0199cb440f8..ce5fde1ddc35 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 21779cfad8cb..4f3bbd0a84b0 100644
+index 7a9c56c5f072..3f2e3b08009d 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
 @@ -161,6 +161,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_SETTINGS,
- 		.info_mask	= ETH_SETTINGS_IM_FEATURES,
+ 		.info_mask	= ETHTOOL_IM_SETTINGS_FEATURES,
  	},
 +	{
 +		.pattern	= "--show-priv-flags|--set-priv-flags",
 +		.cmd		= ETHNL_CMD_SET_SETTINGS,
-+		.info_mask	= ETH_SETTINGS_IM_PRIVFLAGS,
++		.info_mask	= ETHTOOL_IM_SETTINGS_PRIVFLAGS,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 0be442235add..1ecafa1b8f27 100644
+index 585a10eb4589..ee9a45cb4879 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -519,6 +519,53 @@ out_free:
@@ -123,12 +123,12 @@ index 0be442235add..1ecafa1b8f27 100644
  int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1] = {};
-@@ -577,6 +624,13 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -578,6 +625,13 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  		if (ret == 0)
  			allfail = false;
  	}
 +	if (tb[ETHTOOL_A_SETTINGS_PRIV_FLAGS] &&
-+	    mask_ok(nlctx, ETH_SETTINGS_IM_PRIVFLAGS)) {
++	    mask_ok(nlctx, ETHTOOL_IM_SETTINGS_PRIVFLAGS)) {
 +		ret = dump_priv_flags(nlctx,
 +				      tb[ETHTOOL_A_SETTINGS_PRIV_FLAGS]);
 +		if (ret == 0)
@@ -137,12 +137,12 @@ index 0be442235add..1ecafa1b8f27 100644
  
  	if (allfail && !nlctx->is_monitor && !nlctx->is_dump) {
  		fputs("No data available\n", stdout);
-@@ -588,12 +642,15 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -589,12 +643,15 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  
  int settings_request(struct cmd_context *ctx, uint32_t info_mask)
  {
 +	bool is_dev = ctx->devname && strcmp(ctx->devname, WILDCARD_DEVNAME);
- 	bool compact = info_mask & ETH_SETTINGS_IM_FEATURES;
+ 	bool compact = info_mask & ETHTOOL_IM_SETTINGS_FEATURES;
  	struct nl_context *nlctx = ctx->nlctx;
  	int ret;
  
@@ -154,13 +154,13 @@ index 0be442235add..1ecafa1b8f27 100644
  
  	ret = ethnl_prep_get_request(ctx, ETHNL_CMD_GET_SETTINGS,
  				     ETHTOOL_A_SETTINGS_DEV);
-@@ -622,6 +679,11 @@ int nl_gfeatures(struct cmd_context *ctx)
- 	return settings_request(ctx, ETH_SETTINGS_IM_FEATURES);
+@@ -623,6 +680,11 @@ int nl_gfeatures(struct cmd_context *ctx)
+ 	return settings_request(ctx, ETHTOOL_IM_SETTINGS_FEATURES);
  }
  
 +int nl_gprivflags(struct cmd_context *ctx)
 +{
-+	return settings_request(ctx, ETH_SETTINGS_IM_PRIVFLAGS);
++	return settings_request(ctx, ETHTOOL_IM_SETTINGS_PRIVFLAGS);
 +}
 +
  /* SET_SETTINGS */

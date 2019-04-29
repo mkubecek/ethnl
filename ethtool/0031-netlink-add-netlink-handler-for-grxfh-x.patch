@@ -1,4 +1,4 @@
-From b392b52ad6ecd33040030fed6ce9d25f94861723 Mon Sep 17 00:00:00 2001
+From 77573d005fca8bc922f9a0369cfc38f853d55701 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:46:58 +0200
 Subject: [PATCH 31/34] netlink: add netlink handler for grxfh (-x)
@@ -63,7 +63,7 @@ index 57f2267da967..ef4981ce29c8 100644
  void monitor_usage();
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
 new file mode 100644
-index 000000000000..67504b0c94cb
+index 000000000000..19e74a01c644
 --- /dev/null
 +++ b/netlink/rxflow.c
 @@ -0,0 +1,287 @@
@@ -287,20 +287,20 @@ index 000000000000..67504b0c94cb
 +	if (!dev_ok(nlctx))
 +		return MNL_CB_OK;
 +
-+	if (mask_ok(nlctx, ETH_RXFLOW_IM_INDTBL) &&
++	if (mask_ok(nlctx, ETHTOOL_IM_RXFLOW_INDTBL) &&
 +	    tb[ETHTOOL_A_RXFLOW_NRINGS] && tb[ETHTOOL_A_RXFLOW_INDIR_TBL] &&
 +	    tb[ETHTOOL_A_RXFLOW_INDTBL_SIZE]) {
 +		ret = dump_indir_tbl(nlctx, tb);
 +		if (ret < 0)
 +			fprintf(stderr, "Indirection table dump failed\n");
 +	}
-+	if (mask_ok(nlctx, ETH_RXFLOW_IM_HKEY)) {
++	if (mask_ok(nlctx, ETHTOOL_IM_RXFLOW_HKEY)) {
 +		ret = dump_hash_key(tb[ETHTOOL_A_RXFLOW_HASH_KEY],
 +				    nlctx->is_monitor);
 +		if (ret < 0)
 +			printf("Operation not supported\n");
 +	}
-+	if (mask_ok(nlctx, ETH_RXFLOW_IM_HASHFN)) {
++	if (mask_ok(nlctx, ETHTOOL_IM_RXFLOW_HASHFN)) {
 +		if (tb[ETHTOOL_A_RXFLOW_HASH_FN]) {
 +			printf("RSS hash function:\n");
 +			walk_bitset(tb[ETHTOOL_A_RXFLOW_HASH_FN],
@@ -325,8 +325,8 @@ index 000000000000..67504b0c94cb
 +	{}
 +};
 +
-+#define GRXFH_REQ_MASK ETH_RXFLOW_IM_HASHFN | ETH_RXFLOW_IM_HKEY | \
-+		       ETH_RXFLOW_IM_INDTBL
++#define GRXFH_REQ_MASK ETHTOOL_IM_RXFLOW_HASHFN | ETHTOOL_IM_RXFLOW_HKEY | \
++		       ETHTOOL_IM_RXFLOW_INDTBL
 +int nl_grxfh(struct cmd_context *ctx)
 +{
 +	struct nl_context *nlctx = ctx->nlctx;
