@@ -1,4 +1,4 @@
-From 9c5e1792a6e9f2e7b4b4c59c9efea4b35bc02211 Mon Sep 17 00:00:00 2001
+From 9c4ebe4fe65f89a49fddcc22b2dc5c2ab1bd149c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 16/44] ethtool: provide link settings and link modes in
@@ -9,8 +9,8 @@ information provided by ETHTOOL_GLINKSETTINGS ioctl command.
 
 The information in SET_SETTINGS message sent as reply is divided into two
 parts: autonegotiation, speed, duplex and supported, advertised and peer
-advertised link modes when ETH_SETTINGS_IM_LINKMODES flag is set in the
-request and other settings when ETH_SETTINGS_IM_LINKINFO is set.
+advertised link modes when ETHTOOL_IM_SETTINGS_LINKMODES flag is set in the
+request and other settings when ETHTOOL_IM_SETTINGS_LINKINFO is set.
 
 Send notification in the same format as the reply message when relevant
 fields are modified using the ioctl interface (ETHTOOL_SLINKSETTINGS or
@@ -27,12 +27,12 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/ioctl.c                          |  64 +----
  net/ethtool/netlink.c                        |   9 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/settings.c                       | 279 +++++++++++++++++++
- 10 files changed, 453 insertions(+), 53 deletions(-)
+ net/ethtool/settings.c                       | 280 +++++++++++++++++++
+ 10 files changed, 454 insertions(+), 53 deletions(-)
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 2a098577a7e5..ded867028115 100644
+index b9dc6455554b..166a9a32955a 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -127,6 +127,8 @@ List of message types
@@ -63,8 +63,8 @@ index 2a098577a7e5..ded867028115 100644
 +
 +Info mask bits meaning:
 +
-+    ETH_SETTINGS_IM_LINKINFO		link settings
-+    ETH_SETTINGS_IM_LINKMODES		link modes and related
++    ETHTOOL_IM_SETTINGS_LINKINFO	link settings
++    ETHTOOL_IM_SETTINGS_LINKMODES	link modes and related
 +
 +Response contents:
 +
@@ -128,7 +128,7 @@ index 2a15e64a16f3..e770e6e9acca 100644
  	ETHNL_MCGRP_MONITOR,
  };
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 2c3eb9bc3aa1..7d99191b1389 100644
+index 2241e1eb3c55..d09734d0ddee 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -18,6 +18,8 @@ enum {
@@ -158,11 +158,11 @@ index 2c3eb9bc3aa1..7d99191b1389 100644
 +	ETHTOOL_A_SETTINGS_MAX = (__ETHTOOL_A_SETTINGS_CNT - 1)
 +};
 +
-+#define ETH_SETTINGS_IM_LINKINFO		(1U << 0)
-+#define ETH_SETTINGS_IM_LINKMODES		(1U << 1)
++#define ETHTOOL_IM_SETTINGS_LINKINFO		(1U << 0)
++#define ETHTOOL_IM_SETTINGS_LINKMODES		(1U << 1)
 +
-+#define ETH_SETTINGS_IM_ALL (ETH_SETTINGS_IM_LINKINFO | \
-+			     ETH_SETTINGS_IM_LINKMODES)
++#define ETHTOOL_IM_SETTINGS_ALL (ETHTOOL_IM_SETTINGS_LINKINFO | \
++				 ETHTOOL_IM_SETTINGS_LINKMODES)
 +
 +enum {
 +	ETHTOOL_A_LINKINFO_UNSPEC,
@@ -271,7 +271,7 @@ index 02cbee79da35..7a3e0b10e69a 100644
 +
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index d923aa183a9e..4a5df702955b 100644
+index d923aa183a9e..3d305580eb0c 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -30,6 +30,7 @@
@@ -345,8 +345,8 @@ index d923aa183a9e..4a5df702955b 100644
 +	err = dev->ethtool_ops->set_link_ksettings(dev, &link_ksettings);
 +	if (err >= 0)
 +		ethtool_notify(dev, NULL, ETHNL_CMD_SET_SETTINGS,
-+			       ETH_SETTINGS_IM_LINKINFO |
-+			       ETH_SETTINGS_IM_LINKMODES, NULL);
++			       ETHTOOL_IM_SETTINGS_LINKINFO |
++			       ETHTOOL_IM_SETTINGS_LINKMODES, NULL);
 +	return err;
  }
  
@@ -367,8 +367,8 @@ index d923aa183a9e..4a5df702955b 100644
 +	ret = dev->ethtool_ops->set_link_ksettings(dev, &link_ksettings);
 +	if (ret >= 0)
 +		ethtool_notify(dev, NULL, ETHNL_CMD_SET_SETTINGS,
-+			       ETH_SETTINGS_IM_LINKINFO |
-+			       ETH_SETTINGS_IM_LINKMODES, NULL);
++			       ETHTOOL_IM_SETTINGS_LINKINFO |
++			       ETHTOOL_IM_SETTINGS_LINKMODES, NULL);
 +	return ret;
  }
  
@@ -420,10 +420,10 @@ index c740e4b8e911..381dc5e58a00 100644
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
-index 000000000000..9a4c750927be
+index 000000000000..576be70412ea
 --- /dev/null
 +++ b/net/ethtool/settings.c
-@@ -0,0 +1,279 @@
+@@ -0,0 +1,280 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include "netlink.h"
@@ -474,7 +474,7 @@ index 000000000000..9a4c750927be
 +	if (tb[ETHTOOL_A_SETTINGS_COMPACT])
 +		req_info->compact = true;
 +	if (req_info->req_mask == 0)
-+		req_info->req_mask = ETH_SETTINGS_IM_ALL;
++		req_info->req_mask = ETHTOOL_IM_SETTINGS_ALL;
 +
 +	return 0;
 +}
@@ -507,13 +507,14 @@ index 000000000000..9a4c750927be
 +	ret = ethnl_before_ops(dev);
 +	if (ret < 0)
 +		return ret;
-+	if (req_mask & (ETH_SETTINGS_IM_LINKINFO | ETH_SETTINGS_IM_LINKMODES)) {
++	if (req_mask &
++	    (ETHTOOL_IM_SETTINGS_LINKINFO | ETHTOOL_IM_SETTINGS_LINKMODES)) {
 +		ret = ethnl_get_link_ksettings(info, dev, &data->ksettings);
 +		if (ret < 0)
-+			req_mask &= ~(ETH_SETTINGS_IM_LINKINFO |
-+				      ETH_SETTINGS_IM_LINKMODES);
++			req_mask &= ~(ETHTOOL_IM_SETTINGS_LINKINFO |
++				      ETHTOOL_IM_SETTINGS_LINKMODES);
 +	}
-+	if (req_mask & ETH_SETTINGS_IM_LINKMODES) {
++	if (req_mask & ETHTOOL_IM_SETTINGS_LINKMODES) {
 +		data->lpm_empty =
 +			bitmap_empty(data->ksettings.link_modes.lp_advertising,
 +				     __ETHTOOL_LINK_MODE_MASK_NBITS);
@@ -585,9 +586,9 @@ index 000000000000..9a4c750927be
 +	int len = 0, ret;
 +
 +	len += dev_ident_size();
-+	if (info_mask & ETH_SETTINGS_IM_LINKINFO)
++	if (info_mask & ETHTOOL_IM_SETTINGS_LINKINFO)
 +		len += link_info_size();
-+	if (info_mask & ETH_SETTINGS_IM_LINKMODES) {
++	if (info_mask & ETHTOOL_IM_SETTINGS_LINKMODES) {
 +		ret = link_modes_size(&data->ksettings, compact);
 +		if (ret < 0)
 +			return ret;
@@ -676,12 +677,12 @@ index 000000000000..9a4c750927be
 +	bool compact = req_info->compact;
 +	int ret;
 +
-+	if (info_mask & ETH_SETTINGS_IM_LINKINFO) {
++	if (info_mask & ETHTOOL_IM_SETTINGS_LINKINFO) {
 +		ret = fill_link_info(skb, data->lsettings);
 +		if (ret < 0)
 +			return ret;
 +	}
-+	if (info_mask & ETH_SETTINGS_IM_LINKMODES) {
++	if (info_mask & ETHTOOL_IM_SETTINGS_LINKMODES) {
 +		ret = fill_link_modes(skb, &data->ksettings, data->lpm_empty,
 +				      compact);
 +		if (ret < 0)

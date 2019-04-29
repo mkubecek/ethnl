@@ -1,4 +1,4 @@
-From 6c7121c362b077a278ad3dff512792fc879cd418 Mon Sep 17 00:00:00 2001
+From e116cdb129477a6f4c5539d2d0c99c0d6a4e738d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:56:10 +0100
 Subject: [PATCH 38/44] ethtool: set FEC parameters with SET_PARAMS request
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 50 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index e2180cf48302..19cd89ce0dfa 100644
+index e225e938ebdb..ccf599b302c9 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -500,10 +500,10 @@ SET_PARAMS
@@ -49,7 +49,7 @@ index e2180cf48302..19cd89ce0dfa 100644
 -ETHTOOL_SFECPARAM		n/a
 +ETHTOOL_SFECPARAM		ETHNL_CMD_SET_PARAMS
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 14773a8fd1c0..5fbaf9d1a287 100644
+index d0b32c3920d5..708a6349ba38 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -499,7 +499,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
@@ -107,12 +107,12 @@ index 14773a8fd1c0..5fbaf9d1a287 100644
 @@ -896,6 +932,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
- 		req_mask |= ETH_PARAMS_IM_EEE;
+ 		req_mask |= ETHTOOL_IM_PARAMS_EEE;
 +	ret = update_fec(info, dev, tb[ETHTOOL_A_PARAMS_FEC]);
 +	if (ret < 0)
 +		goto out_ops;
 +	if (ret)
-+		req_mask |= ETH_PARAMS_IM_FEC;
++		req_mask |= ETHTOOL_IM_PARAMS_FEC;
  
  	ret = 0;
  out_ops:

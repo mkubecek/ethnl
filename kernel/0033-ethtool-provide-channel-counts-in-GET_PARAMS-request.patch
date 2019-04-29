@@ -1,11 +1,11 @@
-From e69134fa1ba77c1e3a1b691d0fb9fc41bc80dd3f Mon Sep 17 00:00:00 2001
+From d8c225cf46459b39917762a7b101a5da855d25c6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:30:12 +0100
 Subject: [PATCH 33/44] ethtool: provide channel counts in GET_PARAMS request
 
 Add information about channel counts (as provided by ETHTOOL_GCHANNELS
-ioctl command) in GET_PARAMS reply when ETH_PARAMS_IM_CHANNELS flag is set
-in the request.
+ioctl command) in GET_PARAMS reply when ETHTOOL_IM_PARAMS_CHANNELS flag is
+set in the request.
 
 Send notification in the same format as reply when channel counts are
 modified using the ioctl interface (ETHTOOL_SCHANNELS command).
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 94 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 6a044246838d..ad21116016c3 100644
+index 4c2d220ad71f..23e355bcaa66 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -407,9 +407,10 @@ GET_PARAMS
@@ -37,10 +37,10 @@ index 6a044246838d..ad21116016c3 100644
  Request contents:
  
 @@ -422,6 +423,7 @@ Info mask bits:
-     ETH_PARAMS_IM_COALESCE		coalescing parameters
-     ETH_PARAMS_IM_RING			ring sizes
-     ETH_PARAMS_IM_PAUSE			pause parameters
-+    ETH_PARAMS_IM_CHANNELS		channel counts
+     ETHTOOL_IM_PARAMS_COALESCE		coalescing parameters
+     ETHTOOL_IM_PARAMS_RING		ring sizes
+     ETHTOOL_IM_PARAMS_PAUSE		pause parameters
++    ETHTOOL_IM_PARAMS_CHANNELS		channel counts
  
  Response contents: On top level, there is one attribute for each of the
  information categories, the information is nested in it.
@@ -70,7 +70,7 @@ index 6a044246838d..ad21116016c3 100644
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 1313fd655991..41b95445fc97 100644
+index 84361443b4ce..839e1dd7d241 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -295,6 +295,7 @@ enum {
@@ -82,16 +82,16 @@ index 1313fd655991..41b95445fc97 100644
  	__ETHTOOL_A_PARAMS_CNT,
  	ETHTOOL_A_PARAMS_MAX = (__ETHTOOL_A_PARAMS_CNT - 1)
 @@ -303,10 +304,12 @@ enum {
- #define ETH_PARAMS_IM_COALESCE			(1U << 0)
- #define ETH_PARAMS_IM_RING			(1U << 1)
- #define ETH_PARAMS_IM_PAUSE			(1U << 2)
-+#define ETH_PARAMS_IM_CHANNELS			(1U << 3)
+ #define ETHTOOL_IM_PARAMS_COALESCE		(1U << 0)
+ #define ETHTOOL_IM_PARAMS_RING			(1U << 1)
+ #define ETHTOOL_IM_PARAMS_PAUSE			(1U << 2)
++#define ETHTOOL_IM_PARAMS_CHANNELS		(1U << 3)
  
- #define ETH_PARAMS_IM_ALL (ETH_PARAMS_IM_COALESCE | \
- 			   ETH_PARAMS_IM_RING | \
--			   ETH_PARAMS_IM_PAUSE)
-+			   ETH_PARAMS_IM_PAUSE | \
-+			   ETH_PARAMS_IM_CHANNELS)
+ #define ETHTOOL_IM_PARAMS_ALL (ETHTOOL_IM_PARAMS_COALESCE | \
+ 			       ETHTOOL_IM_PARAMS_RING | \
+-			       ETHTOOL_IM_PARAMS_PAUSE)
++			       ETHTOOL_IM_PARAMS_PAUSE | \
++			       ETHTOOL_IM_PARAMS_CHANNELS)
  
  enum {
  	ETHTOOL_A_COALESCE_UNSPEC,
@@ -118,7 +118,7 @@ index 1313fd655991..41b95445fc97 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 0c08e9c0c8d4..484cde939527 100644
+index d1b404558f49..8e4b67ec8868 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1537,6 +1537,7 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
@@ -137,13 +137,13 @@ index 0c08e9c0c8d4..484cde939527 100644
 +	ret = dev->ethtool_ops->set_channels(dev, &channels);
 +	if (ret == 0)
 +		ethtool_notify(dev, NULL, ETHNL_CMD_SET_PARAMS,
-+			       ETH_PARAMS_IM_CHANNELS, NULL);
++			       ETHTOOL_IM_PARAMS_CHANNELS, NULL);
 +	return ret;
  }
  
  static int ethtool_get_pauseparam(struct net_device *dev, void __user *useraddr)
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 9a4dab76eb17..d1ffaf9a0591 100644
+index 2e82a6721a16..1534e47cb002 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -10,6 +10,7 @@ static const struct nla_policy get_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
@@ -180,12 +180,12 @@ index 9a4dab76eb17..d1ffaf9a0591 100644
  {
 @@ -104,6 +115,11 @@ static int prepare_params(struct common_req_info *req_info,
  		if (ret < 0)
- 			req_mask &= ~ETH_PARAMS_IM_PAUSE;
+ 			req_mask &= ~ETHTOOL_IM_PARAMS_PAUSE;
  	}
-+	if (req_mask & ETH_PARAMS_IM_CHANNELS) {
++	if (req_mask & ETHTOOL_IM_PARAMS_CHANNELS) {
 +		ret = ethnl_get_channels(dev, &data->channels);
 +		if (ret < 0)
-+			req_mask &= ~ETH_PARAMS_IM_CHANNELS;
++			req_mask &= ~ETHTOOL_IM_PARAMS_CHANNELS;
 +	}
  	ethnl_after_ops(dev);
  
@@ -204,9 +204,9 @@ index 9a4dab76eb17..d1ffaf9a0591 100644
  	struct params_data *data =
 @@ -142,6 +163,8 @@ static int params_size(const struct common_req_info *req_info)
  		len += ring_size();
- 	if (info_mask & ETH_PARAMS_IM_PAUSE)
+ 	if (info_mask & ETHTOOL_IM_PARAMS_PAUSE)
  		len += pause_size();
-+	if (info_mask & ETH_PARAMS_IM_CHANNELS)
++	if (info_mask & ETHTOOL_IM_PARAMS_CHANNELS)
 +		len += channels_size();
  
  	return len;
@@ -247,7 +247,7 @@ index 9a4dab76eb17..d1ffaf9a0591 100644
  		if (ret < 0)
  			return ret;
  	}
-+	if (info_mask & ETH_PARAMS_IM_CHANNELS) {
++	if (info_mask & ETHTOOL_IM_PARAMS_CHANNELS) {
 +		ret = fill_channels(skb, &data->channels);
 +		if (ret < 0)
 +			return ret;

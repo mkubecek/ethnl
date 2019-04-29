@@ -1,4 +1,4 @@
-From 9ac3b01201d0113c6249d24cfd99f19a8825e1b3 Mon Sep 17 00:00:00 2001
+From 2144f0873e4c8d7a77cc25c5abfc1925f59eca09 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 13 May 2018 02:35:53 +0200
 Subject: [PATCH 04/44] ethtool: move to its own directory
@@ -32,7 +32,7 @@ index 449fc0b221f8..848303d98d3d 100644
  obj-$(CONFIG_INET)		+= ipv4/
  obj-$(CONFIG_TLS)		+= tls/
 diff --git a/net/core/Makefile b/net/core/Makefile
-index f97d6254e564..9ddc2f3ecd97 100644
+index a104dc8faafc..3e2c378e5f31 100644
 --- a/net/core/Makefile
 +++ b/net/core/Makefile
 @@ -8,7 +8,7 @@ obj-y := sock.o request_sock.o skbuff.o datagram.o stream.o scm.o \

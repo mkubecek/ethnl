@@ -1,4 +1,4 @@
-From 456364ca42f00b53cfafdf8d864ec0f899d217b1 Mon Sep 17 00:00:00 2001
+From ee3d53db162e1d63350fc9613906eaad33cc2cc3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 40/44] ethtool: implement ACT_PHYS_ID message
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 183 insertions(+), 47 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 2cf912f3fb6d..6c14349e0747 100644
+index e7215ebb01d3..c5ef6cc89a42 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -566,6 +566,28 @@ Request contents:
@@ -63,7 +63,7 @@ index 2cf912f3fb6d..6c14349e0747 100644
  ETHTOOL_GTSO			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_STSO			ETHNL_CMD_SET_SETTINGS
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 12415e73ac22..ab84d768b45a 100644
+index 6085a406bb90..762759f2d199 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -23,6 +23,7 @@ enum {
@@ -264,7 +264,7 @@ index 5b05f1417b9e..19c2c6da4700 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index d34af84c1adf..8a7fa834c3d8 100644
+index 9059dd53c5e9..a93cdad566e3 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1644,60 +1644,15 @@ static int ethtool_get_strings(struct net_device *dev, void __user *useraddr)
@@ -330,7 +330,7 @@ index d34af84c1adf..8a7fa834c3d8 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index dcf4f16210fa..f89ed17b97eb 100644
+index 0cfcc5bac2d5..f92e14685e27 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -584,6 +584,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {

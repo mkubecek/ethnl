@@ -1,4 +1,4 @@
-From 6ac54966d3b4fcc43d5a79ade133115b81a6f167 Mon Sep 17 00:00:00 2001
+From f6e39c58d9ab0ef97579bd163a2b392f9067d2b5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
 Subject: [PATCH 17/44] ethtool: set link settings and link modes with
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 349 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index ded867028115..6beb385ea053 100644
+index 166a9a32955a..0f45b6d7f4bb 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -128,7 +128,7 @@ List of message types
@@ -114,7 +114,7 @@ index 381dc5e58a00..ec224707bd40 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 9a4c750927be..84f77108e4f8 100644
+index 576be70412ea..98de2a01fe65 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,97 @@ struct settings_data {
@@ -215,7 +215,7 @@ index 9a4c750927be..84f77108e4f8 100644
  static const struct nla_policy get_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_DEV]	= { .type = NLA_NESTED },
-@@ -277,3 +368,223 @@ const struct get_request_ops settings_request_ops = {
+@@ -278,3 +369,223 @@ const struct get_request_ops settings_request_ops = {
  	.reply_size		= settings_size,
  	.fill_reply		= fill_settings,
  };
@@ -379,14 +379,14 @@ index 9a4c750927be..84f77108e4f8 100644
 +	if (ret < 0)
 +		return ret;
 +	if (ret)
-+		mod_mask |= ETH_SETTINGS_IM_LINKINFO;
++		mod_mask |= ETHTOOL_IM_SETTINGS_LINKINFO;
 +
 +	ret = update_link_modes(info, tb[ETHTOOL_A_SETTINGS_LINK_MODES],
 +				&ksettings);
 +	if (ret < 0)
 +		return ret;
 +	if (ret)
-+		mod_mask |= ETH_SETTINGS_IM_LINKMODES;
++		mod_mask |= ETHTOOL_IM_SETTINGS_LINKMODES;
 +
 +	if (mod_mask) {
 +		ret = ethnl_set_link_ksettings(info, dev, &ksettings);

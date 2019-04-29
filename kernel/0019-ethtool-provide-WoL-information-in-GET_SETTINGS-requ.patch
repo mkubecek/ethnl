@@ -1,11 +1,11 @@
-From 041d10748094b925b23f352003de1feefdf435e2 Mon Sep 17 00:00:00 2001
+From f890866e632aa186c6f4462328b12abab4bacc64 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:08:55 +0100
 Subject: [PATCH 19/44] ethtool: provide WoL information in GET_SETTINGS
  request
 
 Add information about supported and enabled wake on LAN modes into the
-GET_SETTINGS reply when ETH_SETTINGS_IM_WOL flag is set in the request.
+GET_SETTINGS reply when ETHTOOL_IM_SETTINGS_WOL flag is set in the request.
 
 The GET_SETTINGS request can be still sent by unprivileged users but in
 such case the SecureOn password (if any) is not included in the reply.
@@ -25,14 +25,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 105 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index f90fb3fc7f1d..45d50ed855a0 100644
+index 3a2ce429b9c1..5f5556f5dc29 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -274,6 +274,7 @@ Info mask bits meaning:
-     ETH_SETTINGS_IM_LINKINFO		link settings
-     ETH_SETTINGS_IM_LINKMODES		link modes and related
-     ETH_SETTINGS_IM_LINKSTATE		link state
-+    ETH_SETTINGS_IM_WOL			struct ethtool_wolinfo
+     ETHTOOL_IM_SETTINGS_LINKINFO	link settings
+     ETHTOOL_IM_SETTINGS_LINKMODES	link modes and related
+     ETHTOOL_IM_SETTINGS_LINKSTATE	link state
++    ETHTOOL_IM_SETTINGS_WOL		struct ethtool_wolinfo
  
  Response contents:
  
@@ -69,7 +69,7 @@ index f90fb3fc7f1d..45d50ed855a0 100644
  ETHTOOL_GMSGLVL			n/a
  ETHTOOL_SMSGLVL			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index e5af77d360e5..b5a2151d37b7 100644
+index 9093b6f3db19..24928733838f 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -197,6 +197,7 @@ enum {
@@ -81,16 +81,16 @@ index e5af77d360e5..b5a2151d37b7 100644
  	__ETHTOOL_A_SETTINGS_CNT,
  	ETHTOOL_A_SETTINGS_MAX = (__ETHTOOL_A_SETTINGS_CNT - 1)
 @@ -205,10 +206,12 @@ enum {
- #define ETH_SETTINGS_IM_LINKINFO		(1U << 0)
- #define ETH_SETTINGS_IM_LINKMODES		(1U << 1)
- #define ETH_SETTINGS_IM_LINKSTATE		(1U << 2)
-+#define ETH_SETTINGS_IM_WOL			(1U << 3)
+ #define ETHTOOL_IM_SETTINGS_LINKINFO		(1U << 0)
+ #define ETHTOOL_IM_SETTINGS_LINKMODES		(1U << 1)
+ #define ETHTOOL_IM_SETTINGS_LINKSTATE		(1U << 2)
++#define ETHTOOL_IM_SETTINGS_WOL			(1U << 3)
  
- #define ETH_SETTINGS_IM_ALL (ETH_SETTINGS_IM_LINKINFO | \
- 			     ETH_SETTINGS_IM_LINKMODES | \
--			     ETH_SETTINGS_IM_LINKSTATE)
-+			     ETH_SETTINGS_IM_LINKSTATE | \
-+			     ETH_SETTINGS_IM_WOL)
+ #define ETHTOOL_IM_SETTINGS_ALL (ETHTOOL_IM_SETTINGS_LINKINFO | \
+ 				 ETHTOOL_IM_SETTINGS_LINKMODES | \
+-				 ETHTOOL_IM_SETTINGS_LINKSTATE)
++				 ETHTOOL_IM_SETTINGS_LINKSTATE | \
++				 ETHTOOL_IM_SETTINGS_WOL)
  
  enum {
  	ETHTOOL_A_LINKINFO_UNSPEC,
@@ -141,7 +141,7 @@ index a5ddd7f5cfce..bbe3e51f7308 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index c77e655dc371..b8ce0ee4cebe 100644
+index 66581fd97d30..ec90ad52bb96 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1242,11 +1242,11 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
@@ -164,13 +164,13 @@ index c77e655dc371..b8ce0ee4cebe 100644
  		return ret;
  
  	dev->wol_enabled = !!wol.wolopts;
-+	ethtool_notify(dev, NULL, ETHNL_CMD_SET_SETTINGS, ETH_SETTINGS_IM_WOL,
-+		       NULL);
++	ethtool_notify(dev, NULL, ETHNL_CMD_SET_SETTINGS,
++		       ETHTOOL_IM_SETTINGS_WOL, NULL);
  
  	return 0;
  }
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 9f278691b5fd..aa021249a039 100644
+index 228a2bdccc67..7383b14e8340 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -6,10 +6,12 @@
@@ -224,19 +224,19 @@ index 9f278691b5fd..aa021249a039 100644
  static int prepare_settings(struct common_req_info *req_info,
  			    struct genl_info *info)
  {
-@@ -194,6 +211,11 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -195,6 +212,11 @@ static int prepare_settings(struct common_req_info *req_info,
  	}
- 	if (req_mask & ETH_SETTINGS_IM_LINKSTATE)
+ 	if (req_mask & ETHTOOL_IM_SETTINGS_LINKSTATE)
  		data->link = __ethtool_get_link(dev);
-+	if (req_mask & ETH_SETTINGS_IM_WOL) {
++	if (req_mask & ETHTOOL_IM_SETTINGS_WOL) {
 +		ret = ethnl_get_wol(info, dev, &data->wolinfo);
 +		if (ret < 0)
-+			req_mask &= ~ETH_SETTINGS_IM_WOL;
++			req_mask &= ~ETHTOOL_IM_SETTINGS_WOL;
 +	}
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -249,6 +271,12 @@ static int link_state_size(int link)
+@@ -250,6 +272,12 @@ static int link_state_size(int link)
  	return nla_total_size(nla_total_size(sizeof(u8)));
  }
  
@@ -249,16 +249,16 @@ index 9f278691b5fd..aa021249a039 100644
  /* To keep things simple, reserve space for some attributes which may not
   * be added to the message (e.g. ETHTOOL_A_SETTINGS_SOPASS); therefore the
   * length returned may be bigger than the actual length of the message sent.
-@@ -272,6 +300,8 @@ static int settings_size(const struct common_req_info *req_info)
+@@ -273,6 +301,8 @@ static int settings_size(const struct common_req_info *req_info)
  	}
- 	if (info_mask & ETH_SETTINGS_IM_LINKSTATE)
+ 	if (info_mask & ETHTOOL_IM_SETTINGS_LINKSTATE)
  		len += link_state_size(data->link);
-+	if (info_mask & ETH_SETTINGS_IM_WOL)
++	if (info_mask & ETHTOOL_IM_SETTINGS_WOL)
 +		len += wol_size();
  
  	return len;
  }
-@@ -363,6 +393,33 @@ static int fill_link_state(struct sk_buff *skb, int link)
+@@ -364,6 +394,33 @@ static int fill_link_state(struct sk_buff *skb, int link)
  	return -EMSGSIZE;
  }
  
@@ -292,11 +292,11 @@ index 9f278691b5fd..aa021249a039 100644
  static int fill_settings(struct sk_buff *skb,
  			 const struct common_req_info *req_info)
  {
-@@ -388,6 +445,11 @@ static int fill_settings(struct sk_buff *skb,
+@@ -389,6 +446,11 @@ static int fill_settings(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
-+	if (info_mask & ETH_SETTINGS_IM_WOL) {
++	if (info_mask & ETHTOOL_IM_SETTINGS_WOL) {
 +		ret = fill_wolinfo(skb, &data->wolinfo, data->privileged);
 +		if (ret < 0)
 +			return ret;
@@ -304,7 +304,7 @@ index 9f278691b5fd..aa021249a039 100644
  
  	return 0;
  }
-@@ -433,6 +495,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -434,6 +496,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_LINK_INFO]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_MODES]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },

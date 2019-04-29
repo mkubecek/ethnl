@@ -1,11 +1,12 @@
-From 9f9594701959173c1e4787d65f0096bc904b05e1 Mon Sep 17 00:00:00 2001
+From b79f22f28e2ca231ecd027258449f7233b65f881 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
 Subject: [PATCH 14/44] ethtool: provide timestamping information in GET_INFO
  request
 
 Add timestamping information as provided by ETHTOOL_GET_TS_INFO ioctl
-command in GET_INFO reply if ETH_INFO_IM_TSINFO flag is set in the request.
+command in GET_INFO reply if ETHTOOL_IM_INFO_TSINFO flag is set in the
+request.
 
 Add constants for counts of HWTSTAMP_TX_* and HWTSTAM_FILTER_* constants
 and provide symbolic names for timestamping related values so that they can
@@ -15,7 +16,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  10 +-
  include/uapi/linux/ethtool.h                 |   6 +
- include/uapi/linux/ethtool_netlink.h         |  16 ++-
+ include/uapi/linux/ethtool_netlink.h         |  18 ++-
  include/uapi/linux/net_tstamp.h              |  13 ++
  net/ethtool/common.c                         |  24 ++++
  net/ethtool/common.h                         |   2 +
@@ -23,10 +24,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/ioctl.c                          |  20 +--
  net/ethtool/netlink.h                        |   9 ++
  net/ethtool/strset.c                         |  18 +++
- 10 files changed, 237 insertions(+), 20 deletions(-)
+ 10 files changed, 238 insertions(+), 21 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 8a9d6e6f7731..2a098577a7e5 100644
+index 68aa561e07e5..b9dc6455554b 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -236,6 +236,11 @@ Kernel response contents:
@@ -85,7 +86,7 @@ index 35b2fcd30950..bdf36c041486 100644
  	ETH_SS_COUNT
  };
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 6418c0c949d5..2c3eb9bc3aa1 100644
+index 08700e00391e..2241e1eb3c55 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -151,14 +151,17 @@ enum {
@@ -98,12 +99,13 @@ index 6418c0c949d5..2c3eb9bc3aa1 100644
  	ETHTOOL_A_INFO_MAX = (__ETHTOOL_A_INFO_CNT - 1)
  };
  
- #define ETH_INFO_IM_DRVINFO			(1U << 0)
-+#define ETH_INFO_IM_TSINFO			(1U << 1)
+-#define ETHTOOL_IM_INFO_DRVINFO		(1U << 0)
++#define ETHTOOL_IM_INFO_DRVINFO			(1U << 0)
++#define ETHTOOL_IM_INFO_TSINFO			(1U << 1)
  
--#define ETH_INFO_IM_ALL (ETH_INFO_IM_DRVINFO)
-+#define ETH_INFO_IM_ALL (ETH_INFO_IM_DRVINFO | \
-+			 ETH_INFO_IM_TSINFO)
+-#define ETHTOOL_IM_INFO_ALL (ETHTOOL_IM_INFO_DRVINFO)
++#define ETHTOOL_IM_INFO_ALL (ETHTOOL_IM_INFO_DRVINFO | \
++			     ETHTOOL_IM_INFO_TSINFO)
  
  enum {
  	ETHTOOL_A_DRVINFO_UNSPEC,
@@ -214,7 +216,7 @@ index e87e58b3a274..02cbee79da35 100644
 +
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
-index ed3033354b26..351e78b5a839 100644
+index f99612187119..e9e9603d8530 100644
 --- a/net/ethtool/info.c
 +++ b/net/ethtool/info.c
 @@ -1,15 +1,61 @@
@@ -289,12 +291,12 @@ index ed3033354b26..351e78b5a839 100644
  /* parse_request() handler */
 @@ -68,6 +115,11 @@ static int prepare_info(struct common_req_info *req_info,
  		if (ret < 0)
- 			req_mask &= ~ETH_INFO_IM_DRVINFO;
+ 			req_mask &= ~ETHTOOL_IM_INFO_DRVINFO;
  	}
-+	if (req_mask & ETH_INFO_IM_TSINFO) {
++	if (req_mask & ETHTOOL_IM_INFO_TSINFO) {
 +		ret = __ethtool_get_ts_info(dev, &data->tsinfo);
 +		if (ret < 0)
-+			req_mask &= ~ETH_INFO_IM_TSINFO;
++			req_mask &= ~ETHTOOL_IM_INFO_TSINFO;
 +	}
  	ethnl_after_ops(dev);
  
@@ -344,9 +346,9 @@ index ed3033354b26..351e78b5a839 100644
  {
 @@ -103,6 +191,13 @@ static int info_size(const struct common_req_info *req_info)
  	len += dev_ident_size();
- 	if (info_mask & ETH_INFO_IM_DRVINFO)
+ 	if (info_mask & ETHTOOL_IM_INFO_DRVINFO)
  		len += drvinfo_size(&data->drvinfo);
-+	if (info_mask & ETH_INFO_IM_TSINFO) {
++	if (info_mask & ETHTOOL_IM_INFO_TSINFO) {
 +		int ret = tsinfo_size(&data->tsinfo, req_info->compact);
 +
 +		if (ret < 0)
@@ -406,7 +408,7 @@ index ed3033354b26..351e78b5a839 100644
  		if (ret < 0)
  			return ret;
  	}
-+	if (info_mask & ETH_INFO_IM_TSINFO) {
++	if (info_mask & ETHTOOL_IM_INFO_TSINFO) {
 +		ret = fill_tsinfo(skb, &data->tsinfo, req_info->compact);
 +		if (ret < 0)
 +			return ret;

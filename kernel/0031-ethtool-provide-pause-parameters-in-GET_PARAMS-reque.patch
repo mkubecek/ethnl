@@ -1,11 +1,11 @@
-From c6fd6e38e141288cf93574f2fba3f31578396295 Mon Sep 17 00:00:00 2001
+From ae33378225750924f455b52a8e2c86e2edf0c712 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:02:27 +0100
 Subject: [PATCH 31/44] ethtool: provide pause parameters in GET_PARAMS request
 
 Add information about pause parameters (as provided by ETHTOOL_GPAUSEPARAM
-ioctl command) in GET_PARAMS reply when ETH_PARAMS_IM_PAUSE flag is set in
-the request.
+ioctl command) in GET_PARAMS reply when ETHTOOL_IM_PARAMS_PAUSE flag is set
+in the request.
 
 Send notification in the same format as reply when pause parameters are
 modified using the ioctl interface (ETHTOOL_SPAUSEPARAM command).
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 76 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 7c9161ef781d..8c3d6a55af35 100644
+index 4e5f04729fa3..d84d9122e92c 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -407,9 +407,9 @@ GET_PARAMS
@@ -37,9 +37,9 @@ index 7c9161ef781d..8c3d6a55af35 100644
  
 @@ -421,6 +421,7 @@ Info mask bits:
  
-     ETH_PARAMS_IM_COALESCE		coalescing parameters
-     ETH_PARAMS_IM_RING			ring sizes
-+    ETH_PARAMS_IM_PAUSE			pause parameters
+     ETHTOOL_IM_PARAMS_COALESCE		coalescing parameters
+     ETHTOOL_IM_PARAMS_RING		ring sizes
++    ETHTOOL_IM_PARAMS_PAUSE		pause parameters
  
  Response contents: On top level, there is one attribute for each of the
  information categories, the information is nested in it.
@@ -64,7 +64,7 @@ index 7c9161ef781d..8c3d6a55af35 100644
  ETHTOOL_GRXCSUM			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SRXCSUM			ETHNL_CMD_SET_SETTINGS
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 4c01b25cde88..1313fd655991 100644
+index b7abcba4c568..84361443b4ce 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -294,6 +294,7 @@ enum {
@@ -77,14 +77,14 @@ index 4c01b25cde88..1313fd655991 100644
  	ETHTOOL_A_PARAMS_MAX = (__ETHTOOL_A_PARAMS_CNT - 1)
 @@ -301,9 +302,11 @@ enum {
  
- #define ETH_PARAMS_IM_COALESCE			(1U << 0)
- #define ETH_PARAMS_IM_RING			(1U << 1)
-+#define ETH_PARAMS_IM_PAUSE			(1U << 2)
+ #define ETHTOOL_IM_PARAMS_COALESCE		(1U << 0)
+ #define ETHTOOL_IM_PARAMS_RING			(1U << 1)
++#define ETHTOOL_IM_PARAMS_PAUSE			(1U << 2)
  
- #define ETH_PARAMS_IM_ALL (ETH_PARAMS_IM_COALESCE | \
--			   ETH_PARAMS_IM_RING)
-+			   ETH_PARAMS_IM_RING | \
-+			   ETH_PARAMS_IM_PAUSE)
+ #define ETHTOOL_IM_PARAMS_ALL (ETHTOOL_IM_PARAMS_COALESCE | \
+-			       ETHTOOL_IM_PARAMS_RING)
++			       ETHTOOL_IM_PARAMS_RING | \
++			       ETHTOOL_IM_PARAMS_PAUSE)
  
  enum {
  	ETHTOOL_A_COALESCE_UNSPEC,
@@ -106,7 +106,7 @@ index 4c01b25cde88..1313fd655991 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 0775f5810b9e..0c08e9c0c8d4 100644
+index d5c02e0cfd5c..d1b404558f49 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1588,6 +1588,7 @@ static int ethtool_get_pauseparam(struct net_device *dev, void __user *useraddr)
@@ -125,13 +125,13 @@ index 0775f5810b9e..0c08e9c0c8d4 100644
 +	ret = dev->ethtool_ops->set_pauseparam(dev, &pauseparam);
 +	if (ret >= 0)
 +		ethtool_notify(dev, NULL, ETHNL_CMD_SET_PARAMS,
-+			       ETH_PARAMS_IM_PAUSE, NULL);
++			       ETHTOOL_IM_PARAMS_PAUSE, NULL);
 +	return ret;
  }
  
  static int ethtool_self_test(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index c54a51fc3f6d..1ba7a9a80c2b 100644
+index 2db48d74cfc0..cdcd1435db71 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -9,6 +9,7 @@ static const struct nla_policy get_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
@@ -168,12 +168,12 @@ index c54a51fc3f6d..1ba7a9a80c2b 100644
  {
 @@ -88,6 +99,11 @@ static int prepare_params(struct common_req_info *req_info,
  		if (ret < 0)
- 			req_mask &= ~ETH_PARAMS_IM_RING;
+ 			req_mask &= ~ETHTOOL_IM_PARAMS_RING;
  	}
-+	if (req_mask & ETH_PARAMS_IM_PAUSE) {
++	if (req_mask & ETHTOOL_IM_PARAMS_PAUSE) {
 +		ret = ethnl_get_pause(dev, &data->pause);
 +		if (ret < 0)
-+			req_mask &= ~ETH_PARAMS_IM_PAUSE;
++			req_mask &= ~ETHTOOL_IM_PARAMS_PAUSE;
 +	}
  	ethnl_after_ops(dev);
  
@@ -192,9 +192,9 @@ index c54a51fc3f6d..1ba7a9a80c2b 100644
  	struct params_data *data =
 @@ -119,6 +140,8 @@ static int params_size(const struct common_req_info *req_info)
  		len += coalesce_size();
- 	if (info_mask & ETH_PARAMS_IM_RING)
+ 	if (info_mask & ETHTOOL_IM_PARAMS_RING)
  		len += ring_size();
-+	if (info_mask & ETH_PARAMS_IM_PAUSE)
++	if (info_mask & ETHTOOL_IM_PARAMS_PAUSE)
 +		len += pause_size();
  
  	return len;
@@ -228,7 +228,7 @@ index c54a51fc3f6d..1ba7a9a80c2b 100644
  		if (ret < 0)
  			return ret;
  	}
-+	if (info_mask & ETH_PARAMS_IM_PAUSE) {
++	if (info_mask & ETHTOOL_IM_PARAMS_PAUSE) {
 +		ret = fill_pause(skb, &data->pause);
 +		if (ret < 0)
 +			return ret;

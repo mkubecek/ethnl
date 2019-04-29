@@ -1,11 +1,11 @@
-From 27a9628175e239a74de984e83ebb4935dbe2524a Mon Sep 17 00:00:00 2001
+From c2f3b17fbf35026efd047ea5ce71c5fb76982956 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 16:19:21 +0100
 Subject: [PATCH 25/44] ethtool: provide private flags in GET_SETTINGS request
 
 Add information about device private flags (as provided by
 ETHTOOL_GPFLAGS ioctl command) in GET_SETTINGS reply when
-ETH_SETTINGS_IM_PRIVFLAGS flag is set in the request.
+ETHTOOL_IM_SETTINGS_PRIVFLAGS flag is set in the request.
 
 Send notification in the same format as reply when device private flags
 are modified using ioctl interface (ETHTOOL_SPFLAGS command).
@@ -19,14 +19,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 114 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index b2e7eee4046c..abbce979b885 100644
+index c0a4027adcb2..defd49dc9e3e 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -277,6 +277,7 @@ Info mask bits meaning:
-     ETH_SETTINGS_IM_WOL			struct ethtool_wolinfo
-     ETH_SETTINGS_IM_DEBUG		debugging
-     ETH_SETTINGS_IM_FEATURES		features
-+    ETH_SETTINGS_IM_PRIVFLAGS		device private flags
+     ETHTOOL_IM_SETTINGS_WOL		struct ethtool_wolinfo
+     ETHTOOL_IM_SETTINGS_DEBUG		debugging
+     ETHTOOL_IM_SETTINGS_FEATURES	features
++    ETHTOOL_IM_SETTINGS_PRIVFLAGS	device private flags
  
  Response contents:
  
@@ -60,7 +60,7 @@ index b2e7eee4046c..abbce979b885 100644
  ETHTOOL_GRXFH			n/a
  ETHTOOL_SRXFH			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 58193b4878e0..16e338135f91 100644
+index 45e21b3c1686..1bc15724fc55 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -200,6 +200,7 @@ enum {
@@ -72,24 +72,24 @@ index 58193b4878e0..16e338135f91 100644
  	__ETHTOOL_A_SETTINGS_CNT,
  	ETHTOOL_A_SETTINGS_MAX = (__ETHTOOL_A_SETTINGS_CNT - 1)
 @@ -211,13 +212,15 @@ enum {
- #define ETH_SETTINGS_IM_WOL			(1U << 3)
- #define ETH_SETTINGS_IM_DEBUG			(1U << 4)
- #define ETH_SETTINGS_IM_FEATURES		(1U << 5)
-+#define ETH_SETTINGS_IM_PRIVFLAGS		(1U << 6)
+ #define ETHTOOL_IM_SETTINGS_WOL			(1U << 3)
+ #define ETHTOOL_IM_SETTINGS_DEBUG		(1U << 4)
+ #define ETHTOOL_IM_SETTINGS_FEATURES		(1U << 5)
++#define ETHTOOL_IM_SETTINGS_PRIVFLAGS		(1U << 6)
  
- #define ETH_SETTINGS_IM_ALL (ETH_SETTINGS_IM_LINKINFO | \
- 			     ETH_SETTINGS_IM_LINKMODES | \
- 			     ETH_SETTINGS_IM_LINKSTATE | \
- 			     ETH_SETTINGS_IM_WOL | \
- 			     ETH_SETTINGS_IM_DEBUG | \
--			     ETH_SETTINGS_IM_FEATURES)
-+			     ETH_SETTINGS_IM_FEATURES | \
-+			     ETH_SETTINGS_IM_PRIVFLAGS)
+ #define ETHTOOL_IM_SETTINGS_ALL (ETHTOOL_IM_SETTINGS_LINKINFO | \
+ 				 ETHTOOL_IM_SETTINGS_LINKMODES | \
+ 				 ETHTOOL_IM_SETTINGS_LINKSTATE | \
+ 				 ETHTOOL_IM_SETTINGS_WOL | \
+ 				 ETHTOOL_IM_SETTINGS_DEBUG | \
+-				 ETHTOOL_IM_SETTINGS_FEATURES)
++				 ETHTOOL_IM_SETTINGS_FEATURES | \
++				 ETHTOOL_IM_SETTINGS_PRIVFLAGS)
  
  enum {
  	ETHTOOL_A_LINKINFO_UNSPEC,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index c5d3096bcb9b..e391652130d8 100644
+index c986058a3d39..1e138fd39065 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -2546,6 +2546,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
@@ -98,12 +98,12 @@ index c5d3096bcb9b..e391652130d8 100644
  				       dev->ethtool_ops->set_priv_flags);
 +		if (rc == 0)
 +			ethtool_notify(dev, NULL, ETHNL_CMD_SET_SETTINGS,
-+				       ETH_SETTINGS_IM_PRIVFLAGS, NULL);
++				       ETHTOOL_IM_SETTINGS_PRIVFLAGS, NULL);
  		break;
  	case ETHTOOL_GRXFH:
  	case ETHTOOL_GRXRINGS:
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index ed5e8ccefbe2..4bd9074d8856 100644
+index ae6463d50af5..7fe50009295e 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -21,6 +21,9 @@ struct settings_data {
@@ -183,23 +183,23 @@ index ed5e8ccefbe2..4bd9074d8856 100644
  static int prepare_settings(struct common_req_info *req_info,
  			    struct genl_info *info)
  {
-@@ -258,6 +314,11 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -259,6 +315,11 @@ static int prepare_settings(struct common_req_info *req_info,
  	}
- 	if (req_mask & ETH_SETTINGS_IM_FEATURES)
+ 	if (req_mask & ETHTOOL_IM_SETTINGS_FEATURES)
  		ethnl_get_features(dev, data);
-+	if (req_mask & ETH_SETTINGS_IM_PRIVFLAGS) {
++	if (req_mask & ETHTOOL_IM_SETTINGS_PRIVFLAGS) {
 +		ret = ethnl_get_priv_flags(info, data);
 +		if (ret < 0)
-+			req_mask &= ~ETH_SETTINGS_IM_PRIVFLAGS;
++			req_mask &= ~ETHTOOL_IM_SETTINGS_PRIVFLAGS;
 +	}
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -389,6 +450,17 @@ static int settings_size(const struct common_req_info *req_info)
+@@ -390,6 +451,17 @@ static int settings_size(const struct common_req_info *req_info)
  			return ret;
  		len += ret;
  	}
-+	if (info_mask & ETH_SETTINGS_IM_PRIVFLAGS) {
++	if (info_mask & ETHTOOL_IM_SETTINGS_PRIVFLAGS) {
 +		const unsigned int flags =
 +			(compact ? ETHNL_BITSET_COMPACT : 0) |
 +			ETHNL_BITSET_LEGACY_NAMES;
@@ -213,7 +213,7 @@ index ed5e8ccefbe2..4bd9074d8856 100644
  
  	return len;
  }
-@@ -563,6 +635,18 @@ static int fill_features(struct sk_buff *skb, const struct settings_data *data)
+@@ -564,6 +636,18 @@ static int fill_features(struct sk_buff *skb, const struct settings_data *data)
  	return 0;
  }
  
@@ -232,11 +232,11 @@ index ed5e8ccefbe2..4bd9074d8856 100644
  static int fill_settings(struct sk_buff *skb,
  			 const struct common_req_info *req_info)
  {
-@@ -603,10 +687,23 @@ static int fill_settings(struct sk_buff *skb,
+@@ -604,10 +688,23 @@ static int fill_settings(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
-+	if (info_mask & ETH_SETTINGS_IM_PRIVFLAGS) {
++	if (info_mask & ETHTOOL_IM_SETTINGS_PRIVFLAGS) {
 +		ret = fill_priv_flags(skb, data);
 +		if (ret < 0)
 +			return ret;
@@ -256,7 +256,7 @@ index ed5e8ccefbe2..4bd9074d8856 100644
  const struct get_request_ops settings_request_ops = {
  	.request_cmd		= ETHNL_CMD_GET_SETTINGS,
  	.reply_cmd		= ETHNL_CMD_SET_SETTINGS,
-@@ -618,6 +715,7 @@ const struct get_request_ops settings_request_ops = {
+@@ -619,6 +716,7 @@ const struct get_request_ops settings_request_ops = {
  	.prepare_data		= prepare_settings,
  	.reply_size		= settings_size,
  	.fill_reply		= fill_settings,
@@ -264,7 +264,7 @@ index ed5e8ccefbe2..4bd9074d8856 100644
  };
  
  /* SET_SETTINGS */
-@@ -674,6 +772,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -675,6 +773,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_FEATURES]		= { .type = NLA_NESTED },

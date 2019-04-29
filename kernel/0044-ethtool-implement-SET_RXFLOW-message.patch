@@ -1,4 +1,4 @@
-From 74a4ef2ffe7a002f7d56034362736311ea1aa083 Mon Sep 17 00:00:00 2001
+From 6404d7547a3409ea8922840205f68edd51d83ea4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 44/44] ethtool: implement SET_RXFLOW message
@@ -17,15 +17,15 @@ for a device.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  44 +-
+ Documentation/networking/ethtool-netlink.txt |  46 +-
  include/uapi/linux/ethtool_netlink.h         |   2 +-
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   1 +
  net/ethtool/rxflow.c                         | 631 +++++++++++++++++++
- 5 files changed, 679 insertions(+), 4 deletions(-)
+ 5 files changed, 681 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 590186764643..549f7340d9b4 100644
+index 8c3ed9525604..0d401a3a3946 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -133,7 +133,7 @@ List of message types
@@ -37,7 +37,7 @@ index 590186764643..549f7340d9b4 100644
  
  All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
  to indicate the type.
-@@ -729,6 +729,44 @@ values (ring numbers) these weights correspond to. If ETHTOOL_A_ITWGHT_VALUES
+@@ -730,6 +730,46 @@ values (ring numbers) these weights correspond to. If ETHTOOL_A_ITWGHT_VALUES
  is omitted, values from 0 to number of weights minus one are used.
  
  
@@ -54,35 +54,37 @@ index 590186764643..549f7340d9b4 100644
 +    ETHTOOL_A_RXFLOW_HASH_KEY		(binary)	hash key
 +    ETHTOOL_A_RXFLOW_INDIR_TBL		(nested)	indirection table description
 +
-+Values of ETH_RXFLOW_CTXOP:
++Values of ETHTOOL_A__RXFLOW_CTXOP:
 +
-+    ETH_RXFLOW_CTXOP_SET		set values for a context (default)
-+    ETH_RXFLOW_CTXOP_NEW		add new RSS context
-+    ETH_RXFLOW_CTXOP_DEL		delete a context
++    ETHTOOL_RXFLOW_CTXOP_SET		set values for a context (default)
++    ETHTOOL_RXFLOW_CTXOP_NEW		add new RSS context
++    ETHTOOL_RXFLOW_CTXOP_DEL		delete a context
 +
-+If ETH_RXFLOW_CTXOP is omitted or equal to ETH_RXFLOW_CTXOP_SET, request
-+updates values of an existing RSS context. If ETHTOOL_A_RXFLOW_CONTEXT is
-+omitted or zero, main context is updated. ETHTOOL_A_RXFLOW_HASH_FN (bitset)
++If ETHTOOL_A_RXFLOW_CTXOP is omitted or equal to ETHTOOL_RXFLOW_CTXOP_SET,
++request updates values of an existing RSS context. If ETHTOOL_A_RXFLOW_CONTEXT
++is omitted or zero, main context is updated. ETHTOOL_A_RXFLOW_HASH_FN (bitset)
 +specifies hash function(s) to use, ETHTOOL_A_RXFLOW_HASH_KEY hash key (length
 +must match) and ETHTOOL_A_RXFLOW_INDIR_TBL requested indirection table in the
 +way described above.
 +
-+ETH_RXFLOW_CTXOP equal to ETH_RXFLOW_CTXOP_NEW works in the same way except
-+ETHTOOL_A_RXFLOW_CONTEXT must not be present and a new RSS context is created
-+(if supported by NIC driver). An ETHNL_CMD_SET_RXFLOW message is sent as
-+a reply, containing only ETHTOOL_A_RXFLOW_DEV, ETHTOOL_A_RXFLOW_CTXOP
-+(= ETH_RXFLOW_CTXOP_NEW) and ETHTOOL_A_RXFLOW_CONTEXT (with new context id).
++ETHTOOL_A_RXFLOW_CTXOP equal to ETHTOOL_RXFLOW_CTXOP_NEW works in the same way
++except ETHTOOL_A_RXFLOW_CONTEXT must not be present and a new RSS context is
++created (if supported by NIC driver). An ETHNL_CMD_SET_RXFLOW message is sent
++as a reply, containing only ETHTOOL_A_RXFLOW_DEV, ETHTOOL_A_RXFLOW_CTXOP
++(equal to ETHTOOL_RXFLOW_CTXOP_NEW) and ETHTOOL_A_RXFLOW_CONTEXT (with new
++context id).
 +
-+ETHTOOL_A_RXFLOW_CTXOP equal to ETH_RXFLOW_CTXOP_DEL requests context deletion
-+(if supported by NIC driver). Request must have ETHTOOL_A_RXFLOW_CONTEXT
-+(which is not zero) and must not contain ETHTOOL_A_RXFLOW_HASH_FN,
-+ETHTOOL_A_RXFLOW_HASH_KEY or ETHTOOL_A_RXFLOW_INDIR_TBL.
++ETHTOOL_A_RXFLOW_CTXOP equal to ETHTOOL_RXFLOW_CTXOP_DEL requests context
++deletion (if supported by NIC driver). Request must have
++ETHTOOL_A_RXFLOW_CONTEXT (which is not zero) and must not contain
++ETHTOOL_A_RXFLOW_HASH_FN, ETHTOOL_A_RXFLOW_HASH_KEY or
++ETHTOOL_A_RXFLOW_INDIR_TBL.
 +
 +
  Request translation
  -------------------
  
-@@ -793,7 +831,7 @@ ETHTOOL_SRXNTUPLE		n/a
+@@ -794,7 +834,7 @@ ETHTOOL_SRXNTUPLE		n/a
  ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHNL_CMD_GET_STRSET
  ETHTOOL_GRXFHINDIR		ETHNL_CMD_GET_RXFLOW
@@ -91,7 +93,7 @@ index 590186764643..549f7340d9b4 100644
  ETHTOOL_GFEATURES		ETHNL_CMD_GET_SETTINGS
  ETHTOOL_SFEATURES		ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GCHANNELS		ETHNL_CMD_GET_PARAMS
-@@ -807,7 +845,7 @@ ETHTOOL_GMODULEEEPROM		n/a
+@@ -808,7 +848,7 @@ ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			ETHNL_CMD_GET_PARAMS
  ETHTOOL_SEEE			ETHNL_CMD_SET_PARAMS
  ETHTOOL_GRSSH			ETHNL_CMD_GET_RXFLOW
@@ -101,7 +103,7 @@ index 590186764643..549f7340d9b4 100644
  ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index d03bb4b56b10..f33d1bab3c0c 100644
+index 822116b70fca..c6686ebb35b2 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -26,7 +26,7 @@ enum {
@@ -114,7 +116,7 @@ index d03bb4b56b10..f33d1bab3c0c 100644
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index a97a6cece7b7..e26d6d98ccc4 100644
+index eaa1052b321e..2ba29423ffe9 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -741,6 +741,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
@@ -142,7 +144,7 @@ index d95e103259b9..cb7dce82cc7e 100644
  int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_reset(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index 6520add3a8c9..75b546fb49f3 100644
+index 10f98ada8890..3fb4318a3b4d 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
 @@ -528,3 +528,634 @@ void ethnl_rxflow_notify(struct net_device *dev,
@@ -173,9 +175,9 @@ index 6520add3a8c9..75b546fb49f3 100644
 +	struct nlattr *err_attr;
 +
 +	switch(ctxop) {
-+	case ETH_RXFLOW_CTXOP_SET:
++	case ETHTOOL_RXFLOW_CTXOP_SET :
 +		break;
-+	case ETH_RXFLOW_CTXOP_NEW:
++	case ETHTOOL_RXFLOW_CTXOP_NEW :
 +		if (context) {
 +			NL_SET_ERR_MSG_ATTR(info->extack,
 +					    tb[ETHTOOL_A_RXFLOW_CONTEXT],
@@ -189,7 +191,7 @@ index 6520add3a8c9..75b546fb49f3 100644
 +			return -EINVAL;
 +		}
 +		break;
-+	case ETH_RXFLOW_CTXOP_DEL:
++	case ETHTOOL_RXFLOW_CTXOP_DEL :
 +		if (!context) {
 +			GENL_SET_ERR_MSG(info, "cannot delete main context");
 +			return -EINVAL;
@@ -285,7 +287,7 @@ index 6520add3a8c9..75b546fb49f3 100644
 +		if (ret < 0)
 +			return ret;
 +		ethnl_rxflow_notify(dev, info->extack, ETHNL_CMD_SET_RXFLOW,
-+				    ETH_RXFLOW_IM_HASHOPTS, &ninfo);
++				    ETHTOOL_IM_RXFLOW_HASHOPTS, &ninfo);
 +	}
 +
 +	return 0;
@@ -315,7 +317,7 @@ index 6520add3a8c9..75b546fb49f3 100644
 +		ret = -EINVAL;
 +	} else {
 +		*phashfn = mod ? (u8)hash_fn : ETH_RSS_HASH_NO_CHANGE;
-+		*info_mask |= (mod ? ETH_RXFLOW_IM_HASHFN : 0);
++		*info_mask |= (mod ? ETHTOOL_IM_RXFLOW_HASHFN : 0);
 +	}
 +	return ret;
 +}
@@ -341,7 +343,7 @@ index 6520add3a8c9..75b546fb49f3 100644
 +	}
 +
 +	*phkey = nla_data(attr);
-+	*info_mask |= ETH_RXFLOW_IM_HKEY;
++	*info_mask |= ETHTOOL_IM_RXFLOW_HKEY;
 +	return 0;
 +}
 +
@@ -609,7 +611,7 @@ index 6520add3a8c9..75b546fb49f3 100644
 +		*reset = true;
 +	}
 +	*pindtbl = table;
-+	*info_mask |= ETH_RXFLOW_IM_INDTBL;
++	*info_mask |= ETHTOOL_IM_RXFLOW_INDTBL;
 +
 +	return 0;
 +}
@@ -624,7 +626,7 @@ index 6520add3a8c9..75b546fb49f3 100644
 +				    &context, true);
 +	if (ret == 0) {
 +		struct ethtool_rxflow_notification_info ninfo = {
-+			.ctx_op		= ETH_RXFLOW_CTXOP_DEL,
++			.ctx_op		= ETHTOOL_RXFLOW_CTXOP_DEL,
 +			.context	= context,
 +		};
 +
@@ -652,7 +654,7 @@ index 6520add3a8c9..75b546fb49f3 100644
 +	if (ret < 0)
 +		goto err_skb;
 +	ret = -EMSGSIZE;
-+	if (nla_put_u32(skb, ETHTOOL_A_RXFLOW_CTXOP, ETH_RXFLOW_CTXOP_NEW) ||
++	if (nla_put_u32(skb, ETHTOOL_A_RXFLOW_CTXOP, ETHTOOL_RXFLOW_CTXOP_NEW) ||
 +	    nla_put_u32(skb, ETHTOOL_A_RXFLOW_CONTEXT, context))
 +		goto err_skb;
 +
@@ -671,7 +673,7 @@ index 6520add3a8c9..75b546fb49f3 100644
 +int ethnl_set_rxflow(struct sk_buff *skb, struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHTOOL_A_RXFLOW_MAX + 1];
-+	unsigned int ctxop = ETH_RXFLOW_CTXOP_SET;
++	unsigned int ctxop = ETHTOOL_RXFLOW_CTXOP_SET;
 +	const struct ethtool_ops *ops;
 +	struct net_device *dev;
 +	u32 *indtbl = NULL;
@@ -724,11 +726,11 @@ index 6520add3a8c9..75b546fb49f3 100644
 +	if (!context && (!ops->get_rxfh || !ops->set_rxfh))
 +		goto out_ops;
 +
-+	if (ctxop == ETH_RXFLOW_CTXOP_DEL) {
++	if (ctxop == ETHTOOL_RXFLOW_CTXOP_DEL) {
 +		ret = set_rxflow_del_context(dev, context, info);
 +		goto out_ops;
 +	}
-+	if (ctxop == ETH_RXFLOW_CTXOP_NEW)
++	if (ctxop == ETHTOOL_RXFLOW_CTXOP_NEW)
 +		context = ETH_RXFH_CONTEXT_ALLOC;
 +	ret = set_rxflow_prep_hashfn(dev, info, tb[ETHTOOL_A_RXFLOW_HASH_FN],
 +				     &hash_fn, &info_mask);
@@ -754,7 +756,7 @@ index 6520add3a8c9..75b546fb49f3 100644
 +		else
 +			dev->priv_flags &= ~IFF_RXFH_CONFIGURED;
 +	}
-+	if (ctxop == ETH_RXFLOW_CTXOP_NEW && ret == 0) {
++	if (ctxop == ETHTOOL_RXFLOW_CTXOP_NEW && ret == 0) {
 +		ret = send_set_rxflow_reply(dev, info, context);
 +		if (ret < 0) {
 +			GENL_SET_ERR_MSG(info, "failed to send reply message");
@@ -765,7 +767,7 @@ index 6520add3a8c9..75b546fb49f3 100644
 +out_free:
 +	kfree(indtbl);
 +out_ops:
-+	if (ret == 0 && (info_mask || ctxop != ETH_RXFLOW_CTXOP_SET)) {
++	if (ret == 0 && (info_mask || ctxop != ETHTOOL_RXFLOW_CTXOP_SET)) {
 +		const struct ethtool_rxflow_notification_info ninfo = {
 +			.ctx_op		= ctxop,
 +			.context	= context,

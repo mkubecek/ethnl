@@ -1,4 +1,4 @@
-From 055b8692525beed400c9ca73406bf3cdd246e7dd Mon Sep 17 00:00:00 2001
+From c6d5de083ffe9af2d40a43a60592663ec46b4fc7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 41/44] ethtool: implement ACT_RESET message
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 298 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 6c14349e0747..3da6e4ddb9e4 100644
+index c5ef6cc89a42..bc50086b4fe0 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -588,6 +588,30 @@ other ACT_PHYS_ID requests for any device fail with EBUSY. The same holds for
@@ -92,7 +92,7 @@ index 986bbc20a930..5a74958d3aab 100644
  
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index ab84d768b45a..85857101c0c0 100644
+index 762759f2d199..6747a9128f1b 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -24,6 +24,7 @@ enum {
@@ -374,7 +374,7 @@ index 5369e9b045d1..1fa630cf303f 100644
 +	return ret;
 +}
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 8a7fa834c3d8..1d6c9099c1b8 100644
+index a93cdad566e3..e5bd0cd9e31d 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1188,6 +1188,7 @@ static int ethtool_get_regs(struct net_device *dev, char __user *useraddr)
@@ -400,7 +400,7 @@ index 8a7fa834c3d8..1d6c9099c1b8 100644
  	if (copy_to_user(useraddr, &reset, sizeof(reset)))
  		return -EFAULT;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index f89ed17b97eb..4eef2d403ccb 100644
+index f92e14685e27..00d01ab28d23 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -585,6 +585,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {

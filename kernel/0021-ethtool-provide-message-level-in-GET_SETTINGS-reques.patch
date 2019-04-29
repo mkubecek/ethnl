@@ -1,10 +1,10 @@
-From 3cb0baac5316d2895bc07859444aa51aa83d77c4 Mon Sep 17 00:00:00 2001
+From c38c7daa8c0157a0b21b4056b05a50d429a27590 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:19:02 +0100
 Subject: [PATCH 21/44] ethtool: provide message level in GET_SETTINGS request
 
 Add information about supported and enabled message levels to the
-GET_SETTINGS reply when ETH_SETTINGS_IM_DEBUG flag is set in the
+GET_SETTINGS reply when ETHTOOL_IM_SETTINGS_DEBUG flag is set in the
 request.
 
 Unlike in the ioctl interface, "message level" is called "message mask" as
@@ -25,14 +25,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 65 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 60369c5d6820..aa698a6a0157 100644
+index b9643ddbab5a..960a9b6fd4e8 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -275,6 +275,7 @@ Info mask bits meaning:
-     ETH_SETTINGS_IM_LINKMODES		link modes and related
-     ETH_SETTINGS_IM_LINKSTATE		link state
-     ETH_SETTINGS_IM_WOL			struct ethtool_wolinfo
-+    ETH_SETTINGS_IM_DEBUG		debugging
+     ETHTOOL_IM_SETTINGS_LINKMODES	link modes and related
+     ETHTOOL_IM_SETTINGS_LINKSTATE	link state
+     ETHTOOL_IM_SETTINGS_WOL		struct ethtool_wolinfo
++    ETHTOOL_IM_SETTINGS_DEBUG		debugging
  
  Response contents:
  
@@ -79,7 +79,7 @@ index c6d2595b99de..3ebbe567cb85 100644
  
  #define netif_msg_drv(p)	((p)->msg_enable & NETIF_MSG_DRV)
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index b5a2151d37b7..a7f225e3f05f 100644
+index 24928733838f..5c336bce038c 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -198,6 +198,7 @@ enum {
@@ -91,17 +91,17 @@ index b5a2151d37b7..a7f225e3f05f 100644
  	__ETHTOOL_A_SETTINGS_CNT,
  	ETHTOOL_A_SETTINGS_MAX = (__ETHTOOL_A_SETTINGS_CNT - 1)
 @@ -207,11 +208,13 @@ enum {
- #define ETH_SETTINGS_IM_LINKMODES		(1U << 1)
- #define ETH_SETTINGS_IM_LINKSTATE		(1U << 2)
- #define ETH_SETTINGS_IM_WOL			(1U << 3)
-+#define ETH_SETTINGS_IM_DEBUG			(1U << 4)
+ #define ETHTOOL_IM_SETTINGS_LINKMODES		(1U << 1)
+ #define ETHTOOL_IM_SETTINGS_LINKSTATE		(1U << 2)
+ #define ETHTOOL_IM_SETTINGS_WOL			(1U << 3)
++#define ETHTOOL_IM_SETTINGS_DEBUG		(1U << 4)
  
- #define ETH_SETTINGS_IM_ALL (ETH_SETTINGS_IM_LINKINFO | \
- 			     ETH_SETTINGS_IM_LINKMODES | \
- 			     ETH_SETTINGS_IM_LINKSTATE | \
--			     ETH_SETTINGS_IM_WOL)
-+			     ETH_SETTINGS_IM_WOL | \
-+			     ETH_SETTINGS_IM_DEBUG)
+ #define ETHTOOL_IM_SETTINGS_ALL (ETHTOOL_IM_SETTINGS_LINKINFO | \
+ 				 ETHTOOL_IM_SETTINGS_LINKMODES | \
+ 				 ETHTOOL_IM_SETTINGS_LINKSTATE | \
+-				 ETHTOOL_IM_SETTINGS_WOL)
++				 ETHTOOL_IM_SETTINGS_WOL | \
++				 ETHTOOL_IM_SETTINGS_DEBUG)
  
  enum {
  	ETHTOOL_A_LINKINFO_UNSPEC,
@@ -121,7 +121,7 @@ index b5a2151d37b7..a7f225e3f05f 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index b8ce0ee4cebe..1351832ff1c9 100644
+index ec90ad52bb96..dfc9128e093a 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -2479,6 +2479,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
@@ -130,12 +130,12 @@ index b8ce0ee4cebe..1351832ff1c9 100644
  				       dev->ethtool_ops->set_msglevel);
 +		if (rc >= 0)
 +			ethtool_notify(dev, NULL, ETHNL_CMD_SET_SETTINGS,
-+				       ETH_SETTINGS_IM_DEBUG, NULL);
++				       ETHTOOL_IM_SETTINGS_DEBUG, NULL);
  		break;
  	case ETHTOOL_GEEE:
  		rc = ethtool_get_eee(dev, useraddr);
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 3bfca6f10537..26150e7714f2 100644
+index 159a0399a704..8045a5927bd8 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,7 @@ struct settings_data {
@@ -162,20 +162,20 @@ index 3bfca6f10537..26150e7714f2 100644
  	u32 req_mask = req_info->req_mask;
  	int ret;
  
-@@ -222,6 +225,12 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -223,6 +226,12 @@ static int prepare_settings(struct common_req_info *req_info,
  		if (ret < 0)
- 			req_mask &= ~ETH_SETTINGS_IM_WOL;
+ 			req_mask &= ~ETHTOOL_IM_SETTINGS_WOL;
  	}
-+	if (req_mask & ETH_SETTINGS_IM_DEBUG) {
++	if (req_mask & ETHTOOL_IM_SETTINGS_DEBUG) {
 +		if (eops->get_msglevel)
 +			data->msglevel = eops->get_msglevel(dev);
 +		else
-+			req_mask &= ~ETH_SETTINGS_IM_DEBUG;
++			req_mask &= ~ETHTOOL_IM_SETTINGS_DEBUG;
 +	}
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -283,6 +292,11 @@ static int wol_size(void)
+@@ -284,6 +293,11 @@ static int wol_size(void)
  			      nla_total_size(SOPASS_MAX));
  }
  
@@ -187,16 +187,16 @@ index 3bfca6f10537..26150e7714f2 100644
  /* To keep things simple, reserve space for some attributes which may not
   * be added to the message (e.g. ETHTOOL_A_SETTINGS_SOPASS); therefore the
   * length returned may be bigger than the actual length of the message sent.
-@@ -308,6 +322,8 @@ static int settings_size(const struct common_req_info *req_info)
+@@ -309,6 +323,8 @@ static int settings_size(const struct common_req_info *req_info)
  		len += link_state_size(data->link);
- 	if (info_mask & ETH_SETTINGS_IM_WOL)
+ 	if (info_mask & ETHTOOL_IM_SETTINGS_WOL)
  		len += wol_size();
-+	if (info_mask & ETH_SETTINGS_IM_DEBUG)
++	if (info_mask & ETHTOOL_IM_SETTINGS_DEBUG)
 +		len += debug_size();
  
  	return len;
  }
-@@ -426,6 +442,24 @@ static int fill_wolinfo(struct sk_buff *skb,
+@@ -427,6 +443,24 @@ static int fill_wolinfo(struct sk_buff *skb,
  	return -EMSGSIZE;
  }
  
@@ -221,11 +221,11 @@ index 3bfca6f10537..26150e7714f2 100644
  static int fill_settings(struct sk_buff *skb,
  			 const struct common_req_info *req_info)
  {
-@@ -456,6 +490,11 @@ static int fill_settings(struct sk_buff *skb,
+@@ -457,6 +491,11 @@ static int fill_settings(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
-+	if (info_mask & ETH_SETTINGS_IM_DEBUG) {
++	if (info_mask & ETHTOOL_IM_SETTINGS_DEBUG) {
 +		ret = fill_debug(skb, data->msglevel);
 +		if (ret < 0)
 +			return ret;
@@ -233,7 +233,7 @@ index 3bfca6f10537..26150e7714f2 100644
  
  	return 0;
  }
-@@ -510,6 +549,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -511,6 +550,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_LINK_MODES]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },

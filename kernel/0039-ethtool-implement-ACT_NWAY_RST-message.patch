@@ -1,4 +1,4 @@
-From e55d7a515909446b6822f5b681d8c95a4063eb9b Mon Sep 17 00:00:00 2001
+From f357d4cd1df55c8b10d914fd20e3f7ce2d5f4d0a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 39/44] ethtool: implement ACT_NWAY_RST message
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/actions.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 19cd89ce0dfa..2cf912f3fb6d 100644
+index ccf599b302c9..e7215ebb01d3 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -131,6 +131,7 @@ List of message types
@@ -60,7 +60,7 @@ index 19cd89ce0dfa..2cf912f3fb6d 100644
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index a0c7d90c971c..12415e73ac22 100644
+index 11c33122221c..6085a406bb90 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -22,6 +22,7 @@ enum {
@@ -178,7 +178,7 @@ index 000000000000..2f3f9e85016d
 +	return ret;
 +}
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index d14d8e7edf55..d34af84c1adf 100644
+index 14a7e88aa1c7..9059dd53c5e9 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1282,10 +1282,15 @@ static int ethtool_set_eee(struct net_device *dev, char __user *useraddr)
@@ -199,7 +199,7 @@ index d14d8e7edf55..d34af84c1adf 100644
  
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 0f6def083d73..dcf4f16210fa 100644
+index 18412aa6b74b..0cfcc5bac2d5 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -240,13 +240,13 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,

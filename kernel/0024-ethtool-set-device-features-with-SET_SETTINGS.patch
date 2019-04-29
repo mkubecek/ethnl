@@ -1,4 +1,4 @@
-From 50780274bd20e69324be0e5c6571d05c7dc3a163 Mon Sep 17 00:00:00 2001
+From 09ba399af84b9ec1f869af5dea1e0c054ca9ce5e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 24/44] ethtool: set device features with SET_SETTINGS
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 182 insertions(+), 10 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 666cd418b567..b2e7eee4046c 100644
+index d82aa5e24693..c0a4027adcb2 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -359,6 +359,9 @@ to be passed with SET_SETTINGS request:
@@ -101,7 +101,7 @@ index 666cd418b567..b2e7eee4046c 100644
  ETHTOOL_SCHANNELS		n/a
  ETHTOOL_SET_DUMP		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 8df79c4feb9b..58193b4878e0 100644
+index 0edd69c4dbb8..45e21b3c1686 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -274,6 +274,7 @@ enum {
@@ -113,10 +113,10 @@ index 8df79c4feb9b..58193b4878e0 100644
  	__ETHTOOL_A_FEATURES_CNT,
  	ETHTOOL_A_FEATURES_MAX = (__ETHTOOL_A_FEATURES_CNT - 1)
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 6fad2a14ead4..ed5e8ccefbe2 100644
+index 0f0e47a96f9d..ae6463d50af5 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -654,6 +654,15 @@ static const struct nla_policy set_debug_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
+@@ -655,6 +655,15 @@ static const struct nla_policy set_debug_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
  					    .validation_data = &all_bits },
  };
  
@@ -132,7 +132,7 @@ index 6fad2a14ead4..ed5e8ccefbe2 100644
  static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_DEV]		= { .type = NLA_NESTED },
-@@ -664,7 +673,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -665,7 +674,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
@@ -141,7 +141,7 @@ index 6fad2a14ead4..ed5e8ccefbe2 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -881,11 +890,148 @@ static int update_debug(struct genl_info *info, struct nlattr *nest,
+@@ -882,11 +891,148 @@ static int update_debug(struct genl_info *info, struct nlattr *nest,
  	return ret;
  }
  
@@ -290,9 +290,9 @@ index 6fad2a14ead4..ed5e8ccefbe2 100644
  	int ret;
  
  	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb,
-@@ -924,6 +1070,17 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -925,6 +1071,17 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret)
- 			req_mask |= ETH_SETTINGS_IM_DEBUG;
+ 			req_mask |= ETHTOOL_IM_SETTINGS_DEBUG;
  	}
 +	if (tb[ETHTOOL_A_SETTINGS_FEATURES]) {
 +		bool compact = tb[ETHTOOL_A_SETTINGS_COMPACT];
@@ -301,7 +301,7 @@ index 6fad2a14ead4..ed5e8ccefbe2 100644
 +				      tb[ETHTOOL_A_SETTINGS_FEATURES], compact,
 +				      &mod);
 +		if (mod)
-+			req_mask |= ETH_SETTINGS_IM_FEATURES;
++			req_mask |= ETHTOOL_IM_SETTINGS_FEATURES;
 +		if (ret < 0)
 +			goto out_ops;
 +	}
