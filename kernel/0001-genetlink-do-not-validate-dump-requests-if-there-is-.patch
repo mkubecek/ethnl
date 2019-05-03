@@ -1,0 +1,66 @@
+From 6e6d7d9add69c0d250854a612a1591c4e58a7dee Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Thu, 2 May 2019 11:46:05 +0200
+Subject: [PATCH 01/47] genetlink: do not validate dump requests if there is no
+ policy
+
+Unlike do requests, dump genetlink requests now perform strict validation
+by default even if the genetlink family does not set policy and maxtype
+because it does validation and parsing on its own (e.g. because it wants to
+allow different message format for different commands). While the null
+policy will be ignored, maxtype (which would be zero) is still checked so
+that any attribute will fail validation.
+
+The solution is to only call __nla_validate() from genl_family_rcv_msg()
+if family->maxtype is set.
+
+Fixes: ef6243acb478 ("genetlink: optionally validate strictly/dumps")
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+Reviewed-by: Johannes Berg <johannes@sipsolutions.net>
+---
+ net/netlink/genetlink.c | 24 ++++++++++++++----------
+ 1 file changed, 14 insertions(+), 10 deletions(-)
+
+diff --git a/net/netlink/genetlink.c b/net/netlink/genetlink.c
+index 79cfa031dc7d..efccd1ac9a66 100644
+--- a/net/netlink/genetlink.c
++++ b/net/netlink/genetlink.c
+@@ -537,21 +537,25 @@ static int genl_family_rcv_msg(const struct genl_family *family,
+ 			return -EOPNOTSUPP;
+ 
+ 		if (!(ops->validate & GENL_DONT_VALIDATE_DUMP)) {
+-			unsigned int validate = NL_VALIDATE_STRICT;
+ 			int hdrlen = GENL_HDRLEN + family->hdrsize;
+ 
+-			if (ops->validate & GENL_DONT_VALIDATE_DUMP_STRICT)
+-				validate = NL_VALIDATE_LIBERAL;
+-
+ 			if (nlh->nlmsg_len < nlmsg_msg_size(hdrlen))
+ 				return -EINVAL;
+ 
+-			rc = __nla_validate(nlmsg_attrdata(nlh, hdrlen),
+-					    nlmsg_attrlen(nlh, hdrlen),
+-					    family->maxattr, family->policy,
+-					    validate, extack);
+-			if (rc)
+-				return rc;
++			if (family->maxattr) {
++				unsigned int validate = NL_VALIDATE_STRICT;
++
++				if (ops->validate &
++				    GENL_DONT_VALIDATE_DUMP_STRICT)
++					validate = NL_VALIDATE_LIBERAL;
++				rc = __nla_validate(nlmsg_attrdata(nlh, hdrlen),
++						    nlmsg_attrlen(nlh, hdrlen),
++						    family->maxattr,
++						    family->policy,
++						    validate, extack);
++				if (rc)
++					return rc;
++			}
+ 		}
+ 
+ 		if (!family->parallel_ops) {
+-- 
+2.21.0
+

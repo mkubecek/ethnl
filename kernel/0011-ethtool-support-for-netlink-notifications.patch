@@ -1,0 +1,146 @@
+From e8a8ed8aa4265a55e9693835d956d6884def7f7f Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Wed, 11 Jul 2018 14:19:52 -0400
+Subject: [PATCH 11/47] ethtool: support for netlink notifications
+
+Add infrastructure for ethtool netlink notifications. There is only one
+multicast group "monitor" which is used to notify userspace about changes.
+Notifications are supposed to be broadcasted on every configuration change,
+whether it is done using the netlink interface or legacy ioctl one.
+
+To trigger an ethtool notification, both ethtool netlink and external code
+use ethtool_notify() helper. This helper requires RTNL to be held and may
+sleep.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ include/linux/ethtool_netlink.h      |  5 ++++
+ include/linux/netdevice.h            | 12 ++++++++++
+ include/uapi/linux/ethtool_netlink.h |  2 ++
+ net/ethtool/netlink.c                | 35 ++++++++++++++++++++++++++++
+ 4 files changed, 54 insertions(+)
+
+diff --git a/include/linux/ethtool_netlink.h b/include/linux/ethtool_netlink.h
+index 0412adb4f42f..2a15e64a16f3 100644
+--- a/include/linux/ethtool_netlink.h
++++ b/include/linux/ethtool_netlink.h
+@@ -5,5 +5,10 @@
+ 
+ #include <uapi/linux/ethtool_netlink.h>
+ #include <linux/ethtool.h>
++#include <linux/netdevice.h>
++
++enum ethtool_multicast_groups {
++	ETHNL_MCGRP_MONITOR,
++};
+ 
+ #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+index 44b47e9df94a..c6d2595b99de 100644
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -4354,6 +4354,18 @@ struct netdev_notifier_bonding_info {
+ void netdev_bonding_info_change(struct net_device *dev,
+ 				struct netdev_bonding_info *bonding_info);
+ 
++#if IS_ENABLED(CONFIG_ETHTOOL_NETLINK)
++void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
++		    unsigned int cmd, u32 req_mask, const void *data);
++#else
++static inline void ethtool_notify(struct net_device *dev,
++				  struct netlink_ext_ack *extack,
++				  unsigned int cmd, u32 req_mask,
++				  const void *data)
++{
++}
++#endif
++
+ static inline
+ struct sk_buff *skb_gso_segment(struct sk_buff *skb, netdev_features_t features)
+ {
+diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
+index 71c6a648a030..428136f9f836 100644
+--- a/include/uapi/linux/ethtool_netlink.h
++++ b/include/uapi/linux/ethtool_netlink.h
+@@ -65,4 +65,6 @@ enum {
+ #define ETHTOOL_GENL_NAME "ethtool"
+ #define ETHTOOL_GENL_VERSION 1
+ 
++#define ETHTOOL_MCGRP_MONITOR_NAME "monitor"
++
+ #endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
+diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
+index 7347a7c50838..d4b60112b6db 100644
+--- a/net/ethtool/netlink.c
++++ b/net/ethtool/netlink.c
+@@ -6,6 +6,8 @@
+ 
+ static struct genl_family ethtool_genl_family;
+ 
++static bool ethnl_ok __read_mostly;
++
+ static const struct nla_policy dev_policy[ETHTOOL_A_DEV_MAX + 1] = {
+ 	[ETHTOOL_A_DEV_UNSPEC]	= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_DEV_INDEX]	= { .type = NLA_U32 },
+@@ -159,11 +161,41 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+ 	return NULL;
+ }
+ 
++/* notifications */
++
++typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
++				       struct netlink_ext_ack *extack,
++				       unsigned int cmd, u32 req_mask,
++				       const void *data);
++
++static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
++};
++
++void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
++		    unsigned int cmd, u32 req_mask, const void *data)
++{
++	if (unlikely(!ethnl_ok))
++		return;
++	ASSERT_RTNL();
++
++	if (likely(cmd < ARRAY_SIZE(ethnl_notify_handlers) &&
++		   ethnl_notify_handlers[cmd]))
++		ethnl_notify_handlers[cmd](dev, extack, cmd, req_mask, data);
++	else
++		WARN_ONCE(1, "notification %u not implemented (dev=%s, req_mask=0x%x)\n",
++			  cmd, netdev_name(dev), req_mask);
++}
++EXPORT_SYMBOL(ethtool_notify);
++
+ /* genetlink setup */
+ 
+ static const struct genl_ops ethtool_genl_ops[] = {
+ };
+ 
++static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
++	[ETHNL_MCGRP_MONITOR] = { .name = ETHTOOL_MCGRP_MONITOR_NAME },
++};
++
+ static struct genl_family ethtool_genl_family = {
+ 	.name		= ETHTOOL_GENL_NAME,
+ 	.version	= ETHTOOL_GENL_VERSION,
+@@ -171,6 +203,8 @@ static struct genl_family ethtool_genl_family = {
+ 	.parallel_ops	= true,
+ 	.ops		= ethtool_genl_ops,
+ 	.n_ops		= ARRAY_SIZE(ethtool_genl_ops),
++	.mcgrps		= ethtool_nl_mcgrps,
++	.n_mcgrps	= ARRAY_SIZE(ethtool_nl_mcgrps),
+ };
+ 
+ /* module setup */
+@@ -182,6 +216,7 @@ static int __init ethnl_init(void)
+ 	ret = genl_register_family(&ethtool_genl_family);
+ 	if (WARN(ret < 0, "ethtool: genetlink family registration failed"))
+ 		return ret;
++	ethnl_ok = true;
+ 
+ 	return 0;
+ }
+-- 
+2.21.0
+
