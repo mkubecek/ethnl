@@ -1,0 +1,241 @@
+From 2d2c35f678997010e69a511c5deb6840ece3f4a9 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Tue, 24 Jul 2018 21:22:00 +0200
+Subject: [PATCH 09/44] ethtool: implement EVENT notifications
+
+Three types of netlink notifications are introduced:
+
+  - ETHTOOL_A_EVENT_NEWDEV to notify about newly registered network devices
+  - ETHTOOL_A_EVENT_DELDEV to notify about unregistered network devices
+  - ETHTOOL_A_EVENT_RENAMEDEV to notify about renamed network device
+
+The notifications are triggered by NETDEV_REGISTER, NETDEV_UNREGISTER and
+NETDEV_CHANGENAME notifiers.
+
+These notifications are intended for applications and daemons monitoring
+ethtool events to allow updating the list of existing devices without
+having to open another socket for rtnetlink.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ Documentation/networking/ethtool-netlink.txt | 27 +++++++
+ include/uapi/linux/ethtool_netlink.h         | 37 ++++++++++
+ net/ethtool/netlink.c                        | 78 +++++++++++++++++++-
+ 3 files changed, 141 insertions(+), 1 deletion(-)
+
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index 20017e101fdd..b1bf16372064 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -122,6 +122,8 @@ which the request applies.
+ List of message types
+ ---------------------
+ 
++    ETHNL_CMD_EVENT			notification only
++
+ All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
+ to indicate the type.
+ 
+@@ -133,9 +135,34 @@ messages marked as "response only" in the table above. "Get" messages with
+ NLM_F_DUMP flags and no device identification dump the information for all
+ devices supporting the request.
+ 
++Type ETHNL_CMD_EVENT is special, these messages are never used in userspace
++requests or kernel replies. They are only sent by kernel to sockets listening
++to "monitor" multicast group to inform userspace about certain events.
++
+ Later sections describe the format and semantics of these request messages.
+ 
+ 
++EVENT
++-----
++
++EVENT messages are only used in kernel multicast notifications. Atributes
++correspond to specific event types, the same type can appear multiple times.
++
++    ETHTOOL_A_EVENT_NEWDEV		(nested)	new device registered
++       ETHTOOL_A_NEWDEV_DEV		    (nested)	    new device
++    ETHTOOL_A_EVENT_DELDEV		(nested)	device unregistered
++       ETHTOOL_A_DELDEV_DEV		    (nested)	    removed device
++    ETHTOOL_A_EVENT_RENAMEDEV		(nested)	device renamed
++       ETHTOOL_A_RENAMEDEV_DEV		    (nested)	    renamed device
++
++For ETHTOOL_A_EVENT_RENAMEDEV, the name in ETHTOOL_A_RENAMEDEV_DEV is the new
++name after the rename.
++
++Userspace application must expect multiple events to be present in one message
++and also multiple events of the same type (e.g. two or more newly registered
++devices).
++
++
+ Request translation
+ -------------------
+ 
+diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
+index 428136f9f836..1414ca7d5713 100644
+--- a/include/uapi/linux/ethtool_netlink.h
++++ b/include/uapi/linux/ethtool_netlink.h
+@@ -13,6 +13,7 @@
+ 
+ enum {
+ 	ETHNL_CMD_NOOP,
++	ETHNL_CMD_EVENT,		/* only for notifications */
+ 
+ 	__ETHNL_CMD_CNT,
+ 	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
+@@ -61,6 +62,42 @@ enum {
+ 	ETHTOOL_A_BITSET_MAX = (__ETHTOOL_A_BITSET_CNT - 1)
+ };
+ 
++/* events */
++
++enum {
++	ETHTOOL_A_NEWDEV_UNSPEC,
++	ETHTOOL_A_NEWDEV_DEV,			/* nest - ETHTOOL_A_DEV_* */
++
++	__ETHTOOL_A_NEWDEV_CNT,
++	ETHTOOL_A_NEWDEV_MAX = (__ETHTOOL_A_NEWDEV_CNT - 1)
++};
++
++enum {
++	ETHTOOL_A_DELDEV_UNSPEC,
++	ETHTOOL_A_DELDEV_DEV,			/* nest - ETHTOOL_A_DEV_* */
++
++	__ETHTOOL_A_DELDEV_CNT,
++	ETHTOOL_A_DELDEV_MAX = (__ETHTOOL_A_DELDEV_CNT - 1)
++};
++
++enum {
++	ETHTOOL_A_RENAMEDEV_UNSPEC,
++	ETHTOOL_A_RENAMEDEV_DEV,		/* nest - ETHTOOL_A_DEV_* */
++
++	__ETHTOOL_A_RENAMEDEV_CNT,
++	ETHTOOL_A_RENAMEDEV_MAX = (__ETHTOOL_A_RENAMEDEV_CNT - 1)
++};
++
++enum {
++	ETHTOOL_A_EVENT_UNSPEC,
++	ETHTOOL_A_EVENT_NEWDEV,			/* nest - ETHTOOL_A_NEWDEV_* */
++	ETHTOOL_A_EVENT_DELDEV,			/* nest - ETHTOOL_A_DELDEV_* */
++	ETHTOOL_A_EVENT_RENAMEDEV,		/* nest - ETHTOOL_A_RENAMEDEV_* */
++
++	__ETHTOOL_A_EVENT_CNT,
++	ETHTOOL_A_EVENT_MAX = (__ETHTOOL_A_EVENT_CNT - 1)
++};
++
+ /* generic netlink info */
+ #define ETHTOOL_GENL_NAME "ethtool"
+ #define ETHTOOL_GENL_VERSION 1
+diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
+index d4b60112b6db..0fe15b202698 100644
+--- a/net/ethtool/netlink.c
++++ b/net/ethtool/netlink.c
+@@ -7,6 +7,7 @@
+ static struct genl_family ethtool_genl_family;
+ 
+ static bool ethnl_ok __read_mostly;
++static u32 ethnl_bcast_seq;
+ 
+ static const struct nla_policy dev_policy[ETHTOOL_A_DEV_MAX + 1] = {
+ 	[ETHTOOL_A_DEV_UNSPEC]	= { .type = NLA_REJECT },
+@@ -161,6 +162,18 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+ 	return NULL;
+ }
+ 
++static void *ethnl_bcastmsg_put(struct sk_buff *skb, u8 cmd)
++{
++	return genlmsg_put(skb, 0, ++ethnl_bcast_seq, &ethtool_genl_family, 0,
++			   cmd);
++}
++
++static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)
++{
++	return genlmsg_multicast_netns(&ethtool_genl_family, dev_net(dev), skb,
++				       0, ETHNL_MCGRP_MONITOR, GFP_KERNEL);
++}
++
+ /* notifications */
+ 
+ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -187,6 +200,67 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
+ }
+ EXPORT_SYMBOL(ethtool_notify);
+ 
++/* size of NEWDEV/DELDEV notification */
++static inline unsigned int dev_notify_size(void)
++{
++	return nla_total_size(dev_ident_size());
++}
++
++static void ethnl_notify_devlist(struct netdev_notifier_info *info,
++				 u16 ev_type, u16 dev_attr)
++{
++	struct net_device *dev = netdev_notifier_info_to_dev(info);
++	struct sk_buff *skb;
++	struct nlattr *nest;
++	void *ehdr;
++	int ret;
++
++	skb = genlmsg_new(dev_notify_size(), GFP_KERNEL);
++	if (!skb)
++		return;
++	ehdr = ethnl_bcastmsg_put(skb, ETHNL_CMD_EVENT);
++	if (!ehdr)
++		goto out_skb;
++	nest = nla_nest_start(skb, ev_type);
++	if (!nest)
++		goto out_skb;
++	ret = ethnl_fill_dev(skb, dev, dev_attr);
++	if (ret < 0)
++		goto out_skb;
++	nla_nest_end(skb, nest);
++	genlmsg_end(skb, ehdr);
++
++	ethnl_multicast(skb, dev);
++	return;
++out_skb:
++	nlmsg_free(skb);
++}
++
++static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
++			      void *ptr)
++{
++	switch (event) {
++	case NETDEV_REGISTER:
++		ethnl_notify_devlist(ptr, ETHTOOL_A_EVENT_NEWDEV,
++				     ETHTOOL_A_NEWDEV_DEV);
++		break;
++	case NETDEV_UNREGISTER:
++		ethnl_notify_devlist(ptr, ETHTOOL_A_EVENT_DELDEV,
++				     ETHTOOL_A_DELDEV_DEV);
++		break;
++	case NETDEV_CHANGENAME:
++		ethnl_notify_devlist(ptr, ETHTOOL_A_EVENT_RENAMEDEV,
++				     ETHTOOL_A_RENAMEDEV_DEV);
++		break;
++	}
++
++	return NOTIFY_DONE;
++}
++
++static struct notifier_block ethnl_netdev_notifier = {
++	.notifier_call = ethnl_netdev_event,
++};
++
+ /* genetlink setup */
+ 
+ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -218,7 +292,9 @@ static int __init ethnl_init(void)
+ 		return ret;
+ 	ethnl_ok = true;
+ 
+-	return 0;
++	ret = register_netdevice_notifier(&ethnl_netdev_notifier);
++	WARN(ret < 0, "ethtool: net device notifier registration failed");
++	return ret;
+ }
+ 
+ subsys_initcall(ethnl_init);
+-- 
+2.21.0
+

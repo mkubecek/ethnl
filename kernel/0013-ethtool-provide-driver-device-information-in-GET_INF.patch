@@ -1,0 +1,516 @@
+From 9a66489ebade95ca075dcfe0b38324a86b89e7cd Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Sat, 16 Feb 2019 10:51:08 +0100
+Subject: [PATCH 13/44] ethtool: provide driver/device information in GET_INFO
+ request
+
+Implement GET_INFO request to get basic driver and device information as
+provided by ETHTOOL_GDRVINFO ioct command. The information is read only so
+that the corresponding SET_INFO message is only used in kernel replies.
+
+Move most of ethtool_get_drvinfo() int common.c so that the code can be
+shared by both ioctl and netlink interface.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ Documentation/networking/ethtool-netlink.txt |  43 ++++-
+ include/uapi/linux/ethtool_netlink.h         |  30 ++++
+ net/ethtool/Makefile                         |   2 +-
+ net/ethtool/common.c                         |  52 ++++++
+ net/ethtool/common.h                         |   2 +
+ net/ethtool/info.c                           | 169 +++++++++++++++++++
+ net/ethtool/ioctl.c                          |  50 +-----
+ net/ethtool/netlink.c                        |   8 +
+ net/ethtool/netlink.h                        |   1 +
+ 9 files changed, 310 insertions(+), 47 deletions(-)
+ create mode 100644 net/ethtool/info.c
+
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index 25d79568105e..68aa561e07e5 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -125,6 +125,8 @@ List of message types
+     ETHNL_CMD_EVENT			notification only
+     ETHNL_CMD_GET_STRSET
+     ETHNL_CMD_SET_STRSET		response only
++    ETHNL_CMD_GET_INFO
++    ETHNL_CMD_SET_INFO			response only
+ 
+ All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
+ to indicate the type.
+@@ -205,6 +207,45 @@ Flag ETHTOOL_A_STRSET_COUNTS tells kernel to only return string counts of the
+ sets, not the actual strings.
+ 
+ 
++GET_INFO
++--------
++
++GET_INFO requests information provided by ioctl commands ETHTOOL_GDRVINFO,
++ETHTOOL_GPERMADDR and ETHTOOL_GET_TS_INFO to provide basic device information.
++Common pattern is that all information is read only so that SET_INFO message
++exists but is only used by kernel for replies to GET_INFO requests. There is
++also no corresponding notification.
++
++Request contents:
++
++    ETHTOOL_A_INFO_DEV			(nested)	device identification
++    ETHTOOL_A_INFO_INFOMASK		    (u32)	    info mask
++    ETHTOOL_A_INFO_COMPACT		    (flag)	    compact bitsets
++
++Info mask bits meaning:
++
++    ETHTOOL_IM_INFO_DRVINFO		driver info (GDRVINFO)
++    ETHTOOL_IM_INFO_PERMADDR		permanent HW address (GPERMADDR)
++    ETHTOOL_IM_INFO_TSINFO		timestamping info (GET_TS_INFO)
++
++Kernel response contents:
++
++    ETHTOOL_A_INFO_DEV			(nested)	device identification
++    ETHTOOL_A_INFO_DRVINFO		    (nested)	    driver information
++        ETHTOOL_A_DRVINFO_DRIVER		(string)	driver name
++        ETHTOOL_A_DRVINFO_FWVERSION		(string)	firmware version
++        ETHTOOL_A_DRVINFO_BUSINFO		(string)	bus address
++        ETHTOOL_A_DRVINFO_EROM_VER		(string)	exp. ROM version
++
++The meaning of DRVINFO attributes follows the corresponding fields of
++ETHTOOL_GDRVINFO response. Second part with various counts and sizes is
++omitted as these are not really needed (and if they are, they can be easily
++found by different means). Driver version is also omitted as it is rather
++misleading in most cases.
++
++GET_INFO requests allow dumps.
++
++
+ Request translation
+ -------------------
+ 
+@@ -216,7 +257,7 @@ ioctl command			netlink command
+ ---------------------------------------------------------------------
+ ETHTOOL_GSET			n/a
+ ETHTOOL_SSET			n/a
+-ETHTOOL_GDRVINFO		n/a
++ETHTOOL_GDRVINFO		ETHNL_CMD_GET_INFO
+ ETHTOOL_GREGS			n/a
+ ETHTOOL_GWOL			n/a
+ ETHTOOL_SWOL			n/a
+diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
+index e3da5aa68fe9..08700e00391e 100644
+--- a/include/uapi/linux/ethtool_netlink.h
++++ b/include/uapi/linux/ethtool_netlink.h
+@@ -16,6 +16,8 @@ enum {
+ 	ETHNL_CMD_EVENT,		/* only for notifications */
+ 	ETHNL_CMD_GET_STRSET,
+ 	ETHNL_CMD_SET_STRSET,		/* only for reply */
++	ETHNL_CMD_GET_INFO,
++	ETHNL_CMD_SET_INFO,		/* only for reply */
+ 
+ 	__ETHNL_CMD_CNT,
+ 	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
+@@ -141,6 +143,34 @@ enum {
+ 	ETHTOOL_A_STRSET_MAX = (__ETHTOOL_A_STRSET_CNT - 1)
+ };
+ 
++/* GET_INFO / SET_INFO */
++
++enum {
++	ETHTOOL_A_INFO_UNSPEC,
++	ETHTOOL_A_INFO_DEV,			/* nest - ETHTOOL_A_DEV_* */
++	ETHTOOL_A_INFO_INFOMASK,		/* u32 */
++	ETHTOOL_A_INFO_COMPACT,			/* flag */
++	ETHTOOL_A_INFO_DRVINFO,			/* nest - ETHTOOL_A_DRVINFO_* */
++
++	__ETHTOOL_A_INFO_CNT,
++	ETHTOOL_A_INFO_MAX = (__ETHTOOL_A_INFO_CNT - 1)
++};
++
++#define ETHTOOL_IM_INFO_DRVINFO		(1U << 0)
++
++#define ETHTOOL_IM_INFO_ALL (ETHTOOL_IM_INFO_DRVINFO)
++
++enum {
++	ETHTOOL_A_DRVINFO_UNSPEC,
++	ETHTOOL_A_DRVINFO_DRIVER,		/* string */
++	ETHTOOL_A_DRVINFO_FWVERSION,		/* string */
++	ETHTOOL_A_DRVINFO_BUSINFO,		/* string */
++	ETHTOOL_A_DRVINFO_EROM_VER,		/* string */
++
++	__ETHTOOL_A_DRVINFO_CNT,
++	ETHTOOL_A_DRVINFO_MAX = (__ETHTOOL_A_DRVINFO_CNT - 1)
++};
++
+ /* generic netlink info */
+ #define ETHTOOL_GENL_NAME "ethtool"
+ #define ETHTOOL_GENL_VERSION 1
+diff --git a/net/ethtool/Makefile b/net/ethtool/Makefile
+index 11ceb00821b3..96d41dc45d4f 100644
+--- a/net/ethtool/Makefile
++++ b/net/ethtool/Makefile
+@@ -4,4 +4,4 @@ obj-y				+= ioctl.o common.o
+ 
+ obj-$(CONFIG_ETHTOOL_NETLINK)	+= ethtool_nl.o
+ 
+-ethtool_nl-y	:= netlink.o bitset.o strset.o
++ethtool_nl-y	:= netlink.o bitset.o strset.o info.o
+diff --git a/net/ethtool/common.c b/net/ethtool/common.c
+index b0ce420e994e..0660a2107f06 100644
+--- a/net/ethtool/common.c
++++ b/net/ethtool/common.c
+@@ -1,5 +1,7 @@
+ // SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
+ 
++#include <linux/rtnetlink.h>
++#include <net/devlink.h>
+ #include "common.h"
+ 
+ const char netdev_features_strings[NETDEV_FEATURE_COUNT][ETH_GSTRING_LEN] = {
+@@ -82,3 +84,53 @@ phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN] = {
+ 	[ETHTOOL_PHY_DOWNSHIFT]	= "phy-downshift",
+ 	[ETHTOOL_PHY_FAST_LINK_DOWN] = "phy-fast-link-down",
+ };
++
++int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info)
++{
++	const struct ethtool_ops *ops = dev->ethtool_ops;
++
++	memset(info, 0, sizeof(*info));
++	info->cmd = ETHTOOL_GDRVINFO;
++	if (ops->get_drvinfo) {
++		ops->get_drvinfo(dev, info);
++	} else if (dev->dev.parent && dev->dev.parent->driver) {
++		strlcpy(info->bus_info, dev_name(dev->dev.parent),
++			sizeof(info->bus_info));
++		strlcpy(info->driver, dev->dev.parent->driver->name,
++			sizeof(info->driver));
++	} else {
++		return -EOPNOTSUPP;
++	}
++
++	/* this method of obtaining string set info is deprecated;
++	 * Use ETHTOOL_GSSET_INFO instead.
++	 */
++	if (ops->get_sset_count) {
++		int rc;
++
++		rc = ops->get_sset_count(dev, ETH_SS_TEST);
++		if (rc >= 0)
++			info->testinfo_len = rc;
++		rc = ops->get_sset_count(dev, ETH_SS_STATS);
++		if (rc >= 0)
++			info->n_stats = rc;
++		rc = ops->get_sset_count(dev, ETH_SS_PRIV_FLAGS);
++		if (rc >= 0)
++			info->n_priv_flags = rc;
++	}
++	if (ops->get_regs_len) {
++		int ret = ops->get_regs_len(dev);
++
++		if (ret > 0)
++			info->regdump_len = ret;
++	}
++
++	if (ops->get_eeprom_len)
++		info->eedump_len = ops->get_eeprom_len(dev);
++
++	if (!info->fw_version[0])
++		devlink_compat_running_version(dev, info->fw_version,
++					       sizeof(info->fw_version));
++
++	return 0;
++}
+diff --git a/net/ethtool/common.h b/net/ethtool/common.h
+index 41b2efc1e4e1..e87e58b3a274 100644
+--- a/net/ethtool/common.h
++++ b/net/ethtool/common.h
+@@ -3,6 +3,7 @@
+ #ifndef _ETHTOOL_COMMON_H
+ #define _ETHTOOL_COMMON_H
+ 
++#include <linux/netdevice.h>
+ #include <linux/ethtool.h>
+ 
+ extern const char
+@@ -14,4 +15,5 @@ tunable_strings[__ETHTOOL_TUNABLE_COUNT][ETH_GSTRING_LEN];
+ extern const char
+ phy_tunable_strings[__ETHTOOL_PHY_TUNABLE_COUNT][ETH_GSTRING_LEN];
+ 
++int __ethtool_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info);
+ #endif /* _ETHTOOL_COMMON_H */
+diff --git a/net/ethtool/info.c b/net/ethtool/info.c
+new file mode 100644
+index 000000000000..669ad3e580ac
+--- /dev/null
++++ b/net/ethtool/info.c
+@@ -0,0 +1,169 @@
++// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
++
++#include "netlink.h"
++#include "common.h"
++#include "bitset.h"
++
++struct info_data {
++	struct common_req_info		reqinfo_base;
++
++	/* everything below here will be reset for each device in dumps */
++	struct common_reply_data	repdata_base;
++	struct ethtool_drvinfo		drvinfo;
++};
++
++static const struct nla_policy get_info_policy[ETHTOOL_A_INFO_MAX + 1] = {
++	[ETHTOOL_A_INFO_UNSPEC]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_INFO_DEV]		= { .type = NLA_NESTED },
++	[ETHTOOL_A_INFO_INFOMASK]	= { .type = NLA_U32 },
++	[ETHTOOL_A_INFO_COMPACT]	= { .type = NLA_FLAG },
++	[ETHTOOL_A_INFO_DRVINFO]	= { .type = NLA_REJECT },
++};
++
++/* parse_request() handler */
++static int parse_info(struct common_req_info *req_info, struct sk_buff *skb,
++		      struct genl_info *info, const struct nlmsghdr *nlhdr)
++{
++	struct nlattr *tb[ETHTOOL_A_INFO_MAX + 1];
++	int ret;
++
++	ret = nlmsg_parse(nlhdr, GENL_HDRLEN, tb, ETHTOOL_A_INFO_MAX,
++			  get_info_policy, info ? info->extack : NULL);
++	if (ret < 0)
++		return ret;
++
++	if (tb[ETHTOOL_A_INFO_DEV]) {
++		req_info->dev = ethnl_dev_get(info, tb[ETHTOOL_A_INFO_DEV]);
++		if (IS_ERR(req_info->dev)) {
++			ret = PTR_ERR(req_info->dev);
++			req_info->dev = NULL;
++			return ret;
++		}
++	}
++	if (tb[ETHTOOL_A_INFO_INFOMASK])
++		req_info->req_mask = nla_get_u32(tb[ETHTOOL_A_INFO_INFOMASK]);
++	if (tb[ETHTOOL_A_INFO_COMPACT])
++		req_info->compact = true;
++	if (req_info->req_mask == 0)
++		req_info->req_mask = ETHTOOL_IM_INFO_ALL;
++
++	return 0;
++}
++
++/* prepare_data() handler */
++static int prepare_info(struct common_req_info *req_info,
++			struct genl_info *info)
++{
++	struct info_data *data =
++		container_of(req_info, struct info_data, reqinfo_base);
++	struct net_device *dev = data->repdata_base.dev;
++	u32 req_mask = req_info->req_mask & ETHTOOL_IM_INFO_ALL;
++	int ret;
++
++	ret = ethnl_before_ops(dev);
++	if (ret < 0)
++		return ret;
++	if (req_mask & ETHTOOL_IM_INFO_DRVINFO) {
++		ret = __ethtool_get_drvinfo(dev, &data->drvinfo);
++		if (ret < 0)
++			req_mask &= ~ETHTOOL_IM_INFO_DRVINFO;
++	}
++	ethnl_after_ops(dev);
++
++	data->repdata_base.info_mask = req_mask;
++	if (req_info->req_mask & ~req_mask)
++		warn_partial_info(info);
++	return 0;
++}
++
++static int drvinfo_size(const struct ethtool_drvinfo *drvinfo)
++{
++	int len = 0;
++
++	if (drvinfo->driver[0])
++		len += ethnl_str_size(drvinfo->driver);
++	if (drvinfo->fw_version[0])
++		len += ethnl_str_size(drvinfo->fw_version);
++	if (drvinfo->bus_info[0])
++		len += ethnl_str_size(drvinfo->bus_info);
++	if (drvinfo->erom_version[0])
++		len += ethnl_str_size(drvinfo->erom_version);
++
++	return nla_total_size(len);
++}
++
++/* reply_size() handler */
++static int info_size(const struct common_req_info *req_info)
++{
++	const struct info_data *data =
++		container_of(req_info, struct info_data, reqinfo_base);
++	u32 info_mask = data->repdata_base.info_mask;
++	int len = 0;
++
++	len += dev_ident_size();
++	if (info_mask & ETHTOOL_IM_INFO_DRVINFO)
++		len += drvinfo_size(&data->drvinfo);
++
++	return len;
++}
++
++static int fill_drvinfo(struct sk_buff *skb,
++			const struct ethtool_drvinfo *drvinfo)
++{
++	struct nlattr *nest;
++	int ret;
++
++	nest = nla_nest_start(skb, ETHTOOL_A_INFO_DRVINFO);
++	if (!nest)
++		return -EMSGSIZE;
++	ret = -EMSGSIZE;
++	if ((drvinfo->driver[0] &&
++	     nla_put_string(skb, ETHTOOL_A_DRVINFO_DRIVER, drvinfo->driver)) ||
++	    (drvinfo->fw_version[0] &&
++	     nla_put_string(skb, ETHTOOL_A_DRVINFO_FWVERSION,
++			    drvinfo->fw_version)) ||
++	    (drvinfo->bus_info[0] &&
++	     nla_put_string(skb, ETHTOOL_A_DRVINFO_BUSINFO,
++			    drvinfo->bus_info)) ||
++	    (drvinfo->erom_version[0] &&
++	     nla_put_string(skb, ETHTOOL_A_DRVINFO_EROM_VER,
++			    drvinfo->erom_version)))
++		goto err;
++
++	nla_nest_end(skb, nest);
++	return 0;
++err:
++	nla_nest_cancel(skb, nest);
++	return ret;
++}
++
++/* fill_reply() handler */
++static int fill_info(struct sk_buff *skb,
++		     const struct common_req_info *req_info)
++{
++	const struct info_data *data =
++		container_of(req_info, struct info_data, reqinfo_base);
++	u32 info_mask = data->repdata_base.info_mask;
++	int ret;
++
++	if (info_mask & ETHTOOL_IM_INFO_DRVINFO) {
++		ret = fill_drvinfo(skb, &data->drvinfo);
++		if (ret < 0)
++			return ret;
++	}
++
++	return 0;
++}
++
++const struct get_request_ops info_request_ops = {
++	.request_cmd		= ETHNL_CMD_GET_INFO,
++	.reply_cmd		= ETHNL_CMD_SET_INFO,
++	.dev_attrtype		= ETHTOOL_A_INFO_DEV,
++	.data_size		= sizeof(struct info_data),
++	.repdata_offset		= offsetof(struct info_data, repdata_base),
++
++	.parse_request		= parse_info,
++	.prepare_data		= prepare_info,
++	.reply_size		= info_size,
++	.fill_reply		= fill_info,
++};
+diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
+index 130512ce6174..d98e6017d3ad 100644
+--- a/net/ethtool/ioctl.c
++++ b/net/ethtool/ioctl.c
+@@ -681,54 +681,14 @@ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
+ 						  void __user *useraddr)
+ {
+ 	struct ethtool_drvinfo info;
+-	const struct ethtool_ops *ops = dev->ethtool_ops;
+-
+-	memset(&info, 0, sizeof(info));
+-	info.cmd = ETHTOOL_GDRVINFO;
+-	if (ops->get_drvinfo) {
+-		ops->get_drvinfo(dev, &info);
+-	} else if (dev->dev.parent && dev->dev.parent->driver) {
+-		strlcpy(info.bus_info, dev_name(dev->dev.parent),
+-			sizeof(info.bus_info));
+-		strlcpy(info.driver, dev->dev.parent->driver->name,
+-			sizeof(info.driver));
+-	} else {
+-		return -EOPNOTSUPP;
+-	}
+-
+-	/*
+-	 * this method of obtaining string set info is deprecated;
+-	 * Use ETHTOOL_GSSET_INFO instead.
+-	 */
+-	if (ops->get_sset_count) {
+-		int rc;
+-
+-		rc = ops->get_sset_count(dev, ETH_SS_TEST);
+-		if (rc >= 0)
+-			info.testinfo_len = rc;
+-		rc = ops->get_sset_count(dev, ETH_SS_STATS);
+-		if (rc >= 0)
+-			info.n_stats = rc;
+-		rc = ops->get_sset_count(dev, ETH_SS_PRIV_FLAGS);
+-		if (rc >= 0)
+-			info.n_priv_flags = rc;
+-	}
+-	if (ops->get_regs_len) {
+-		int ret = ops->get_regs_len(dev);
+-
+-		if (ret > 0)
+-			info.regdump_len = ret;
+-	}
+-
+-	if (ops->get_eeprom_len)
+-		info.eedump_len = ops->get_eeprom_len(dev);
+-
+-	if (!info.fw_version[0])
+-		devlink_compat_running_version(dev, info.fw_version,
+-					       sizeof(info.fw_version));
++	int rc;
+ 
++	rc = __ethtool_get_drvinfo(dev, &info);
++	if (rc < 0)
++		return rc;
+ 	if (copy_to_user(useraddr, &info, sizeof(info)))
+ 		return -EFAULT;
++
+ 	return 0;
+ }
+ 
+diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
+index fe2603eb3f04..82370008f22c 100644
+--- a/net/ethtool/netlink.c
++++ b/net/ethtool/netlink.c
+@@ -178,6 +178,7 @@ static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)
+ 
+ const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
+ 	[ETHNL_CMD_GET_STRSET]		= &strset_request_ops,
++	[ETHNL_CMD_GET_INFO]		= &info_request_ops,
+ };
+ 
+ /**
+@@ -590,6 +591,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+ 		.dumpit	= ethnl_get_dumpit,
+ 		.done	= ethnl_get_done,
+ 	},
++	{
++		.cmd	= ETHNL_CMD_GET_INFO,
++		.doit	= ethnl_get_doit,
++		.start	= ethnl_get_start,
++		.dumpit	= ethnl_get_dumpit,
++		.done	= ethnl_get_done,
++	},
+ };
+ 
+ static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
+diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
+index 4bea6ee2f6d1..479d950de5f0 100644
+--- a/net/ethtool/netlink.h
++++ b/net/ethtool/netlink.h
+@@ -245,5 +245,6 @@ struct get_request_ops {
+ /* request handlers */
+ 
+ extern const struct get_request_ops strset_request_ops;
++extern const struct get_request_ops info_request_ops;
+ 
+ #endif /* _NET_ETHTOOL_NETLINK_H */
+-- 
+2.21.0
+
