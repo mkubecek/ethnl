@@ -1,4 +1,4 @@
-From 570fa1ac924948d12637bc44656ee09e80cba059 Mon Sep 17 00:00:00 2001
+From e4745824da28cda170f28ce8d948d46dec92b30c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:08:55 +0100
 Subject: [PATCH 19/44] ethtool: provide WoL information in GET_SETTINGS
@@ -18,11 +18,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt | 13 +++-
  include/uapi/linux/ethtool_netlink.h         | 14 ++++-
- net/ethtool/common.c                         | 10 ++++
+ net/ethtool/common.c                         | 10 +++
  net/ethtool/common.h                         |  1 +
- net/ethtool/ioctl.c                          | 10 ++--
- net/ethtool/settings.c                       | 63 ++++++++++++++++++++
- 6 files changed, 105 insertions(+), 6 deletions(-)
+ net/ethtool/ioctl.c                          | 10 +--
+ net/ethtool/settings.c                       | 65 ++++++++++++++++++++
+ 6 files changed, 107 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 3a2ce429b9c1..5f5556f5dc29 100644
@@ -170,30 +170,31 @@ index 36857848232a..8b257b5c90ed 100644
  	return 0;
  }
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 0c03e00178e0..ccf3f5550b36 100644
+index 7db07bc90c5e..538e0bf4f21e 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -6,10 +6,12 @@
  
  struct settings_data {
- 	struct common_req_info		reqinfo_base;
+ 	struct ethnl_req_info		reqinfo_base;
 +	bool				privileged;
  
  	/* everything below here will be reset for each device in dumps */
- 	struct common_reply_data	repdata_base;
+ 	struct ethnl_reply_data		repdata_base;
  	struct ethtool_link_ksettings	ksettings;
 +	struct ethtool_wolinfo		wolinfo;
  	struct ethtool_link_settings	*lsettings;
  	int				link;
  	bool				lpm_empty;
-@@ -116,15 +118,20 @@ static const struct nla_policy get_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -116,6 +118,7 @@ static const struct nla_policy settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_LINK_INFO]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_LINK_MODES]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_LINK_STATE]	= { .type = NLA_REJECT },
 +	[ETHTOOL_A_SETTINGS_WOL]	= { .type = NLA_REJECT },
  };
  
- static int parse_settings(struct common_req_info *req_info,
+ /* parse_request() handler */
+@@ -123,9 +126,13 @@ static int settings_parse(struct ethnl_req_info *req_info,
  			  struct sk_buff *skb, struct genl_info *info,
  			  const struct nlmsghdr *nlhdr)
  {
@@ -205,9 +206,9 @@ index 0c03e00178e0..ccf3f5550b36 100644
 +	data->privileged = ethnl_is_privileged(skb);
 +
  	ret = nlmsg_parse(nlhdr, GENL_HDRLEN, tb, ETHTOOL_A_SETTINGS_MAX,
- 			  get_settings_policy, info ? info->extack : NULL);
+ 			  settings_get_policy, info ? info->extack : NULL);
  	if (ret < 0)
-@@ -161,6 +168,16 @@ static int ethnl_get_link_ksettings(struct genl_info *info,
+@@ -162,6 +169,16 @@ static int ethnl_get_link_ksettings(struct genl_info *info,
  	return ret;
  }
  
@@ -221,10 +222,10 @@ index 0c03e00178e0..ccf3f5550b36 100644
 +	return ret;
 +}
 +
- static int prepare_settings(struct common_req_info *req_info,
+ /* prepare_data() handler */
+ static int settings_prepare(struct ethnl_req_info *req_info,
  			    struct genl_info *info)
- {
-@@ -197,6 +214,11 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -199,6 +216,11 @@ static int settings_prepare(struct ethnl_req_info *req_info,
  	}
  	if (req_mask & ETHTOOL_IM_SETTINGS_LINKSTATE)
  		data->link = __ethtool_get_link(dev);
@@ -236,34 +237,35 @@ index 0c03e00178e0..ccf3f5550b36 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -252,6 +274,12 @@ static int link_state_size(int link)
+@@ -255,6 +277,12 @@ static int settings_linkstate_size(int link)
  	return nla_total_size(nla_total_size(sizeof(u8)));
  }
  
-+static int wol_size(void)
++static int settings_wol_size(void)
 +{
 +	return nla_total_size(nla_total_size(sizeof(struct nla_bitfield32)) +
 +			      nla_total_size(SOPASS_MAX));
 +}
 +
- /* To keep things simple, reserve space for some attributes which may not
-  * be added to the message (e.g. ETHTOOL_A_SETTINGS_SOPASS); therefore the
-  * length returned may be bigger than the actual length of the message sent.
-@@ -275,6 +303,8 @@ static int settings_size(const struct common_req_info *req_info)
+ /* reply_size() handler
+  *
+  * To keep things simple, reserve space for some attributes which may not
+@@ -280,6 +308,8 @@ static int settings_size(const struct ethnl_req_info *req_info)
  	}
  	if (info_mask & ETHTOOL_IM_SETTINGS_LINKSTATE)
- 		len += link_state_size(data->link);
+ 		len += settings_linkstate_size(data->link);
 +	if (info_mask & ETHTOOL_IM_SETTINGS_WOL)
-+		len += wol_size();
++		len += settings_wol_size();
  
  	return len;
  }
-@@ -366,6 +396,33 @@ static int fill_link_state(struct sk_buff *skb, int link)
+@@ -371,6 +401,34 @@ static int settings_fill_linkstate(struct sk_buff *skb, int link)
  	return -EMSGSIZE;
  }
  
-+static int fill_wolinfo(struct sk_buff *skb,
-+			const struct ethtool_wolinfo *wolinfo, bool privileged)
++static int settings_fill_wolinfo(struct sk_buff *skb,
++				 const struct ethtool_wolinfo *wolinfo,
++				 bool privileged)
 +{
 +	struct nlattr *nest;
 +
@@ -289,22 +291,23 @@ index 0c03e00178e0..ccf3f5550b36 100644
 +	return -EMSGSIZE;
 +}
 +
- static int fill_settings(struct sk_buff *skb,
- 			 const struct common_req_info *req_info)
- {
-@@ -391,6 +448,11 @@ static int fill_settings(struct sk_buff *skb,
+ /* fill_reply() handler */
+ static int settings_fill(struct sk_buff *skb,
+ 			 const struct ethnl_req_info *req_info)
+@@ -397,6 +455,12 @@ static int settings_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
 +	if (info_mask & ETHTOOL_IM_SETTINGS_WOL) {
-+		ret = fill_wolinfo(skb, &data->wolinfo, data->privileged);
++		ret = settings_fill_wolinfo(skb, &data->wolinfo,
++					    data->privileged);
 +		if (ret < 0)
 +			return ret;
 +	}
  
  	return 0;
  }
-@@ -436,6 +498,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -442,6 +506,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_LINK_INFO]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_MODES]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },

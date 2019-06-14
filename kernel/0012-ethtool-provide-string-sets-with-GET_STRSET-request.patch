@@ -1,4 +1,4 @@
-From 3e47d0b028a5a7855be1db2b193055fe308ee6f0 Mon Sep 17 00:00:00 2001
+From 95df9fc2df1f785d5443f2aa9702b19f3bfd3d80 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 12/44] ethtool: provide string sets with GET_STRSET request
@@ -24,8 +24,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/netlink.c                        |   8 +
  net/ethtool/netlink.h                        |   4 +
- net/ethtool/strset.c                         | 449 +++++++++++++++++++
- 7 files changed, 551 insertions(+), 3 deletions(-)
+ net/ethtool/strset.c                         | 433 +++++++++++++++++++
+ 7 files changed, 535 insertions(+), 3 deletions(-)
  create mode 100644 net/ethtool/strset.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -191,7 +191,7 @@ index 11782306593b..11ceb00821b3 100644
 -ethtool_nl-y	:= netlink.o bitset.o
 +ethtool_nl-y	:= netlink.o bitset.o strset.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index cd974351403c..fe2603eb3f04 100644
+index eabb55929137..1b0b400a8ae5 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -177,6 +177,7 @@ static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)
@@ -202,7 +202,7 @@ index cd974351403c..fe2603eb3f04 100644
  };
  
  /**
-@@ -582,6 +583,13 @@ static struct notifier_block ethnl_netdev_notifier = {
+@@ -585,6 +586,13 @@ static struct notifier_block ethnl_netdev_notifier = {
  /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
@@ -217,11 +217,11 @@ index cd974351403c..fe2603eb3f04 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 700837854e7c..4bea6ee2f6d1 100644
+index 29743b76ffaa..45c3b64adb66 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -242,4 +242,8 @@ struct get_request_ops {
- 	void (*cleanup)(struct common_req_info *req_info);
+@@ -238,4 +238,8 @@ struct get_request_ops {
+ 	void (*cleanup)(struct ethnl_req_info *req_info);
  };
  
 +/* request handlers */
@@ -231,10 +231,10 @@ index 700837854e7c..4bea6ee2f6d1 100644
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
 new file mode 100644
-index 000000000000..ad8b3852d42b
+index 000000000000..7319bfe14a09
 --- /dev/null
 +++ b/net/ethtool/strset.c
-@@ -0,0 +1,449 @@
+@@ -0,0 +1,433 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include <linux/ethtool.h>
@@ -307,12 +307,12 @@ index 000000000000..ad8b3852d42b
 +};
 +
 +struct strset_data {
-+	struct common_req_info		reqinfo_base;
++	struct ethnl_req_info		reqinfo_base;
 +	u32				req_ids;
 +	bool				counts_only;
 +
 +	/* everything below here will be reset for each device in dumps */
-+	struct common_reply_data	repdata_base;
++	struct ethnl_reply_data		repdata_base;
 +	struct strset_info		info[ETH_SS_COUNT];
 +};
 +
@@ -330,40 +330,27 @@ index 000000000000..ad8b3852d42b
 +	[ETHTOOL_A_STRINGSET_STRINGS]	= { .type = NLA_REJECT },
 +};
 +
-+static bool id_requested(const struct strset_data *data, u32 id)
-+{
-+	return data->req_ids & (1U << id);
-+}
-+
-+static bool include_set(const struct strset_data *data, u32 id)
++/**
++ * strset_include() - test if a string set should be included in reply
++ * @data: pointer to request data structure
++ * @id:   id of string set to check (ETH_SS_* constants)
++ */
++static bool strset_include(const struct strset_data *data, u32 id)
 +{
 +	bool per_dev;
 +
 +	BUILD_BUG_ON(ETH_SS_COUNT >= BITS_PER_BYTE * sizeof(data->req_ids));
 +
 +	if (data->req_ids)
-+		return id_requested(data, id);
-+
++		return data->req_ids & (1U << id);
 +	per_dev = data->info[id].per_dev;
 +	if (data->info[id].type == ETH_SS_TYPE_NONE)
 +		return false;
++
 +	return data->repdata_base.dev ? per_dev : !per_dev;
 +}
 +
-+const char *str_value(const struct strset_info *info, unsigned int i)
-+{
-+	switch (info->type) {
-+	case ETH_SS_TYPE_LEGACY:
-+		return info->data.legacy[i];
-+	case ETH_SS_TYPE_SIMPLE:
-+		return info->data.simple[i];
-+	default:
-+		WARN_ONCE(1, "unexpected string set type");
-+		return "";
-+	}
-+}
-+
-+static int get_strset_id(const struct nlattr *nest, u32 *val,
++static int strset_get_id(const struct nlattr *nest, u32 *val,
 +			 struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHTOOL_A_STRINGSET_MAX + 1];
@@ -381,7 +368,7 @@ index 000000000000..ad8b3852d42b
 +}
 +
 +/* parse_request() handler */
-+static int parse_strset(struct common_req_info *req_info, struct sk_buff *skb,
++static int strset_parse(struct ethnl_req_info *req_info, struct sk_buff *skb,
 +			struct genl_info *info, const struct nlmsghdr *nlhdr)
 +{
 +	struct strset_data *data =
@@ -410,7 +397,7 @@ index 000000000000..ad8b3852d42b
 +			data->counts_only = true;
 +			break;
 +		case ETHTOOL_A_STRSET_STRINGSET:
-+			ret = get_strset_id(attr, &id, info);
++			ret = strset_get_id(attr, &id, info);
 +			if (ret < 0)
 +				return ret;
 +			if (ret >= ETH_SS_COUNT)
@@ -428,8 +415,11 @@ index 000000000000..ad8b3852d42b
 +	return 0;
 +}
 +
-+static void free_strset(struct strset_data *data)
++/* cleanup() handler - free allocated data (if any) */
++static void strset_cleanup(struct ethnl_req_info *req_info)
 +{
++	struct strset_data *data =
++		container_of(req_info, struct strset_data, reqinfo_base);
 +	unsigned int i;
 +
 +	for (i = 0; i < ETH_SS_COUNT; i++)
@@ -440,9 +430,8 @@ index 000000000000..ad8b3852d42b
 +		}
 +}
 +
-+static int prepare_one_stringset(struct strset_info *info,
-+				 struct net_device *dev, unsigned int id,
-+				 bool counts_only)
++static int strset_prepare_set(struct strset_info *info, struct net_device *dev,
++			      unsigned int id, bool counts_only)
 +{
 +	const struct ethtool_ops *ops = dev->ethtool_ops;
 +	void *strings;
@@ -479,7 +468,7 @@ index 000000000000..ad8b3852d42b
 +}
 +
 +/* prepare_data() handler */
-+static int prepare_strset(struct common_req_info *req_info,
++static int strset_prepare(struct ethnl_req_info *req_info,
 +			  struct genl_info *info)
 +{
 +	struct strset_data *data =
@@ -493,7 +482,7 @@ index 000000000000..ad8b3852d42b
 +
 +	if (!dev) {
 +		for (i = 0; i < ETH_SS_COUNT; i++) {
-+			if (id_requested(data, i) &&
++			if ((data->req_ids & (1U << i)) &&
 +			    data->info[i].per_dev) {
 +				if (info)
 +					GENL_SET_ERR_MSG(info,
@@ -507,15 +496,15 @@ index 000000000000..ad8b3852d42b
 +	if (ret < 0)
 +		goto err_strset;
 +	for (i = 0; i < ETH_SS_COUNT; i++) {
-+		if (!include_set(data, i) || !data->info[i].per_dev)
++		if (!strset_include(data, i) || !data->info[i].per_dev)
 +			continue;
 +		if (WARN_ONCE(data->info[i].type != ETH_SS_TYPE_LEGACY,
 +			      "unexpected string set type %u",
 +			      data->info[i].type))
 +			goto err_ops;
 +
-+		ret = prepare_one_stringset(&data->info[i], dev, i,
-+					    data->counts_only);
++		ret = strset_prepare_set(&data->info[i], dev, i,
++					 data->counts_only);
 +		if (ret < 0)
 +			goto err_ops;
 +	}
@@ -525,56 +514,41 @@ index 000000000000..ad8b3852d42b
 +err_ops:
 +	ethnl_after_ops(dev);
 +err_strset:
-+	free_strset(data);
++	strset_cleanup(req_info);
 +	return ret;
 +}
 +
-+static int legacy_set_size(const char (*set)[ETH_GSTRING_LEN],
-+			   unsigned int count)
++/* calculate size of ETHTOOL_A_STRSET_STRINGSET nest for one string set */
++static int strset_set_size(const struct strset_info *info, bool counts_only)
 +{
 +	unsigned int len = 0;
 +	unsigned int i;
 +
-+	for (i = 0; i < count; i++)
-+		len += nla_total_size(nla_total_size(sizeof(u32)) +
-+				      ethnl_str_size(set[i]));
-+	len = 2 * nla_total_size(sizeof(u32)) + nla_total_size(len);
-+
-+	return nla_total_size(len);
-+}
-+
-+static int simple_set_size(const char * const *set, unsigned int count)
-+{
-+	unsigned int len = 0;
-+	unsigned int i;
-+
-+	for (i = 0; i < count; i++)
-+		len += nla_total_size(nla_total_size(sizeof(u32)) +
-+				      ethnl_str_size(set[i]));
-+	len = 2 * nla_total_size(sizeof(u32)) + nla_total_size(len);
-+
-+	return nla_total_size(len);
-+}
-+
-+static int set_size(const struct strset_info *info, bool counts_only)
-+{
 +	if (info->count == 0)
 +		return 0;
 +	if (counts_only)
 +		return nla_total_size(2 * nla_total_size(sizeof(u32)));
 +
-+	switch (info->type) {
-+	case ETH_SS_TYPE_LEGACY:
-+		return legacy_set_size(info->data.legacy, info->count);
-+	case ETH_SS_TYPE_SIMPLE:
-+		return simple_set_size(info->data.simple, info->count);
-+	default:
-+		return -EINVAL;
-+	};
++	for (i = 0; i < info->count; i++) {
++		const char *str;
++
++		if (info->type == ETH_SS_TYPE_LEGACY)
++			str = info->data.legacy[i];
++		else
++			str = info->data.simple[i];
++
++		/* ETHTOOL_A_STRING_INDEX, ETHTOOL_A_STRING_VALUE, nest */
++		len += nla_total_size(nla_total_size(sizeof(u32)) +
++				      ethnl_str_size(str));
++	}
++	/* ETHTOOL_A_STRINGSET_ID, ETHTOOL_A_STRINGSET_COUNT */
++	len = 2 * nla_total_size(sizeof(u32)) + nla_total_size(len);
++
++	return nla_total_size(len);
 +}
 +
 +/* reply_size() handler */
-+static int strset_size(const struct common_req_info *req_info)
++static int strset_size(const struct ethnl_req_info *req_info)
 +{
 +	const struct strset_data *data =
 +		container_of(req_info, struct strset_data, reqinfo_base);
@@ -582,14 +556,14 @@ index 000000000000..ad8b3852d42b
 +	int len = 0;
 +	int ret;
 +
-+	len += dev_ident_size();
++	len += ethnl_dev_size();
 +	for (i = 0; i < ETH_SS_COUNT; i++) {
 +		const struct strset_info *info = &data->info[i];
 +
-+		if (!include_set(data, i) || info->type == ETH_SS_TYPE_NONE)
++		if (!strset_include(data, i) || info->type == ETH_SS_TYPE_NONE)
 +			continue;
 +
-+		ret = set_size(info, data->counts_only);
++		ret = strset_set_size(info, data->counts_only);
 +		if (ret < 0)
 +			return ret;
 +		len += ret;
@@ -598,23 +572,32 @@ index 000000000000..ad8b3852d42b
 +	return len;
 +}
 +
-+static int fill_string(struct sk_buff *skb, const struct strset_info *info,
-+		       u32 idx)
++/* fill one string into reply */
++static int strset_fill_string(struct sk_buff *skb,
++			      const struct strset_info *info, u32 idx)
 +{
 +	struct nlattr *string;
++	const char *value;
++
++	if (info->type == ETH_SS_TYPE_LEGACY)
++		value = info->data.legacy[idx];
++	else
++		value = info->data.simple[idx];
 +
 +	string = nla_nest_start(skb, ETHTOOL_A_STRINGS_STRING);
 +	if (!string)
 +		return -EMSGSIZE;
 +	if (nla_put_u32(skb, ETHTOOL_A_STRING_INDEX, idx) ||
-+	    nla_put_string(skb, ETHTOOL_A_STRING_VALUE, str_value(info, idx)))
++	    nla_put_string(skb, ETHTOOL_A_STRING_VALUE, value))
 +		return -EMSGSIZE;
 +	nla_nest_end(skb, string);
 +
 +	return 0;
 +}
 +
-+static int fill_set(struct sk_buff *skb, const struct strset_data *data, u32 id)
++/* fill one string set into reply */
++static int strset_fill_set(struct sk_buff *skb, const struct strset_data *data,
++			   u32 id)
 +{
 +	const struct strset_info *info = &data->info[id];
 +	struct nlattr *strings;
@@ -638,7 +621,7 @@ index 000000000000..ad8b3852d42b
 +		if (!strings)
 +			goto err;
 +		for (i = 0; i < info->count; i++) {
-+			if (fill_string(skb, info, i) < 0)
++			if (strset_fill_string(skb, info, i) < 0)
 +				goto err;
 +		}
 +		nla_nest_end(skb, strings);
@@ -653,8 +636,8 @@ index 000000000000..ad8b3852d42b
 +}
 +
 +/* fill_reply() handler */
-+static int fill_strset(struct sk_buff *skb,
-+		       const struct common_req_info *req_info)
++static int strset_fill(struct sk_buff *skb,
++		       const struct ethnl_req_info *req_info)
 +{
 +	const struct strset_data *data =
 +		container_of(req_info, struct strset_data, reqinfo_base);
@@ -662,8 +645,8 @@ index 000000000000..ad8b3852d42b
 +	int ret;
 +
 +	for (i = 0; i < ETH_SS_COUNT; i++)
-+		if (include_set(data, i)) {
-+			ret = fill_set(skb, data, i);
++		if (strset_include(data, i)) {
++			ret = strset_fill_set(skb, data, i);
 +			if (ret < 0)
 +				return ret;
 +		}
@@ -679,10 +662,11 @@ index 000000000000..ad8b3852d42b
 +	.repdata_offset		= offsetof(struct strset_data, repdata_base),
 +	.allow_nodev_do		= true,
 +
-+	.parse_request		= parse_strset,
-+	.prepare_data		= prepare_strset,
++	.parse_request		= strset_parse,
++	.prepare_data		= strset_prepare,
 +	.reply_size		= strset_size,
-+	.fill_reply		= fill_strset,
++	.fill_reply		= strset_fill,
++	.cleanup		= strset_cleanup,
 +};
 -- 
 2.21.0

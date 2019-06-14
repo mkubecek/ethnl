@@ -1,4 +1,4 @@
-From dfda7c060434dc263d556b67066e250fdd0bb9fc Mon Sep 17 00:00:00 2001
+From 6a05a47f3083effd8cbd946830082a894e717df6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 24/44] ethtool: set device features with SET_SETTINGS
@@ -113,14 +113,14 @@ index 0edd69c4dbb8..45e21b3c1686 100644
  	__ETHTOOL_A_FEATURES_CNT,
  	ETHTOOL_A_FEATURES_MAX = (__ETHTOOL_A_FEATURES_CNT - 1)
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 8c280512de3e..6483addc4ff0 100644
+index 47386542546a..6bb95a77703b 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -657,6 +657,15 @@ static const struct nla_policy set_debug_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
+@@ -666,6 +666,15 @@ static const struct nla_policy debug_set_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
  					    .validation_data = &all_bits },
  };
  
-+static const struct nla_policy set_features_policy[ETHTOOL_A_FEATURES_MAX + 1] = {
++static const struct nla_policy features_set_policy[ETHTOOL_A_FEATURES_MAX + 1] = {
 +	[ETHTOOL_A_FEATURES_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHTOOL_A_FEATURES_HW]			= { .type = NLA_REJECT },
 +	[ETHTOOL_A_FEATURES_WANTED]		= { .type = NLA_NESTED },
@@ -129,10 +129,10 @@ index 8c280512de3e..6483addc4ff0 100644
 +	[ETHTOOL_A_FEATURES_WANT_DIFF]		= { .type = NLA_FLAG },
 +};
 +
- static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
+ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_DEV]		= { .type = NLA_NESTED },
-@@ -667,7 +676,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -676,7 +685,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
@@ -141,7 +141,7 @@ index 8c280512de3e..6483addc4ff0 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -887,11 +896,148 @@ static int update_debug(struct genl_info *info, struct nlattr *nest,
+@@ -897,11 +906,148 @@ static int settings_update_debug(struct genl_info *info, struct nlattr *nest,
  	return ret;
  }
  
@@ -166,7 +166,7 @@ index 8c280512de3e..6483addc4ff0 100644
 +	return ret;
 +}
 +
-+static int update_features(struct genl_info *info, struct net_device *dev,
++static int settings_update_features(struct genl_info *info, struct net_device *dev,
 +			   const struct nlattr *nest, bool compact,
 +			   bool *changed)
 +{
@@ -189,7 +189,7 @@ index 8c280512de3e..6483addc4ff0 100644
 +
 +	*changed = false;
 +	ret = nla_parse_nested(tb, ETHTOOL_A_FEATURES_MAX, nest,
-+			       set_features_policy, info->extack);
++			       features_set_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +	if (!tb[ETHTOOL_A_FEATURES_WANTED])
@@ -243,7 +243,7 @@ index 8c280512de3e..6483addc4ff0 100644
 +	if (ret < 0)
 +		goto err;
 +	reply_len += ret;
-+	reply_len = dev_ident_size() + nla_total_size(reply_len);
++	reply_len = ethnl_dev_size() + nla_total_size(reply_len);
 +	ret = -ENOMEM;
 +	rskb = ethnl_reply_init(reply_len, dev, ETHNL_CMD_SET_SETTINGS,
 +				ETHTOOL_A_SETTINGS_DEV, info, &reply_payload);
@@ -290,16 +290,16 @@ index 8c280512de3e..6483addc4ff0 100644
  	int ret;
  
  	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb,
-@@ -930,6 +1076,17 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -942,6 +1088,17 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret)
  			req_mask |= ETHTOOL_IM_SETTINGS_DEBUG;
  	}
 +	if (tb[ETHTOOL_A_SETTINGS_FEATURES]) {
 +		bool compact = tb[ETHTOOL_A_SETTINGS_COMPACT];
 +
-+		ret = update_features(info, dev,
-+				      tb[ETHTOOL_A_SETTINGS_FEATURES], compact,
-+				      &mod);
++		ret = settings_update_features(info, dev,
++					       tb[ETHTOOL_A_SETTINGS_FEATURES],
++					       compact, &mod);
 +		if (mod)
 +			req_mask |= ETHTOOL_IM_SETTINGS_FEATURES;
 +		if (ret < 0)

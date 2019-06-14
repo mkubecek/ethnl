@@ -1,4 +1,4 @@
-From 9e5adc0e754bb633d8ca6474288ae1728c50ba80 Mon Sep 17 00:00:00 2001
+From 832e0b97aa7b1e5b2b96703e6c5ba037528239ed Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:30:12 +0100
 Subject: [PATCH 33/44] ethtool: provide channel counts in GET_PARAMS request
@@ -13,10 +13,10 @@ modified using the ioctl interface (ETHTOOL_SCHANNELS command).
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt | 19 +++++--
- include/uapi/linux/ethtool_netlink.h         | 20 +++++++-
+ include/uapi/linux/ethtool_netlink.h         | 20 ++++++-
  net/ethtool/ioctl.c                          |  7 ++-
- net/ethtool/params.c                         | 54 ++++++++++++++++++++
- 4 files changed, 94 insertions(+), 6 deletions(-)
+ net/ethtool/params.c                         | 55 ++++++++++++++++++++
+ 4 files changed, 95 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 4c2d220ad71f..23e355bcaa66 100644
@@ -143,7 +143,7 @@ index 25b59d2df4b6..88ba472044b1 100644
  
  static int ethtool_get_pauseparam(struct net_device *dev, void __user *useraddr)
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 0e883c6c0f73..be4a8742e49e 100644
+index 49cf3b326c59..4a95be21d5ca 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -10,6 +10,7 @@ static const struct nla_policy get_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
@@ -161,7 +161,7 @@ index 0e883c6c0f73..be4a8742e49e 100644
 +	struct ethtool_channels		channels;
  };
  
- static int parse_params(struct common_req_info *req_info, struct sk_buff *skb,
+ static int params_parse(struct ethnl_req_info *req_info, struct sk_buff *skb,
 @@ -77,6 +79,15 @@ static int ethnl_get_pause(struct net_device *dev,
  	return 0;
  }
@@ -175,10 +175,10 @@ index 0e883c6c0f73..be4a8742e49e 100644
 +	return 0;
 +}
 +
- static int prepare_params(struct common_req_info *req_info,
+ static int params_prepare(struct ethnl_req_info *req_info,
  			  struct genl_info *info)
  {
-@@ -104,6 +115,11 @@ static int prepare_params(struct common_req_info *req_info,
+@@ -104,6 +115,11 @@ static int params_prepare(struct ethnl_req_info *req_info,
  		if (ret < 0)
  			req_mask &= ~ETHTOOL_IM_PARAMS_PAUSE;
  	}
@@ -190,32 +190,33 @@ index 0e883c6c0f73..be4a8742e49e 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -128,6 +144,11 @@ static int pause_size(void)
+@@ -129,6 +145,11 @@ static int params_pause_size(void)
  	return nla_total_size(3 * nla_total_size(sizeof(u8)));
  }
  
-+static int channels_size(void)
++static int params_channels_size(void)
 +{
 +	return nla_total_size(8 * nla_total_size(sizeof(u32)));
 +}
 +
- static int params_size(const struct common_req_info *req_info)
+ static int params_size(const struct ethnl_req_info *req_info)
  {
  	struct params_data *data =
-@@ -142,6 +163,8 @@ static int params_size(const struct common_req_info *req_info)
- 		len += ring_size();
+@@ -143,6 +164,8 @@ static int params_size(const struct ethnl_req_info *req_info)
+ 		len += params_ring_size();
  	if (info_mask & ETHTOOL_IM_PARAMS_PAUSE)
- 		len += pause_size();
+ 		len += params_pause_size();
 +	if (info_mask & ETHTOOL_IM_PARAMS_CHANNELS)
-+		len += channels_size();
++		len += params_channels_size();
  
  	return len;
  }
-@@ -254,6 +277,31 @@ static int fill_pause(struct sk_buff *skb, struct ethtool_pauseparam *data)
+@@ -257,6 +280,32 @@ static int params_fill_pause(struct sk_buff *skb,
  	return 0;
  }
  
-+static int fill_channels(struct sk_buff *skb, struct ethtool_channels *data)
++static int params_fill_channels(struct sk_buff *skb,
++				struct ethtool_channels *data)
 +{
 +	struct nlattr *nest;
 +
@@ -240,22 +241,22 @@ index 0e883c6c0f73..be4a8742e49e 100644
 +	return 0;
 +}
 +
- static int fill_params(struct sk_buff *skb,
- 		       const struct common_req_info *req_info)
+ static int params_fill(struct sk_buff *skb,
+ 		       const struct ethnl_req_info *req_info)
  {
-@@ -277,6 +325,11 @@ static int fill_params(struct sk_buff *skb,
+@@ -280,6 +329,11 @@ static int params_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
 +	if (info_mask & ETHTOOL_IM_PARAMS_CHANNELS) {
-+		ret = fill_channels(skb, &data->channels);
++		ret = params_fill_channels(skb, &data->channels);
 +		if (ret < 0)
 +			return ret;
 +	}
  
  	return 0;
  }
-@@ -304,6 +357,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+@@ -307,6 +361,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_NESTED },

@@ -1,4 +1,4 @@
-From c0534b26a1f17e2c3c84ebdc24dce318a5dcc3fe Mon Sep 17 00:00:00 2001
+From 67d734cf28d255f1fe52f9126f915f76b5b76c2d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:07:38 +0100
 Subject: [PATCH 32/44] ethtool: set pause parameters with SET_PARAMS request
@@ -9,9 +9,9 @@ ETHTOOL_SPAUSEPARAM ioctl command.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 14 +++---
- net/ethtool/params.c                         | 47 +++++++++++++++++++-
- 2 files changed, 55 insertions(+), 6 deletions(-)
+ Documentation/networking/ethtool-netlink.txt | 14 +++--
+ net/ethtool/params.c                         | 55 +++++++++++++++++++-
+ 2 files changed, 63 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index d84d9122e92c..4c2d220ad71f 100644
@@ -53,10 +53,10 @@ index d84d9122e92c..4c2d220ad71f 100644
  ETHTOOL_SRXCSUM			ETHNL_CMD_SET_SETTINGS
  ETHTOOL_GTXCSUM			ETHNL_CMD_GET_SETTINGS
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 43d15fa3c72d..0e883c6c0f73 100644
+index c306ad43d4d6..49cf3b326c59 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -303,7 +303,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+@@ -306,7 +306,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_COMPACT]		= { .type = NLA_FLAG },
  	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_NESTED },
@@ -65,7 +65,7 @@ index 43d15fa3c72d..0e883c6c0f73 100644
  };
  
  static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
-@@ -493,6 +493,46 @@ static int update_ring(struct genl_info *info, struct net_device *dev,
+@@ -512,6 +512,54 @@ static int params_update_ring(struct genl_info *info, struct net_device *dev,
  	return (ret < 0) ? ret : 1;
  }
  
@@ -76,7 +76,15 @@ index 43d15fa3c72d..0e883c6c0f73 100644
 +	[ETHTOOL_A_PAUSE_TX]		= { .type = NLA_U8 },
 +};
 +
-+static int update_pause(struct genl_info *info, struct net_device *dev,
++/**
++ * params_update_pause() - update pause parameters from nested attribute
++ * @info: genl_info pointer (only needed for extack)
++ * @dev:  device to set pause parameters for
++ * @nest: ETHTOOL_A_PARAMS_PAUSE nested attribute
++ *
++ * Return: negative code on error, 0 if no change, >0 if there was a change
++ */
++static int params_update_pause(struct genl_info *info, struct net_device *dev,
 +			struct nlattr *nest)
 +{
 +	struct nlattr *tb[ETHTOOL_A_RING_MAX + 1];
@@ -112,11 +120,11 @@ index 43d15fa3c72d..0e883c6c0f73 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
-@@ -522,6 +562,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+@@ -541,6 +589,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
  		req_mask |= ETHTOOL_IM_PARAMS_RING;
-+	ret = update_pause(info, dev, tb[ETHTOOL_A_PARAMS_PAUSE]);
++	ret = params_update_pause(info, dev, tb[ETHTOOL_A_PARAMS_PAUSE]);
 +	if (ret < 0)
 +		goto out_ops;
 +	if (ret)

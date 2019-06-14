@@ -1,4 +1,4 @@
-From 26517160e1a6e7b1aebe6e5b71c752fb58217a3b Mon Sep 17 00:00:00 2001
+From c6d8f40d99af362c5510b2bb501888f1911334f5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 07/44] ethtool: netlink bitset handling
@@ -804,7 +804,7 @@ index 000000000000..761d0c47fe23
 +
 +#endif /* _NET_ETHTOOL_BITSET_H */
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index a37414ad0434..19f3aacf815d 100644
+index 6effa23cdf26..1698f8b56d4a 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -15,6 +15,15 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,

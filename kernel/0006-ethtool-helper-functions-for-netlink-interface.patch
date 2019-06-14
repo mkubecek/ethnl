@@ -1,4 +1,4 @@
-From 1c1ff43cb1951067c77b74629db509fac00a4ca3 Mon Sep 17 00:00:00 2001
+From ae74e3f9c0c3dcc42ccd05b7aa3d0e64f3301e28 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 06/44] ethtool: helper functions for netlink interface
@@ -9,8 +9,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  include/uapi/linux/ethtool_netlink.h |  11 ++
  net/ethtool/netlink.c                | 156 +++++++++++++++++++++++++++
- net/ethtool/netlink.h                | 115 ++++++++++++++++++++
- 3 files changed, 282 insertions(+)
+ net/ethtool/netlink.h                | 111 +++++++++++++++++++
+ 3 files changed, 278 insertions(+)
 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 index 6aa267451542..a648f7368d4e 100644
@@ -204,10 +204,10 @@ index 3c98b41f04e5..7347a7c50838 100644
  
  static const struct genl_ops ethtool_genl_ops[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 257ae55ccc82..a37414ad0434 100644
+index 257ae55ccc82..6effa23cdf26 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -6,5 +6,120 @@
+@@ -6,5 +6,116 @@
  #include <linux/ethtool_netlink.h>
  #include <linux/netdevice.h>
  #include <net/genetlink.h>
@@ -225,7 +225,10 @@ index 257ae55ccc82..a37414ad0434 100644
 +	return nla_total_size(strlen(s) + 1);
 +}
 +
-+/* ethnl_update_* return true if the value is changed */
++/* The ethnl_update_* helpers set value pointed to by @dst to the value of
++ * netlink attribute @attr (if attr is not null). They return true if *dst
++ * value was changed, false if not.
++ */
 +static inline bool ethnl_update_u32(u32 *dst, struct nlattr *attr)
 +{
 +	u32 val;
@@ -254,7 +257,7 @@ index 257ae55ccc82..a37414ad0434 100644
 +	return true;
 +}
 +
-+/* update u32 value used as bool from NLA_U8 */
++/* update u32 value used as bool from NLA_U8 attribute */
 +static inline bool ethnl_update_bool32(u32 *dst, struct nlattr *attr)
 +{
 +	u8 val;
@@ -299,13 +302,6 @@ index 257ae55ccc82..a37414ad0434 100644
 +	return true;
 +}
 +
-+static inline void warn_partial_info(struct genl_info *info)
-+{
-+	if (!info)
-+		return;
-+	GENL_SET_ERR_MSG(info, "not all requested data could be retrieved");
-+}
-+
 +/* Check user privileges explicitly to allow finer access control based on
 + * context of the request or hiding part of the information from unprivileged
 + * users
@@ -321,7 +317,7 @@ index 257ae55ccc82..a37414ad0434 100644
 + * that we do not need to hold RTNL longer than necessary to prevent rename
 + * between estimating the size and composing the message
 + */
-+static inline unsigned int dev_ident_size(void)
++static inline unsigned int ethnl_dev_size(void)
 +{
 +	return nla_total_size(nla_total_size(sizeof(u32)) +
 +			      nla_total_size(IFNAMSIZ));

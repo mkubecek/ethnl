@@ -1,4 +1,4 @@
-From 8ade2bd31b5bc13983a2347cb6d03a5fd98ae831 Mon Sep 17 00:00:00 2001
+From 8ddb5069be977baabf2084cf0fd72518ce458980 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
 Subject: [PATCH 17/44] ethtool: set link settings and link modes with
@@ -17,8 +17,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  34 +-
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   2 +
- net/ethtool/settings.c                       | 316 +++++++++++++++++++
- 4 files changed, 354 insertions(+), 3 deletions(-)
+ net/ethtool/settings.c                       | 317 +++++++++++++++++++
+ 4 files changed, 355 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 166a9a32955a..0f45b6d7f4bb 100644
@@ -87,10 +87,10 @@ index 166a9a32955a..0f45b6d7f4bb 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index c918893d0689..cf542e5936e2 100644
+index 5050c3363704..734a31f2db6c 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -687,6 +687,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -690,6 +690,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -103,10 +103,10 @@ index c918893d0689..cf542e5936e2 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 381dc5e58a00..ec224707bd40 100644
+index 63aaac5754bb..883d909199c6 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -258,4 +258,6 @@ extern const struct get_request_ops strset_request_ops;
+@@ -254,4 +254,6 @@ extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops info_request_ops;
  extern const struct get_request_ops settings_request_ops;
  
@@ -114,7 +114,7 @@ index 381dc5e58a00..ec224707bd40 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 64e5fd92f07d..e137d137aacb 100644
+index 883cae215264..f36fb475d5e0 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,99 @@ struct settings_data {
@@ -214,17 +214,17 @@ index 64e5fd92f07d..e137d137aacb 100644
 +	__DEFINE_LINK_MODE_PARAMS(1000, T1, Full),
 +};
 +
- static const struct nla_policy get_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
+ static const struct nla_policy settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_DEV]	= { .type = NLA_NESTED },
-@@ -278,3 +371,226 @@ const struct get_request_ops settings_request_ops = {
+@@ -284,3 +377,227 @@ const struct get_request_ops settings_request_ops = {
  	.reply_size		= settings_size,
- 	.fill_reply		= fill_settings,
+ 	.fill_reply		= settings_fill,
  };
 +
 +/* SET_SETTINGS */
 +
-+static const struct nla_policy set_linkinfo_policy[ETHTOOL_A_LINKINFO_MAX + 1] = {
++static const struct nla_policy linkinfo_set_policy[ETHTOOL_A_LINKINFO_MAX + 1] = {
 +	[ETHTOOL_A_LINKINFO_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHTOOL_A_LINKINFO_PORT]		= { .type = NLA_U8 },
 +	[ETHTOOL_A_LINKINFO_PHYADDR]		= { .type = NLA_U8 },
@@ -233,7 +233,7 @@ index 64e5fd92f07d..e137d137aacb 100644
 +	[ETHTOOL_A_LINKINFO_TRANSCEIVER]	= { .type = NLA_REJECT },
 +};
 +
-+static const struct nla_policy set_linkmodes_policy[ETHTOOL_A_LINKMODES_MAX + 1] = {
++static const struct nla_policy linkmodes_set_policy[ETHTOOL_A_LINKMODES_MAX + 1] = {
 +	[ETHTOOL_A_LINKMODES_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHTOOL_A_LINKMODES_AUTONEG]		= { .type = NLA_U8 },
 +	[ETHTOOL_A_LINKMODES_OURS]		= { .type = NLA_NESTED },
@@ -242,7 +242,7 @@ index 64e5fd92f07d..e137d137aacb 100644
 +	[ETHTOOL_A_LINKMODES_DUPLEX]		= { .type = NLA_U8 },
 +};
 +
-+static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
++static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
 +	[ETHTOOL_A_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHTOOL_A_SETTINGS_DEV]		= { .type = NLA_NESTED },
 +	[ETHTOOL_A_SETTINGS_INFOMASK]		= { .type = NLA_REJECT },
@@ -268,8 +268,8 @@ index 64e5fd92f07d..e137d137aacb 100644
 + * interface, move it into kernel for netlink.
 + * Returns true if advertised modes bitmap was modified.
 + */
-+static bool auto_link_modes(struct ethtool_link_ksettings *ksettings,
-+			    bool req_speed, bool req_duplex)
++static bool settings_auto_linkmodes(struct ethtool_link_ksettings *ksettings,
++				    bool req_speed, bool req_duplex)
 +{
 +	unsigned long *advertising = ksettings->link_modes.advertising;
 +	unsigned long *supported = ksettings->link_modes.supported;
@@ -298,8 +298,8 @@ index 64e5fd92f07d..e137d137aacb 100644
 +			     __ETHTOOL_LINK_MODE_MASK_NBITS);
 +}
 +
-+static int update_linkinfo(struct genl_info *info, struct nlattr *nest,
-+			   struct ethtool_link_settings *lsettings)
++static int settings_update_linkinfo(struct genl_info *info, struct nlattr *nest,
++				    struct ethtool_link_settings *lsettings)
 +{
 +	struct nlattr *tb[ETHTOOL_A_LINKINFO_MAX + 1];
 +	int ret;
@@ -307,7 +307,7 @@ index 64e5fd92f07d..e137d137aacb 100644
 +	if (!nest)
 +		return 0;
 +	ret = nla_parse_nested(tb, ETHTOOL_A_LINKINFO_MAX, nest,
-+			       set_linkinfo_policy, info->extack);
++			       linkinfo_set_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +
@@ -324,8 +324,9 @@ index 64e5fd92f07d..e137d137aacb 100644
 +	return ret;
 +}
 +
-+static int update_link_modes(struct genl_info *info, const struct nlattr *nest,
-+			     struct ethtool_link_ksettings *ksettings)
++static int settings_update_linkmodes(struct genl_info *info,
++				     const struct nlattr *nest,
++				     struct ethtool_link_ksettings *ksettings)
 +{
 +	struct ethtool_link_settings *lsettings = &ksettings->base;
 +	struct nlattr *tb[ETHTOOL_A_LINKMODES_MAX + 1];
@@ -336,7 +337,7 @@ index 64e5fd92f07d..e137d137aacb 100644
 +	if (!nest)
 +		return 0;
 +	ret = nla_parse_nested(tb, ETHTOOL_A_LINKMODES_MAX, nest,
-+			       set_linkmodes_policy, info->extack);
++			       linkmodes_set_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +	req_speed = tb[ETHTOOL_A_LINKMODES_SPEED];
@@ -359,7 +360,7 @@ index 64e5fd92f07d..e137d137aacb 100644
 +
 +	if (!tb[ETHTOOL_A_LINKMODES_OURS] && lsettings->autoneg &&
 +	    (req_speed || req_duplex) &&
-+	    auto_link_modes(ksettings, req_speed, req_duplex))
++	    settings_auto_linkmodes(ksettings, req_speed, req_duplex))
 +		mod = true;
 +
 +	return mod;
@@ -379,15 +380,15 @@ index 64e5fd92f07d..e137d137aacb 100644
 +		return ret;
 +	lsettings = &ksettings.base;
 +
-+	ret = update_linkinfo(info, tb[ETHTOOL_A_SETTINGS_LINK_INFO],
-+			      lsettings);
++	ret = settings_update_linkinfo(info, tb[ETHTOOL_A_SETTINGS_LINK_INFO],
++				       lsettings);
 +	if (ret < 0)
 +		return ret;
 +	if (ret)
 +		mod_mask |= ETHTOOL_IM_SETTINGS_LINKINFO;
 +
-+	ret = update_link_modes(info, tb[ETHTOOL_A_SETTINGS_LINK_MODES],
-+				&ksettings);
++	ret = settings_update_linkmodes(info, tb[ETHTOOL_A_SETTINGS_LINK_MODES],
++					&ksettings);
 +	if (ret < 0)
 +		return ret;
 +	if (ret)
@@ -411,7 +412,7 @@ index 64e5fd92f07d..e137d137aacb 100644
 +	int ret;
 +
 +	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb,
-+			  ETHTOOL_A_SETTINGS_MAX, set_settings_policy,
++			  ETHTOOL_A_SETTINGS_MAX, settings_set_policy,
 +			  info->extack);
 +	if (ret < 0)
 +		return ret;

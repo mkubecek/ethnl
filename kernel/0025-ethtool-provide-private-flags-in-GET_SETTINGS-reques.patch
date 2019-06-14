@@ -1,4 +1,4 @@
-From 62f445ed8069152688e59feaf2e2a2bb3308b4e2 Mon Sep 17 00:00:00 2001
+From e823ff5bea67b1670016e8f593b70c5479f06619 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 16:19:21 +0100
 Subject: [PATCH 25/44] ethtool: provide private flags in GET_SETTINGS request
@@ -103,7 +103,7 @@ index 09ec7c7b1297..e5c0300de43c 100644
  	case ETHTOOL_GRXFH:
  	case ETHTOOL_GRXRINGS:
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 6483addc4ff0..f2e9694d8f92 100644
+index 6bb95a77703b..6801026862d5 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -21,6 +21,9 @@ struct settings_data {
@@ -116,20 +116,20 @@ index 6483addc4ff0..f2e9694d8f92 100644
  	bool				lpm_empty;
  };
  
-@@ -134,6 +137,7 @@ static const struct nla_policy get_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -134,6 +137,7 @@ static const struct nla_policy settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_WOL]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_DEBUG]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_FEATURES]	= { .type = NLA_REJECT },
 +	[ETHTOOL_A_SETTINGS_PRIV_FLAGS]	= { .type = NLA_REJECT },
  };
  
- static int parse_settings(struct common_req_info *req_info,
-@@ -211,6 +215,58 @@ static int ethnl_get_features(struct net_device *dev,
+ /* parse_request() handler */
+@@ -213,6 +217,58 @@ static int ethnl_get_features(struct net_device *dev,
  	return 0;
  }
  
-+static int get_priv_flags_info(struct net_device *dev, unsigned int *count,
-+			       void **names)
++static int ethnl_get_priv_flags_info(struct net_device *dev,
++				     unsigned int *count, void **names)
 +{
 +	const struct ethtool_ops *ops = dev->ethtool_ops;
 +	int nflags;
@@ -170,7 +170,7 @@ index 6483addc4ff0..f2e9694d8f92 100644
 +	void *names;
 +	int ret;
 +
-+	ret = get_priv_flags_info(dev, &nflags, &names);
++	ret = ethnl_get_priv_flags_info(dev, &nflags, &names);
 +	if (ret < 0)
 +		return ret;
 +
@@ -180,10 +180,10 @@ index 6483addc4ff0..f2e9694d8f92 100644
 +	return 0;
 +}
 +
- static int prepare_settings(struct common_req_info *req_info,
+ static int settings_prepare(struct ethnl_req_info *req_info,
  			    struct genl_info *info)
  {
-@@ -261,6 +317,11 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -263,6 +319,11 @@ static int settings_prepare(struct ethnl_req_info *req_info,
  	}
  	if (req_mask & ETHTOOL_IM_SETTINGS_FEATURES)
  		ethnl_get_features(dev, data);
@@ -195,7 +195,7 @@ index 6483addc4ff0..f2e9694d8f92 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -392,6 +453,17 @@ static int settings_size(const struct common_req_info *req_info)
+@@ -397,6 +458,17 @@ static int settings_size(const struct ethnl_req_info *req_info)
  			return ret;
  		len += ret;
  	}
@@ -213,12 +213,12 @@ index 6483addc4ff0..f2e9694d8f92 100644
  
  	return len;
  }
-@@ -566,6 +638,18 @@ static int fill_features(struct sk_buff *skb, const struct settings_data *data)
+@@ -573,6 +645,18 @@ static int settings_fill_features(struct sk_buff *skb,
  	return 0;
  }
  
-+static int fill_priv_flags(struct sk_buff *skb,
-+			   const struct settings_data *data)
++static int settings_fill_priv_flags(struct sk_buff *skb,
++				    const struct settings_data *data)
 +{
 +	const unsigned int bitset_flags =
 +		(data->reqinfo_base.compact ? ETHNL_BITSET_COMPACT : 0) |
@@ -229,15 +229,15 @@ index 6483addc4ff0..f2e9694d8f92 100644
 +				  data->priv_flag_names, bitset_flags);
 +}
 +
- static int fill_settings(struct sk_buff *skb,
- 			 const struct common_req_info *req_info)
- {
-@@ -606,10 +690,23 @@ static int fill_settings(struct sk_buff *skb,
+ /* fill_reply() handler */
+ static int settings_fill(struct sk_buff *skb,
+ 			 const struct ethnl_req_info *req_info)
+@@ -615,10 +699,23 @@ static int settings_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
 +	if (info_mask & ETHTOOL_IM_SETTINGS_PRIVFLAGS) {
-+		ret = fill_priv_flags(skb, data);
++		ret = settings_fill_priv_flags(skb, data);
 +		if (ret < 0)
 +			return ret;
 +	}
@@ -245,7 +245,7 @@ index 6483addc4ff0..f2e9694d8f92 100644
  	return 0;
  }
  
-+static void settings_cleanup(struct common_req_info *req_info)
++static void settings_cleanup(struct ethnl_req_info *req_info)
 +{
 +	const struct settings_data *data =
 +		container_of(req_info, struct settings_data, reqinfo_base);
@@ -256,15 +256,15 @@ index 6483addc4ff0..f2e9694d8f92 100644
  const struct get_request_ops settings_request_ops = {
  	.request_cmd		= ETHNL_CMD_GET_SETTINGS,
  	.reply_cmd		= ETHNL_CMD_SET_SETTINGS,
-@@ -621,6 +718,7 @@ const struct get_request_ops settings_request_ops = {
- 	.prepare_data		= prepare_settings,
+@@ -630,6 +727,7 @@ const struct get_request_ops settings_request_ops = {
+ 	.prepare_data		= settings_prepare,
  	.reply_size		= settings_size,
- 	.fill_reply		= fill_settings,
+ 	.fill_reply		= settings_fill,
 +	.cleanup		= settings_cleanup,
  };
  
  /* SET_SETTINGS */
-@@ -677,6 +775,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -686,6 +784,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_FEATURES]		= { .type = NLA_NESTED },

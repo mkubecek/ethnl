@@ -1,4 +1,4 @@
-From d79482fa19374d903fa8af5995a662234c7f57f3 Mon Sep 17 00:00:00 2001
+From 952de6b8ba935bd559d4e735f4ac1d6996f1a51a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:19:02 +0100
 Subject: [PATCH 21/44] ethtool: provide message level in GET_SETTINGS request
@@ -135,7 +135,7 @@ index 8b257b5c90ed..80d3055cd0f5 100644
  	case ETHTOOL_GEEE:
  		rc = ethtool_get_eee(dev, useraddr);
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 0f4ad15bb1ae..bca1621ce057 100644
+index 0de1d23d9a9d..1f128474c6ae 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,7 @@ struct settings_data {
@@ -146,15 +146,15 @@ index 0f4ad15bb1ae..bca1621ce057 100644
  	bool				lpm_empty;
  };
  
-@@ -125,6 +126,7 @@ static const struct nla_policy get_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -125,6 +126,7 @@ static const struct nla_policy settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_LINK_MODES]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_LINK_STATE]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_WOL]	= { .type = NLA_REJECT },
 +	[ETHTOOL_A_SETTINGS_DEBUG]	= { .type = NLA_REJECT },
  };
  
- static int parse_settings(struct common_req_info *req_info,
-@@ -190,6 +192,7 @@ static int prepare_settings(struct common_req_info *req_info,
+ /* parse_request() handler */
+@@ -192,6 +194,7 @@ static int settings_prepare(struct ethnl_req_info *req_info,
  	struct settings_data *data =
  		container_of(req_info, struct settings_data, reqinfo_base);
  	struct net_device *dev = data->repdata_base.dev;
@@ -162,7 +162,7 @@ index 0f4ad15bb1ae..bca1621ce057 100644
  	u32 req_mask = req_info->req_mask;
  	int ret;
  
-@@ -225,6 +228,12 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -227,6 +230,12 @@ static int settings_prepare(struct ethnl_req_info *req_info,
  		if (ret < 0)
  			req_mask &= ~ETHTOOL_IM_SETTINGS_WOL;
  	}
@@ -175,32 +175,32 @@ index 0f4ad15bb1ae..bca1621ce057 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -286,6 +295,11 @@ static int wol_size(void)
+@@ -289,6 +298,11 @@ static int settings_wol_size(void)
  			      nla_total_size(SOPASS_MAX));
  }
  
-+static int debug_size(void)
++static int settings_debug_size(void)
 +{
 +	return nla_total_size(nla_total_size(sizeof(struct nla_bitfield32)));
 +}
 +
- /* To keep things simple, reserve space for some attributes which may not
-  * be added to the message (e.g. ETHTOOL_A_SETTINGS_SOPASS); therefore the
-  * length returned may be bigger than the actual length of the message sent.
-@@ -311,6 +325,8 @@ static int settings_size(const struct common_req_info *req_info)
- 		len += link_state_size(data->link);
+ /* reply_size() handler
+  *
+  * To keep things simple, reserve space for some attributes which may not
+@@ -316,6 +330,8 @@ static int settings_size(const struct ethnl_req_info *req_info)
+ 		len += settings_linkstate_size(data->link);
  	if (info_mask & ETHTOOL_IM_SETTINGS_WOL)
- 		len += wol_size();
+ 		len += settings_wol_size();
 +	if (info_mask & ETHTOOL_IM_SETTINGS_DEBUG)
-+		len += debug_size();
++		len += settings_debug_size();
  
  	return len;
  }
-@@ -429,6 +445,24 @@ static int fill_wolinfo(struct sk_buff *skb,
+@@ -435,6 +451,24 @@ static int settings_fill_wolinfo(struct sk_buff *skb,
  	return -EMSGSIZE;
  }
  
-+static int fill_debug(struct sk_buff *skb, u32 msglevel)
++static int settings_fill_debug(struct sk_buff *skb, u32 msglevel)
 +{
 +	struct nlattr *nest;
 +
@@ -218,22 +218,22 @@ index 0f4ad15bb1ae..bca1621ce057 100644
 +	return -EMSGSIZE;
 +}
 +
- static int fill_settings(struct sk_buff *skb,
- 			 const struct common_req_info *req_info)
- {
-@@ -459,6 +493,11 @@ static int fill_settings(struct sk_buff *skb,
+ /* fill_reply() handler */
+ static int settings_fill(struct sk_buff *skb,
+ 			 const struct ethnl_req_info *req_info)
+@@ -467,6 +501,11 @@ static int settings_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
 +	if (info_mask & ETHTOOL_IM_SETTINGS_DEBUG) {
-+		ret = fill_debug(skb, data->msglevel);
++		ret = settings_fill_debug(skb, data->msglevel);
 +		if (ret < 0)
 +			return ret;
 +	}
  
  	return 0;
  }
-@@ -513,6 +552,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -521,6 +560,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_LINK_MODES]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },

@@ -1,4 +1,4 @@
-From 942752843da0ebb8fbaf2887b77d2ec2bb3dba07 Mon Sep 17 00:00:00 2001
+From 3398b875d6d9b6f900a0e9398d1467c4efa85920 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
 Subject: [PATCH 43/44] ethtool: implement SET_RXFLOW notification
@@ -139,10 +139,10 @@ index 26bac36918a8..f602e6d71494 100644
  	if (copy_to_user(useraddr + offsetof(struct ethtool_rxfh, rss_context),
  			 &rxfh.rss_context, sizeof(rxfh.rss_context)))
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 423932cb6052..64339890b99f 100644
+index b532ce7db608..638115536223 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -590,6 +590,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -593,6 +593,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_ACT_NWAY_RST]	= ethnl_nwayrst_notify,
  	[ETHNL_CMD_ACT_PHYS_ID]		= ethnl_physid_notify,
  	[ETHNL_CMD_ACT_RESET]		= ethnl_reset_notify,
@@ -151,10 +151,10 @@ index 423932cb6052..64339890b99f 100644
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index ac29fcb25449..d95e103259b9 100644
+index b86087a2a6d2..3dad8db40b98 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -278,5 +278,7 @@ void ethnl_physid_notify(struct net_device *dev, struct netlink_ext_ack *extack,
+@@ -274,5 +274,7 @@ void ethnl_physid_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  			 unsigned int cmd, u32 req_mask, const void *data);
  void ethnl_reset_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  			unsigned int cmd, u32 req_mask, const void *data);
@@ -163,11 +163,11 @@ index ac29fcb25449..d95e103259b9 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index 7c1e5b34aaf0..ba35c1805631 100644
+index e8fb8cfaec80..fe69bf42b7d5 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
-@@ -461,3 +461,70 @@ const struct get_request_ops rxflow_request_ops = {
- 	.fill_reply		= fill_rxflow,
+@@ -464,3 +464,70 @@ const struct get_request_ops rxflow_request_ops = {
+ 	.fill_reply		= rxflow_fill,
  	.cleanup		= rxflow_cleanup,
  };
 +
@@ -176,7 +176,7 @@ index 7c1e5b34aaf0..ba35c1805631 100644
 +			 u32 req_mask, const void *_data)
 +{
 +	const struct ethtool_rxflow_notification_info *ninfo = _data;
-+	struct common_req_info *req_info;
++	struct ethnl_req_info *req_info;
 +	struct rxflow_data data = {};
 +	struct sk_buff *skb;
 +	void *msg_payload;
@@ -194,7 +194,7 @@ index 7c1e5b34aaf0..ba35c1805631 100644
 +		data.req_flow_type = ninfo->flow_type;
 +	}
 +
-+	ret = prepare_rxflow(req_info, NULL);
++	ret = rxflow_prepare(req_info, NULL);
 +	if (ret < 0)
 +		goto err_data;
 +	msg_len = rxflow_size(req_info);
@@ -222,7 +222,7 @@ index 7c1e5b34aaf0..ba35c1805631 100644
 +		if (nla_put_u32(skb, ETHTOOL_A_RXFLOW_CONTEXT, ninfo->context))
 +			goto err_skb;
 +	} else {
-+		ret = fill_rxflow(skb, req_info);
++		ret = rxflow_fill(skb, req_info);
 +		if (ret < 0)
 +			goto err_skb;
 +	}

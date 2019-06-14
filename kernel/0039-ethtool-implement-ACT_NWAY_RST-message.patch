@@ -1,4 +1,4 @@
-From 68ad20b6f0be5694c9c1c11b7cb00fc41e1b099f Mon Sep 17 00:00:00 2001
+From fe6e328ce9de65b1839db9dd854a36eb0cd37eb7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 39/44] ethtool: implement ACT_NWAY_RST message
@@ -101,7 +101,7 @@ index 95e93c153cf6..b3e88cf0f4c0 100644
 +		   actions.o
 diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
 new file mode 100644
-index 000000000000..2f3f9e85016d
+index 000000000000..be7c1090b864
 --- /dev/null
 +++ b/net/ethtool/actions.c
 @@ -0,0 +1,72 @@
@@ -126,7 +126,7 @@ index 000000000000..2f3f9e85016d
 +	int msg_len;
 +	int ret;
 +
-+	msg_len = dev_ident_size();
++	msg_len = ethnl_dev_size();
 +	skb = genlmsg_new(msg_len, GFP_KERNEL);
 +	if (!skb)
 +		return;
@@ -199,7 +199,7 @@ index 43a4055c0a93..dc4e0840a041 100644
  
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 8f40c34a2ff7..e89fbef8a9b3 100644
+index e4ffafed3c2c..fd54dfd7ac6b 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -242,13 +242,13 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
@@ -218,7 +218,7 @@ index 8f40c34a2ff7..e89fbef8a9b3 100644
  {
  	return genlmsg_multicast_netns(&ethtool_genl_family, dev_net(dev), skb,
  				       0, ETHNL_MCGRP_MONITOR, GFP_KERNEL);
-@@ -586,6 +586,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -589,6 +589,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHNL_CMD_SET_SETTINGS]	= ethnl_std_notify,
  	[ETHNL_CMD_SET_PARAMS]		= ethnl_std_notify,
@@ -226,7 +226,7 @@ index 8f40c34a2ff7..e89fbef8a9b3 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -717,6 +718,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -720,6 +721,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_params,
  	},
@@ -239,7 +239,7 @@ index 8f40c34a2ff7..e89fbef8a9b3 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index ba71dc367869..52b4d692fca2 100644
+index 18ff526f5537..9bf8e440c403 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -24,6 +24,8 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
@@ -251,7 +251,7 @@ index ba71dc367869..52b4d692fca2 100644
  
  #if BITS_PER_LONG == 64 && defined(__BIG_ENDIAN)
  void ethnl_bitmap_to_u32(unsigned long *bitmap, unsigned int nwords);
-@@ -261,5 +263,12 @@ extern const struct get_request_ops params_request_ops;
+@@ -257,5 +259,12 @@ extern const struct get_request_ops params_request_ops;
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);

@@ -1,4 +1,4 @@
-From cf8b726b76b254f9d0c0c0b7eab16e46c8c88b5a Mon Sep 17 00:00:00 2001
+From b073a142865bb8af271da98bc512d8a3fb936faa Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 18:01:46 +0100
 Subject: [PATCH 22/44] ethtool: set message level with SET_SETTINGS request
@@ -13,8 +13,8 @@ future extensions.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  8 +++-
- net/ethtool/settings.c                       | 44 +++++++++++++++++++-
- 2 files changed, 49 insertions(+), 3 deletions(-)
+ net/ethtool/settings.c                       | 45 +++++++++++++++++++-
+ 2 files changed, 50 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 960a9b6fd4e8..67b3afe10099 100644
@@ -50,23 +50,23 @@ index 960a9b6fd4e8..67b3afe10099 100644
  ETHTOOL_GLINK			ETHNL_CMD_GET_SETTINGS
  ETHTOOL_GEEPROM			n/a
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index bca1621ce057..f94e0530b398 100644
+index 1f128474c6ae..d54623ef8230 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -543,6 +543,12 @@ static const struct nla_policy set_wol_policy[ETHTOOL_A_LINKINFO_MAX + 1] = {
+@@ -551,6 +551,12 @@ static const struct nla_policy wol_set_policy[ETHTOOL_A_LINKINFO_MAX + 1] = {
  					    .len = SOPASS_MAX },
  };
  
-+static const struct nla_policy set_debug_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
++static const struct nla_policy debug_set_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
 +	[ETHTOOL_A_DEBUG_UNSPEC]	= { .type = NLA_REJECT },
 +	[ETHTOOL_A_DEBUG_MSG_MASK]	= { .type = NLA_BITFIELD32,
 +					    .validation_data = &all_bits },
 +};
 +
- static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
+ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_DEV]		= { .type = NLA_NESTED },
-@@ -552,7 +558,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -560,7 +566,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_LINK_MODES]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
@@ -75,12 +75,12 @@ index bca1621ce057..f94e0530b398 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -743,6 +749,35 @@ static int update_wol(struct genl_info *info, struct nlattr *nest,
+@@ -752,6 +758,35 @@ static int settings_update_wol(struct genl_info *info, struct nlattr *nest,
  	return ret;
  }
  
-+static int update_debug(struct genl_info *info, struct nlattr *nest,
-+			struct net_device *dev)
++static int settings_update_debug(struct genl_info *info, struct nlattr *nest,
++				 struct net_device *dev)
 +{
 +	struct nlattr *tb[ETHTOOL_A_DEBUG_MAX + 1];
 +	u32 msglevel;
@@ -89,7 +89,7 @@ index bca1621ce057..f94e0530b398 100644
 +	if (!nest)
 +		return 0;
 +	ret = nla_parse_nested(tb, ETHTOOL_A_DEBUG_MAX, nest,
-+			       set_debug_policy, info->extack);
++			       debug_set_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +
@@ -111,12 +111,13 @@ index bca1621ce057..f94e0530b398 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
-@@ -779,6 +814,13 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -789,6 +824,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret)
  			req_mask |= ETHTOOL_IM_SETTINGS_WOL;
  	}
 +	if (tb[ETHTOOL_A_SETTINGS_DEBUG]) {
-+		ret = update_debug(info, tb[ETHTOOL_A_SETTINGS_DEBUG], dev);
++		ret = settings_update_debug(info, tb[ETHTOOL_A_SETTINGS_DEBUG],
++					    dev);
 +		if (ret < 0)
 +			goto out_ops;
 +		if (ret)

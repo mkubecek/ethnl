@@ -1,4 +1,4 @@
-From 4dbbeb1496ca00ab0267492abdfba68d80800987 Mon Sep 17 00:00:00 2001
+From 7aa4c4aa884ef6467235e2bbd9a7a5b83e142577 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 42/44] ethtool: implement GET_RXFLOW message
@@ -21,8 +21,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/netlink.c                        |   8 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/rxflow.c                         | 463 +++++++++++++++++++
- 6 files changed, 696 insertions(+), 5 deletions(-)
+ net/ethtool/rxflow.c                         | 466 +++++++++++++++++++
+ 6 files changed, 699 insertions(+), 5 deletions(-)
  create mode 100644 net/ethtool/rxflow.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -323,7 +323,7 @@ index b3e88cf0f4c0..a6ace735f44f 100644
 -		   actions.o
 +		   actions.o rxflow.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 90948a079a22..423932cb6052 100644
+index 08e69af62746..b532ce7db608 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -261,6 +261,7 @@ const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
@@ -334,7 +334,7 @@ index 90948a079a22..423932cb6052 100644
  };
  
  /**
-@@ -735,6 +736,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -738,6 +739,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_ADMIN_PERM,
  		.doit	= ethnl_act_reset,
  	},
@@ -349,10 +349,10 @@ index 90948a079a22..423932cb6052 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 0c3f045b8473..ac29fcb25449 100644
+index 92da0b9cad55..b86087a2a6d2 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -261,6 +261,7 @@ extern const struct get_request_ops strset_request_ops;
+@@ -257,6 +257,7 @@ extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops info_request_ops;
  extern const struct get_request_ops settings_request_ops;
  extern const struct get_request_ops params_request_ops;
@@ -362,10 +362,10 @@ index 0c3f045b8473..ac29fcb25449 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
 new file mode 100644
-index 000000000000..7c1e5b34aaf0
+index 000000000000..e8fb8cfaec80
 --- /dev/null
 +++ b/net/ethtool/rxflow.c
-@@ -0,0 +1,463 @@
+@@ -0,0 +1,466 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
@@ -394,7 +394,7 @@ index 000000000000..7c1e5b34aaf0
 +#define RXH_ALL 0xfe
 +#define RXH_COUNT 8
 +
-+static const struct nla_policy get_rxflow_policy[ETHTOOL_A_RXFLOW_MAX + 1] = {
++static const struct nla_policy rxflow_get_policy[ETHTOOL_A_RXFLOW_MAX + 1] = {
 +	[ETHTOOL_A_RXFLOW_UNSPEC]	= { .type = NLA_REJECT },
 +	[ETHTOOL_A_RXFLOW_DEV]		= { .type = NLA_NESTED },
 +	[ETHTOOL_A_RXFLOW_INFOMASK]	= { .type = NLA_U32 },
@@ -410,12 +410,12 @@ index 000000000000..7c1e5b34aaf0
 +};
 +
 +struct rxflow_data {
-+	struct common_req_info		reqinfo_base;
++	struct ethnl_req_info		reqinfo_base;
 +	u32				req_context;
 +	u32				req_flow_type;
 +
 +	/* everything below here will be reset for each device in dumps */
-+	struct common_reply_data	repdata_base;
++	struct ethnl_reply_data		repdata_base;
 +	unsigned int			entry_size;
 +	u32				indtbl_size;
 +	u32				hkey_size;
@@ -426,7 +426,7 @@ index 000000000000..7c1e5b34aaf0
 +	u32				hash_fields[FLOW_TYPE_COUNT];
 +};
 +
-+static int parse_rxflow(struct common_req_info *req_info, struct sk_buff *skb,
++static int rxflow_parse(struct ethnl_req_info *req_info, struct sk_buff *skb,
 +			struct genl_info *info, const struct nlmsghdr *nlhdr)
 +{
 +	struct rxflow_data *data =
@@ -435,7 +435,7 @@ index 000000000000..7c1e5b34aaf0
 +	int ret;
 +
 +	ret = nlmsg_parse(nlhdr, GENL_HDRLEN, tb, ETHTOOL_A_RXFLOW_MAX,
-+			  get_rxflow_policy, info ? info->extack : NULL);
++			  rxflow_get_policy, info ? info->extack : NULL);
 +	if (ret < 0)
 +		return ret;
 +
@@ -459,7 +459,7 @@ index 000000000000..7c1e5b34aaf0
 +	return 0;
 +}
 +
-+static int alloc_hkey(struct rxflow_data *data)
++static int rxflow_alloc_hkey(struct rxflow_data *data)
 +{
 +	if (!data->hkey_size)
 +		return -EOPNOTSUPP;
@@ -467,7 +467,8 @@ index 000000000000..7c1e5b34aaf0
 +	return data->hkey ? 0 : -ENOMEM;
 +}
 +
-+static int get_hash_opts(struct net_device *dev, struct rxflow_data *data)
++static int rxflow_get_hash_opts(struct net_device *dev,
++				struct rxflow_data *data)
 +{
 +	struct ethtool_rxnfc cmd = {
 +		.cmd		= ETHTOOL_GRXFH,
@@ -495,7 +496,7 @@ index 000000000000..7c1e5b34aaf0
 +	return 0;
 +}
 +
-+static int alloc_indtbl(struct rxflow_data *data)
++static int rxflow_alloc_indtbl(struct rxflow_data *data)
 +{
 +	u32 max_ring;
 +
@@ -508,7 +509,7 @@ index 000000000000..7c1e5b34aaf0
 +	return data->indir_tbl ? 0 : -ENOMEM;
 +}
 +
-+static int prepare_rxflow(struct common_req_info *req_info,
++static int rxflow_prepare(struct ethnl_req_info *req_info,
 +			  struct genl_info *info)
 +{
 +	struct rxflow_data *data =
@@ -543,17 +544,17 @@ index 000000000000..7c1e5b34aaf0
 +		data->hkey_size = ops->get_rxfh_key_size(dev);
 +
 +	if (req_mask & ETHTOOL_IM_RXFLOW_HKEY) {
-+		ret = alloc_hkey(data);
++		ret = rxflow_alloc_hkey(data);
 +		if (ret < 0)
 +			req_mask &= ~ETHTOOL_IM_RXFLOW_HKEY;
 +	}
 +	if (req_mask & ETHTOOL_IM_RXFLOW_HASHOPTS) {
-+		ret = get_hash_opts(dev, data);
++		ret = rxflow_get_hash_opts(dev, data);
 +		if (ret < 0)
 +			req_mask &= ~ETHTOOL_IM_RXFLOW_HASHOPTS;
 +	}
 +	if (req_mask & ETHTOOL_IM_RXFLOW_INDTBL) {
-+		ret = alloc_indtbl(data);
++		ret = rxflow_alloc_indtbl(data);
 +		if (ret < 0)
 +			req_mask &= ~ETHTOOL_IM_RXFLOW_INDTBL;
 +	}
@@ -567,12 +568,13 @@ index 000000000000..7c1e5b34aaf0
 +	ethnl_after_ops(dev);
 +
 +	data->repdata_base.info_mask = req_mask;
-+	if (ret == 0 && req_info->req_mask & ~req_mask)
-+		warn_partial_info(info);
++	if (ret == 0 && (req_info->req_mask & ~req_mask) && info)
++		GENL_SET_ERR_MSG(info,
++				 "not all requested data could be retrieved");
 +	return ret;
 +}
 +
-+static int hashopts_size(const u32 *fields)
++static int rxflow_hashopts_size(const u32 *fields)
 +{
 +	unsigned int i;
 +	int len = 0;
@@ -591,7 +593,7 @@ index 000000000000..7c1e5b34aaf0
 +	return nla_total_size(len);
 +}
 +
-+static int indtbl_size(const struct rxflow_data *data)
++static int rxflow_indtbl_size(const struct rxflow_data *data)
 +{
 +	unsigned int len;
 +
@@ -605,7 +607,7 @@ index 000000000000..7c1e5b34aaf0
 +	return len;
 +}
 +
-+static int rxflow_size(const struct common_req_info *req_info)
++static int rxflow_size(const struct ethnl_req_info *req_info)
 +{
 +	const struct rxflow_data *data =
 +		container_of(req_info, struct rxflow_data, reqinfo_base);
@@ -614,7 +616,7 @@ index 000000000000..7c1e5b34aaf0
 +	int len = 0;
 +	int ret;
 +
-+	len += dev_ident_size();
++	len += ethnl_dev_size();
 +	if (data->req_context)
 +		len += nla_total_size(sizeof(u32));
 +	if (info_mask & ETHTOOL_IM_RXFLOW_INFO)
@@ -634,14 +636,14 @@ index 000000000000..7c1e5b34aaf0
 +	if (info_mask & ETHTOOL_IM_RXFLOW_HKEY)
 +		len += nla_total_size(data->hkey_size);
 +	if (info_mask & ETHTOOL_IM_RXFLOW_HASHOPTS)
-+		len += hashopts_size(data->hash_fields);
++		len += rxflow_hashopts_size(data->hash_fields);
 +	if (info_mask & ETHTOOL_IM_RXFLOW_INDTBL)
-+		len += indtbl_size(data);
++		len += rxflow_indtbl_size(data);
 +
 +	return len;
 +}
 +
-+static int fill_rxflow_hashfn(struct sk_buff *skb,
++static int rxflow_fill_hashfn(struct sk_buff *skb,
 +			      const struct rxflow_data *data)
 +{
 +	const unsigned int flags =
@@ -659,7 +661,7 @@ index 000000000000..7c1e5b34aaf0
 +	return 0;
 +}
 +
-+static int fill_hashopts(struct sk_buff *skb, const u32 *fields)
++static int rxflow_fill_hashopts(struct sk_buff *skb, const u32 *fields)
 +{
 +	struct nlattr *attr_opts;
 +	struct nlattr *attr_opt;
@@ -699,7 +701,8 @@ index 000000000000..7c1e5b34aaf0
 +	return ret;
 +}
 +
-+static int fill_indir_tbl(struct sk_buff *skb, const struct rxflow_data *data)
++static int rxflow_fill_indtbl(struct sk_buff *skb,
++			      const struct rxflow_data *data)
 +{
 +	struct nlattr *tbl, *block, *attr;
 +	u16 block_attrtype;
@@ -769,8 +772,8 @@ index 000000000000..7c1e5b34aaf0
 +	return ret;
 +}
 +
-+static int fill_rxflow(struct sk_buff *skb,
-+		       const struct common_req_info *req_info)
++static int rxflow_fill(struct sk_buff *skb,
++		       const struct ethnl_req_info *req_info)
 +{
 +	const struct rxflow_data *data =
 +		container_of(req_info, struct rxflow_data, reqinfo_base);
@@ -784,7 +787,7 @@ index 000000000000..7c1e5b34aaf0
 +	    nla_put_u32(skb, ETHTOOL_A_RXFLOW_NRINGS, data->n_rings))
 +		return -EMSGSIZE;
 +	if (info_mask & ETHTOOL_IM_RXFLOW_HASHFN) {
-+		ret = fill_rxflow_hashfn(skb, data);
++		ret = rxflow_fill_hashfn(skb, data);
 +		if (ret < 0)
 +			return ret;
 +	}
@@ -794,12 +797,12 @@ index 000000000000..7c1e5b34aaf0
 +			return -EMSGSIZE;
 +	}
 +	if (info_mask & ETHTOOL_IM_RXFLOW_HASHOPTS) {
-+		ret = fill_hashopts(skb, data->hash_fields);
++		ret = rxflow_fill_hashopts(skb, data->hash_fields);
 +		if (ret < 0)
 +			return ret;
 +	}
 +	if (info_mask & ETHTOOL_IM_RXFLOW_INDTBL) {
-+		ret = fill_indir_tbl(skb, data);
++		ret = rxflow_fill_indtbl(skb, data);
 +		if (ret < 0)
 +			return ret;
 +	}
@@ -807,7 +810,7 @@ index 000000000000..7c1e5b34aaf0
 +	return 0;
 +}
 +
-+static void rxflow_cleanup(struct common_req_info *req_info)
++static void rxflow_cleanup(struct ethnl_req_info *req_info)
 +{
 +	struct rxflow_data *data =
 +		container_of(req_info, struct rxflow_data, reqinfo_base);
@@ -823,10 +826,10 @@ index 000000000000..7c1e5b34aaf0
 +	.data_size		= sizeof(struct rxflow_data),
 +	.repdata_offset		= offsetof(struct rxflow_data, repdata_base),
 +
-+	.parse_request		= parse_rxflow,
-+	.prepare_data		= prepare_rxflow,
++	.parse_request		= rxflow_parse,
++	.prepare_data		= rxflow_prepare,
 +	.reply_size		= rxflow_size,
-+	.fill_reply		= fill_rxflow,
++	.fill_reply		= rxflow_fill,
 +	.cleanup		= rxflow_cleanup,
 +};
 -- 

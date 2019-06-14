@@ -1,4 +1,4 @@
-From 893257a2515bd5995352a4b234899e497159983e Mon Sep 17 00:00:00 2001
+From 9d3e6b00d43ff949aeb13273fae685b1e005d21f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:53:42 +0100
 Subject: [PATCH 37/44] ethtool: provide FEC parameters with GET_PARAMS request
@@ -130,7 +130,7 @@ index b7d045745b6a..43a4055c0a93 100644
  
  /* The main entry point in this file.  Called from net/core/dev_ioctl.c */
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 22e8d7fd32f1..98ab7d65bf5b 100644
+index 12d8235d8c65..d81179640af7 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -14,6 +14,7 @@ static const struct nla_policy get_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
@@ -148,7 +148,7 @@ index 22e8d7fd32f1..98ab7d65bf5b 100644
 +	struct ethtool_fecparam		fec;
  };
  
- static int parse_params(struct common_req_info *req_info, struct sk_buff *skb,
+ static int params_parse(struct ethnl_req_info *req_info, struct sk_buff *skb,
 @@ -99,6 +101,13 @@ static int ethnl_get_eee(struct net_device *dev, struct ethtool_eee *data)
  	return dev->ethtool_ops->get_eee(dev, data);
  }
@@ -160,10 +160,10 @@ index 22e8d7fd32f1..98ab7d65bf5b 100644
 +	return dev->ethtool_ops->get_fecparam(dev, data);
 +}
 +
- static int prepare_params(struct common_req_info *req_info,
+ static int params_prepare(struct ethnl_req_info *req_info,
  			  struct genl_info *info)
  {
-@@ -136,6 +145,11 @@ static int prepare_params(struct common_req_info *req_info,
+@@ -136,6 +145,11 @@ static int params_prepare(struct ethnl_req_info *req_info,
  		if (ret < 0)
  			req_mask &= ~ETHTOOL_IM_PARAMS_EEE;
  	}
@@ -175,34 +175,34 @@ index 22e8d7fd32f1..98ab7d65bf5b 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -194,6 +208,13 @@ static int eee_size(const struct ethtool_eee *eee, bool compact)
+@@ -195,6 +209,13 @@ static int params_eee_size(const struct ethtool_eee *eee, bool compact)
  	return nla_total_size(len);
  }
  
-+static int fec_size(void)
++static int params_fec_size(void)
 +{
 +	int len = nla_total_size(sizeof(struct nla_bitfield32));
 +
 +	return nla_total_size(len);
 +}
 +
- static int params_size(const struct common_req_info *req_info)
+ static int params_size(const struct ethnl_req_info *req_info)
  {
  	struct params_data *data =
-@@ -217,6 +238,8 @@ static int params_size(const struct common_req_info *req_info)
+@@ -218,6 +239,8 @@ static int params_size(const struct ethnl_req_info *req_info)
  			return ret;
  		len += ret;
  	}
 +	if (info_mask & ETHTOOL_IM_PARAMS_FEC)
-+		len += fec_size();
++		len += params_fec_size();
  
  	return len;
  }
-@@ -392,6 +415,23 @@ static int fill_eee(struct sk_buff *skb, struct ethtool_eee *data, bool compact)
+@@ -397,6 +420,23 @@ static int params_fill_eee(struct sk_buff *skb, struct ethtool_eee *data,
  	return ret;
  }
  
-+static int fill_fec(struct sk_buff *skb, struct ethtool_fecparam *data)
++static int params_fill_fec(struct sk_buff *skb, struct ethtool_fecparam *data)
 +{
 +	struct nlattr *nest;
 +
@@ -219,22 +219,22 @@ index 22e8d7fd32f1..98ab7d65bf5b 100644
 +	return 0;
 +}
 +
- static int fill_params(struct sk_buff *skb,
- 		       const struct common_req_info *req_info)
+ static int params_fill(struct sk_buff *skb,
+ 		       const struct ethnl_req_info *req_info)
  {
-@@ -425,6 +465,11 @@ static int fill_params(struct sk_buff *skb,
+@@ -430,6 +470,11 @@ static int params_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
 +	if (info_mask & ETHTOOL_IM_PARAMS_FEC) {
-+		ret = fill_fec(skb, &data->fec);
++		ret = params_fill_fec(skb, &data->fec);
 +		if (ret < 0)
 +			return ret;
 +	}
  
  	return 0;
  }
-@@ -454,6 +499,7 @@ static const struct nla_policy set_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+@@ -459,6 +504,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_CHANNELS]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_EEE]			= { .type = NLA_NESTED },

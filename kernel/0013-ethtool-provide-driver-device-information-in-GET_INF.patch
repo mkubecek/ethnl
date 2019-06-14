@@ -1,4 +1,4 @@
-From 9a66489ebade95ca075dcfe0b38324a86b89e7cd Mon Sep 17 00:00:00 2001
+From e0bb2f581a80d478a3bf9ce7e3f498c33c6ee21e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 13/44] ethtool: provide driver/device information in GET_INFO
@@ -18,11 +18,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/common.c                         |  52 ++++++
  net/ethtool/common.h                         |   2 +
- net/ethtool/info.c                           | 169 +++++++++++++++++++
+ net/ethtool/info.c                           | 170 +++++++++++++++++++
  net/ethtool/ioctl.c                          |  50 +-----
  net/ethtool/netlink.c                        |   8 +
  net/ethtool/netlink.h                        |   1 +
- 9 files changed, 310 insertions(+), 47 deletions(-)
+ 9 files changed, 311 insertions(+), 47 deletions(-)
  create mode 100644 net/ethtool/info.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -237,10 +237,10 @@ index 41b2efc1e4e1..e87e58b3a274 100644
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
 new file mode 100644
-index 000000000000..669ad3e580ac
+index 000000000000..7eddf54505d9
 --- /dev/null
 +++ b/net/ethtool/info.c
-@@ -0,0 +1,169 @@
+@@ -0,0 +1,170 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include "netlink.h"
@@ -248,14 +248,14 @@ index 000000000000..669ad3e580ac
 +#include "bitset.h"
 +
 +struct info_data {
-+	struct common_req_info		reqinfo_base;
++	struct ethnl_req_info		reqinfo_base;
 +
 +	/* everything below here will be reset for each device in dumps */
-+	struct common_reply_data	repdata_base;
++	struct ethnl_reply_data		repdata_base;
 +	struct ethtool_drvinfo		drvinfo;
 +};
 +
-+static const struct nla_policy get_info_policy[ETHTOOL_A_INFO_MAX + 1] = {
++static const struct nla_policy info_get_policy[ETHTOOL_A_INFO_MAX + 1] = {
 +	[ETHTOOL_A_INFO_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHTOOL_A_INFO_DEV]		= { .type = NLA_NESTED },
 +	[ETHTOOL_A_INFO_INFOMASK]	= { .type = NLA_U32 },
@@ -264,14 +264,14 @@ index 000000000000..669ad3e580ac
 +};
 +
 +/* parse_request() handler */
-+static int parse_info(struct common_req_info *req_info, struct sk_buff *skb,
++static int info_parse(struct ethnl_req_info *req_info, struct sk_buff *skb,
 +		      struct genl_info *info, const struct nlmsghdr *nlhdr)
 +{
 +	struct nlattr *tb[ETHTOOL_A_INFO_MAX + 1];
 +	int ret;
 +
 +	ret = nlmsg_parse(nlhdr, GENL_HDRLEN, tb, ETHTOOL_A_INFO_MAX,
-+			  get_info_policy, info ? info->extack : NULL);
++			  info_get_policy, info ? info->extack : NULL);
 +	if (ret < 0)
 +		return ret;
 +
@@ -294,7 +294,7 @@ index 000000000000..669ad3e580ac
 +}
 +
 +/* prepare_data() handler */
-+static int prepare_info(struct common_req_info *req_info,
++static int info_prepare(struct ethnl_req_info *req_info,
 +			struct genl_info *info)
 +{
 +	struct info_data *data =
@@ -314,12 +314,13 @@ index 000000000000..669ad3e580ac
 +	ethnl_after_ops(dev);
 +
 +	data->repdata_base.info_mask = req_mask;
-+	if (req_info->req_mask & ~req_mask)
-+		warn_partial_info(info);
++	if (req_info->req_mask & ~req_mask && info)
++		GENL_SET_ERR_MSG(info,
++				 "not all requested data could be retrieved");
 +	return 0;
 +}
 +
-+static int drvinfo_size(const struct ethtool_drvinfo *drvinfo)
++static int info_drvinfo_size(const struct ethtool_drvinfo *drvinfo)
 +{
 +	int len = 0;
 +
@@ -336,22 +337,22 @@ index 000000000000..669ad3e580ac
 +}
 +
 +/* reply_size() handler */
-+static int info_size(const struct common_req_info *req_info)
++static int info_size(const struct ethnl_req_info *req_info)
 +{
 +	const struct info_data *data =
 +		container_of(req_info, struct info_data, reqinfo_base);
 +	u32 info_mask = data->repdata_base.info_mask;
 +	int len = 0;
 +
-+	len += dev_ident_size();
++	len += ethnl_dev_size();
 +	if (info_mask & ETHTOOL_IM_INFO_DRVINFO)
-+		len += drvinfo_size(&data->drvinfo);
++		len += info_drvinfo_size(&data->drvinfo);
 +
 +	return len;
 +}
 +
-+static int fill_drvinfo(struct sk_buff *skb,
-+			const struct ethtool_drvinfo *drvinfo)
++static int info_fill_drvinfo(struct sk_buff *skb,
++			     const struct ethtool_drvinfo *drvinfo)
 +{
 +	struct nlattr *nest;
 +	int ret;
@@ -381,8 +382,8 @@ index 000000000000..669ad3e580ac
 +}
 +
 +/* fill_reply() handler */
-+static int fill_info(struct sk_buff *skb,
-+		     const struct common_req_info *req_info)
++static int info_fill(struct sk_buff *skb,
++		     const struct ethnl_req_info *req_info)
 +{
 +	const struct info_data *data =
 +		container_of(req_info, struct info_data, reqinfo_base);
@@ -390,7 +391,7 @@ index 000000000000..669ad3e580ac
 +	int ret;
 +
 +	if (info_mask & ETHTOOL_IM_INFO_DRVINFO) {
-+		ret = fill_drvinfo(skb, &data->drvinfo);
++		ret = info_fill_drvinfo(skb, &data->drvinfo);
 +		if (ret < 0)
 +			return ret;
 +	}
@@ -405,10 +406,10 @@ index 000000000000..669ad3e580ac
 +	.data_size		= sizeof(struct info_data),
 +	.repdata_offset		= offsetof(struct info_data, repdata_base),
 +
-+	.parse_request		= parse_info,
-+	.prepare_data		= prepare_info,
++	.parse_request		= info_parse,
++	.prepare_data		= info_prepare,
 +	.reply_size		= info_size,
-+	.fill_reply		= fill_info,
++	.fill_reply		= info_fill,
 +};
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
 index 130512ce6174..d98e6017d3ad 100644
@@ -475,7 +476,7 @@ index 130512ce6174..d98e6017d3ad 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index fe2603eb3f04..82370008f22c 100644
+index 1b0b400a8ae5..d02f78a862f1 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -178,6 +178,7 @@ static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)
@@ -486,7 +487,7 @@ index fe2603eb3f04..82370008f22c 100644
  };
  
  /**
-@@ -590,6 +591,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -593,6 +594,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -501,10 +502,10 @@ index fe2603eb3f04..82370008f22c 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 4bea6ee2f6d1..479d950de5f0 100644
+index 45c3b64adb66..19a0130429a1 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -245,5 +245,6 @@ struct get_request_ops {
+@@ -241,5 +241,6 @@ struct get_request_ops {
  /* request handlers */
  
  extern const struct get_request_ops strset_request_ops;

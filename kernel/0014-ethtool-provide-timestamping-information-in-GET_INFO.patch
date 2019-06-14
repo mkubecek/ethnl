@@ -1,4 +1,4 @@
-From 3fe84899044661fc6d06d153d494e2d21e372788 Mon Sep 17 00:00:00 2001
+From 86ccbb2965baafb458c10df266abfc50d58bbd45 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
 Subject: [PATCH 14/44] ethtool: provide timestamping information in GET_INFO
@@ -216,7 +216,7 @@ index e87e58b3a274..02cbee79da35 100644
 +
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
-index 669ad3e580ac..2067749e0e4a 100644
+index 7eddf54505d9..966b8da9fc7f 100644
 --- a/net/ethtool/info.c
 +++ b/net/ethtool/info.c
 @@ -1,15 +1,61 @@
@@ -272,16 +272,16 @@ index 669ad3e580ac..2067749e0e4a 100644
 +};
 +
  struct info_data {
- 	struct common_req_info		reqinfo_base;
+ 	struct ethnl_req_info		reqinfo_base;
  
  	/* everything below here will be reset for each device in dumps */
- 	struct common_reply_data	repdata_base;
+ 	struct ethnl_reply_data		repdata_base;
  	struct ethtool_drvinfo		drvinfo;
 +	struct ethtool_ts_info		tsinfo;
  };
  
- static const struct nla_policy get_info_policy[ETHTOOL_A_INFO_MAX + 1] = {
-@@ -18,6 +64,7 @@ static const struct nla_policy get_info_policy[ETHTOOL_A_INFO_MAX + 1] = {
+ static const struct nla_policy info_get_policy[ETHTOOL_A_INFO_MAX + 1] = {
+@@ -18,6 +64,7 @@ static const struct nla_policy info_get_policy[ETHTOOL_A_INFO_MAX + 1] = {
  	[ETHTOOL_A_INFO_INFOMASK]	= { .type = NLA_U32 },
  	[ETHTOOL_A_INFO_COMPACT]	= { .type = NLA_FLAG },
  	[ETHTOOL_A_INFO_DRVINFO]	= { .type = NLA_REJECT },
@@ -289,7 +289,7 @@ index 669ad3e580ac..2067749e0e4a 100644
  };
  
  /* parse_request() handler */
-@@ -68,6 +115,11 @@ static int prepare_info(struct common_req_info *req_info,
+@@ -68,6 +115,11 @@ static int info_prepare(struct ethnl_req_info *req_info,
  		if (ret < 0)
  			req_mask &= ~ETHTOOL_IM_INFO_DRVINFO;
  	}
@@ -301,11 +301,11 @@ index 669ad3e580ac..2067749e0e4a 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -92,6 +144,42 @@ static int drvinfo_size(const struct ethtool_drvinfo *drvinfo)
+@@ -93,6 +145,42 @@ static int info_drvinfo_size(const struct ethtool_drvinfo *drvinfo)
  	return nla_total_size(len);
  }
  
-+static int tsinfo_size(const struct ethtool_ts_info *tsinfo, bool compact)
++static int info_tsinfo_size(const struct ethtool_ts_info *tsinfo, bool compact)
 +{
 +	const unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
 +	int len = 0;
@@ -342,14 +342,14 @@ index 669ad3e580ac..2067749e0e4a 100644
 +}
 +
  /* reply_size() handler */
- static int info_size(const struct common_req_info *req_info)
+ static int info_size(const struct ethnl_req_info *req_info)
  {
-@@ -103,6 +191,13 @@ static int info_size(const struct common_req_info *req_info)
- 	len += dev_ident_size();
+@@ -104,6 +192,13 @@ static int info_size(const struct ethnl_req_info *req_info)
+ 	len += ethnl_dev_size();
  	if (info_mask & ETHTOOL_IM_INFO_DRVINFO)
- 		len += drvinfo_size(&data->drvinfo);
+ 		len += info_drvinfo_size(&data->drvinfo);
 +	if (info_mask & ETHTOOL_IM_INFO_TSINFO) {
-+		int ret = tsinfo_size(&data->tsinfo, req_info->compact);
++		int ret = info_tsinfo_size(&data->tsinfo, req_info->compact);
 +
 +		if (ret < 0)
 +			return ret;
@@ -358,12 +358,12 @@ index 669ad3e580ac..2067749e0e4a 100644
  
  	return len;
  }
-@@ -137,6 +232,45 @@ static int fill_drvinfo(struct sk_buff *skb,
+@@ -138,6 +233,45 @@ static int info_fill_drvinfo(struct sk_buff *skb,
  	return ret;
  }
  
-+static int fill_tsinfo(struct sk_buff *skb,
-+		       const struct ethtool_ts_info *tsinfo, bool compact)
++static int info_fill_tsinfo(struct sk_buff *skb,
++			    const struct ethtool_ts_info *tsinfo, bool compact)
 +{
 +	const unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
 +	struct nlattr *nest;
@@ -402,14 +402,14 @@ index 669ad3e580ac..2067749e0e4a 100644
 +}
 +
  /* fill_reply() handler */
- static int fill_info(struct sk_buff *skb,
- 		     const struct common_req_info *req_info)
-@@ -151,6 +285,11 @@ static int fill_info(struct sk_buff *skb,
+ static int info_fill(struct sk_buff *skb,
+ 		     const struct ethnl_req_info *req_info)
+@@ -152,6 +286,11 @@ static int info_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
 +	if (info_mask & ETHTOOL_IM_INFO_TSINFO) {
-+		ret = fill_tsinfo(skb, &data->tsinfo, req_info->compact);
++		ret = info_fill_tsinfo(skb, &data->tsinfo, req_info->compact);
 +		if (ret < 0)
 +			return ret;
 +	}
@@ -452,7 +452,7 @@ index d98e6017d3ad..a06c5916d8b1 100644
  		err = -EFAULT;
  
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 479d950de5f0..fd18d732a725 100644
+index 19a0130429a1..799b992a8a81 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -7,6 +7,15 @@
@@ -472,7 +472,7 @@ index 479d950de5f0..fd18d732a725 100644
  struct net_device *ethnl_dev_get(struct genl_info *info, struct nlattr *nest);
  int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index ad8b3852d42b..bdf509a310b6 100644
+index 7319bfe14a09..26395c7337b1 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -67,6 +67,24 @@ static const struct strset_info info_template[] = {

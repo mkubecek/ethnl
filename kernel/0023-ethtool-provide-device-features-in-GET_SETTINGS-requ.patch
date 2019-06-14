@@ -1,4 +1,4 @@
-From a26477e905c3be9eaa845e7ff9a5f9700d3bf6d3 Mon Sep 17 00:00:00 2001
+From 519359ebbe30ec3cdd59b5960b056507b3c683e2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 23/44] ethtool: provide device features in GET_SETTINGS
@@ -23,8 +23,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/common.h                         |   2 +
  net/ethtool/ioctl.c                          |   2 -
  net/ethtool/netlink.c                        |  11 ++
- net/ethtool/settings.c                       | 109 +++++++++++++++++++
- 6 files changed, 163 insertions(+), 13 deletions(-)
+ net/ethtool/settings.c                       | 110 +++++++++++++++++++
+ 6 files changed, 164 insertions(+), 13 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 67b3afe10099..d82aa5e24693 100644
@@ -196,10 +196,10 @@ index 80d3055cd0f5..09ec7c7b1297 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index cf542e5936e2..1e95822e5e76 100644
+index 734a31f2db6c..a31038b9df44 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -638,6 +638,14 @@ static void ethnl_notify_devlist(struct netdev_notifier_info *info,
+@@ -641,6 +641,14 @@ static void ethnl_notify_devlist(struct netdev_notifier_info *info,
  	nlmsg_free(skb);
  }
  
@@ -214,7 +214,7 @@ index cf542e5936e2..1e95822e5e76 100644
  static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
  			      void *ptr)
  {
-@@ -654,6 +662,9 @@ static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
+@@ -657,6 +665,9 @@ static int ethnl_netdev_event(struct notifier_block *this, unsigned long event,
  		ethnl_notify_devlist(ptr, ETHTOOL_A_EVENT_RENAMEDEV,
  				     ETHTOOL_A_RENAMEDEV_DEV);
  		break;
@@ -225,7 +225,7 @@ index cf542e5936e2..1e95822e5e76 100644
  
  	return NOTIFY_DONE;
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index f94e0530b398..8c280512de3e 100644
+index d54623ef8230..47386542546a 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -15,6 +15,12 @@ struct settings_data {
@@ -241,19 +241,19 @@ index f94e0530b398..8c280512de3e 100644
  	bool				lpm_empty;
  };
  
-@@ -127,6 +133,7 @@ static const struct nla_policy get_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -127,6 +133,7 @@ static const struct nla_policy settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_LINK_STATE]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_WOL]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_DEBUG]	= { .type = NLA_REJECT },
 +	[ETHTOOL_A_SETTINGS_FEATURES]	= { .type = NLA_REJECT },
  };
  
- static int parse_settings(struct common_req_info *req_info,
-@@ -186,6 +193,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
- 	return ret;
+ /* parse_request() handler */
+@@ -188,6 +195,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
  }
  
-+static void features_to_bitmap(u32 *dest, netdev_features_t src)
+ /* prepare_data() handler */
++static void features_to_bitmap32(u32 *dest, netdev_features_t src)
 +{
 +	unsigned int i;
 +
@@ -264,17 +264,17 @@ index f94e0530b398..8c280512de3e 100644
 +static int ethnl_get_features(struct net_device *dev,
 +			      struct settings_data *data)
 +{
-+	features_to_bitmap(data->features.hw, dev->hw_features);
-+	features_to_bitmap(data->features.wanted, dev->wanted_features);
-+	features_to_bitmap(data->features.active, dev->features);
-+	features_to_bitmap(data->features.nochange, NETIF_F_NEVER_CHANGE);
++	features_to_bitmap32(data->features.hw, dev->hw_features);
++	features_to_bitmap32(data->features.wanted, dev->wanted_features);
++	features_to_bitmap32(data->features.active, dev->features);
++	features_to_bitmap32(data->features.nochange, NETIF_F_NEVER_CHANGE);
 +	return 0;
 +}
 +
- static int prepare_settings(struct common_req_info *req_info,
+ static int settings_prepare(struct ethnl_req_info *req_info,
  			    struct genl_info *info)
  {
-@@ -234,6 +259,8 @@ static int prepare_settings(struct common_req_info *req_info,
+@@ -236,6 +261,8 @@ static int settings_prepare(struct ethnl_req_info *req_info,
  		else
  			req_mask &= ~ETHTOOL_IM_SETTINGS_DEBUG;
  	}
@@ -283,11 +283,11 @@ index f94e0530b398..8c280512de3e 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -300,6 +327,38 @@ static int debug_size(void)
+@@ -303,6 +330,38 @@ static int settings_debug_size(void)
  	return nla_total_size(nla_total_size(sizeof(struct nla_bitfield32)));
  }
  
-+static int features_size(const struct settings_data *data)
++static int settings_features_size(const struct settings_data *data)
 +{
 +	unsigned int flags =
 +		(data->reqinfo_base.compact ? ETHNL_BITSET_COMPACT : 0) |
@@ -319,15 +319,15 @@ index f94e0530b398..8c280512de3e 100644
 +	return len;
 +}
 +
- /* To keep things simple, reserve space for some attributes which may not
-  * be added to the message (e.g. ETHTOOL_A_SETTINGS_SOPASS); therefore the
-  * length returned may be bigger than the actual length of the message sent.
-@@ -327,6 +386,12 @@ static int settings_size(const struct common_req_info *req_info)
- 		len += wol_size();
+ /* reply_size() handler
+  *
+  * To keep things simple, reserve space for some attributes which may not
+@@ -332,6 +391,12 @@ static int settings_size(const struct ethnl_req_info *req_info)
+ 		len += settings_wol_size();
  	if (info_mask & ETHTOOL_IM_SETTINGS_DEBUG)
- 		len += debug_size();
+ 		len += settings_debug_size();
 +	if (info_mask & ETHTOOL_IM_SETTINGS_FEATURES) {
-+		ret = features_size(data);
++		ret = settings_features_size(data);
 +		if (ret < 0)
 +			return ret;
 +		len += ret;
@@ -335,11 +335,12 @@ index f94e0530b398..8c280512de3e 100644
  
  	return len;
  }
-@@ -463,6 +528,44 @@ static int fill_debug(struct sk_buff *skb, u32 msglevel)
+@@ -469,6 +534,45 @@ static int settings_fill_debug(struct sk_buff *skb, u32 msglevel)
  	return -EMSGSIZE;
  }
  
-+static int fill_features(struct sk_buff *skb, const struct settings_data *data)
++static int settings_fill_features(struct sk_buff *skb,
++				  const struct settings_data *data)
 +{
 +	unsigned int flags =
 +		(data->reqinfo_base.compact ? ETHNL_BITSET_COMPACT : 0) |
@@ -377,22 +378,22 @@ index f94e0530b398..8c280512de3e 100644
 +	return 0;
 +}
 +
- static int fill_settings(struct sk_buff *skb,
- 			 const struct common_req_info *req_info)
- {
-@@ -498,6 +601,11 @@ static int fill_settings(struct sk_buff *skb,
+ /* fill_reply() handler */
+ static int settings_fill(struct sk_buff *skb,
+ 			 const struct ethnl_req_info *req_info)
+@@ -506,6 +610,11 @@ static int settings_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
 +	if (info_mask & ETHTOOL_IM_SETTINGS_FEATURES) {
-+		ret = fill_features(skb, data);
++		ret = settings_fill_features(skb, data);
 +		if (ret < 0)
 +			return ret;
 +	}
  
  	return 0;
  }
-@@ -559,6 +667,7 @@ static const struct nla_policy set_settings_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -567,6 +676,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },

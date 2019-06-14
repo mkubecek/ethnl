@@ -1,4 +1,4 @@
-From 97cfe8ea6f1cc42440fa8b7939c459b284010116 Mon Sep 17 00:00:00 2001
+From 213f72bb9ddb4a55ea59105f5c3df316d7f326bc Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 44/44] ethtool: implement SET_RXFLOW message
@@ -21,8 +21,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool_netlink.h         |   2 +-
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/rxflow.c                         | 631 +++++++++++++++++++
- 5 files changed, 681 insertions(+), 4 deletions(-)
+ net/ethtool/rxflow.c                         | 640 +++++++++++++++++++
+ 5 files changed, 690 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 8c3ed9525604..0d401a3a3946 100644
@@ -116,10 +116,10 @@ index 822116b70fca..c6686ebb35b2 100644
  	__ETHNL_CMD_CNT,
  	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 64339890b99f..c60bd1058ca6 100644
+index 638115536223..a04ec53249cd 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -744,6 +744,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -747,6 +747,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -132,10 +132,10 @@ index 64339890b99f..c60bd1058ca6 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index d95e103259b9..cb7dce82cc7e 100644
+index 3dad8db40b98..80d22ecbc14e 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -265,6 +265,7 @@ extern const struct get_request_ops rxflow_request_ops;
+@@ -261,6 +261,7 @@ extern const struct get_request_ops rxflow_request_ops;
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
@@ -144,17 +144,17 @@ index d95e103259b9..cb7dce82cc7e 100644
  int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_reset(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index ba35c1805631..b00a531b59a9 100644
+index fe69bf42b7d5..16f3d24d3efe 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
-@@ -528,3 +528,634 @@ void ethnl_rxflow_notify(struct net_device *dev,
+@@ -531,3 +531,643 @@ void ethnl_rxflow_notify(struct net_device *dev,
  err_data:
  	rxflow_cleanup(req_info);
  }
 +
 +/* SET_RXFLOW */
 +
-+static const struct nla_policy set_rxflow_policy[ETHTOOL_A_RXFLOW_MAX + 1] = {
++static const struct nla_policy rxflow_set_policy[ETHTOOL_A_RXFLOW_MAX + 1] = {
 +	[ETHTOOL_A_RXFLOW_UNSPEC]	= { .type = NLA_REJECT },
 +	[ETHTOOL_A_RXFLOW_DEV]		= { .type = NLA_NESTED },
 +	[ETHTOOL_A_RXFLOW_INFOMASK]	= { .type = NLA_REJECT },
@@ -169,7 +169,8 @@ index ba35c1805631..b00a531b59a9 100644
 +	[ETHTOOL_A_RXFLOW_INDIR_TBL]	= { .type = NLA_NESTED },
 +};
 +
-+static int set_rxflow_sanity_checks(struct nlattr *tb[], struct genl_info *info,
++/* check request validity, return 0 if OK, negative error if not */
++static int rxflow_set_sanity_checks(struct nlattr *tb[], struct genl_info *info,
 +				    u32 ctxop, u32 context)
 +{
 +	struct nlattr *err_attr;
@@ -225,7 +226,7 @@ index ba35c1805631..b00a531b59a9 100644
 +	[ETHTOOL_A_RXHASHOPT_DISCARD]	= { .type = NLA_FLAG },
 +};
 +
-+static int set_rxflow_hash_opts(struct net_device *dev, unsigned int context,
++static int rxflow_set_hash_opts(struct net_device *dev, unsigned int context,
 +				const struct nlattr *opts_attr,
 +				struct genl_info *info)
 +{
@@ -293,7 +294,7 @@ index ba35c1805631..b00a531b59a9 100644
 +	return 0;
 +}
 +
-+static int set_rxflow_prep_hashfn(struct net_device *dev,
++static int rxflow_set_prepare_hashfn(struct net_device *dev,
 +				  struct genl_info *info,
 +				  const struct nlattr *attr, u8 *phashfn,
 +				  u32 *info_mask)
@@ -322,7 +323,7 @@ index ba35c1805631..b00a531b59a9 100644
 +	return ret;
 +}
 +
-+static int set_rxflow_prep_hkey(struct net_device *dev, struct genl_info *info,
++static int rxflow_set_prepare_hkey(struct net_device *dev, struct genl_info *info,
 +				const struct nlattr *attr, u8 **phkey,
 +				u32 *info_mask)
 +{
@@ -354,9 +355,11 @@ index ba35c1805631..b00a531b59a9 100644
 +	[ETHTOOL_A_ITBLK_DATA]	= { .type = NLA_BINARY },
 +};
 +
-+static int apply_block(u32 *table, unsigned int size,
-+		       const struct nlattr *block, unsigned int nrings,
-+		       unsigned int entry_size, struct genl_info *info)
++static int rxflow_indtbl_apply_block(u32 *table, unsigned int size,
++				     const struct nlattr *block,
++				     unsigned int nrings,
++				     unsigned int entry_size,
++				     struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHTOOL_A_ITBLK_MAX + 1];
 +	const u32 *src32;
@@ -428,9 +431,9 @@ index ba35c1805631..b00a531b59a9 100644
 +	[ETHTOOL_A_ITPAT_OFFSET]	= { .type = NLA_U32 },
 +};
 +
-+static int apply_pattern(u32 *table, unsigned int size,
-+			 const struct nlattr *pattern, unsigned int n_rings,
-+			 struct genl_info *info)
++static int rxflow_indtbl_apply_pattern(u32 *table, unsigned int size,
++				const struct nlattr *pattern,
++				unsigned int n_rings, struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHTOOL_A_ITPAT_MAX + 1];
 +	unsigned int max_ring = n_rings - 1;
@@ -484,9 +487,9 @@ index ba35c1805631..b00a531b59a9 100644
 +	[ETHTOOL_A_ITWGHT_WEIGHTS]	= { .type = NLA_BINARY },
 +};
 +
-+static int apply_weights(u32 *table, unsigned int size,
-+			 const struct nlattr *attr, unsigned int n_rings,
-+			 struct genl_info *info)
++static int rxflow_indtbl_apply_weights(u32 *table, unsigned int size,
++				const struct nlattr *attr, unsigned int n_rings,
++				struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHTOOL_A_ITWGHT_MAX + 1];
 +	const u32 *weights = NULL;
@@ -540,7 +543,7 @@ index ba35c1805631..b00a531b59a9 100644
 +	return 0;
 +}
 +
-+static int set_rxflow_prep_indtbl(struct net_device *dev,
++static int rxflow_set_prepare_indtbl(struct net_device *dev,
 +				  struct genl_info *info,
 +				  const struct nlattr *attr, u32 **pindtbl,
 +				  u32 *info_mask, bool *reset)
@@ -578,19 +581,24 @@ index ba35c1805631..b00a531b59a9 100644
 +
 +		switch(ptype) {
 +		case ETHTOOL_A_INDTBL_BLOCK32:
-+			ret = apply_block(table, size, patch, nrings, 4, info);
++			ret = rxflow_indtbl_apply_block(table, size, patch,
++							nrings, 4, info);
 +			break;
 +		case ETHTOOL_A_INDTBL_BLOCK16:
-+			ret = apply_block(table, size, patch, nrings, 2, info);
++			ret = rxflow_indtbl_apply_block(table, size, patch,
++							nrings, 2, info);
 +			break;
 +		case ETHTOOL_A_INDTBL_BLOCK8:
-+			ret = apply_block(table, size, patch, nrings, 1, info);
++			ret = rxflow_indtbl_apply_block(table, size, patch,
++							nrings, 1, info);
 +			break;
 +		case ETHTOOL_A_INDTBL_PATTERN:
-+			ret = apply_pattern(table, size, patch, nrings, info);
++			ret = rxflow_indtbl_apply_pattern(table, size, patch,
++							  nrings, info);
 +			break;
 +		case ETHTOOL_A_INDTBL_WEIGHTS:
-+			ret = apply_weights(table, size, patch, nrings, info);
++			ret = rxflow_indtbl_apply_weights(table, size, patch,
++							  nrings, info);
 +			break;
 +		default:
 +			NL_SET_ERR_MSG_ATTR(info->extack, attr,
@@ -616,8 +624,8 @@ index ba35c1805631..b00a531b59a9 100644
 +	return 0;
 +}
 +
-+static int set_rxflow_del_context(struct net_device *dev, u32 context,
-+				  struct genl_info *info)
++static int rxflow_set_delete_context(struct net_device *dev, u32 context,
++				     struct genl_info *info)
 +{
 +	const struct ethtool_ops *ops = dev->ethtool_ops;
 +	int ret;
@@ -636,7 +644,7 @@ index ba35c1805631..b00a531b59a9 100644
 +	return ret;
 +}
 +
-+static int send_set_rxflow_reply(struct net_device *dev,
++static int rxflow_set_send_reply(struct net_device *dev,
 +				 struct genl_info *info, u32 context)
 +{
 +	struct sk_buff *skb;
@@ -644,7 +652,7 @@ index ba35c1805631..b00a531b59a9 100644
 +	int reply_len;
 +	int ret;
 +
-+	reply_len = dev_ident_size();
++	reply_len = ethnl_dev_size();
 +	reply_len += 2 * nla_total_size(sizeof(u32));
 +	skb = ethnl_reply_init(reply_len, dev, ETHNL_CMD_SET_RXFLOW,
 +			       ETHTOOL_A_RXFLOW_DEV, info, &reply_payload);
@@ -686,14 +694,14 @@ index ba35c1805631..b00a531b59a9 100644
 +	int ret;
 +
 +	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb, ETHTOOL_A_RXFLOW_MAX,
-+			  set_rxflow_policy, info->extack);
++			  rxflow_set_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
 +	if (tb[ETHTOOL_A_RXFLOW_CONTEXT])
 +		context = nla_get_u32(tb[ETHTOOL_A_RXFLOW_CONTEXT]);
 +	if (tb[ETHTOOL_A_RXFLOW_CTXOP])
 +		ctxop = nla_get_u32(tb[ETHTOOL_A_RXFLOW_CTXOP]);
-+	ret = set_rxflow_sanity_checks(tb, info, ctxop, context);
++	ret = rxflow_set_sanity_checks(tb, info, ctxop, context);
 +	if (ret < 0)
 +		return ret;
 +	do_rxfh = tb[ETHTOOL_A_RXFLOW_HASH_FN] ||
@@ -711,7 +719,7 @@ index ba35c1805631..b00a531b59a9 100644
 +		goto out_rtnl;
 +
 +	if (tb[ETHTOOL_A_RXFLOW_HASH_OPTS]) {
-+		ret = set_rxflow_hash_opts(dev, context,
++		ret = rxflow_set_hash_opts(dev, context,
 +					   tb[ETHTOOL_A_RXFLOW_HASH_OPTS],
 +					   info);
 +		if (ret < 0)
@@ -727,21 +735,22 @@ index ba35c1805631..b00a531b59a9 100644
 +		goto out_ops;
 +
 +	if (ctxop == ETHTOOL_RXFLOW_CTXOP_DEL) {
-+		ret = set_rxflow_del_context(dev, context, info);
++		ret = rxflow_set_delete_context(dev, context, info);
 +		goto out_ops;
 +	}
 +	if (ctxop == ETHTOOL_RXFLOW_CTXOP_NEW)
 +		context = ETH_RXFH_CONTEXT_ALLOC;
-+	ret = set_rxflow_prep_hashfn(dev, info, tb[ETHTOOL_A_RXFLOW_HASH_FN],
-+				     &hash_fn, &info_mask);
++	ret = rxflow_set_prepare_hashfn(dev, info, tb[ETHTOOL_A_RXFLOW_HASH_FN],
++					&hash_fn, &info_mask);
 +	if (ret < 0)
 +		goto out_ops;
-+	ret = set_rxflow_prep_hkey(dev, info, tb[ETHTOOL_A_RXFLOW_HASH_KEY],
++	ret = rxflow_set_prepare_hkey(dev, info, tb[ETHTOOL_A_RXFLOW_HASH_KEY],
 +				   &hkey, &info_mask);
 +	if (ret < 0)
 +		goto out_free;
-+	ret = set_rxflow_prep_indtbl(dev, info, tb[ETHTOOL_A_RXFLOW_INDIR_TBL],
-+				     &indtbl, &info_mask, &reset_indtbl);
++	ret = rxflow_set_prepare_indtbl(dev, info,
++					tb[ETHTOOL_A_RXFLOW_INDIR_TBL],
++					&indtbl, &info_mask, &reset_indtbl);
 +	if (ret < 0)
 +		goto out_free;
 +	if (context)
@@ -757,7 +766,7 @@ index ba35c1805631..b00a531b59a9 100644
 +			dev->priv_flags &= ~IFF_RXFH_CONFIGURED;
 +	}
 +	if (ctxop == ETHTOOL_RXFLOW_CTXOP_NEW && ret == 0) {
-+		ret = send_set_rxflow_reply(dev, info, context);
++		ret = rxflow_set_send_reply(dev, info, context);
 +		if (ret < 0) {
 +			GENL_SET_ERR_MSG(info, "failed to send reply message");
 +			ret = 0;
