@@ -1,4 +1,4 @@
-From 3d1c9481835c43f48311bb99221d5cc43c6d1e69 Mon Sep 17 00:00:00 2001
+From 7825acee90e732e6c761de54fab3832414baf986 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 09/34] netlink: add netlink handler for gset (no option)
@@ -670,7 +670,7 @@ index 3b5f9475c6e4..b4587c238b11 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 68300ccc99b6..281fe25d94e2 100644
+index 0eecbf3a5e75..cd4a8bad0e44 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -4,8 +4,10 @@
@@ -684,7 +684,7 @@ index 68300ccc99b6..281fe25d94e2 100644
  
  /* misc helpers */
  
-@@ -543,6 +545,124 @@ int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname)
+@@ -547,6 +549,124 @@ int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname)
  	return 0;
  }
  

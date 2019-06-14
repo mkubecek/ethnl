@@ -1,4 +1,4 @@
-From d7d670e8a9c98a9b24494089695c77c74eb7ce8f Mon Sep 17 00:00:00 2001
+From 69acc7fa7af84ac151bcb1ea3371077fd43a40cf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 04/34] netlink: add netlink interface
@@ -25,14 +25,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.c                    | 190 ++++++---
  internal.h                   |  11 +
  netlink/extapi.h             |  16 +
- netlink/netlink.c            | 727 +++++++++++++++++++++++++++++++++++
+ netlink/netlink.c            | 731 +++++++++++++++++++++++++++++++++++
  netlink/netlink.h            | 159 ++++++++
  uapi/linux/ethtool.h         |  13 +
- uapi/linux/ethtool_netlink.h | 556 +++++++++++++++++++++++++++
+ uapi/linux/ethtool_netlink.h | 556 ++++++++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 +++++
  uapi/linux/net_tstamp.h      |  13 +
  uapi/linux/netlink.h         | 248 ++++++++++++
- 14 files changed, 1998 insertions(+), 65 deletions(-)
+ 14 files changed, 2002 insertions(+), 65 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
  create mode 100644 netlink/extapi.h
@@ -104,11 +104,11 @@ index 000000000000..286c2055f2d7
 +
 +#endif /* ETHTOOL_COMMON_H__ */
 diff --git a/configure.ac b/configure.ac
-index 3c0686c76004..b57a7b55c728 100644
+index 2941a65543a7..f289eba24a00 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
- AC_INIT(ethtool, 5.0, netdev@vger.kernel.org)
+ AC_INIT(ethtool, 5.1, netdev@vger.kernel.org)
  AC_PREREQ(2.52)
  AC_CONFIG_SRCDIR([ethtool.c])
 -AM_INIT_AUTOMAKE([gnu])
@@ -555,10 +555,10 @@ index 000000000000..6fe8ad200e24
 +#endif /* ETHTOOL_EXTAPI_H__ */
 diff --git a/netlink/netlink.c b/netlink/netlink.c
 new file mode 100644
-index 000000000000..cb04ea267c18
+index 000000000000..cc3f9b99883d
 --- /dev/null
 +++ b/netlink/netlink.c
-@@ -0,0 +1,727 @@
+@@ -0,0 +1,731 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -881,8 +881,12 @@ index 000000000000..cb04ea267c18
 +	if (tb[NLMSGERR_ATTR_MSG]) {
 +		const char *msg = mnl_attr_get_str(tb[NLMSGERR_ATTR_MSG]);
 +
-+		fprintf(stderr, "netlink %s: %s\n",
++		fprintf(stderr, "netlink %s: %s",
 +			nlerr->error ? "error" : "warning", msg);
++		if (tb[NLMSGERR_ATTR_OFFS])
++			fprintf(stderr, " (offset %u)",
++				mnl_attr_get_u32(tb[NLMSGERR_ATTR_OFFS]));
++		fputc('\n', stderr);
 +	}
 +
 +out:
@@ -1452,7 +1456,7 @@ index 000000000000..c8cd4cb9d35f
 +
 +#endif /* ETHTOOL_NETLINK_INT_H__ */
 diff --git a/uapi/linux/ethtool.h b/uapi/linux/ethtool.h
-index 25777cb7bb2b..ea4a6f42e028 100644
+index 68a612570d4c..a46d2576cf40 100644
 --- a/uapi/linux/ethtool.h
 +++ b/uapi/linux/ethtool.h
 @@ -569,6 +569,11 @@ struct ethtool_pauseparam {
@@ -1481,7 +1485,7 @@ index 25777cb7bb2b..ea4a6f42e028 100644
  };
  
  /**
-@@ -1739,6 +1751,7 @@ enum ethtool_reset_flags {
+@@ -1744,6 +1756,7 @@ enum ethtool_reset_flags {
  	ETH_RESET_ALL		= 0xffffffff,	/* All components used by this
  						 * interface, even if shared */
  };

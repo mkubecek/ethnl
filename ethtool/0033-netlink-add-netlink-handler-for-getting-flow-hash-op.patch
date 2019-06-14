@@ -1,4 +1,4 @@
-From 2f46c4bb56c7eb44ac52488b938dae6818785391 Mon Sep 17 00:00:00 2001
+From b3eb6b7c49d8e498421f2a6fc3aa4572781116ce Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 7 Oct 2018 19:50:11 +0200
 Subject: [PATCH 33/34] netlink: add netlink handler for getting flow hash

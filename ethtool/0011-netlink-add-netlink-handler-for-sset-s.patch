@@ -1,4 +1,4 @@
-From 603c9db6ac2923e8b456a7af25831aae8a4a5fa2 Mon Sep 17 00:00:00 2001
+From ff2fb577f7bdd6ebe8ff2cacf3b3253da0920d0b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 11/34] netlink: add netlink handler for sset (-s)
@@ -69,10 +69,10 @@ index 5500835372b3..4f9e60c2fca8 100644
  
  void monitor_usage();
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 281fe25d94e2..09a664585e7f 100644
+index cd4a8bad0e44..bc340a8e843f 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -776,6 +776,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
+@@ -780,6 +780,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
  	return 0;
  }
  

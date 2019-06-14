@@ -1,4 +1,4 @@
-From 0a8e957ab236521419e5cb9a3e8259cde9705e62 Mon Sep 17 00:00:00 2001
+From 0190dc54bae64d2ace54137b85fdf028b52bce68 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
 Subject: [PATCH 06/34] netlink: add notification monitor
@@ -331,10 +331,10 @@ index 000000000000..15625661ca61
 +	fputs("                [ DEVNAME | * ]\n", stdout);
 +}
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index ff97e70b9bbd..68300ccc99b6 100644
+index c6f73a1e129d..0eecbf3a5e75 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -590,6 +590,31 @@ err:
+@@ -594,6 +594,31 @@ err:
  
  /* get ethtool family id */
  
@@ -366,7 +366,7 @@ index ff97e70b9bbd..68300ccc99b6 100644
  static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	struct nl_context *nlctx = data;
-@@ -597,9 +622,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -601,9 +626,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  
  	nlctx->ethnl_fam = 0;
  	mnl_attr_for_each(attr, nlhdr, GENL_HDRLEN) {
@@ -381,7 +381,7 @@ index ff97e70b9bbd..68300ccc99b6 100644
  		}
  	}
  
-@@ -682,6 +711,7 @@ int __init_aux_nlctx(struct nl_context *nlctx)
+@@ -686,6 +715,7 @@ int __init_aux_nlctx(struct nl_context *nlctx)
  	}
  
  	aux->ethnl_fam = nlctx->ethnl_fam;
