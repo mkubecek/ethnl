@@ -1,4 +1,4 @@
-From 2d0d6d8005dc2d035edb3130a32f22ca4917b12e Mon Sep 17 00:00:00 2001
+From 0762d4f1f520c5b6400b50abcd019e4512de0551 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 24 Nov 2017 01:02:29 +0100
 Subject: [PATCH 02/34] update UAPI header copies
@@ -7,42 +7,36 @@ Update to current net-next (commit 1d9978757d38).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- uapi/linux/ethtool.h    |  7 ++++++-
+ uapi/linux/ethtool.h    |  8 ++++----
  uapi/linux/net_tstamp.h | 19 +++++++++++++++++++
- 2 files changed, 25 insertions(+), 1 deletion(-)
+ 2 files changed, 23 insertions(+), 4 deletions(-)
 
 diff --git a/uapi/linux/ethtool.h b/uapi/linux/ethtool.h
-index 92ab10d65fc9..68a612570d4c 100644
+index ad16e8f9c290..68a612570d4c 100644
 --- a/uapi/linux/ethtool.h
 +++ b/uapi/linux/ethtool.h
-@@ -1481,6 +1481,8 @@ enum ethtool_link_mode_bit_indices {
+@@ -1481,8 +1481,8 @@ enum ethtool_link_mode_bit_indices {
  	ETHTOOL_LINK_MODE_200000baseLR4_ER4_FR4_Full_BIT = 64,
  	ETHTOOL_LINK_MODE_200000baseDR4_Full_BIT	 = 65,
  	ETHTOOL_LINK_MODE_200000baseCR4_Full_BIT	 = 66,
+-	ETHTOOL_LINK_MODE_100baseT1_Full_BIT             = 67,
+-	ETHTOOL_LINK_MODE_1000baseT1_Full_BIT            = 68,
 +	ETHTOOL_LINK_MODE_100baseT1_Full_BIT		 = 67,
 +	ETHTOOL_LINK_MODE_1000baseT1_Full_BIT		 = 68,
  
  	/* must be last entry */
  	__ETHTOOL_LINK_MODE_MASK_NBITS
-@@ -1597,7 +1599,7 @@ enum ethtool_link_mode_bit_indices {
- 
- static __inline__ int ethtool_validate_speed(__u32 speed)
- {
--	return speed <= INT_MAX || speed == SPEED_UNKNOWN;
-+	return speed <= INT_MAX || speed == (__u32)SPEED_UNKNOWN;
- }
- 
- /* Duplex, half or full. */
-@@ -1710,6 +1712,9 @@ static __inline__ int ethtool_validate_duplex(__u8 duplex)
+@@ -1712,8 +1712,8 @@ static __inline__ int ethtool_validate_duplex(__u8 duplex)
  #define ETH_MODULE_SFF_8436		0x4
  #define ETH_MODULE_SFF_8436_LEN		256
  
+-#define ETH_MODULE_SFF_8636_MAX_LEN	640
+-#define ETH_MODULE_SFF_8436_MAX_LEN	640
 +#define ETH_MODULE_SFF_8636_MAX_LEN     640
 +#define ETH_MODULE_SFF_8436_MAX_LEN     640
-+
+ 
  /* Reset flags */
  /* The reset() operation must clear the flags for the components which
-  * were actually reset.  On successful return, the flags indicate the
 diff --git a/uapi/linux/net_tstamp.h b/uapi/linux/net_tstamp.h
 index 3d421d912193..e5b39721c6e4 100644
 --- a/uapi/linux/net_tstamp.h

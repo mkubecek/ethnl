@@ -1,4 +1,4 @@
-From b3eb6b7c49d8e498421f2a6fc3aa4572781116ce Mon Sep 17 00:00:00 2001
+From 48e007a831eb835c26ac2e95da13a0d10f7f4ae1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 7 Oct 2018 19:50:11 +0200
 Subject: [PATCH 33/34] netlink: add netlink handler for getting flow hash
@@ -16,10 +16,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 193 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 5675e08f1c7f..85e632a0d4ef 100644
+index 03536ed96ce0..a63be354ddfa 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4996,6 +4996,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5002,6 +5002,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_reset	NULL
  #define nl_grxfh	NULL
  #define nl_srxfh	NULL
@@ -27,7 +27,7 @@ index 5675e08f1c7f..85e632a0d4ef 100644
  #endif
  
  static const struct option {
-@@ -5094,7 +5095,7 @@ static const struct option {
+@@ -5100,7 +5101,7 @@ static const struct option {
  	  "Show adapter statistics" },
  	{ "--phy-statistics", 1, do_gphystats, NULL,
  	  "Show phy statistics" },

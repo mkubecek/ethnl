@@ -1,4 +1,4 @@
-From ab93f9b4e80c4eee4fe0dd967b8fe512e0fc06a5 Mon Sep 17 00:00:00 2001
+From 56c8b3f891152b3c889dffb11c319391d5472913 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
 Subject: [PATCH 07/34] netlink: add netlink handler for gdrv (-i)
@@ -29,10 +29,10 @@ index d17a2e7e5720..1d9949d64075 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 3623dbf06acd..fde12d1e346c 100644
+index a5a4323359c5..b632630d18f7 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -5195,6 +5195,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5201,6 +5201,7 @@ static int show_usage(struct cmd_context *ctx);
  /* Just define all netlink handlers as null when building without netlink
   * support so that we do not get unresolved symbols in args array below
   */
@@ -40,7 +40,7 @@ index 3623dbf06acd..fde12d1e346c 100644
  #endif
  
  static const struct option {
-@@ -5264,7 +5265,7 @@ static const struct option {
+@@ -5270,7 +5271,7 @@ static const struct option {
  	{ "-K|--features|--offload", 1, do_sfeatures, NULL,
  	  "Set protocol offload and other features",
  	  "		FEATURE on|off ...\n" },
@@ -238,22 +238,19 @@ index 000000000000..7155d9f822e7
 +	return info_request(ctx, ETHTOOL_IM_INFO_DRVINFO);
 +}
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 15625661ca61..3b5f9475c6e4 100644
+index bc906df8fe32..ed9881468fa1 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -94,6 +94,8 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
- 	return MNL_CB_OK;
- }
+@@ -4,10 +4,16 @@
+ #include "netlink.h"
+ #include "strset.h"
  
 +int info_reply_cb(const struct nlmsghdr *nlhdr, void *data);
 +
  static struct {
  	uint8_t		cmd;
  	mnl_cb_t	cb;
-@@ -102,6 +104,10 @@ static struct {
- 		.cmd	= ETHNL_CMD_EVENT,
- 		.cb	= monitor_event_cb,
- 	},
+ } monitor_callbacks[] = {
 +	{
 +		.cmd	= ETHNL_CMD_SET_INFO,
 +		.cb	= info_reply_cb,
@@ -261,7 +258,7 @@ index 15625661ca61..3b5f9475c6e4 100644
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -131,6 +137,10 @@ static struct monitor_option monitor_opts[] = {
+@@ -37,6 +43,10 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "|--all",
  		.cmd		= 0,
  	},

@@ -1,4 +1,4 @@
-From bf9967112f9ab99c026778714d5299f0ef6fd7e2 Mon Sep 17 00:00:00 2001
+From cb3c1ad60fdb9078d13b0265d9da321f7a69559a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:25:31 +0200
 Subject: [PATCH 13/34] netlink: add netlink handler for sfeatures (-K)
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 295 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 377f4ab175f3..94dcd8e158dc 100644
+index d9c68a295bce..3df59831aa41 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4976,6 +4976,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4982,6 +4982,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gset		NULL
  #define nl_sset		NULL
  #define nl_gfeatures	NULL
@@ -32,7 +32,7 @@ index 377f4ab175f3..94dcd8e158dc 100644
  #endif
  
  static const struct option {
-@@ -5042,7 +5043,7 @@ static const struct option {
+@@ -5048,7 +5049,7 @@ static const struct option {
  	  "		[ tx N ]\n" },
  	{ "-k|--show-features|--show-offload", 1, do_gfeatures, nl_gfeatures,
  	  "Get state of protocol offload and other features" },

@@ -1,4 +1,4 @@
-From 0190dc54bae64d2ace54137b85fdf028b52bce68 Mon Sep 17 00:00:00 2001
+From 6ae4ecb58161aad1e5e5a90fb5168598ebc3b379 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
 Subject: [PATCH 06/34] netlink: add notification monitor
@@ -12,12 +12,12 @@ device name or "*" is passed, show notifications for all devices.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |   2 +-
- ethtool.c         |  16 +++
- netlink/extapi.h  |   4 +
- netlink/monitor.c | 244 ++++++++++++++++++++++++++++++++++++++++++++++
- netlink/netlink.c |  32 +++++-
- netlink/netlink.h |  26 +++++
- 6 files changed, 322 insertions(+), 2 deletions(-)
+ ethtool.c         |  16 +++++
+ netlink/extapi.h  |   4 ++
+ netlink/monitor.c | 150 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/netlink.c |  32 +++++++++-
+ netlink/netlink.h |  26 ++++++++
+ 6 files changed, 228 insertions(+), 2 deletions(-)
  create mode 100644 netlink/monitor.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -34,10 +34,10 @@ index 1e07f5d742e3..d17a2e7e5720 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index a39d09092439..3623dbf06acd 100644
+index 5c50c9b95e99..a5a4323359c5 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -5439,6 +5439,9 @@ static int show_usage(struct cmd_context *ctx)
+@@ -5445,6 +5445,9 @@ static int show_usage(struct cmd_context *ctx)
  		if (args[i].opthelp)
  			fputs(args[i].opthelp, stdout);
  	}
@@ -47,7 +47,7 @@ index a39d09092439..3623dbf06acd 100644
  
  	return 0;
  }
-@@ -5686,6 +5689,19 @@ int main(int argc, char **argp)
+@@ -5692,6 +5695,19 @@ int main(int argc, char **argp)
  		argp += 2;
  		argc -= 2;
  	}
@@ -82,114 +82,20 @@ index 6fe8ad200e24..c6a65e3222cd 100644
  #endif /* ETHTOOL_EXTAPI_H__ */
 diff --git a/netlink/monitor.c b/netlink/monitor.c
 new file mode 100644
-index 000000000000..15625661ca61
+index 000000000000..bc906df8fe32
 --- /dev/null
 +++ b/netlink/monitor.c
-@@ -0,0 +1,244 @@
+@@ -0,0 +1,150 @@
 +#include <errno.h>
 +
 +#include "../internal.h"
 +#include "netlink.h"
 +#include "strset.h"
 +
-+static void monitor_newdev(struct nl_context *nlctx, struct nlattr *evattr)
-+{
-+	const struct nlattr *tb[ETHTOOL_A_NEWDEV_MAX + 1] = {};
-+	DECLARE_ATTR_TB_INFO(tb);
-+	const char *devname;
-+	int ret;
-+
-+	ret = mnl_attr_parse_nested(evattr, attr_cb, &tb_info);
-+	if (ret < 0)
-+		return;
-+	if (!tb[ETHTOOL_A_NEWDEV_DEV])
-+		return;
-+	devname = get_dev_name(tb[ETHTOOL_A_NEWDEV_DEV]);
-+	if (!devname)
-+		return;
-+	printf("New device %s registered.\n", devname);
-+
-+	ret = init_aux_nlctx(nlctx);
-+	if (ret < 0)
-+		return;
-+	load_perdev_strings(nlctx->aux_nlctx, devname);
-+}
-+
-+static void monitor_deldev(struct nl_context *nlctx, struct nlattr *evattr)
-+{
-+	const struct nlattr *tb[ETHTOOL_A_DELDEV_MAX + 1] = {};
-+	DECLARE_ATTR_TB_INFO(tb);
-+	const char *devname;
-+	int ret;
-+
-+	ret = mnl_attr_parse_nested(evattr, attr_cb, &tb_info);
-+	if (ret < 0)
-+		return;
-+	if (!tb[ETHTOOL_A_DELDEV_DEV])
-+		return;
-+	devname = get_dev_name(tb[ETHTOOL_A_DELDEV_DEV]);
-+	if (!devname)
-+		return;
-+	printf("Device %s unregistered.\n", devname);
-+
-+	free_perdev_strings(devname);
-+}
-+
-+static void monitor_renamedev(struct nl_context *nlctx, struct nlattr *evattr)
-+{
-+	const struct nlattr *tb[ETHTOOL_A_RENAMEDEV_MAX + 1] = {};
-+	DECLARE_ATTR_TB_INFO(tb);
-+	char oldname[IFNAMSIZ] = "";
-+	char newname[IFNAMSIZ];
-+	int ifindex;
-+	int ret;
-+
-+	ret = mnl_attr_parse_nested(evattr, attr_cb, &tb_info);
-+	if (ret < 0)
-+		return;
-+	if (!tb[ETHTOOL_A_RENAMEDEV_DEV])
-+		return;
-+	ret = get_dev_info(tb[ETHTOOL_A_RENAMEDEV_DEV], &ifindex, newname);
-+	if (ret < 0)
-+		return;
-+
-+	ret = rename_perdev_strings(ifindex, newname, oldname);
-+	if (ret < 0)
-+		load_perdev_strings(nlctx->aux_nlctx, newname);
-+	else
-+		printf("Device %s renamed to %s.\n", oldname, newname);
-+}
-+
-+static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
-+{
-+	struct nl_context *nlctx = data;
-+	struct nlattr *evattr;
-+
-+	mnl_attr_for_each(evattr, nlhdr, GENL_HDRLEN) {
-+		switch(mnl_attr_get_type(evattr)) {
-+		case ETHTOOL_A_EVENT_NEWDEV:
-+			monitor_newdev(nlctx, evattr);
-+			break;
-+		case ETHTOOL_A_EVENT_DELDEV:
-+			monitor_deldev(nlctx, evattr);
-+			break;
-+		case ETHTOOL_A_EVENT_RENAMEDEV:
-+			monitor_renamedev(nlctx, evattr);
-+			break;
-+		}
-+	}
-+
-+	return MNL_CB_OK;
-+}
-+
 +static struct {
 +	uint8_t		cmd;
 +	mnl_cb_t	cb;
 +} monitor_callbacks[] = {
-+	{
-+		.cmd	= ETHNL_CMD_EVENT,
-+		.cb	= monitor_event_cb,
-+	},
 +};
 +
 +static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -331,10 +237,10 @@ index 000000000000..15625661ca61
 +	fputs("                [ DEVNAME | * ]\n", stdout);
 +}
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index c6f73a1e129d..0eecbf3a5e75 100644
+index fab6af6fd74f..91fd65e2d1e4 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -594,6 +594,31 @@ err:
+@@ -593,6 +593,31 @@ err:
  
  /* get ethtool family id */
  
@@ -366,7 +272,7 @@ index c6f73a1e129d..0eecbf3a5e75 100644
  static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	struct nl_context *nlctx = data;
-@@ -601,9 +626,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -600,9 +625,13 @@ static int ethnl_family_cb(const struct nlmsghdr *nlhdr, void *data)
  
  	nlctx->ethnl_fam = 0;
  	mnl_attr_for_each(attr, nlhdr, GENL_HDRLEN) {
@@ -381,7 +287,7 @@ index c6f73a1e129d..0eecbf3a5e75 100644
  		}
  	}
  
-@@ -686,6 +715,7 @@ int __init_aux_nlctx(struct nl_context *nlctx)
+@@ -685,6 +714,7 @@ int __init_aux_nlctx(struct nl_context *nlctx)
  	}
  
  	aux->ethnl_fam = nlctx->ethnl_fam;

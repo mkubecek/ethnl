@@ -1,4 +1,4 @@
-From ff2fb577f7bdd6ebe8ff2cacf3b3253da0920d0b Mon Sep 17 00:00:00 2001
+From 72abe38035e9c83392ab57d764f982a59fa360b8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 11/34] netlink: add netlink handler for sset (-s)
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  7 files changed, 225 insertions(+), 4 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index a206ecb31981..f1064f882b99 100644
+index 7709448985ae..cda051423e41 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -5019,6 +5019,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5025,6 +5025,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gdrv		NULL
  #define nl_tsinfo	NULL
  #define nl_gset		NULL
@@ -32,7 +32,7 @@ index a206ecb31981..f1064f882b99 100644
  #endif
  
  static const struct option {
-@@ -5029,19 +5030,19 @@ static const struct option {
+@@ -5035,19 +5036,19 @@ static const struct option {
  	char *help;
  	char *opthelp;
  } args[] = {
@@ -69,10 +69,10 @@ index 5500835372b3..4f9e60c2fca8 100644
  
  void monitor_usage();
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index cd4a8bad0e44..bc340a8e843f 100644
+index b51db1bd3cb0..5ae3586d6757 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -780,6 +780,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
+@@ -779,6 +779,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
  	return 0;
  }
  

@@ -1,4 +1,4 @@
-From 69acc7fa7af84ac151bcb1ea3371077fd43a40cf Mon Sep 17 00:00:00 2001
+From b39b979417ee89f1c6402de8fb1fd26e08ddb025 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 04/34] netlink: add netlink interface
@@ -25,14 +25,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.c                    | 190 ++++++---
  internal.h                   |  11 +
  netlink/extapi.h             |  16 +
- netlink/netlink.c            | 731 +++++++++++++++++++++++++++++++++++
+ netlink/netlink.c            | 730 +++++++++++++++++++++++++++++++++++
  netlink/netlink.h            | 159 ++++++++
  uapi/linux/ethtool.h         |  13 +
- uapi/linux/ethtool_netlink.h | 556 ++++++++++++++++++++++++++
+ uapi/linux/ethtool_netlink.h | 519 +++++++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 +++++
  uapi/linux/net_tstamp.h      |  13 +
  uapi/linux/netlink.h         | 248 ++++++++++++
- 14 files changed, 2002 insertions(+), 65 deletions(-)
+ 14 files changed, 1964 insertions(+), 65 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
  create mode 100644 netlink/extapi.h
@@ -135,7 +135,7 @@ index 2941a65543a7..f289eba24a00 100644
  AC_CONFIG_FILES([Makefile ethtool.spec ethtool.8])
  AC_OUTPUT
 diff --git a/ethtool.c b/ethtool.c
-index 64ae72bf571a..a39d09092439 100644
+index c6b6d78b8109..5c50c9b95e99 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -30,6 +30,7 @@
@@ -166,7 +166,7 @@ index 64ae72bf571a..a39d09092439 100644
  static void exit_bad_args(void) __attribute__((noreturn));
  
  static void exit_bad_args(void)
-@@ -5188,14 +5191,22 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
+@@ -5194,14 +5197,22 @@ int send_ioctl(struct cmd_context *ctx, void *cmd)
  
  static int show_usage(struct cmd_context *ctx);
  
@@ -190,7 +190,7 @@ index 64ae72bf571a..a39d09092439 100644
  	  "		[ speed %d ]\n"
  	  "		[ duplex half|full ]\n"
  	  "		[ port tp|aui|bnc|mii|fibre ]\n"
-@@ -5207,13 +5218,17 @@ static const struct option {
+@@ -5213,13 +5224,17 @@ static const struct option {
  	  "		[ wol p|u|m|b|a|g|s|f|d... ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
  	  "		[ msglvl %d | msglvl type on|off ... ]\n" },
@@ -212,7 +212,7 @@ index 64ae72bf571a..a39d09092439 100644
  	  "		[adaptive-rx on|off]\n"
  	  "		[adaptive-tx on|off]\n"
  	  "		[rx-usecs N]\n"
-@@ -5236,46 +5251,54 @@ static const struct option {
+@@ -5242,46 +5257,54 @@ static const struct option {
  	  "		[tx-usecs-high N]\n"
  	  "		[tx-frames-high N]\n"
  	  "		[sample-interval N]\n" },
@@ -282,7 +282,7 @@ index 64ae72bf571a..a39d09092439 100644
  	  "Configure Rx network flow classification options or rules",
  	  "		rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 m|v|t|s|d|f|n|r... [context %d] |\n"
-@@ -5300,57 +5323,66 @@ static const struct option {
+@@ -5306,57 +5329,66 @@ static const struct option {
  	  "			[ context %d ]\n"
  	  "			[ loc %d]] |\n"
  	  "		delete %d\n" },
@@ -366,7 +366,7 @@ index 64ae72bf571a..a39d09092439 100644
  	  "		[ flags %x ]\n"
  	  "		[ mgmt ]\n"
  	  "		[ mgmt-shared ]\n"
-@@ -5372,14 +5404,19 @@ static const struct option {
+@@ -5378,14 +5410,19 @@ static const struct option {
  	  "		[ ap-shared ]\n"
  	  "		[ dedicated ]\n"
  	  "		[ all ]\n"},
@@ -391,7 +391,7 @@ index 64ae72bf571a..a39d09092439 100644
  	{}
  };
  
-@@ -5598,14 +5635,39 @@ static int do_perqueue(struct cmd_context *ctx)
+@@ -5604,14 +5641,39 @@ static int do_perqueue(struct cmd_context *ctx)
  	return 0;
  }
  
@@ -431,7 +431,7 @@ index 64ae72bf571a..a39d09092439 100644
  
  	/* Skip command name */
  	argp++;
-@@ -5637,6 +5699,7 @@ int main(int argc, char **argp)
+@@ -5643,6 +5705,7 @@ int main(int argc, char **argp)
  		argp++;
  		argc--;
  		func = args[k].func;
@@ -439,7 +439,7 @@ index 64ae72bf571a..a39d09092439 100644
  		want_device = args[k].want_device;
  		goto opt_found;
  	}
-@@ -5646,33 +5709,38 @@ int main(int argc, char **argp)
+@@ -5652,33 +5715,38 @@ int main(int argc, char **argp)
  	want_device = 1;
  
  opt_found:
@@ -555,10 +555,10 @@ index 000000000000..6fe8ad200e24
 +#endif /* ETHTOOL_EXTAPI_H__ */
 diff --git a/netlink/netlink.c b/netlink/netlink.c
 new file mode 100644
-index 000000000000..cc3f9b99883d
+index 000000000000..ab2811052f42
 --- /dev/null
 +++ b/netlink/netlink.c
-@@ -0,0 +1,731 @@
+@@ -0,0 +1,730 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -900,13 +900,12 @@ index 000000000000..cc3f9b99883d
 +
 +static const char *ethnl_cmd_names[] = {
 +	[ETHNL_CMD_NOOP]		= "NOOP",
-+	[ETHNL_CMD_EVENT]		= "EVENT",
 +	[ETHNL_CMD_GET_STRSET]		= "GET_STRSET",
 +	[ETHNL_CMD_SET_STRSET]		= "SET_STRSET",
-+	[ETHNL_CMD_GET_INFO]		= "GET_INFO",
-+	[ETHNL_CMD_SET_INFO]		= "SET_INFO",
 +	[ETHNL_CMD_GET_SETTINGS]	= "GET_SETTINGS",
 +	[ETHNL_CMD_SET_SETTINGS]	= "SET_SETTINGS",
++	[ETHNL_CMD_GET_INFO]		= "GET_INFO",
++	[ETHNL_CMD_SET_INFO]		= "SET_INFO",
 +	[ETHNL_CMD_GET_PARAMS]		= "GET_PARAMS",
 +	[ETHNL_CMD_SET_PARAMS]		= "SET_PARAMS",
 +	[ETHNL_CMD_ACT_NWAY_RST]	= "ACT_NWAY_RST",
@@ -1456,17 +1455,17 @@ index 000000000000..c8cd4cb9d35f
 +
 +#endif /* ETHTOOL_NETLINK_INT_H__ */
 diff --git a/uapi/linux/ethtool.h b/uapi/linux/ethtool.h
-index 68a612570d4c..a46d2576cf40 100644
+index 68a612570d4c..a1cb67270b3f 100644
 --- a/uapi/linux/ethtool.h
 +++ b/uapi/linux/ethtool.h
 @@ -569,6 +569,11 @@ struct ethtool_pauseparam {
   * @ETH_SS_RSS_HASH_FUNCS: RSS hush function names
   * @ETH_SS_PHY_STATS: Statistic names, for use with %ETHTOOL_GPHYSTATS
   * @ETH_SS_PHY_TUNABLES: PHY tunable names
++ * @ETH_SS_LINK_MODES: link mode names
 + * @ETH_SS_TSTAMP_SOF: timestamping flag names
 + * @ETH_SS_TSTAMP_TX_TYPE: timestamping Tx type names
 + * @ETH_SS_TSTAMP_RX_FILTER: timestamping Rx filter names
-+ * @ETH_SS_LINK_MODES: link mode names
 + * @ETH_SS_RESET_FLAGS: components for device reset
   */
  enum ethtool_stringset {
@@ -1475,10 +1474,10 @@ index 68a612570d4c..a46d2576cf40 100644
  	ETH_SS_TUNABLES,
  	ETH_SS_PHY_STATS,
  	ETH_SS_PHY_TUNABLES,
++	ETH_SS_LINK_MODES,
 +	ETH_SS_TSTAMP_SOF,
 +	ETH_SS_TSTAMP_TX_TYPE,
 +	ETH_SS_TSTAMP_RX_FILTER,
-+	ETH_SS_LINK_MODES,
 +	ETH_SS_RESET_FLAGS,
 +
 +	ETH_SS_COUNT
@@ -1495,10 +1494,10 @@ index 68a612570d4c..a46d2576cf40 100644
  
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..d01db2425055
+index 000000000000..10c200d24848
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,556 @@
+@@ -0,0 +1,519 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +/*
 + * include/uapi/linux/ethtool_netlink.h - netlink interface for ethtool
@@ -1514,13 +1513,12 @@ index 000000000000..d01db2425055
 +
 +enum {
 +	ETHNL_CMD_NOOP,
-+	ETHNL_CMD_EVENT,		/* only for notifications */
 +	ETHNL_CMD_GET_STRSET,
 +	ETHNL_CMD_SET_STRSET,		/* only for reply */
-+	ETHNL_CMD_GET_INFO,
-+	ETHNL_CMD_SET_INFO,		/* only for reply */
 +	ETHNL_CMD_GET_SETTINGS,
 +	ETHNL_CMD_SET_SETTINGS,
++	ETHNL_CMD_GET_INFO,
++	ETHNL_CMD_SET_INFO,		/* only for reply */
 +	ETHNL_CMD_GET_PARAMS,
 +	ETHNL_CMD_SET_PARAMS,
 +	ETHNL_CMD_ACT_NWAY_RST,
@@ -1576,42 +1574,6 @@ index 000000000000..d01db2425055
 +	ETHTOOL_A_BITSET_MAX = (__ETHTOOL_A_BITSET_CNT - 1)
 +};
 +
-+/* events */
-+
-+enum {
-+	ETHTOOL_A_NEWDEV_UNSPEC,
-+	ETHTOOL_A_NEWDEV_DEV,			/* nest - ETHTOOL_A_DEV_* */
-+
-+	__ETHTOOL_A_NEWDEV_CNT,
-+	ETHTOOL_A_NEWDEV_MAX = (__ETHTOOL_A_NEWDEV_CNT - 1)
-+};
-+
-+enum {
-+	ETHTOOL_A_DELDEV_UNSPEC,
-+	ETHTOOL_A_DELDEV_DEV,			/* nest - ETHTOOL_A_DEV_* */
-+
-+	__ETHTOOL_A_DELDEV_CNT,
-+	ETHTOOL_A_DELDEV_MAX = (__ETHTOOL_A_DELDEV_CNT - 1)
-+};
-+
-+enum {
-+	ETHTOOL_A_RENAMEDEV_UNSPEC,
-+	ETHTOOL_A_RENAMEDEV_DEV,		/* nest - ETHTOOL_A_DEV_* */
-+
-+	__ETHTOOL_A_RENAMEDEV_CNT,
-+	ETHTOOL_A_RENAMEDEV_MAX = (__ETHTOOL_A_RENAMEDEV_CNT - 1)
-+};
-+
-+enum {
-+	ETHTOOL_A_EVENT_UNSPEC,
-+	ETHTOOL_A_EVENT_NEWDEV,			/* nest - ETHTOOL_A_NEWDEV_* */
-+	ETHTOOL_A_EVENT_DELDEV,			/* nest - ETHTOOL_A_DELDEV_* */
-+	ETHTOOL_A_EVENT_RENAMEDEV,		/* nest - ETHTOOL_A_RENAMEDEV_* */
-+
-+	__ETHTOOL_A_EVENT_CNT,
-+	ETHTOOL_A_EVENT_MAX = (__ETHTOOL_A_EVENT_CNT - 1)
-+};
-+
 +/* string sets */
 +
 +enum {
@@ -1651,48 +1613,6 @@ index 000000000000..d01db2425055
 +
 +	__ETHTOOL_A_STRSET_CNT,
 +	ETHTOOL_A_STRSET_MAX = (__ETHTOOL_A_STRSET_CNT - 1)
-+};
-+
-+/* GET_INFO / SET_INFO */
-+
-+enum {
-+	ETHTOOL_A_INFO_UNSPEC,
-+	ETHTOOL_A_INFO_DEV,			/* nest - ETHTOOL_A_DEV_* */
-+	ETHTOOL_A_INFO_INFOMASK,		/* u32 */
-+	ETHTOOL_A_INFO_COMPACT,			/* flag */
-+	ETHTOOL_A_INFO_DRVINFO,			/* nest - ETHTOOL_A_DRVINFO_* */
-+	ETHTOOL_A_INFO_TSINFO,			/* nest - ETHTOOL_A_TSINFO_* */
-+
-+	__ETHTOOL_A_INFO_CNT,
-+	ETHTOOL_A_INFO_MAX = (__ETHTOOL_A_INFO_CNT - 1)
-+};
-+
-+#define ETHTOOL_IM_INFO_DRVINFO			(1U << 0)
-+#define ETHTOOL_IM_INFO_TSINFO			(1U << 1)
-+
-+#define ETHTOOL_IM_INFO_ALL (ETHTOOL_IM_INFO_DRVINFO | \
-+			     ETHTOOL_IM_INFO_TSINFO)
-+
-+enum {
-+	ETHTOOL_A_DRVINFO_UNSPEC,
-+	ETHTOOL_A_DRVINFO_DRIVER,		/* string */
-+	ETHTOOL_A_DRVINFO_FWVERSION,		/* string */
-+	ETHTOOL_A_DRVINFO_BUSINFO,		/* string */
-+	ETHTOOL_A_DRVINFO_EROM_VER,		/* string */
-+
-+	__ETHTOOL_A_DRVINFO_CNT,
-+	ETHTOOL_A_DRVINFO_MAX = (__ETHTOOL_A_DRVINFO_CNT - 1)
-+};
-+
-+enum {
-+	ETHTOOL_A_TSINFO_UNSPEC,
-+	ETHTOOL_A_TSINFO_TIMESTAMPING,		/* bitset */
-+	ETHTOOL_A_TSINFO_PHC_INDEX,		/* u32 */
-+	ETHTOOL_A_TSINFO_TX_TYPES,		/* bitset */
-+	ETHTOOL_A_TSINFO_RX_FILTERS,		/* bitset */
-+
-+	__ETHTOOL_A_TSINFO_CNT,
-+	ETHTOOL_A_TSINFO_MAX = (__ETHTOOL_A_TSINFO_CNT - 1)
 +};
 +
 +/* GET_SETTINGS / SET_SETTINGS */
@@ -1789,6 +1709,48 @@ index 000000000000..d01db2425055
 +
 +	__ETHTOOL_A_FEATURES_CNT,
 +	ETHTOOL_A_FEATURES_MAX = (__ETHTOOL_A_FEATURES_CNT - 1)
++};
++
++/* GET_INFO / SET_INFO */
++
++enum {
++	ETHTOOL_A_INFO_UNSPEC,
++	ETHTOOL_A_INFO_DEV,			/* nest - ETHTOOL_A_DEV_* */
++	ETHTOOL_A_INFO_INFOMASK,		/* u32 */
++	ETHTOOL_A_INFO_COMPACT,			/* flag */
++	ETHTOOL_A_INFO_DRVINFO,			/* nest - ETHTOOL_A_DRVINFO_* */
++	ETHTOOL_A_INFO_TSINFO,			/* nest - ETHTOOL_A_TSINFO_* */
++
++	__ETHTOOL_A_INFO_CNT,
++	ETHTOOL_A_INFO_MAX = (__ETHTOOL_A_INFO_CNT - 1)
++};
++
++#define ETHTOOL_IM_INFO_DRVINFO			(1U << 0)
++#define ETHTOOL_IM_INFO_TSINFO			(1U << 1)
++
++#define ETHTOOL_IM_INFO_ALL (ETHTOOL_IM_INFO_DRVINFO | \
++			     ETHTOOL_IM_INFO_TSINFO)
++
++enum {
++	ETHTOOL_A_DRVINFO_UNSPEC,
++	ETHTOOL_A_DRVINFO_DRIVER,		/* string */
++	ETHTOOL_A_DRVINFO_FWVERSION,		/* string */
++	ETHTOOL_A_DRVINFO_BUSINFO,		/* string */
++	ETHTOOL_A_DRVINFO_EROM_VER,		/* string */
++
++	__ETHTOOL_A_DRVINFO_CNT,
++	ETHTOOL_A_DRVINFO_MAX = (__ETHTOOL_A_DRVINFO_CNT - 1)
++};
++
++enum {
++	ETHTOOL_A_TSINFO_UNSPEC,
++	ETHTOOL_A_TSINFO_TIMESTAMPING,		/* bitset */
++	ETHTOOL_A_TSINFO_PHC_INDEX,		/* u32 */
++	ETHTOOL_A_TSINFO_TX_TYPES,		/* bitset */
++	ETHTOOL_A_TSINFO_RX_FILTERS,		/* bitset */
++
++	__ETHTOOL_A_TSINFO_CNT,
++	ETHTOOL_A_TSINFO_MAX = (__ETHTOOL_A_TSINFO_CNT - 1)
 +};
 +
 +/* GET_PARAMS / SET_PARAMS */

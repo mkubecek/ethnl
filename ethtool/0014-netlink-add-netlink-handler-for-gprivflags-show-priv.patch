@@ -1,4 +1,4 @@
-From 04d02fbe5380d0739f8c8d6ef2a3136e54de9c7a Mon Sep 17 00:00:00 2001
+From cb442f8048b0229bb556fec1cddc0f55e9f310e5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:20:18 +0200
 Subject: [PATCH 14/34] netlink: add netlink handler for gprivflags
@@ -17,10 +17,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 71 insertions(+), 2 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 94dcd8e158dc..a4b93956cb8d 100644
+index 3df59831aa41..2f23f7e6931d 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4977,6 +4977,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4983,6 +4983,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sset		NULL
  #define nl_gfeatures	NULL
  #define nl_sfeatures	NULL
@@ -28,7 +28,7 @@ index 94dcd8e158dc..a4b93956cb8d 100644
  #endif
  
  static const struct option {
-@@ -5136,7 +5137,7 @@ static const struct option {
+@@ -5142,7 +5143,7 @@ static const struct option {
  	  "               [ tx N ]\n"
  	  "               [ other N ]\n"
  	  "               [ combined N ]\n" },
@@ -50,10 +50,10 @@ index d0199cb440f8..ce5fde1ddc35 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 7a9c56c5f072..3f2e3b08009d 100644
+index aa37315df6f6..b738b506554e 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -161,6 +161,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -67,6 +67,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_SETTINGS,
  		.info_mask	= ETHTOOL_IM_SETTINGS_FEATURES,
  	},

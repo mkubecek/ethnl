@@ -1,4 +1,4 @@
-From 8f50273787e86e659c599913a55fdc1782c07e8c Mon Sep 17 00:00:00 2001
+From 445eb921009cdfc7dd69f7b5b36c01e9c85ee67b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:24:40 +0200
 Subject: [PATCH 32/34] netlink: add netlink handler for srxfh (-X)
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 341 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index c67ea0b310c8..5675e08f1c7f 100644
+index 8442dccb92cf..03536ed96ce0 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4995,6 +4995,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5001,6 +5001,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_phys_id	NULL
  #define nl_reset	NULL
  #define nl_grxfh	NULL
@@ -26,7 +26,7 @@ index c67ea0b310c8..5675e08f1c7f 100644
  #endif
  
  static const struct option {
-@@ -5128,7 +5129,7 @@ static const struct option {
+@@ -5134,7 +5135,7 @@ static const struct option {
  	{ "-x|--show-rxfh-indir|--show-rxfh", 1, do_grxfh, nl_grxfh,
  	  "Show Rx flow hash indirection table and/or RSS hash key",
  	  "		[ context %d ]\n" },
@@ -48,10 +48,10 @@ index ef4981ce29c8..952a79e92188 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 7c9dddb95dbd..5874d3aa1bb4 100644
+index 1adeb357bb2b..203364c9aa28 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -100,6 +100,7 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data);
+@@ -10,6 +10,7 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int nwayrst_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int physid_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int reset_reply_cb(const struct nlmsghdr *nlhdr, void *data);
@@ -59,7 +59,7 @@ index 7c9dddb95dbd..5874d3aa1bb4 100644
  
  static struct {
  	uint8_t		cmd;
-@@ -133,6 +134,10 @@ static struct {
+@@ -39,6 +40,10 @@ static struct {
  		.cmd	= ETHNL_CMD_ACT_RESET,
  		.cb	= reset_reply_cb,
  	},
@@ -70,7 +70,7 @@ index 7c9dddb95dbd..5874d3aa1bb4 100644
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -228,6 +233,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -134,6 +139,11 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "--reset",
  		.cmd		= ETHNL_CMD_ACT_RESET,
  	},

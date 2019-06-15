@@ -1,4 +1,4 @@
-From faf13347e6ebfd59ddd8312e0e1b43966f720dbf Mon Sep 17 00:00:00 2001
+From 441f80630aa6a642a1c9951a87cefded6359059e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
 Subject: [PATCH 12/34] netlink: add netlink handler for gfeatures (-k)
@@ -90,7 +90,7 @@ index 37edac765e65..749bf389e9e1 100644
  extern const unsigned int link_modes_count;
  
 diff --git a/ethtool.c b/ethtool.c
-index f1064f882b99..377f4ab175f3 100644
+index cda051423e41..d9c68a295bce 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -102,51 +102,6 @@ struct cmdline_info {
@@ -154,7 +154,7 @@ index f1064f882b99..377f4ab175f3 100644
  	/* Name and offload flag index for each feature */
  	struct feature_def def[0];
  };
-@@ -1400,7 +1355,7 @@ static void dump_features(const struct feature_defs *defs,
+@@ -1406,7 +1361,7 @@ static void dump_features(const struct feature_defs *defs,
  	int indent;
  	int i, j;
  
@@ -163,7 +163,7 @@ index f1064f882b99..377f4ab175f3 100644
  		/* Don't show features whose state is unknown on this
  		 * kernel version
  		 */
-@@ -1676,7 +1631,7 @@ static struct feature_defs *get_feature_defs(struct cmd_context *ctx)
+@@ -1682,7 +1637,7 @@ static struct feature_defs *get_feature_defs(struct cmd_context *ctx)
  		defs->def[i].off_flag_index = -1;
  
  		for (j = 0;
@@ -172,7 +172,7 @@ index f1064f882b99..377f4ab175f3 100644
  			     defs->def[i].off_flag_index < 0;
  		     j++) {
  			const char *pattern =
-@@ -2124,7 +2079,7 @@ get_features(struct cmd_context *ctx, const struct feature_defs *defs)
+@@ -2130,7 +2085,7 @@ get_features(struct cmd_context *ctx, const struct feature_defs *defs)
  
  	state->off_flags = 0;
  
@@ -181,7 +181,7 @@ index f1064f882b99..377f4ab175f3 100644
  		value = off_flag_def[i].value;
  		if (!off_flag_def[i].get_cmd)
  			continue;
-@@ -2240,14 +2195,14 @@ static int do_sfeatures(struct cmd_context *ctx)
+@@ -2246,14 +2201,14 @@ static int do_sfeatures(struct cmd_context *ctx)
  	/* Generate cmdline_info for legacy flags and kernel-named
  	 * features, and parse our arguments.
  	 */
@@ -198,7 +198,7 @@ index f1064f882b99..377f4ab175f3 100644
  		flag_to_cmdline_info(off_flag_def[i].short_name,
  				     off_flag_def[i].value,
  				     &off_flags_wanted, &off_flags_mask,
-@@ -2257,9 +2212,9 @@ static int do_sfeatures(struct cmd_context *ctx)
+@@ -2263,9 +2218,9 @@ static int do_sfeatures(struct cmd_context *ctx)
  			defs->def[i].name, FEATURE_FIELD_FLAG(i),
  			&FEATURE_WORD(efeatures->features, i, requested),
  			&FEATURE_WORD(efeatures->features, i, valid),
@@ -210,7 +210,7 @@ index f1064f882b99..377f4ab175f3 100644
  	free(cmdline_features);
  
  	if (!any_changed) {
-@@ -2279,7 +2234,7 @@ static int do_sfeatures(struct cmd_context *ctx)
+@@ -2285,7 +2240,7 @@ static int do_sfeatures(struct cmd_context *ctx)
  		 * related features that the user did not specify and that
  		 * are not fixed.  Warn if all related features are fixed.
  		 */
@@ -219,7 +219,7 @@ index f1064f882b99..377f4ab175f3 100644
  			int fixed = 1;
  
  			if (!(off_flags_mask & off_flag_def[i].value))
-@@ -2320,7 +2275,7 @@ static int do_sfeatures(struct cmd_context *ctx)
+@@ -2326,7 +2281,7 @@ static int do_sfeatures(struct cmd_context *ctx)
  			goto err;
  		}
  	} else {
@@ -228,7 +228,7 @@ index f1064f882b99..377f4ab175f3 100644
  			if (!off_flag_def[i].set_cmd)
  				continue;
  			if (off_flags_mask & off_flag_def[i].value) {
-@@ -5020,6 +4975,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5026,6 +4981,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_tsinfo	NULL
  #define nl_gset		NULL
  #define nl_sset		NULL
@@ -236,7 +236,7 @@ index f1064f882b99..377f4ab175f3 100644
  #endif
  
  static const struct option {
-@@ -5084,7 +5040,7 @@ static const struct option {
+@@ -5090,7 +5046,7 @@ static const struct option {
  	  "		[ rx-mini N ]\n"
  	  "		[ rx-jumbo N ]\n"
  	  "		[ tx N ]\n" },
@@ -258,10 +258,10 @@ index 4f9e60c2fca8..f4bbb0b456ef 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index b4587c238b11..7a9c56c5f072 100644
+index 71aac3256698..aa37315df6f6 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -155,6 +155,12 @@ static struct monitor_option monitor_opts[] = {
+@@ -61,6 +61,12 @@ static struct monitor_option monitor_opts[] = {
  				  ETHTOOL_IM_SETTINGS_DEBUG |
  				  ETHTOOL_IM_SETTINGS_WOL,
  	},

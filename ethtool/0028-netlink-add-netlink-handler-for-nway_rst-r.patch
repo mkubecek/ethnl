@@ -1,4 +1,4 @@
-From 724e69ab3bf141a8249f9f35eb24a8fcc387f278 Mon Sep 17 00:00:00 2001
+From 729443ef08c09a97ca1dfe376b3daa27d1c6847b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:29:46 +0200
 Subject: [PATCH 28/34] netlink: add netlink handler for nway_rst (-r)
@@ -29,10 +29,10 @@ index bb361b27a4b5..c7569e17354c 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index fd66f2f5d7af..17953151e5ab 100644
+index d5640de83f6c..6cb67d88983f 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4991,6 +4991,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4997,6 +4997,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_schannels	NULL
  #define nl_seee		NULL
  #define nl_sfec		NULL
@@ -40,7 +40,7 @@ index fd66f2f5d7af..17953151e5ab 100644
  #endif
  
  static const struct option {
-@@ -5077,7 +5078,7 @@ static const struct option {
+@@ -5083,7 +5084,7 @@ static const struct option {
  	  "		[ offset N ]\n"
  	  "		[ length N ]\n"
  	  "		[ value N ]\n" },
@@ -122,10 +122,10 @@ index 40715beaf07f..b301964a5cf8 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 869c4adf5bf7..5148e3f5d2be 100644
+index 3cfc0a44c465..7d4fb57d991f 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -97,6 +97,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -7,6 +7,7 @@
  int info_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int params_reply_cb(const struct nlmsghdr *nlhdr, void *data);
@@ -133,7 +133,7 @@ index 869c4adf5bf7..5148e3f5d2be 100644
  
  static struct {
  	uint8_t		cmd;
-@@ -118,6 +119,10 @@ static struct {
+@@ -24,6 +25,10 @@ static struct {
  		.cmd	= ETHNL_CMD_SET_PARAMS,
  		.cb	= params_reply_cb,
  	},
@@ -144,7 +144,7 @@ index 869c4adf5bf7..5148e3f5d2be 100644
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -201,6 +206,10 @@ static struct monitor_option monitor_opts[] = {
+@@ -107,6 +112,10 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
  		.info_mask	= ETHTOOL_IM_PARAMS_FEC,
  	},

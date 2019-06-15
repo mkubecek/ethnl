@@ -1,4 +1,4 @@
-From d0d5a163f29444716d269d095c1b2723466c83dc Mon Sep 17 00:00:00 2001
+From 957285b2800de6b950356695624b82128621335c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 08:43:44 +0200
 Subject: [PATCH 30/34] netlink: add netlink handler for reset (--reset)
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 258 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index a50523b98752..0e21ff6ed573 100644
+index c057c444a91d..f2075a6d98b2 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4993,6 +4993,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4999,6 +4999,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sfec		NULL
  #define nl_nway_rst	NULL
  #define nl_phys_id	NULL
@@ -26,7 +26,7 @@ index a50523b98752..0e21ff6ed573 100644
  #endif
  
  static const struct option {
-@@ -5179,7 +5180,7 @@ static const struct option {
+@@ -5185,7 +5186,7 @@ static const struct option {
  	  "Get PHY tunable",
  	  "		[ downshift ]\n"
  	  "		[ fast-link-down ]\n"},
@@ -309,10 +309,10 @@ index c8c621ce6c21..57f2267da967 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 52a14e46960a..7c9dddb95dbd 100644
+index bb5bb0a2607d..1adeb357bb2b 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -99,6 +99,7 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);
+@@ -9,6 +9,7 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int params_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int nwayrst_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int physid_reply_cb(const struct nlmsghdr *nlhdr, void *data);
@@ -320,7 +320,7 @@ index 52a14e46960a..7c9dddb95dbd 100644
  
  static struct {
  	uint8_t		cmd;
-@@ -128,6 +129,10 @@ static struct {
+@@ -34,6 +35,10 @@ static struct {
  		.cmd	= ETHNL_CMD_ACT_PHYS_ID,
  		.cb	= physid_reply_cb,
  	},
@@ -331,7 +331,7 @@ index 52a14e46960a..7c9dddb95dbd 100644
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -219,6 +224,10 @@ static struct monitor_option monitor_opts[] = {
+@@ -125,6 +130,10 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "-p|--identify",
  		.cmd		= ETHNL_CMD_ACT_PHYS_ID,
  	},

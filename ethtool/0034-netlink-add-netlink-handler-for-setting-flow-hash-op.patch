@@ -1,4 +1,4 @@
-From 9546c162a044b8a5392bea4060d1635c2e07ad06 Mon Sep 17 00:00:00 2001
+From 87875d713c4db4c1ef45b37a1307c138a4ee577b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 2 Nov 2018 19:41:56 +0100
 Subject: [PATCH 34/34] netlink: add netlink handler for setting flow hash
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 115 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 85e632a0d4ef..60de86648551 100644
+index a63be354ddfa..5ad1b6fc8a71 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4997,6 +4997,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5003,6 +5003,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_grxfh	NULL
  #define nl_srxfh	NULL
  #define nl_grxclass	NULL
@@ -26,7 +26,7 @@ index 85e632a0d4ef..60de86648551 100644
  #endif
  
  static const struct option {
-@@ -5100,7 +5101,7 @@ static const struct option {
+@@ -5106,7 +5107,7 @@ static const struct option {
  	  "		[ rx-flow-hash tcp4|udp4|ah4|esp4|sctp4|"
  	  "tcp6|udp6|ah6|esp6|sctp6 [context %d] |\n"
  	  "		  rule %d ]\n" },

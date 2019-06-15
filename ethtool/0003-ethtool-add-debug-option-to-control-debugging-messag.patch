@@ -1,4 +1,4 @@
-From 120458ef76134f48bf1fca7838d2f596f3135379 Mon Sep 17 00:00:00 2001
+From 9ecf07e18b1372c7633adeb07751dad63e1def91 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Aug 2018 18:06:30 +0200
 Subject: [PATCH 03/34] ethtool: add --debug option to control debugging
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 22 insertions(+), 2 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 66a907edd97b..64ae72bf571a 100644
+index 05fe05a080cd..c6b6d78b8109 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -5391,10 +5391,10 @@ static int show_usage(struct cmd_context *ctx)
+@@ -5397,10 +5397,10 @@ static int show_usage(struct cmd_context *ctx)
  	fprintf(stdout, PACKAGE " version " VERSION "\n");
  	fprintf(stdout,
  		"Usage:\n"
@@ -31,7 +31,7 @@ index 66a907edd97b..64ae72bf571a 100644
  		fprintf(stdout, "%s %s\t%s\n",
  			args[i].opts,
  			args[i].want_device ? "DEVNAME" : "\t",
-@@ -5611,6 +5611,20 @@ int main(int argc, char **argp)
+@@ -5617,6 +5617,20 @@ int main(int argc, char **argp)
  	argp++;
  	argc--;
  

@@ -1,4 +1,4 @@
-From 7825acee90e732e6c761de54fab3832414baf986 Mon Sep 17 00:00:00 2001
+From 99e83dbedb9ee4e74c71c73e1495e737b117849d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 09/34] netlink: add netlink handler for gset (no option)
@@ -395,7 +395,7 @@ index 7c08ec2d7c2f..37edac765e65 100644
 +
  #endif /* ETHTOOL_COMMON_H__ */
 diff --git a/ethtool.c b/ethtool.c
-index 5d2dc068e5c3..a206ecb31981 100644
+index 9bd170b576f5..7709448985ae 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -57,26 +57,6 @@
@@ -482,7 +482,7 @@ index 5d2dc068e5c3..a206ecb31981 100644
  static int rxflow_str_to_type(const char *str)
  {
  	int flow_type = 0;
-@@ -899,31 +836,9 @@ dump_link_usettings(const struct ethtool_link_usettings *link_usettings)
+@@ -905,31 +842,9 @@ dump_link_usettings(const struct ethtool_link_usettings *link_usettings)
  		(link_usettings->base.autoneg == AUTONEG_DISABLE) ?
  		"off" : "on");
  
@@ -517,7 +517,7 @@ index 5d2dc068e5c3..a206ecb31981 100644
  
  	return 0;
  }
-@@ -995,58 +910,6 @@ static int parse_wolopts(char *optstr, u32 *data)
+@@ -1001,58 +916,6 @@ static int parse_wolopts(char *optstr, u32 *data)
  	return 0;
  }
  
@@ -576,7 +576,7 @@ index 5d2dc068e5c3..a206ecb31981 100644
  static int parse_rxfhashopts(char *optstr, u32 *data)
  {
  	*data = 0;
-@@ -2783,8 +2646,7 @@ static int do_gset(struct cmd_context *ctx)
+@@ -2789,8 +2652,7 @@ static int do_gset(struct cmd_context *ctx)
  		fprintf(stdout, "	Current message level: 0x%08x (%d)\n"
  			"			       ",
  			edata.data, edata.data);
@@ -586,7 +586,7 @@ index 5d2dc068e5c3..a206ecb31981 100644
  		fprintf(stdout, "\n");
  		allfail = 0;
  	} else if (errno != EOPNOTSUPP) {
-@@ -2830,13 +2692,13 @@ static int do_sset(struct cmd_context *ctx)
+@@ -2836,13 +2698,13 @@ static int do_sset(struct cmd_context *ctx)
  	int msglvl_changed = 0;
  	u32 msglvl_wanted = 0;
  	u32 msglvl_mask = 0;
@@ -602,7 +602,7 @@ index 5d2dc068e5c3..a206ecb31981 100644
  		flag_to_cmdline_info(flags_msglvl[i].name,
  				     flags_msglvl[i].value,
  				     &msglvl_wanted, &msglvl_mask,
-@@ -5156,6 +5018,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5162,6 +5024,7 @@ static int show_usage(struct cmd_context *ctx);
   */
  #define nl_gdrv		NULL
  #define nl_tsinfo	NULL
@@ -610,7 +610,7 @@ index 5d2dc068e5c3..a206ecb31981 100644
  #endif
  
  static const struct option {
-@@ -5682,6 +5545,7 @@ int main(int argc, char **argp)
+@@ -5688,6 +5551,7 @@ int main(int argc, char **argp)
  	}
  	if ((*argp)[0] == '-')
  		exit_bad_args();
@@ -631,18 +631,18 @@ index 9e9dfa11aead..5500835372b3 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 3b5f9475c6e4..b4587c238b11 100644
+index ed9881468fa1..71aac3256698 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -95,6 +95,7 @@ static int monitor_event_cb(const struct nlmsghdr *nlhdr, void *data)
- }
+@@ -5,6 +5,7 @@
+ #include "strset.h"
  
  int info_reply_cb(const struct nlmsghdr *nlhdr, void *data);
 +int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  
  static struct {
  	uint8_t		cmd;
-@@ -108,6 +109,10 @@ static struct {
+@@ -14,6 +15,10 @@ static struct {
  		.cmd	= ETHNL_CMD_SET_INFO,
  		.cb	= info_reply_cb,
  	},
@@ -653,7 +653,7 @@ index 3b5f9475c6e4..b4587c238b11 100644
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -141,6 +146,15 @@ static struct monitor_option monitor_opts[] = {
+@@ -47,6 +52,15 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "-i|--driver",
  		.cmd		= ETHNL_CMD_SET_INFO,
  	},
@@ -670,7 +670,7 @@ index 3b5f9475c6e4..b4587c238b11 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 0eecbf3a5e75..cd4a8bad0e44 100644
+index 91fd65e2d1e4..b51db1bd3cb0 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -4,8 +4,10 @@
@@ -684,7 +684,7 @@ index 0eecbf3a5e75..cd4a8bad0e44 100644
  
  /* misc helpers */
  
-@@ -547,6 +549,124 @@ int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname)
+@@ -546,6 +548,124 @@ int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname)
  	return 0;
  }
  

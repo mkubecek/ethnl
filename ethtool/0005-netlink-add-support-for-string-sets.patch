@@ -1,4 +1,4 @@
-From 223bb75f5d586024ea27a7f89f5a493b45cd5721 Mon Sep 17 00:00:00 2001
+From af4cbbecec42f1ebac45f13959c841ed2e60f4ad Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 14:09:19 +0200
 Subject: [PATCH 05/34] netlink: add support for string sets
@@ -33,7 +33,7 @@ index 140769d20e4c..1e07f5d742e3 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index cc3f9b99883d..c6f73a1e129d 100644
+index ab2811052f42..fab6af6fd74f 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -162,7 +162,7 @@ err:

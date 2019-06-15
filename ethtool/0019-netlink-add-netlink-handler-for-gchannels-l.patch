@@ -1,4 +1,4 @@
-From 557f261e694d5e76ebf603a8d5ea7d5c13de775c Mon Sep 17 00:00:00 2001
+From 0bea745c00163ab06316f644cb93774a38921ea1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:05:40 +0100
 Subject: [PATCH 19/34] netlink: add netlink handler for gchannels (-l)
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 50 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index 9aaeab924ebf..ebdc6a0cd318 100644
+index 40a6689ca45b..0a1d57331da0 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4982,6 +4982,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4988,6 +4988,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_gcoalesce	NULL
  #define nl_gring	NULL
  #define nl_gpause	NULL
@@ -26,7 +26,7 @@ index 9aaeab924ebf..ebdc6a0cd318 100644
  #endif
  
  static const struct option {
-@@ -5133,7 +5134,7 @@ static const struct option {
+@@ -5139,7 +5140,7 @@ static const struct option {
  	{ "-W|--set-dump", 1, do_setfwdump, NULL,
  	  "Set dump flag of the device",
  	  "		N\n"},
@@ -48,10 +48,10 @@ index 24d19dde5fc3..2ca01fb4c9ea 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 77358968d7e9..08bc96fc91e6 100644
+index 96f3979dcaf0..ef59b0f0bf30 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -186,6 +186,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -92,6 +92,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
  		.info_mask	= ETHTOOL_IM_PARAMS_PAUSE,
  	},

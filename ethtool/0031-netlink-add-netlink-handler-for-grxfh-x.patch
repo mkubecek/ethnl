@@ -1,4 +1,4 @@
-From 87480a8fbfc79d3dac0de5bf1b960eda3d16644a Mon Sep 17 00:00:00 2001
+From 7ad85da6c0df62f6f57730c313e5fa249dfcb577 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:46:58 +0200
 Subject: [PATCH 31/34] netlink: add netlink handler for grxfh (-x)
@@ -29,10 +29,10 @@ index c7569e17354c..aa03e4a81011 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index 0e21ff6ed573..c67ea0b310c8 100644
+index f2075a6d98b2..8442dccb92cf 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4994,6 +4994,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -5000,6 +5000,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_nway_rst	NULL
  #define nl_phys_id	NULL
  #define nl_reset	NULL
@@ -40,7 +40,7 @@ index 0e21ff6ed573..c67ea0b310c8 100644
  #endif
  
  static const struct option {
-@@ -5124,7 +5125,7 @@ static const struct option {
+@@ -5130,7 +5131,7 @@ static const struct option {
  	  "		delete %d\n" },
  	{ "-T|--show-time-stamping", 1, do_tsinfo, nl_tsinfo,
  	  "Show time stamping capabilities" },

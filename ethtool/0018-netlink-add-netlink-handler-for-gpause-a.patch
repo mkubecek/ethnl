@@ -1,4 +1,4 @@
-From b1031dccfa80a97c58f7ffca5dc7cf56059c5f3a Mon Sep 17 00:00:00 2001
+From cac187d13086f68e2c5d1a2b2f969aaa0823e37c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:04:09 +0100
 Subject: [PATCH 18/34] netlink: add netlink handler for gpause (-a)
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 44 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
-index efe80db1df18..9aaeab924ebf 100644
+index 125e59c2a601..40a6689ca45b 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -4981,6 +4981,7 @@ static int show_usage(struct cmd_context *ctx);
+@@ -4987,6 +4987,7 @@ static int show_usage(struct cmd_context *ctx);
  #define nl_sprivflags	NULL
  #define nl_gcoalesce	NULL
  #define nl_gring	NULL
@@ -26,7 +26,7 @@ index efe80db1df18..9aaeab924ebf 100644
  #endif
  
  static const struct option {
-@@ -5004,7 +5005,7 @@ static const struct option {
+@@ -5010,7 +5011,7 @@ static const struct option {
  	  "		[ wol %d[/%d] |  p|u|m|b|a|g|s|f|d...[/p|u|m|b|a|g|s|f|d...] ]\n"
  	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
  	  "		[ msglvl %d[/%d] | type on|off ... [--] ]\n" },
@@ -48,10 +48,10 @@ index deba845b52ae..24d19dde5fc3 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 966ec621fe29..77358968d7e9 100644
+index 5be1f46aedf1..96f3979dcaf0 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -181,6 +181,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -87,6 +87,11 @@ static struct monitor_option monitor_opts[] = {
  		.cmd		= ETHNL_CMD_SET_PARAMS,
  		.info_mask	= ETHTOOL_IM_PARAMS_RING,
  	},
