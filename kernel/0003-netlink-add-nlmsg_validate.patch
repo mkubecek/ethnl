@@ -1,7 +1,7 @@
-From 901e425c7a3282a066a0c2a5897b4a55ef94854b Mon Sep 17 00:00:00 2001
+From 20421817f3ee704dbd14924f43e73744176bf0aa Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 28 Apr 2019 02:25:01 +0200
-Subject: [PATCH 03/44] netlink: add nlmsg_validate()
+Subject: [PATCH 03/43] netlink: add nlmsg_validate()
 
 Add nlmsg_validate() helper which validates all attributes in a netlink
 message but unlike nlmsg_validate_deprecated(), it does so in strict mode.
@@ -15,7 +15,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  1 file changed, 32 insertions(+)
 
 diff --git a/include/net/netlink.h b/include/net/netlink.h
-index adab9602d13e..aacff662dbb5 100644
+index 1894e988003c..38adb82bdf2d 100644
 --- a/include/net/netlink.h
 +++ b/include/net/netlink.h
 @@ -793,6 +793,12 @@ static inline int nla_validate(const struct nlattr *head, int len, int maxtype,
