@@ -1,4 +1,4 @@
-From af4cbbecec42f1ebac45f13959c841ed2e60f4ad Mon Sep 17 00:00:00 2001
+From 04aaa25e29c0633ad71a491871765829819e5a91 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 14:09:19 +0200
 Subject: [PATCH 05/34] netlink: add support for string sets
@@ -14,9 +14,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Makefile.am       |   1 +
  netlink/netlink.c |   3 +-
  netlink/netlink.h |   4 +-
- netlink/strset.c  | 311 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/strset.c  | 312 ++++++++++++++++++++++++++++++++++++++++++++++
  netlink/strset.h  |  18 +++
- 5 files changed, 334 insertions(+), 3 deletions(-)
+ 5 files changed, 335 insertions(+), 3 deletions(-)
  create mode 100644 netlink/strset.c
  create mode 100644 netlink/strset.h
 
@@ -33,7 +33,7 @@ index 140769d20e4c..1e07f5d742e3 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index ab2811052f42..fab6af6fd74f 100644
+index f5b467ca121f..8ea550f39320 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -162,7 +162,7 @@ err:
@@ -77,10 +77,10 @@ index c8cd4cb9d35f..fa61a6bcf6a3 100644
  int msg_init(struct nl_context *nlctx, int cmd, unsigned int flags);
 diff --git a/netlink/strset.c b/netlink/strset.c
 new file mode 100644
-index 000000000000..57fb3e358920
+index 000000000000..25ad17ee0dce
 --- /dev/null
 +++ b/netlink/strset.c
-@@ -0,0 +1,311 @@
+@@ -0,0 +1,312 @@
 +#include <errno.h>
 +#include <string.h>
 +
@@ -312,7 +312,8 @@ index 000000000000..57fb3e358920
 +{
 +	int ret;
 +
-+	ret = msg_init(nlctx, ETHNL_CMD_GET_STRSET, NLM_F_REQUEST | NLM_F_ACK);
++	ret = msg_init(nlctx, ETHTOOL_MSG_STRSET_GET,
++		       NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return ret;
 +	ret = ethnl_send_get_request(nlctx, strset_reply_cb);
@@ -323,7 +324,7 @@ index 000000000000..57fb3e358920
 +{
 +	int ret;
 +
-+	ret = msg_init(nlctx, ETHNL_CMD_GET_STRSET,
++	ret = msg_init(nlctx, ETHTOOL_MSG_STRSET_GET,
 +		       NLM_F_REQUEST | NLM_F_ACK | (dev ? 0 : NLM_F_DUMP));
 +	if (ret < 0)
 +		return ret;
@@ -417,5 +418,5 @@ index 000000000000..1fd75ebd351b
 +
 +#endif /* ETHTOOL_NETLINK_STRSET_H__ */
 -- 
-2.21.0
+2.22.0
 

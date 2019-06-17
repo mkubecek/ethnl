@@ -1,10 +1,10 @@
-From 72abe38035e9c83392ab57d764f982a59fa360b8 Mon Sep 17 00:00:00 2001
+From a59186f70873fc2bcc8af10fc2beda244d5d3d5c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 11/34] netlink: add netlink handler for sset (-s)
 
 Implement "ethtool -s <dev>" subcommand using netlink interface command
-ETHNL_CMD_SET_SETTINGS.
+ETHTOOL_MSG_SETTINGS_SET.
 
 Add specific parsers for wol modes and MAC address (used for wake-on-lan
 password here).
@@ -69,10 +69,10 @@ index 5500835372b3..4f9e60c2fca8 100644
  
  void monitor_usage();
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index b51db1bd3cb0..5ae3586d6757 100644
+index 724e2bbca07b..73340b10442c 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -779,6 +779,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
+@@ -799,6 +799,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
  	return 0;
  }
  
@@ -161,7 +161,7 @@ index c654d55d46f6..59f88145a61d 100644
  int nl_parser(struct nl_context *nlctx, const struct param_parser *params,
  	      void *dest);
 diff --git a/netlink/settings.c b/netlink/settings.c
-index c09ab026fe6b..18cefc488d26 100644
+index e2b29a080860..7afa75dda605 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -6,6 +6,7 @@
@@ -327,7 +327,7 @@ index c09ab026fe6b..18cefc488d26 100644
 +	nlctx->cmd = "-s";
 +	nlctx->argp = ctx->argp;
 +	nlctx->argc = ctx->argc;
-+	ret = msg_init(nlctx, ETHNL_CMD_SET_SETTINGS,
++	ret = msg_init(nlctx, ETHTOOL_MSG_SETTINGS_SET,
 +		       NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return 2;
@@ -347,5 +347,5 @@ index c09ab026fe6b..18cefc488d26 100644
 +	return nlctx->exit_code ?: 75;
 +}
 -- 
-2.21.0
+2.22.0
 

@@ -1,10 +1,10 @@
-From 957285b2800de6b950356695624b82128621335c Mon Sep 17 00:00:00 2001
+From a9ec3d0f1c588655ddb696420d40f6b577139bf7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 08:43:44 +0200
 Subject: [PATCH 30/34] netlink: add netlink handler for reset (--reset)
 
 Implement "ethtool --reset <dev>" using netlink interface command
-ETHNL_CMD_ACT_RESET.
+ETHTOOL_MSG_RESET_ACT.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -36,7 +36,7 @@ index c057c444a91d..f2075a6d98b2 100644
  	  "		[ flags %x ]\n"
  	  "		[ mgmt ]\n"
 diff --git a/netlink/actions.c b/netlink/actions.c
-index fe77a23d808f..73d0652b229d 100644
+index 1208527159d5..a5dc4c8daade 100644
 --- a/netlink/actions.c
 +++ b/netlink/actions.c
 @@ -6,6 +6,7 @@
@@ -277,7 +277,7 @@ index fe77a23d808f..73d0652b229d 100644
 +	nlctx->argp = ctx->argp;
 +	nlctx->argc = ctx->argc;
 +
-+	ret = msg_init(nlctx, ETHNL_CMD_ACT_RESET, NLM_F_REQUEST | NLM_F_ACK);
++	ret = msg_init(nlctx, ETHTOOL_MSG_RESET_ACT, NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return -EFAULT;
 +	if (ethnla_put_dev(nlctx, ETHTOOL_A_RESET_DEV, ctx->devname) ||
@@ -309,10 +309,10 @@ index c8c621ce6c21..57f2267da967 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index bb5bb0a2607d..1adeb357bb2b 100644
+index 67c66786d2d6..c322415e7345 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -9,6 +9,7 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);
+@@ -8,6 +8,7 @@ int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int params_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int nwayrst_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int physid_reply_cb(const struct nlmsghdr *nlhdr, void *data);
@@ -320,28 +320,28 @@ index bb5bb0a2607d..1adeb357bb2b 100644
  
  static struct {
  	uint8_t		cmd;
-@@ -34,6 +35,10 @@ static struct {
- 		.cmd	= ETHNL_CMD_ACT_PHYS_ID,
+@@ -29,6 +30,10 @@ static struct {
+ 		.cmd	= ETHTOOL_MSG_PHYSID_NTF,
  		.cb	= physid_reply_cb,
  	},
 +	{
-+		.cmd	= ETHNL_CMD_ACT_RESET,
++		.cmd	= ETHTOOL_MSG_RESET_NTF,
 +		.cb	= reset_reply_cb,
 +	},
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -125,6 +130,10 @@ static struct monitor_option monitor_opts[] = {
+@@ -116,6 +121,10 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "-p|--identify",
- 		.cmd		= ETHNL_CMD_ACT_PHYS_ID,
+ 		.cmd		= ETHTOOL_MSG_PHYSID_NTF,
  	},
 +	{
 +		.pattern	= "--reset",
-+		.cmd		= ETHNL_CMD_ACT_RESET,
++		.cmd		= ETHTOOL_MSG_RESET_NTF,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 -- 
-2.21.0
+2.22.0
 

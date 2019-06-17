@@ -1,10 +1,10 @@
-From 99e83dbedb9ee4e74c71c73e1495e737b117849d Mon Sep 17 00:00:00 2001
+From 3eb63723ef9ad0c8ddf966bcd8744e1b2678cdca Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 09/34] netlink: add netlink handler for gset (no option)
 
 Implement "ethtool <dev>" subcommand using netlink interface command
-ETHNL_CMD_GET_SETTINGS.
+ETHTOOL_MSG_SETTINGS_GET.
 
 Move some output helpers used by both ioctl() and netlink from ethtool.c
 into new file common.c.
@@ -16,11 +16,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  common.h           |  56 +++++++
  ethtool.c          | 152 +-----------------
  netlink/extapi.h   |   1 +
- netlink/monitor.c  |  14 ++
+ netlink/monitor.c  |  15 ++
  netlink/netlink.c  | 120 ++++++++++++++
  netlink/netlink.h  |   4 +
  netlink/settings.c | 393 +++++++++++++++++++++++++++++++++++++++++++++
- 9 files changed, 882 insertions(+), 145 deletions(-)
+ 9 files changed, 883 insertions(+), 145 deletions(-)
  create mode 100644 netlink/settings.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -631,35 +631,33 @@ index 9e9dfa11aead..5500835372b3 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index ed9881468fa1..71aac3256698 100644
+index bc906df8fe32..0e422c2074db 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -5,6 +5,7 @@
+@@ -4,10 +4,16 @@
+ #include "netlink.h"
  #include "strset.h"
  
- int info_reply_cb(const struct nlmsghdr *nlhdr, void *data);
 +int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);
- 
++
  static struct {
  	uint8_t		cmd;
-@@ -14,6 +15,10 @@ static struct {
- 		.cmd	= ETHNL_CMD_SET_INFO,
- 		.cb	= info_reply_cb,
- 	},
+ 	mnl_cb_t	cb;
+ } monitor_callbacks[] = {
 +	{
-+		.cmd	= ETHNL_CMD_SET_SETTINGS,
++		.cmd	= ETHTOOL_MSG_SETTINGS_NTF,
 +		.cb	= settings_reply_cb,
 +	},
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -47,6 +52,15 @@ static struct monitor_option monitor_opts[] = {
- 		.pattern	= "-i|--driver",
- 		.cmd		= ETHNL_CMD_SET_INFO,
+@@ -37,6 +43,15 @@ static struct monitor_option monitor_opts[] = {
+ 		.pattern	= "|--all",
+ 		.cmd		= 0,
  	},
 +	{
 +		.pattern	= "-s|--change",
-+		.cmd		= ETHNL_CMD_SET_SETTINGS,
++		.cmd		= ETHTOOL_MSG_SETTINGS_NTF,
 +		.info_mask	= ETHTOOL_IM_SETTINGS_LINKINFO |
 +				  ETHTOOL_IM_SETTINGS_LINKMODES |
 +				  ETHTOOL_IM_SETTINGS_LINKSTATE |
@@ -670,7 +668,7 @@ index ed9881468fa1..71aac3256698 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 91fd65e2d1e4..b51db1bd3cb0 100644
+index 8d819a660d56..724e2bbca07b 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -4,8 +4,10 @@
@@ -684,7 +682,7 @@ index 91fd65e2d1e4..b51db1bd3cb0 100644
  
  /* misc helpers */
  
-@@ -546,6 +548,124 @@ int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname)
+@@ -566,6 +568,124 @@ int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname)
  	return 0;
  }
  
@@ -826,7 +824,7 @@ index 601437acc8e4..b911ed77fd20 100644
  int attr_cb(const struct nlattr *attr, void *data);
 diff --git a/netlink/settings.c b/netlink/settings.c
 new file mode 100644
-index 000000000000..c09ab026fe6b
+index 000000000000..e2b29a080860
 --- /dev/null
 +++ b/netlink/settings.c
 @@ -0,0 +1,393 @@
@@ -1202,7 +1200,7 @@ index 000000000000..c09ab026fe6b
 +	if (compact)
 +		load_global_strings(nlctx);
 +
-+	ret = ethnl_prep_get_request(ctx, ETHNL_CMD_GET_SETTINGS,
++	ret = ethnl_prep_get_request(ctx, ETHTOOL_MSG_SETTINGS_GET,
 +				     ETHTOOL_A_SETTINGS_DEV);
 +	if (ret < 0)
 +		return ret;
@@ -1224,5 +1222,5 @@ index 000000000000..c09ab026fe6b
 +	return (ret < 0) ? 75 : 0;
 +}
 -- 
-2.21.0
+2.22.0
 

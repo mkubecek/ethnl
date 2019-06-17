@@ -1,10 +1,10 @@
-From 2de6c0b5e662822db2cd2ec0a79233d661fb8516 Mon Sep 17 00:00:00 2001
+From 6b76bb1e8fd5aff36f8d08f19ce8e8c9101cd3f1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 16:43:40 +0200
 Subject: [PATCH 29/34] netlink: add netlink handler for phys_id (-p)
 
 Implement "ethtool -p <dev>" using netlink interface command
-ETHNL_CMD_ACT_PHYS_ID.
+ETHTOOL_MSG_PHYSID_ACT.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -36,7 +36,7 @@ index 6cb67d88983f..c057c444a91d 100644
  	  "               [ TIME-IN-SECONDS ]\n" },
  	{ "-t|--test", 1, do_test, NULL,
 diff --git a/netlink/actions.c b/netlink/actions.c
-index fdbe6109cfab..fe77a23d808f 100644
+index e4b83cf8c649..1208527159d5 100644
 --- a/netlink/actions.c
 +++ b/netlink/actions.c
 @@ -52,3 +52,82 @@ int nl_nway_rst(struct cmd_context *ctx)
@@ -103,7 +103,7 @@ index fdbe6109cfab..fe77a23d808f 100644
 +		nlctx->argc--;
 +	}
 +
-+	ret = msg_init(nlctx, ETHNL_CMD_ACT_PHYS_ID,
++	ret = msg_init(nlctx, ETHTOOL_MSG_PHYSID_ACT,
 +		       NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return -EFAULT;
@@ -135,10 +135,10 @@ index b301964a5cf8..c8c621ce6c21 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 7d4fb57d991f..bb5bb0a2607d 100644
+index 585abe2868a0..67c66786d2d6 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -8,6 +8,7 @@ int info_reply_cb(const struct nlmsghdr *nlhdr, void *data);
+@@ -7,6 +7,7 @@
  int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int params_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int nwayrst_reply_cb(const struct nlmsghdr *nlhdr, void *data);
@@ -146,28 +146,28 @@ index 7d4fb57d991f..bb5bb0a2607d 100644
  
  static struct {
  	uint8_t		cmd;
-@@ -29,6 +30,10 @@ static struct {
- 		.cmd	= ETHNL_CMD_ACT_NWAY_RST,
+@@ -24,6 +25,10 @@ static struct {
+ 		.cmd	= ETHTOOL_MSG_NWAYRST_NTF,
  		.cb	= nwayrst_reply_cb,
  	},
 +	{
-+		.cmd	= ETHNL_CMD_ACT_PHYS_ID,
++		.cmd	= ETHTOOL_MSG_PHYSID_NTF,
 +		.cb	= physid_reply_cb,
 +	},
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -116,6 +121,10 @@ static struct monitor_option monitor_opts[] = {
+@@ -107,6 +112,10 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "-r|--negotiate",
- 		.cmd		= ETHNL_CMD_ACT_NWAY_RST,
+ 		.cmd		= ETHTOOL_MSG_NWAYRST_NTF,
  	},
 +	{
 +		.pattern	= "-p|--identify",
-+		.cmd		= ETHNL_CMD_ACT_PHYS_ID,
++		.cmd		= ETHTOOL_MSG_PHYSID_NTF,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 -- 
-2.21.0
+2.22.0
 

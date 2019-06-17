@@ -1,17 +1,17 @@
-From e76a5530b0fe526d162544b871916c7affc0f387 Mon Sep 17 00:00:00 2001
+From abb246d98b81b35a736466bbb97af5543671430c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 07:27:00 +0100
 Subject: [PATCH 22/34] netlink: add netlink handler for scoalesce (-C)
 
 Implement "ethtool -C <dev>" subcommand using netlink interface command
-ETHNL_CMD_SET_PARAMS.
+ETHTOOL_MSG_PARAMS_SET.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c        |   3 +-
  netlink/extapi.h |   1 +
- netlink/params.c | 181 +++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 184 insertions(+), 1 deletion(-)
+ netlink/params.c | 182 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 185 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
 index 470bc3808c71..d8a04ddd332e 100644
@@ -47,10 +47,10 @@ index c2676d492c75..41c8f5487062 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index fe0541bbe9f8..ba8577aae3f2 100644
+index 38be3c173f75..0873e66c4626 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
-@@ -333,3 +333,184 @@ int nl_gfec(struct cmd_context *ctx)
+@@ -333,3 +333,185 @@ int nl_gfec(struct cmd_context *ctx)
  {
  	return params_request(ctx, ETHTOOL_IM_PARAMS_FEC);
  }
@@ -67,7 +67,8 @@ index fe0541bbe9f8..ba8577aae3f2 100644
 +	nlctx->cmd = opt;
 +	nlctx->argp = ctx->argp;
 +	nlctx->argc = ctx->argc;
-+	ret = msg_init(nlctx, ETHNL_CMD_SET_PARAMS, NLM_F_REQUEST | NLM_F_ACK);
++	ret = msg_init(nlctx, ETHTOOL_MSG_PARAMS_SET,
++		       NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return 2;
 +	if (ethnla_put_dev(nlctx, ETHTOOL_A_PARAMS_DEV, ctx->devname))
@@ -236,5 +237,5 @@ index fe0541bbe9f8..ba8577aae3f2 100644
 +			    ETHTOOL_A_PARAMS_COALESCE);
 +}
 -- 
-2.21.0
+2.22.0
 

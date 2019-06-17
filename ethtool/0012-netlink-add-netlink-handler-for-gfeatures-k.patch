@@ -1,10 +1,10 @@
-From 441f80630aa6a642a1c9951a87cefded6359059e Mon Sep 17 00:00:00 2001
+From 157767e53049fa5b891b79bd229190d0dd1740fa Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
 Subject: [PATCH 12/34] netlink: add netlink handler for gfeatures (-k)
 
 Implement "ethtool -k <dev>" subcommand using netlink interface command
-ETHNL_CMD_GET_SETTINGS with ETHTOOL_IM_SETTINGS_FEATURES mask.
+ETHTOOL_MSG_SETTINGS_GET with ETHTOOL_IM_SETTINGS_FEATURES mask.
 
 The implementation tries to emulate legacy flags but the result is not
 exactly equal to the ioctl code. In particular, we map netdev features to
@@ -258,24 +258,24 @@ index 4f9e60c2fca8..f4bbb0b456ef 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 71aac3256698..aa37315df6f6 100644
+index 0e422c2074db..07020e82adae 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -61,6 +61,12 @@ static struct monitor_option monitor_opts[] = {
+@@ -52,6 +52,12 @@ static struct monitor_option monitor_opts[] = {
  				  ETHTOOL_IM_SETTINGS_DEBUG |
  				  ETHTOOL_IM_SETTINGS_WOL,
  	},
 +	{
 +		.pattern	= "-k|--show-features|--show-offload|"
 +				  "-K|--features|--offload",
-+		.cmd		= ETHNL_CMD_SET_SETTINGS,
++		.cmd		= ETHTOOL_MSG_SETTINGS_NTF,
 +		.info_mask	= ETHTOOL_IM_SETTINGS_FEATURES,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 18cefc488d26..b6024dc285b8 100644
+index 7afa75dda605..a66d053f9785 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -252,6 +252,7 @@ static int dump_wol_info(struct nl_context *nlctx, const struct nlattr *nest,
@@ -537,5 +537,5 @@ index 18cefc488d26..b6024dc285b8 100644
  
  enum {
 -- 
-2.21.0
+2.22.0
 

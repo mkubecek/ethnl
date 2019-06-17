@@ -1,12 +1,13 @@
-From cb442f8048b0229bb556fec1cddc0f55e9f310e5 Mon Sep 17 00:00:00 2001
+From 888d0253948bd7000889b5e9f486b610547ce972 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:20:18 +0200
 Subject: [PATCH 14/34] netlink: add netlink handler for gprivflags
  (--show-priv-flags)
 
 Implement "ethtool --show-priv-flags <dev>" subcommand using netlink
-interface command ETHNL_CMD_GET_SETTINGS with ETHTOOL_IM_SETTINGS_PRIVFLAGS
-mask. Also support corresponding notification in monitor.
+interface command ETHTOOL_MSG_SETTINGS_GET with
+ETHTOOL_IM_SETTINGS_PRIVFLAGS mask. Also support corresponding notification
+in monitor.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -50,23 +51,23 @@ index d0199cb440f8..ce5fde1ddc35 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index aa37315df6f6..b738b506554e 100644
+index 07020e82adae..c3f4bff05f35 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -67,6 +67,11 @@ static struct monitor_option monitor_opts[] = {
- 		.cmd		= ETHNL_CMD_SET_SETTINGS,
+@@ -58,6 +58,11 @@ static struct monitor_option monitor_opts[] = {
+ 		.cmd		= ETHTOOL_MSG_SETTINGS_NTF,
  		.info_mask	= ETHTOOL_IM_SETTINGS_FEATURES,
  	},
 +	{
 +		.pattern	= "--show-priv-flags|--set-priv-flags",
-+		.cmd		= ETHNL_CMD_SET_SETTINGS,
++		.cmd		= ETHTOOL_MSG_SETTINGS_NTF,
 +		.info_mask	= ETHTOOL_IM_SETTINGS_PRIVFLAGS,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 585a10eb4589..ee9a45cb4879 100644
+index fa5affddbbe8..ffd547fcfc56 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -519,6 +519,53 @@ out_free:
@@ -152,7 +153,7 @@ index 585a10eb4589..ee9a45cb4879 100644
 +		load_perdev_strings(nlctx, is_dev ? ctx->devname : NULL);
 +	}
  
- 	ret = ethnl_prep_get_request(ctx, ETHNL_CMD_GET_SETTINGS,
+ 	ret = ethnl_prep_get_request(ctx, ETHTOOL_MSG_SETTINGS_GET,
  				     ETHTOOL_A_SETTINGS_DEV);
 @@ -623,6 +680,11 @@ int nl_gfeatures(struct cmd_context *ctx)
  	return settings_request(ctx, ETHTOOL_IM_SETTINGS_FEATURES);
@@ -167,5 +168,5 @@ index 585a10eb4589..ee9a45cb4879 100644
  
  enum {
 -- 
-2.21.0
+2.22.0
 

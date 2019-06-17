@@ -1,11 +1,11 @@
-From 87875d713c4db4c1ef45b37a1307c138a4ee577b Mon Sep 17 00:00:00 2001
+From a1f6d2ba2b602237430d83a2736864eda0fbf874 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 2 Nov 2018 19:41:56 +0100
 Subject: [PATCH 34/34] netlink: add netlink handler for setting flow hash
  options (-N rx-flow-hash)
 
 Implement "ethtool -N <dev> rx-flow-hash" subcommand using netlink
-interface command ETHNL_CMD_SET_RXFLOW.
+interface command ETHTOOL_MSG_RXFLOW_SET.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -48,7 +48,7 @@ index 30ec79f0e94e..c86a4c7d0aa3 100644
  
  void monitor_usage();
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
-index ec841edd05ef..32ce6531f341 100644
+index 9ba86b443e30..f0e4067c0a7b 100644
 --- a/netlink/rxflow.c
 +++ b/netlink/rxflow.c
 @@ -803,3 +803,115 @@ out_free:
@@ -82,7 +82,7 @@ index ec841edd05ef..32ce6531f341 100644
 +	uint32_t context = 0;
 +	int ret;
 +
-+	ret = ethnl_prep_get_request(ctx, ETHNL_CMD_SET_RXFLOW,
++	ret = ethnl_prep_get_request(ctx, ETHTOOL_MSG_RXFLOW_SET,
 +				     ETHTOOL_A_RXFLOW_DEV);
 +	if (ret < 0)
 +		return 2;
@@ -168,5 +168,5 @@ index ec841edd05ef..32ce6531f341 100644
 +	return -EOPNOTSUPP;
 +}
 -- 
-2.21.0
+2.22.0
 

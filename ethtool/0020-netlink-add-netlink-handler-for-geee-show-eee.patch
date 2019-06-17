@@ -1,10 +1,10 @@
-From 9473cd4934f969d2f98720de366f6532e397f43e Mon Sep 17 00:00:00 2001
+From c500256d589d70870599a8658585e6d824208947 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:08:21 +0100
 Subject: [PATCH 20/34] netlink: add netlink handler for geee (--show-eee)
 
 Implement "ethtool --show-eee <dev>" subcommand using netlink interface
-command ETHNL_CMD_GET_PARAMS with ETHTOOL_IM_PARAMS_EEE mask.
+command ETHTOOL_MSG_PARAMS_GET with ETHTOOL_IM_PARAMS_EEE mask.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -48,23 +48,23 @@ index 2ca01fb4c9ea..2d0ce8649052 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index ef59b0f0bf30..f8b42e3dda02 100644
+index 15fffea8dde2..3d1bdc327988 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -97,6 +97,11 @@ static struct monitor_option monitor_opts[] = {
- 		.cmd		= ETHNL_CMD_SET_PARAMS,
+@@ -88,6 +88,11 @@ static struct monitor_option monitor_opts[] = {
+ 		.cmd		= ETHTOOL_MSG_PARAMS_NTF,
  		.info_mask	= ETHTOOL_IM_PARAMS_CHANNELS,
  	},
 +	{
 +		.pattern	= "--show-eee|--set-eee",
-+		.cmd		= ETHNL_CMD_SET_PARAMS,
++		.cmd		= ETHTOOL_MSG_PARAMS_NTF,
 +		.info_mask	= ETHTOOL_IM_PARAMS_EEE,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index a9735c49456f..4c196ed215fd 100644
+index 7988f402a02b..e598f805907e 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -135,6 +135,61 @@ static int show_channels(struct nl_context *nlctx, const struct nlattr *nest)
@@ -155,5 +155,5 @@ index a9735c49456f..4c196ed215fd 100644
 +	return params_request(ctx, ETHTOOL_IM_PARAMS_EEE);
 +}
 -- 
-2.21.0
+2.22.0
 

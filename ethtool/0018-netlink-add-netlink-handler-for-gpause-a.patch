@@ -1,10 +1,10 @@
-From cac187d13086f68e2c5d1a2b2f969aaa0823e37c Mon Sep 17 00:00:00 2001
+From 46a73da6340a6ac384bb1b205d527cfaa03fd26e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:04:09 +0100
 Subject: [PATCH 18/34] netlink: add netlink handler for gpause (-a)
 
 Implement "ethtool -a <dev>" subcommand using netlink interface command
-ETHNL_CMD_GET_PARAMS with ETHTOOL_IM_PARAMS_PAUSE mask.
+ETHTOOL_MSG_PARAMS_GET with ETHTOOL_IM_PARAMS_PAUSE mask.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -48,23 +48,23 @@ index deba845b52ae..24d19dde5fc3 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 5be1f46aedf1..96f3979dcaf0 100644
+index ba97c00688a8..ec5055e87eff 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -87,6 +87,11 @@ static struct monitor_option monitor_opts[] = {
- 		.cmd		= ETHNL_CMD_SET_PARAMS,
+@@ -78,6 +78,11 @@ static struct monitor_option monitor_opts[] = {
+ 		.cmd		= ETHTOOL_MSG_PARAMS_NTF,
  		.info_mask	= ETHTOOL_IM_PARAMS_RING,
  	},
 +	{
 +		.pattern	= "-a|--show-pause|-A|--pause",
-+		.cmd		= ETHNL_CMD_SET_PARAMS,
++		.cmd		= ETHTOOL_MSG_PARAMS_NTF,
 +		.info_mask	= ETHTOOL_IM_PARAMS_PAUSE,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index 299b43f9d18e..cc29dac9b1e1 100644
+index 002ea8892181..5350c7abdc88 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -85,6 +85,28 @@ static int show_ring(struct nl_context *nlctx, const struct nlattr *nest)
@@ -122,5 +122,5 @@ index 299b43f9d18e..cc29dac9b1e1 100644
 +	return params_request(ctx, ETHTOOL_IM_PARAMS_PAUSE);
 +}
 -- 
-2.21.0
+2.22.0
 

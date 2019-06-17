@@ -1,10 +1,10 @@
-From 6a15c6362c172ce05935214f7063161dd9599c9e Mon Sep 17 00:00:00 2001
+From caf0bfc923fa1392aafaf52845bda74e05763594 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:59:50 +0100
 Subject: [PATCH 17/34] netlink: add netlink handler for gring (-g)
 
 Implement "ethtool -g <dev>" subcommand using netlink interface command
-ETHNL_CMD_GET_PARAMS with ETHTOOL_IM_PARAMS_RING mask.
+ETHTOOL_MSG_PARAMS_GET with ETHTOOL_IM_PARAMS_RING mask.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -48,23 +48,23 @@ index a63f79eee2c8..deba845b52ae 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 6032ebb60931..5be1f46aedf1 100644
+index bc20eb489058..ba97c00688a8 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -82,6 +82,11 @@ static struct monitor_option monitor_opts[] = {
- 		.cmd		= ETHNL_CMD_SET_PARAMS,
+@@ -73,6 +73,11 @@ static struct monitor_option monitor_opts[] = {
+ 		.cmd		= ETHTOOL_MSG_PARAMS_NTF,
  		.info_mask	= ETHTOOL_IM_PARAMS_COALESCE,
  	},
 +	{
 +		.pattern	= "-g|--show-ring|-G|--set-ring",
-+		.cmd		= ETHNL_CMD_SET_PARAMS,
++		.cmd		= ETHTOOL_MSG_PARAMS_NTF,
 +		.info_mask	= ETHTOOL_IM_PARAMS_RING,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index 8755a8aae9a8..299b43f9d18e 100644
+index b85b83531a57..002ea8892181 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -57,6 +57,34 @@ static int show_coalesce(struct nl_context *nlctx, const struct nlattr *nest)
@@ -128,5 +128,5 @@ index 8755a8aae9a8..299b43f9d18e 100644
 +	return params_request(ctx, ETHTOOL_IM_PARAMS_RING);
 +}
 -- 
-2.21.0
+2.22.0
 

@@ -1,10 +1,10 @@
-From 729443ef08c09a97ca1dfe376b3daa27d1c6847b Mon Sep 17 00:00:00 2001
+From 351b58ebdee3cd30d5dafd58f469e47006352a07 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:29:46 +0200
 Subject: [PATCH 28/34] netlink: add netlink handler for nway_rst (-r)
 
 Implement "ethtool -r <dev>" subcommand using netlink interface command
-ETHNL_CMD_ACT_NWAY_RST.
+ETHTOOL_MSG_NWAYRST_ACT.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -51,7 +51,7 @@ index d5640de83f6c..6cb67d88983f 100644
  	  "Show visible port identification (e.g. blinking)",
 diff --git a/netlink/actions.c b/netlink/actions.c
 new file mode 100644
-index 000000000000..fdbe6109cfab
+index 000000000000..e4b83cf8c649
 --- /dev/null
 +++ b/netlink/actions.c
 @@ -0,0 +1,54 @@
@@ -93,7 +93,7 @@ index 000000000000..fdbe6109cfab
 +	nlctx->cmd = "-r";
 +	nlctx->argp = ctx->argp;
 +	nlctx->argc = ctx->argc;
-+	ret = msg_init(nlctx, ETHNL_CMD_ACT_NWAY_RST,
++	ret = msg_init(nlctx, ETHTOOL_MSG_NWAYRST_ACT,
 +		       NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return -EFAULT;
@@ -122,39 +122,39 @@ index 40715beaf07f..b301964a5cf8 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 3cfc0a44c465..7d4fb57d991f 100644
+index 8e0e50084015..585abe2868a0 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -7,6 +7,7 @@
- int info_reply_cb(const struct nlmsghdr *nlhdr, void *data);
+@@ -6,6 +6,7 @@
+ 
  int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int params_reply_cb(const struct nlmsghdr *nlhdr, void *data);
 +int nwayrst_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  
  static struct {
  	uint8_t		cmd;
-@@ -24,6 +25,10 @@ static struct {
- 		.cmd	= ETHNL_CMD_SET_PARAMS,
+@@ -19,6 +20,10 @@ static struct {
+ 		.cmd	= ETHTOOL_MSG_PARAMS_NTF,
  		.cb	= params_reply_cb,
  	},
 +	{
-+		.cmd	= ETHNL_CMD_ACT_NWAY_RST,
++		.cmd	= ETHTOOL_MSG_NWAYRST_NTF,
 +		.cb	= nwayrst_reply_cb,
 +	},
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -107,6 +112,10 @@ static struct monitor_option monitor_opts[] = {
- 		.cmd		= ETHNL_CMD_SET_PARAMS,
+@@ -98,6 +103,10 @@ static struct monitor_option monitor_opts[] = {
+ 		.cmd		= ETHTOOL_MSG_PARAMS_NTF,
  		.info_mask	= ETHTOOL_IM_PARAMS_FEC,
  	},
 +	{
 +		.pattern	= "-r|--negotiate",
-+		.cmd		= ETHNL_CMD_ACT_NWAY_RST,
++		.cmd		= ETHTOOL_MSG_NWAYRST_NTF,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 -- 
-2.21.0
+2.22.0
 

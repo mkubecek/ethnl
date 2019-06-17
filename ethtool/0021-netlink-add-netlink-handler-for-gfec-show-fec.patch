@@ -1,11 +1,11 @@
-From 357455afd3765767b40286514f89bdcfa65bcf12 Mon Sep 17 00:00:00 2001
+From 8ac5c2b05be128b4892823b9b29423bc01862491 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
 Subject: [PATCH 21/34] netlink: add netlink handler for gfec (--show-fec)
 
 Implement "ethtool --show-fec <dev>" subcommand showing Forward Error
 Correction (FEC) settings using netlink interface command
-ETHNL_CMD_GET_PARAMS with ETHTOOL_IM_PARAMS_FEC mask.
+ETHTOOL_MSG_PARAMS_GET with ETHTOOL_IM_PARAMS_FEC mask.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -85,23 +85,23 @@ index 2d0ce8649052..c2676d492c75 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index f8b42e3dda02..3cfc0a44c465 100644
+index 3d1bdc327988..8e0e50084015 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -102,6 +102,11 @@ static struct monitor_option monitor_opts[] = {
- 		.cmd		= ETHNL_CMD_SET_PARAMS,
+@@ -93,6 +93,11 @@ static struct monitor_option monitor_opts[] = {
+ 		.cmd		= ETHTOOL_MSG_PARAMS_NTF,
  		.info_mask	= ETHTOOL_IM_PARAMS_EEE,
  	},
 +	{
 +		.pattern	= "--show-fec|--set-fec",
-+		.cmd		= ETHNL_CMD_SET_PARAMS,
++		.cmd		= ETHTOOL_MSG_PARAMS_NTF,
 +		.info_mask	= ETHTOOL_IM_PARAMS_FEC,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index 4c196ed215fd..fe0541bbe9f8 100644
+index e598f805907e..38be3c173f75 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -190,6 +190,35 @@ static int show_eee(struct nl_context *nlctx, const struct nlattr *nest)
@@ -166,5 +166,5 @@ index 4c196ed215fd..fe0541bbe9f8 100644
 +	return params_request(ctx, ETHTOOL_IM_PARAMS_FEC);
 +}
 -- 
-2.21.0
+2.22.0
 

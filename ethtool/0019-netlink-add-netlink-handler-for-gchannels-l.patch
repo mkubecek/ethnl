@@ -1,10 +1,10 @@
-From 0bea745c00163ab06316f644cb93774a38921ea1 Mon Sep 17 00:00:00 2001
+From 43a8b072c42bb30f5a6990e6f86e789e95b351c5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:05:40 +0100
 Subject: [PATCH 19/34] netlink: add netlink handler for gchannels (-l)
 
 Implement "ethtool -l <dev>" subcommand using netlink interface command
-ETHNL_CMD_GET_PARAMS with ETHTOOL_IM_PARAMS_CHANNELS mask.
+ETHTOOL_MSG_PARAMS_GET with ETHTOOL_IM_PARAMS_CHANNELS mask.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -48,23 +48,23 @@ index 24d19dde5fc3..2ca01fb4c9ea 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 96f3979dcaf0..ef59b0f0bf30 100644
+index ec5055e87eff..15fffea8dde2 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -92,6 +92,11 @@ static struct monitor_option monitor_opts[] = {
- 		.cmd		= ETHNL_CMD_SET_PARAMS,
+@@ -83,6 +83,11 @@ static struct monitor_option monitor_opts[] = {
+ 		.cmd		= ETHTOOL_MSG_PARAMS_NTF,
  		.info_mask	= ETHTOOL_IM_PARAMS_PAUSE,
  	},
 +	{
 +		.pattern	= "-l|--show-channels|-L|--set-channels",
-+		.cmd		= ETHNL_CMD_SET_PARAMS,
++		.cmd		= ETHTOOL_MSG_PARAMS_NTF,
 +		.info_mask	= ETHTOOL_IM_PARAMS_CHANNELS,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index cc29dac9b1e1..a9735c49456f 100644
+index 5350c7abdc88..7988f402a02b 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -107,6 +107,34 @@ static int show_pause(struct nl_context *nlctx, const struct nlattr *nest)
@@ -128,5 +128,5 @@ index cc29dac9b1e1..a9735c49456f 100644
 +	return params_request(ctx, ETHTOOL_IM_PARAMS_CHANNELS);
 +}
 -- 
-2.21.0
+2.22.0
 

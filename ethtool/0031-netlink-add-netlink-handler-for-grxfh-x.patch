@@ -1,10 +1,10 @@
-From 7ad85da6c0df62f6f57730c313e5fa249dfcb577 Mon Sep 17 00:00:00 2001
+From f70efcaa5d8ace15233f4344b5b22c526f92cf05 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:46:58 +0200
 Subject: [PATCH 31/34] netlink: add netlink handler for grxfh (-x)
 
 Implement "ethtool -x <dev>" subcommand using netlink interface comand
-ETHNL_CMD_GET_RXFLOW.
+ETHTOOL_MSG_RXFLOW_GET.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -63,7 +63,7 @@ index 57f2267da967..ef4981ce29c8 100644
  void monitor_usage();
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
 new file mode 100644
-index 000000000000..19e74a01c644
+index 000000000000..46e8060b6139
 --- /dev/null
 +++ b/netlink/rxflow.c
 @@ -0,0 +1,287 @@
@@ -338,7 +338,7 @@ index 000000000000..19e74a01c644
 +	nlctx->argc = ctx->argc;
 +	nlctx->filter_mask = GRXFH_REQ_MASK;
 +
-+	ret = ethnl_prep_get_request(ctx, ETHNL_CMD_GET_RXFLOW,
++	ret = ethnl_prep_get_request(ctx, ETHTOOL_MSG_RXFLOW_GET,
 +				     ETHTOOL_A_RXFLOW_DEV);
 +	if (ret < 0)
 +		return ret;
@@ -355,5 +355,5 @@ index 000000000000..19e74a01c644
 +}
 +
 -- 
-2.21.0
+2.22.0
 

@@ -1,10 +1,10 @@
-From cb3c1ad60fdb9078d13b0265d9da321f7a69559a Mon Sep 17 00:00:00 2001
+From 7d4266fa78eb0669aad4e9af49907d814483bd02 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:25:31 +0200
 Subject: [PATCH 13/34] netlink: add netlink handler for sfeatures (-K)
 
 Implement "ethtool -K <dev>" subcommand using netlink interface command
-ETHNL_CMD_SET_SETTINGS.
+ETHTOOL_MSG_SETTINGS_SET.
 
 The implementation tries to emulate legacy flags but the result is not
 exactly equal to the ioctl code. In particular, we map netdev features to
@@ -54,7 +54,7 @@ index f4bbb0b456ef..d0199cb440f8 100644
  
  void monitor_usage();
 diff --git a/netlink/settings.c b/netlink/settings.c
-index b6024dc285b8..585a10eb4589 100644
+index a66d053f9785..fa5affddbbe8 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -792,3 +792,295 @@ int nl_sset(struct cmd_context *ctx)
@@ -220,7 +220,7 @@ index b6024dc285b8..585a10eb4589 100644
 +	const char *devname;
 +	int ret;
 +
-+	if (ghdr->cmd != ETHNL_CMD_SET_SETTINGS) {
++	if (ghdr->cmd != ETHTOOL_MSG_SETTINGS_SET_REPLY) {
 +		fprintf(stderr, "warning: unexpected reply message type %u\n",
 +			ghdr->cmd);
 +		return MNL_CB_OK;
@@ -326,7 +326,7 @@ index b6024dc285b8..585a10eb4589 100644
 +	nlctx->cmd_private = sfctx;
 +
 +	nlctx->devname = ctx->devname;
-+	ret = msg_init(nlctx, ETHNL_CMD_SET_SETTINGS,
++	ret = msg_init(nlctx, ETHTOOL_MSG_SETTINGS_SET,
 +		       NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return 2;
@@ -354,5 +354,5 @@ index b6024dc285b8..585a10eb4589 100644
 +	return nlctx->exit_code ?: 92;
 +}
 -- 
-2.21.0
+2.22.0
 

@@ -1,10 +1,10 @@
-From f4ed53666d65eee44b6afc086fd1b9b26b6b6dee Mon Sep 17 00:00:00 2001
+From 82d03e592c55c9c3f0afe93ea7c3d9e24ebd8916 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
 Subject: [PATCH 16/34] netlink: add netlink handler for gcoalesce (-c)
 
 Implement "ethtool -c <dev>" subcommand using netlink interface command
-ETHNL_CMD_GET_PARAMS with ETHTOOL_IM_PARAMS_COALESCE mask.
+ETHTOOL_MSG_PARAMS_GET with ETHTOOL_IM_PARAMS_COALESCE mask.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -63,35 +63,35 @@ index f89c6d0e169c..a63f79eee2c8 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index b738b506554e..6032ebb60931 100644
+index c3f4bff05f35..bc20eb489058 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -6,6 +6,7 @@
+@@ -5,6 +5,7 @@
+ #include "strset.h"
  
- int info_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int settings_reply_cb(const struct nlmsghdr *nlhdr, void *data);
 +int params_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  
  static struct {
  	uint8_t		cmd;
-@@ -19,6 +20,10 @@ static struct {
- 		.cmd	= ETHNL_CMD_SET_SETTINGS,
+@@ -14,6 +15,10 @@ static struct {
+ 		.cmd	= ETHTOOL_MSG_SETTINGS_NTF,
  		.cb	= settings_reply_cb,
  	},
 +	{
-+		.cmd	= ETHNL_CMD_SET_PARAMS,
++		.cmd	= ETHTOOL_MSG_PARAMS_NTF,
 +		.cb	= params_reply_cb,
 +	},
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -72,6 +77,11 @@ static struct monitor_option monitor_opts[] = {
- 		.cmd		= ETHNL_CMD_SET_SETTINGS,
+@@ -63,6 +68,11 @@ static struct monitor_option monitor_opts[] = {
+ 		.cmd		= ETHTOOL_MSG_SETTINGS_NTF,
  		.info_mask	= ETHTOOL_IM_SETTINGS_PRIVFLAGS,
  	},
 +	{
 +		.pattern	= "-c|--show-coalesce|-C|--coalesce",
-+		.cmd		= ETHNL_CMD_SET_PARAMS,
++		.cmd		= ETHTOOL_MSG_PARAMS_NTF,
 +		.info_mask	= ETHTOOL_IM_PARAMS_COALESCE,
 +	},
  };
@@ -99,7 +99,7 @@ index b738b506554e..6032ebb60931 100644
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
 new file mode 100644
-index 000000000000..8755a8aae9a8
+index 000000000000..b85b83531a57
 --- /dev/null
 +++ b/netlink/params.c
 @@ -0,0 +1,103 @@
@@ -193,7 +193,7 @@ index 000000000000..8755a8aae9a8
 +{
 +	int ret;
 +
-+	ret = ethnl_prep_get_request(ctx, ETHNL_CMD_GET_PARAMS,
++	ret = ethnl_prep_get_request(ctx, ETHTOOL_MSG_PARAMS_GET,
 +				     ETHTOOL_A_PARAMS_DEV);
 +	if (ret < 0)
 +		return ret;
@@ -207,5 +207,5 @@ index 000000000000..8755a8aae9a8
 +	return params_request(ctx, ETHTOOL_IM_PARAMS_COALESCE);
 +}
 -- 
-2.21.0
+2.22.0
 

@@ -1,4 +1,4 @@
-From b39b979417ee89f1c6402de8fb1fd26e08ddb025 Mon Sep 17 00:00:00 2001
+From e8503776fd9d6bcbe40a134e7ced559502ac5b8f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 04/34] netlink: add netlink interface
@@ -25,14 +25,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.c                    | 190 ++++++---
  internal.h                   |  11 +
  netlink/extapi.h             |  16 +
- netlink/netlink.c            | 730 +++++++++++++++++++++++++++++++++++
+ netlink/netlink.c            | 750 +++++++++++++++++++++++++++++++++++
  netlink/netlink.h            | 159 ++++++++
  uapi/linux/ethtool.h         |  13 +
- uapi/linux/ethtool_netlink.h | 519 +++++++++++++++++++++++++
+ uapi/linux/ethtool_netlink.h | 577 +++++++++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 +++++
  uapi/linux/net_tstamp.h      |  13 +
  uapi/linux/netlink.h         | 248 ++++++++++++
- 14 files changed, 1964 insertions(+), 65 deletions(-)
+ 14 files changed, 2042 insertions(+), 65 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
  create mode 100644 netlink/extapi.h
@@ -555,10 +555,10 @@ index 000000000000..6fe8ad200e24
 +#endif /* ETHTOOL_EXTAPI_H__ */
 diff --git a/netlink/netlink.c b/netlink/netlink.c
 new file mode 100644
-index 000000000000..ab2811052f42
+index 000000000000..f5b467ca121f
 --- /dev/null
 +++ b/netlink/netlink.c
-@@ -0,0 +1,730 @@
+@@ -0,0 +1,750 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -898,21 +898,37 @@ index 000000000000..ab2811052f42
 +	return nlerr->error;
 +}
 +
-+static const char *ethnl_cmd_names[] = {
-+	[ETHNL_CMD_NOOP]		= "NOOP",
-+	[ETHNL_CMD_GET_STRSET]		= "GET_STRSET",
-+	[ETHNL_CMD_SET_STRSET]		= "SET_STRSET",
-+	[ETHNL_CMD_GET_SETTINGS]	= "GET_SETTINGS",
-+	[ETHNL_CMD_SET_SETTINGS]	= "SET_SETTINGS",
-+	[ETHNL_CMD_GET_INFO]		= "GET_INFO",
-+	[ETHNL_CMD_SET_INFO]		= "SET_INFO",
-+	[ETHNL_CMD_GET_PARAMS]		= "GET_PARAMS",
-+	[ETHNL_CMD_SET_PARAMS]		= "SET_PARAMS",
-+	[ETHNL_CMD_ACT_NWAY_RST]	= "ACT_NWAY_RST",
-+	[ETHNL_CMD_ACT_PHYS_ID]		= "ACT_PHYS_ID",
-+	[ETHNL_CMD_ACT_RESET]		= "ACT_RESET",
-+	[ETHNL_CMD_GET_RXFLOW]		= "GET_RXFLOW",
-+	[ETHNL_CMD_SET_RXFLOW]		= "SET_RXFLOW",
++static const char *ethnl_umsg_names[] = {
++	[ETHTOOL_MSG_USER_NONE]		= "USER_NONE",
++	[ETHTOOL_MSG_STRSET_GET]	= "STRSET_GET",
++	[ETHTOOL_MSG_SETTINGS_GET]	= "SETTINGS_GET",
++	[ETHTOOL_MSG_SETTINGS_SET]	= "SETTINGS_SET",
++	[ETHTOOL_MSG_INFO_GET]		= "INFO_GET",
++	[ETHTOOL_MSG_PARAMS_GET]	= "PARAMS_GET",
++	[ETHTOOL_MSG_PARAMS_SET]	= "PARAMS_SET",
++	[ETHTOOL_MSG_NWAYRST_ACT]	= "NWAYRST_ACT",
++	[ETHTOOL_MSG_PHYSID_ACT]	= "PHYSID_ACT",
++	[ETHTOOL_MSG_RESET_ACT]		= "RESET_ACT",
++	[ETHTOOL_MSG_RXFLOW_GET]	= "RXFLOW_GET",
++	[ETHTOOL_MSG_RXFLOW_SET]	= "RXFLOW_SET",
++};
++
++static const char *ethnl_kmsg_names[] = {
++	[ETHTOOL_MSG_KERNEL_NONE]		= "KERNEL_NONE",
++	[ETHTOOL_MSG_STRSET_GET_REPLY]		= "STRSET_GET_REPLY",
++	[ETHTOOL_MSG_SETTINGS_GET_REPLY]	= "SETTINGS_GET_REPLY",
++	[ETHTOOL_MSG_SETTINGS_NTF]		= "SETTINGS_NTF",
++	[ETHTOOL_MSG_SETTINGS_SET_REPLY]	= "SETTINGS_SET_REPLY",
++	[ETHTOOL_MSG_INFO_GET_REPLY]		= "INFO_GET_REPLY",
++	[ETHTOOL_MSG_PARAMS_GET_REPLY]		= "PARAMS_GET_REPLY",
++	[ETHTOOL_MSG_PARAMS_NTF]		= "PARAMS_NTF",
++	[ETHTOOL_MSG_NWAYRST_NTF]		= "NWAYRST_NTF",
++	[ETHTOOL_MSG_PHYSID_NTF]		= "PHYSID_NTF",
++	[ETHTOOL_MSG_RESET_NTF]			= "RESET_NTF",
++	[ETHTOOL_MSG_RESET_ACT_REPLY]		= "RESET_ACT_REPLY",
++	[ETHTOOL_MSG_RXFLOW_GET_REPLY]		= "RXFLOW_GET_REPLY",
++	[ETHTOOL_MSG_RXFLOW_NTF]		= "RXFLOW_NTF",
++	[ETHTOOL_MSG_RXFLOW_SET_REPLY]		= "RXFLOW_SET_REPLY",
 +};
 +
 +static const char *type_str(unsigned int type, unsigned int ethnl_fam)
@@ -937,8 +953,13 @@ index 000000000000..ab2811052f42
 +}
 +
 +static void debug_msg_summary(struct nl_context *nlctx,
-+			      const struct nlmsghdr *nlhdr)
++			      const struct nlmsghdr *nlhdr, bool outgoing)
 +{
++	const char **msg_names = outgoing ? ethnl_umsg_names : ethnl_kmsg_names;
++	const unsigned int names_cnt =
++		outgoing ? MNL_ARRAY_SIZE(ethnl_umsg_names) :
++			   MNL_ARRAY_SIZE(ethnl_kmsg_names);
++
 +	fprintf(stderr, "    msg length %u family %u (%s) flags %04x",
 +		nlhdr->nlmsg_len, nlhdr->nlmsg_type,
 +		type_str(nlhdr->nlmsg_type, nlctx->ethnl_fam),
@@ -949,9 +970,8 @@ index 000000000000..ab2811052f42
 +		unsigned int cmd = ghdr->cmd;
 +		const char *cmd_name = "unknown";
 +
-+		if (cmd < MNL_ARRAY_SIZE(ethnl_cmd_names) &&
-+		    ethnl_cmd_names[cmd])
-+			cmd_name = ethnl_cmd_names[cmd];
++		if (cmd < names_cnt && msg_names[cmd])
++			cmd_name = msg_names[cmd];
 +		fprintf(stderr, " ethtool cmd %u (%s)", cmd, cmd_name);
 +	}
 +	fputc('\n', stderr);
@@ -973,7 +993,7 @@ index 000000000000..ab2811052f42
 +
 +	while (nlhdr && left > 0 && mnl_nlmsg_ok(nlhdr, left)) {
 +		if (summary)
-+			debug_msg_summary(nlctx, nlhdr);
++			debug_msg_summary(nlctx, nlhdr, outgoing);
 +		if (dump)
 +			mnl_nlmsg_fprintf(stderr, nlhdr, nlhdr->nlmsg_len,
 +					  GENL_HDRLEN);
@@ -1494,10 +1514,10 @@ index 68a612570d4c..a1cb67270b3f 100644
  
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..10c200d24848
+index 000000000000..14b4b996b986
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,519 @@
+@@ -0,0 +1,577 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +/*
 + * include/uapi/linux/ethtool_netlink.h - netlink interface for ethtool
@@ -1511,24 +1531,47 @@ index 000000000000..10c200d24848
 +
 +#include <linux/ethtool.h>
 +
++/* message types - userspace to kernel */
 +enum {
-+	ETHNL_CMD_NOOP,
-+	ETHNL_CMD_GET_STRSET,
-+	ETHNL_CMD_SET_STRSET,		/* only for reply */
-+	ETHNL_CMD_GET_SETTINGS,
-+	ETHNL_CMD_SET_SETTINGS,
-+	ETHNL_CMD_GET_INFO,
-+	ETHNL_CMD_SET_INFO,		/* only for reply */
-+	ETHNL_CMD_GET_PARAMS,
-+	ETHNL_CMD_SET_PARAMS,
-+	ETHNL_CMD_ACT_NWAY_RST,
-+	ETHNL_CMD_ACT_PHYS_ID,
-+	ETHNL_CMD_ACT_RESET,
-+	ETHNL_CMD_GET_RXFLOW,
-+	ETHNL_CMD_SET_RXFLOW,
++	ETHTOOL_MSG_USER_NONE,
++	ETHTOOL_MSG_STRSET_GET,
++	ETHTOOL_MSG_SETTINGS_GET,
++	ETHTOOL_MSG_SETTINGS_SET,
++	ETHTOOL_MSG_INFO_GET,
++	ETHTOOL_MSG_PARAMS_GET,
++	ETHTOOL_MSG_PARAMS_SET,
++	ETHTOOL_MSG_NWAYRST_ACT,
++	ETHTOOL_MSG_PHYSID_ACT,
++	ETHTOOL_MSG_RESET_ACT,
++	ETHTOOL_MSG_RXFLOW_GET,
++	ETHTOOL_MSG_RXFLOW_SET,
 +
-+	__ETHNL_CMD_CNT,
-+	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
++	/* add new constants above here */
++	__ETHTOOL_MSG_USER_CNT,
++	ETHTOOL_MSG_USER_MAX = (__ETHTOOL_MSG_USER_CNT - 1)
++};
++
++/* message types - kernel to userspace */
++enum {
++	ETHTOOL_MSG_KERNEL_NONE,
++	ETHTOOL_MSG_STRSET_GET_REPLY,
++	ETHTOOL_MSG_SETTINGS_GET_REPLY,
++	ETHTOOL_MSG_SETTINGS_NTF,
++	ETHTOOL_MSG_SETTINGS_SET_REPLY,
++	ETHTOOL_MSG_INFO_GET_REPLY,
++	ETHTOOL_MSG_PARAMS_GET_REPLY,
++	ETHTOOL_MSG_PARAMS_NTF,
++	ETHTOOL_MSG_NWAYRST_NTF,
++	ETHTOOL_MSG_PHYSID_NTF,
++	ETHTOOL_MSG_RESET_NTF,
++	ETHTOOL_MSG_RESET_ACT_REPLY,
++	ETHTOOL_MSG_RXFLOW_GET_REPLY,
++	ETHTOOL_MSG_RXFLOW_NTF,
++	ETHTOOL_MSG_RXFLOW_SET_REPLY,
++
++	/* add new constants above here */
++	__ETHTOOL_MSG_KERNEL_CNT,
++	ETHTOOL_MSG_KERNEL_MAX = (__ETHTOOL_MSG_KERNEL_CNT - 1)
 +};
 +
 +/* device specification */
@@ -1538,6 +1581,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_DEV_INDEX,			/* u32 */
 +	ETHTOOL_A_DEV_NAME,			/* string */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_DEV_CNT,
 +	ETHTOOL_A_DEV_MAX = (__ETHTOOL_A_DEV_CNT - 1)
 +};
@@ -1550,6 +1594,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_BIT_NAME,			/* string */
 +	ETHTOOL_A_BIT_VALUE,			/* flag */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_BIT_CNT,
 +	ETHTOOL_A_BIT_MAX = (__ETHTOOL_A_BIT_CNT - 1)
 +};
@@ -1558,6 +1603,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_BITS_UNSPEC,
 +	ETHTOOL_A_BITS_BIT,
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_BITS_CNT,
 +	ETHTOOL_A_BITS_MAX = (__ETHTOOL_A_BITS_CNT - 1)
 +};
@@ -1570,6 +1616,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_BITSET_VALUE,			/* binary */
 +	ETHTOOL_A_BITSET_MASK,			/* binary */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_BITSET_CNT,
 +	ETHTOOL_A_BITSET_MAX = (__ETHTOOL_A_BITSET_CNT - 1)
 +};
@@ -1581,6 +1628,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_STRING_INDEX,			/* u32 */
 +	ETHTOOL_A_STRING_VALUE,			/* string */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_STRING_CNT,
 +	ETHTOOL_A_STRING_MAX = (__ETHTOOL_A_STRING_CNT - 1)
 +};
@@ -1589,6 +1637,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_STRINGS_UNSPEC,
 +	ETHTOOL_A_STRINGS_STRING,		/* nest - ETHTOOL_A_STRINGS_* */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_STRINGS_CNT,
 +	ETHTOOL_A_STRINGS_MAX = (__ETHTOOL_A_STRINGS_CNT - 1)
 +};
@@ -1599,11 +1648,12 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_STRINGSET_COUNT,		/* u32 */
 +	ETHTOOL_A_STRINGSET_STRINGS,		/* nest - ETHTOOL_A_STRINGS_* */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_STRINGSET_CNT,
 +	ETHTOOL_A_STRINGSET_MAX = (__ETHTOOL_A_STRINGSET_CNT - 1)
 +};
 +
-+/* GET_STRINGSET / SET_STRINGSET */
++/* STRSET */
 +
 +enum {
 +	ETHTOOL_A_STRSET_UNSPEC,
@@ -1611,11 +1661,12 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_STRSET_COUNTS,		/* flag */
 +	ETHTOOL_A_STRSET_STRINGSET,		/* nest - ETHTOOL_A_STRSET_* */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_STRSET_CNT,
 +	ETHTOOL_A_STRSET_MAX = (__ETHTOOL_A_STRSET_CNT - 1)
 +};
 +
-+/* GET_SETTINGS / SET_SETTINGS */
++/* SETTINGS */
 +
 +enum {
 +	ETHTOOL_A_SETTINGS_UNSPEC,
@@ -1630,6 +1681,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_SETTINGS_FEATURES,		/* nest - ETHTOOL_A_FEATURES_* */
 +	ETHTOOL_A_SETTINGS_PRIV_FLAGS,		/* bitset */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_SETTINGS_CNT,
 +	ETHTOOL_A_SETTINGS_MAX = (__ETHTOOL_A_SETTINGS_CNT - 1)
 +};
@@ -1658,6 +1710,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_LINKINFO_TP_MDIX_CTRL,	/* u8 */
 +	ETHTOOL_A_LINKINFO_TRANSCEIVER,		/* u8 */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_LINKINFO_CNT,
 +	ETHTOOL_A_LINKINFO_MAX = (__ETHTOOL_A_LINKINFO_CNT - 1)
 +};
@@ -1670,6 +1723,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_LINKMODES_SPEED,		/* u32 */
 +	ETHTOOL_A_LINKMODES_DUPLEX,		/* u8 */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_LINKMODES_CNT,
 +	ETHTOOL_A_LINKMODES_MAX = (__ETHTOOL_A_LINKMODES_CNT - 1)
 +};
@@ -1678,6 +1732,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_LINKSTATE_UNSPEC,
 +	ETHTOOL_A_LINKSTATE_LINK,		/* u8 */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_LINKSTATE_CNT,
 +	ETHTOOL_A_LINKSTATE_MAX = (__ETHTOOL_A_LINKSTATE_CNT - 1)
 +};
@@ -1687,6 +1742,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_WOL_MODES,			/* bitfield32 */
 +	ETHTOOL_A_WOL_SOPASS,			/* binary */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_WOL_CNT,
 +	ETHTOOL_A_WOL_MAX = (__ETHTOOL_A_WOL_CNT - 1)
 +};
@@ -1695,6 +1751,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_DEBUG_UNSPEC,
 +	ETHTOOL_A_DEBUG_MSG_MASK,		/* bitfield32 */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_DEBUG_CNT,
 +	ETHTOOL_A_DEBUG_MAX = (__ETHTOOL_A_DEBUG_CNT - 1)
 +};
@@ -1707,11 +1764,12 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_FEATURES_NOCHANGE,		/* bitset */
 +	ETHTOOL_A_FEATURES_WANT_DIFF,		/* flag */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_FEATURES_CNT,
 +	ETHTOOL_A_FEATURES_MAX = (__ETHTOOL_A_FEATURES_CNT - 1)
 +};
 +
-+/* GET_INFO / SET_INFO */
++/* INFO */
 +
 +enum {
 +	ETHTOOL_A_INFO_UNSPEC,
@@ -1721,6 +1779,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_INFO_DRVINFO,			/* nest - ETHTOOL_A_DRVINFO_* */
 +	ETHTOOL_A_INFO_TSINFO,			/* nest - ETHTOOL_A_TSINFO_* */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_INFO_CNT,
 +	ETHTOOL_A_INFO_MAX = (__ETHTOOL_A_INFO_CNT - 1)
 +};
@@ -1738,6 +1797,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_DRVINFO_BUSINFO,		/* string */
 +	ETHTOOL_A_DRVINFO_EROM_VER,		/* string */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_DRVINFO_CNT,
 +	ETHTOOL_A_DRVINFO_MAX = (__ETHTOOL_A_DRVINFO_CNT - 1)
 +};
@@ -1749,6 +1809,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_TSINFO_TX_TYPES,		/* bitset */
 +	ETHTOOL_A_TSINFO_RX_FILTERS,		/* bitset */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_TSINFO_CNT,
 +	ETHTOOL_A_TSINFO_MAX = (__ETHTOOL_A_TSINFO_CNT - 1)
 +};
@@ -1767,6 +1828,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_PARAMS_EEE,			/* nest - ETHTOOL_A_EEE_* */
 +	ETHTOOL_A_PARAMS_FEC,			/* nest - ETHTOOL_A_FEC_* */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_PARAMS_CNT,
 +	ETHTOOL_A_PARAMS_MAX = (__ETHTOOL_A_PARAMS_CNT - 1)
 +};
@@ -1810,6 +1872,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_COALESCE_RATE_SAMPLE_INTERVAL, /* u32 */
 +	ETHTOOL_A_COALESCE_STATS_BLOCK_USECS,	/* u32 */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_COALESCE_CNT,
 +	ETHTOOL_A_COALESCE_MAX = (__ETHTOOL_A_COALESCE_CNT - 1)
 +};
@@ -1825,6 +1888,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_RING_RX_JUMBO_PENDING,	/* u32 */
 +	ETHTOOL_A_RING_TX_PENDING,		/* u32 */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_RING_CNT,
 +	ETHTOOL_A_RING_MAX = (__ETHTOOL_A_RING_CNT - 1)
 +};
@@ -1835,6 +1899,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_PAUSE_RX,			/* u8 */
 +	ETHTOOL_A_PAUSE_TX,			/* u8 */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_PAUSE_CNT,
 +	ETHTOOL_A_PAUSE_MAX = (__ETHTOOL_A_PAUSE_CNT - 1)
 +};
@@ -1850,6 +1915,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_CHANNELS_OTHER_COUNT,		/* u32 */
 +	ETHTOOL_A_CHANNELS_COMBINED_COUNT,	/* u32 */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_CHANNELS_CNT,
 +	ETHTOOL_A_CHANNELS_MAX = (__ETHTOOL_A_CHANNELS_CNT - 1)
 +};
@@ -1863,6 +1929,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_EEE_TX_LPI_ENABLED,		/* u8 */
 +	ETHTOOL_A_EEE_TX_LPI_TIMER,		/* u32 */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_EEE_CNT,
 +	ETHTOOL_A_EEE_MAX = (__ETHTOOL_A_EEE_CNT - 1)
 +};
@@ -1871,32 +1938,35 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_FEC_UNSPEC,
 +	ETHTOOL_A_FEC_MODES,			/* bitfield32 */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_FEC_CNT,
 +	ETHTOOL_A_FEC_MAX = (__ETHTOOL_A_FEC_CNT - 1)
 +};
 +
-+/* ACT_NWAY_RST */
++/* NWAYRST */
 +
 +enum {
 +	ETHTOOL_A_NWAYRST_UNSPEC,
 +	ETHTOOL_A_NWAYRST_DEV,			/* nest - ETHTOOL_A_DEV_* */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_NWAYRST_CNT,
 +	ETHTOOL_A_NWAYRST_MAX = (__ETHTOOL_A_NWAYRST_CNT - 1)
 +};
 +
-+/* ACT_PHYS_ID */
++/* PHYSID */
 +
 +enum {
 +	ETHTOOL_A_PHYSID_UNSPEC,
 +	ETHTOOL_A_PHYSID_DEV,			/* nest - ETHTOOL_A_DEV_* */
 +	ETHTOOL_A_PHYSID_LENGTH,		/* u32 */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_PHYSID_CNT,
 +	ETHTOOL_A_PHYSID_MAX = (__ETHTOOL_A_PHYSID_CNT - 1)
 +};
 +
-+/* ACT_RESET */
++/* RESET */
 +
 +enum {
 +	ETHTOOL_A_RESET_UNSPEC,
@@ -1907,11 +1977,12 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_RESET_DEDICATED,		/* bitset */
 +	ETHTOOL_A_RESET_SHARED,			/* bitset */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_RESET_CNT,
 +	ETHTOOL_A_RESET_MAX = (__ETHTOOL_A_RESET_CNT - 1)
 +};
 +
-+/* GET_RXFLOW / SET_RXFLOW */
++/* RXFLOW */
 +
 +enum {
 +	ETHTOOL_A_RXFLOW_UNSPEC,
@@ -1927,6 +1998,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_RXFLOW_INDTBL_SIZE,		/* u32 */
 +	ETHTOOL_A_RXFLOW_INDIR_TBL,		/* nest - ETHTOOL_A_INDTBL_* */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_RXFLOW_CNT,
 +	ETHTOOL_A_RXFLOW_MAX = (__ETHTOOL_A_RXFLOW_CNT - 1)
 +};
@@ -1953,6 +2025,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_RXHASHOPTS_UNSPEC,
 +	ETHTOOL_A_RXHASHOPTS_OPT,		/* nest - ETH_RXHASHOPT_* */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_RXHASHOPTS_CNT,
 +	ETHTOOL_A_RXHASHOPTS_MAX = (__ETHTOOL_A_RXHASHOPTS_CNT - 1)
 +};
@@ -1963,6 +2036,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_RXHASHOPT_FIELDS,		/* bitfield32 */
 +	ETHTOOL_A_RXHASHOPT_DISCARD,		/* flag */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_RXHASHOPT_CNT,
 +	ETHTOOL_A_RXHASHOPT_MAX = (__ETHTOOL_A_RXHASHOPT_CNT - 1)
 +};
@@ -1975,6 +2049,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_INDTBL_PATTERN,		/* nest - ETH_ITPAT_* */
 +	ETHTOOL_A_INDTBL_WEIGHTS,		/* nest - ETH_ITWGHT_* */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_INDTBL_CNT,
 +	ETHTOOL_A_INDTBL_MAX = (__ETHTOOL_A_INDTBL_CNT - 1)
 +};
@@ -1985,6 +2060,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_ITBLK_LEN,			/* u32 */
 +	ETHTOOL_A_ITBLK_DATA,			/* binary */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_ITBLK_CNT,
 +	ETHTOOL_A_ITBLK_MAX = (__ETHTOOL_A_ITBLK_CNT - 1)
 +};
@@ -1997,6 +2073,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_ITPAT_MAX_RING,		/* u32 */
 +	ETHTOOL_A_ITPAT_OFFSET,			/* u32 */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_ITPAT_CNT,
 +	ETHTOOL_A_ITPAT_MAX = (__ETHTOOL_A_ITPAT_CNT - 1)
 +};
@@ -2006,6 +2083,7 @@ index 000000000000..10c200d24848
 +	ETHTOOL_A_ITWGHT_VALUES,		/* binary */
 +	ETHTOOL_A_ITWGHT_WEIGHTS,		/* binary */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_ITWGHT_CNT,
 +	ETHTOOL_A_ITWGHT_MAX = (__ETHTOOL_A_ITWGHT_CNT - 1)
 +};
@@ -2405,5 +2483,5 @@ index 000000000000..2c28d329e595
 +
 +#endif /* __LINUX_NETLINK_H */
 -- 
-2.21.0
+2.22.0
 

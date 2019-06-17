@@ -1,10 +1,10 @@
-From 445eb921009cdfc7dd69f7b5b36c01e9c85ee67b Mon Sep 17 00:00:00 2001
+From 889d50e062947d979366dec3dbb0a17b2c3b6232 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:24:40 +0200
 Subject: [PATCH 32/34] netlink: add netlink handler for srxfh (-X)
 
 Implement "ethtool -X <dev>" subcommand using netlink interface command
-ETHNL_CMD_SET_RXFLOW.
+ETHTOOL_MSG_RXFLOW_SET.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -48,10 +48,10 @@ index ef4981ce29c8..952a79e92188 100644
  
  void monitor_usage();
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index 1adeb357bb2b..203364c9aa28 100644
+index c322415e7345..ec1789e0ee9d 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -10,6 +10,7 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data);
+@@ -9,6 +9,7 @@ int params_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int nwayrst_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int physid_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int reset_reply_cb(const struct nlmsghdr *nlhdr, void *data);
@@ -59,31 +59,31 @@ index 1adeb357bb2b..203364c9aa28 100644
  
  static struct {
  	uint8_t		cmd;
-@@ -39,6 +40,10 @@ static struct {
- 		.cmd	= ETHNL_CMD_ACT_RESET,
+@@ -34,6 +35,10 @@ static struct {
+ 		.cmd	= ETHTOOL_MSG_RESET_NTF,
  		.cb	= reset_reply_cb,
  	},
 +	{
-+		.cmd	= ETHNL_CMD_SET_RXFLOW,
++		.cmd	= ETHTOOL_MSG_RXFLOW_NTF,
 +		.cb	= rxflow_reply_cb,
 +	},
  };
  
  static int monitor_any_cb(const struct nlmsghdr *nlhdr, void *data)
-@@ -134,6 +139,11 @@ static struct monitor_option monitor_opts[] = {
+@@ -125,6 +130,11 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "--reset",
- 		.cmd		= ETHNL_CMD_ACT_RESET,
+ 		.cmd		= ETHTOOL_MSG_RESET_NTF,
  	},
 +	{
 +		.pattern	= "-x|--show-rxfh|--show-rxfh-indir|"
 +				  "-X|--rxfh|--set-rxfh-indir",
-+		.cmd		= ETHNL_CMD_SET_RXFLOW,
++		.cmd		= ETHTOOL_MSG_RXFLOW_NTF,
 +	},
  };
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
-index 19e74a01c644..b187f896c345 100644
+index 46e8060b6139..a7e02c201ce6 100644
 --- a/netlink/rxflow.c
 +++ b/netlink/rxflow.c
 @@ -285,3 +285,331 @@ int nl_grxfh(struct cmd_context *ctx)
@@ -404,7 +404,7 @@ index 19e74a01c644..b187f896c345 100644
 +	if (ret < 0)
 +		return 2;
 +
-+	ret = ethnl_prep_get_request(ctx, ETHNL_CMD_SET_RXFLOW,
++	ret = ethnl_prep_get_request(ctx, ETHTOOL_MSG_RXFLOW_SET,
 +				     ETHTOOL_A_RXFLOW_DEV);
 +	if (ret < 0)
 +		goto out_free;
@@ -419,5 +419,5 @@ index 19e74a01c644..b187f896c345 100644
 +	return ret;
 +}
 -- 
-2.21.0
+2.22.0
 
