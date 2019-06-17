@@ -1,4 +1,4 @@
-From f0fccac636f6dcb72121726da0b3dfdb2033d301 Mon Sep 17 00:00:00 2001
+From 937c118d2f82c83b1b15be14d5fe5277ed009417 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 15 Feb 2019 11:50:56 +0100
 Subject: [PATCH 10/43] ethtool: move string arrays into common file
@@ -244,5 +244,5 @@ index d08b1e19ce9c..130512ce6174 100644
  {
  	struct ethtool_gfeatures cmd = {
 -- 
-2.21.0
+2.22.0
 

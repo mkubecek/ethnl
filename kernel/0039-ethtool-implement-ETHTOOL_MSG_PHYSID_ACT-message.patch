@@ -1,0 +1,402 @@
+From 1fc65b67378603a9b811e2faea454613ae31348f Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Sun, 2 Sep 2018 15:50:03 +0200
+Subject: [PATCH 39/43] ethtool: implement ETHTOOL_MSG_PHYSID_ACT message
+
+Request physical NIC identification (by blinking a LED), equivalent of
+ETHTOOL_PHYS_ID.
+
+Send one notification when blinking starts and one when it ends.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ Documentation/networking/ethtool-netlink.txt | 26 ++++++-
+ include/uapi/linux/ethtool_netlink.h         | 14 ++++
+ net/ethtool/actions.c                        | 72 ++++++++++++++++++++
+ net/ethtool/common.c                         | 65 ++++++++++++++++++
+ net/ethtool/common.h                         |  1 +
+ net/ethtool/ioctl.c                          | 47 +------------
+ net/ethtool/netlink.c                        |  6 ++
+ net/ethtool/netlink.h                        |  3 +
+ 8 files changed, 187 insertions(+), 47 deletions(-)
+
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index 96b93b9096f8..2316996d033c 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -142,6 +142,7 @@ Userspace to kernel:
+     ETHTOOL_MSG_PARAMS_GET		get device parameters
+     ETHTOOL_MSG_PARAMS_SET		set device parameters
+     ETHTOOL_MSG_NWAYRST_ACT		perform renegotiation
++    ETHTOOL_MSG_PHYSID_ACT		perform physical identification
+ 
+ Kernel to userspace:
+ 
+@@ -153,6 +154,7 @@ Kernel to userspace:
+     ETHTOOL_MSG_PARAMS_GET_REPLY	device parameters
+     ETHTOOL_MSG_PARAMS_NTF		device parameters notification
+     ETHTOOL_MSG_NWAYRST_NTF		renegotiation notification
++    ETHTOOL_MSG_PHYSID_NTF		physical identification notification
+ 
+ "GET" requests are sent by userspace applications to retrieve device
+ information. They usually do not contain any message specific attributes.
+@@ -575,6 +577,28 @@ Request contents:
+ If successful, a notification in the same format is sent.
+ 
+ 
++PHYSID_ACT
++----------
++
++Physical identification of a NIC (usually by blinking a LED. Equivalent of
++ETHTOOL_PHYS_ID.
++
++Request contents:
++
++    ETHTOOL_A_PHYSID_DEV		(nested)	device identification
++    ETHTOOL_A_PHYSID_LENGTH		(u32)		length in seconds
++
++If length is omitted, maximum length is used. Processing is synchronous, there
++is no reply until requested time expires (returns zero) or processing is
++interrupted by a signal (returns EINTR). Two notifications are sent: one when
++identification starts (with length actually used) and one when it stops (with
++length of zero).
++
++Processing of this message is exclusive. While identification is running, all
++other PHYSID_ACT requests for any device fail with EBUSY. The same holds for
++requests using ETHTOOL_PHYS_ID ioctl command.
++
++
+ Request translation
+ -------------------
+ 
+@@ -610,7 +634,7 @@ ETHTOOL_GSG			ETHTOOL_MSG_SETTINGS_GET
+ ETHTOOL_SSG			ETHTOOL_MSG_SETTINGS_SET
+ ETHTOOL_TEST			n/a
+ ETHTOOL_GSTRINGS		ETHTOOL_MSG_STRSET_GET
+-ETHTOOL_PHYS_ID			n/a
++ETHTOOL_PHYS_ID			ETHTOOL_MSG_PHYSID_ACT
+ ETHTOOL_GSTATS			n/a
+ ETHTOOL_GTSO			ETHTOOL_MSG_SETTINGS_GET
+ ETHTOOL_STSO			ETHTOOL_MSG_SETTINGS_SET
+diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
+index fc0c8e383bf0..08782475ab86 100644
+--- a/include/uapi/linux/ethtool_netlink.h
++++ b/include/uapi/linux/ethtool_netlink.h
+@@ -21,6 +21,7 @@ enum {
+ 	ETHTOOL_MSG_PARAMS_GET,
+ 	ETHTOOL_MSG_PARAMS_SET,
+ 	ETHTOOL_MSG_NWAYRST_ACT,
++	ETHTOOL_MSG_PHYSID_ACT,
+ 
+ 	/* add new constants above here */
+ 	__ETHTOOL_MSG_USER_CNT,
+@@ -38,6 +39,7 @@ enum {
+ 	ETHTOOL_MSG_PARAMS_GET_REPLY,
+ 	ETHTOOL_MSG_PARAMS_NTF,
+ 	ETHTOOL_MSG_NWAYRST_NTF,
++	ETHTOOL_MSG_PHYSID_NTF,
+ 
+ 	/* add new constants above here */
+ 	__ETHTOOL_MSG_KERNEL_CNT,
+@@ -424,6 +426,18 @@ enum {
+ 	ETHTOOL_A_NWAYRST_MAX = (__ETHTOOL_A_NWAYRST_CNT - 1)
+ };
+ 
++/* PHYSID */
++
++enum {
++	ETHTOOL_A_PHYSID_UNSPEC,
++	ETHTOOL_A_PHYSID_DEV,			/* nest - ETHTOOL_A_DEV_* */
++	ETHTOOL_A_PHYSID_LENGTH,		/* u32 */
++
++	/* add new constants above here */
++	__ETHTOOL_A_PHYSID_CNT,
++	ETHTOOL_A_PHYSID_MAX = (__ETHTOOL_A_PHYSID_CNT - 1)
++};
++
+ /* generic netlink info */
+ #define ETHTOOL_GENL_NAME "ethtool"
+ #define ETHTOOL_GENL_VERSION 1
+diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
+index f66b381e7a18..3f300810dff1 100644
+--- a/net/ethtool/actions.c
++++ b/net/ethtool/actions.c
+@@ -70,3 +70,75 @@ int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info)
+ 	dev_put(dev);
+ 	return ret;
+ }
++
++/* ACT_PHYS_ID */
++
++static const struct nla_policy physid_policy[ETHTOOL_A_PHYSID_MAX + 1] = {
++	[ETHTOOL_A_PHYSID_UNSPEC]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_PHYSID_DEV]		= { .type = NLA_NESTED },
++	[ETHTOOL_A_PHYSID_LENGTH]	= { .type = NLA_U32 },
++};
++
++void ethnl_physid_notify(struct net_device *dev,
++			 struct netlink_ext_ack *extack, unsigned int cmd,
++			 u32 req_mask, const void *data)
++{
++	u32 timeout = *(const u32 *)data;
++	struct sk_buff *skb;
++	void *msg_payload;
++	int msg_len;
++	int ret;
++
++	msg_len = ethnl_dev_size() + nla_total_size(sizeof(u32));
++	skb = genlmsg_new(msg_len, GFP_KERNEL);
++	if (!skb)
++		return;
++	msg_payload = ethnl_bcastmsg_put(skb, ETHTOOL_MSG_PHYSID_NTF);
++	if (!msg_payload)
++		goto err_skb;
++
++	ret = ethnl_fill_dev(skb, dev, ETHTOOL_A_PHYSID_DEV);
++	if (ret < 0)
++		goto err_skb;
++	if (nla_put_u32(skb, ETHTOOL_A_PHYSID_LENGTH, timeout))
++		goto err_skb;
++
++	genlmsg_end(skb, msg_payload);
++	ethnl_multicast(skb, dev);
++	return;
++
++err_skb:
++	nlmsg_free(skb);
++}
++
++int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info)
++{
++	struct nlattr *tb[ETHTOOL_A_PHYSID_MAX + 1];
++	unsigned long timeout = 0;
++	struct net_device *dev;
++	int ret;
++
++	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb, ETHTOOL_A_PHYSID_MAX,
++			  physid_policy, info->extack);
++	if (ret < 0)
++		return ret;
++	dev = ethnl_dev_get(info, tb[ETHTOOL_A_PHYSID_DEV]);
++	if (IS_ERR(dev))
++		return PTR_ERR(dev);
++	if (tb[ETHTOOL_A_PHYSID_LENGTH])
++		timeout = nla_get_u32(tb[ETHTOOL_A_PHYSID_LENGTH]);
++
++	rtnl_lock();
++	ret = ethnl_before_ops(dev);
++	if (ret < 0)
++		goto out;
++	ret = __ethtool_phys_id(dev, timeout);
++	if (ret == 0 && signal_pending(current))
++		ret = -EINTR;
++	ethnl_after_ops(dev);
++
++out:
++	rtnl_unlock();
++	dev_put(dev);
++	return ret;
++}
+diff --git a/net/ethtool/common.c b/net/ethtool/common.c
+index e235138b64ab..343f5e60d90f 100644
+--- a/net/ethtool/common.c
++++ b/net/ethtool/common.c
+@@ -1,5 +1,6 @@
+ // SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
+ 
++#include <linux/ethtool_netlink.h>
+ #include <linux/rtnetlink.h>
+ #include <linux/phy.h>
+ #include <linux/net_tstamp.h>
+@@ -289,3 +290,67 @@ int __ethtool_set_channels(struct net_device *dev,
+ 
+ 	return dev->ethtool_ops->set_channels(dev, channels);
+ }
++
++/* physical identification (by blinking a LED)
++ * caller must hold RTNL and a reference to dev
++ */
++int __ethtool_phys_id(struct net_device *dev, unsigned long timeout)
++{
++	const struct ethtool_ops *ops = dev->ethtool_ops;
++	u32 notify_timeout;
++	static bool busy;
++	int rc;
++
++	ASSERT_RTNL();
++	if (!ops->set_phys_id)
++		return -EOPNOTSUPP;
++	if (busy)
++		return -EBUSY;
++
++	rc = ops->set_phys_id(dev, ETHTOOL_ID_ACTIVE);
++	if (rc < 0)
++		return rc;
++
++	/* Drop the RTNL lock while waiting, but prevent reentry; device
++	 * removal is prevented by caller holding a reference
++	 */
++	busy = true;
++	notify_timeout = min_t(unsigned long, timeout, U32_MAX) ?: U32_MAX;
++	ethtool_notify(dev, NULL, ETHTOOL_MSG_PHYSID_NTF, 0, &notify_timeout);
++	rtnl_unlock();
++
++	if (rc == 0) {
++		/* Driver will handle this itself */
++		if (timeout > MAX_SCHEDULE_TIMEOUT / HZ)
++			timeout = MAX_SCHEDULE_TIMEOUT / HZ;
++		schedule_timeout_interruptible(
++			timeout ? (timeout * HZ) : MAX_SCHEDULE_TIMEOUT);
++	} else {
++		/* Driver expects to be called at twice the frequency in rc */
++		int n = rc * 2, i, interval = HZ / n;
++
++		/* Count down seconds */
++		do {
++			/* Count down iterations per second */
++			i = n;
++			do {
++				rtnl_lock();
++				rc = ops->set_phys_id(dev,
++				    (i & 1) ? ETHTOOL_ID_OFF : ETHTOOL_ID_ON);
++				rtnl_unlock();
++				if (rc)
++					break;
++				schedule_timeout_interruptible(interval);
++			} while (!signal_pending(current) && --i != 0);
++		} while (!signal_pending(current) &&
++			 (timeout == 0 || --timeout > 0));
++	}
++
++	rtnl_lock();
++	notify_timeout = 0;
++	ethtool_notify(dev, NULL, ETHTOOL_MSG_PHYSID_NTF, 0, &notify_timeout);
++	busy = false;
++
++	(void) ops->set_phys_id(dev, ETHTOOL_ID_INACTIVE);
++	return rc;
++}
+diff --git a/net/ethtool/common.h b/net/ethtool/common.h
+index 28e35dc400c6..2e4d7280c565 100644
+--- a/net/ethtool/common.h
++++ b/net/ethtool/common.h
+@@ -24,6 +24,7 @@ int __ethtool_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info);
+ int __ethtool_set_channels(struct net_device *dev,
+ 			   const struct ethtool_channels *curr,
+ 			   struct ethtool_channels *channels);
++int __ethtool_phys_id(struct net_device *dev, unsigned long timeout);
+ 
+ bool convert_legacy_settings_to_link_ksettings(
+ 	struct ethtool_link_ksettings *link_ksettings,
+diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
+index b979984cde7b..bbd264883d96 100644
+--- a/net/ethtool/ioctl.c
++++ b/net/ethtool/ioctl.c
+@@ -1645,60 +1645,15 @@ static int ethtool_get_strings(struct net_device *dev, void __user *useraddr)
+ static int ethtool_phys_id(struct net_device *dev, void __user *useraddr)
+ {
+ 	struct ethtool_value id;
+-	static bool busy;
+-	const struct ethtool_ops *ops = dev->ethtool_ops;
+ 	int rc;
+ 
+-	if (!ops->set_phys_id)
+-		return -EOPNOTSUPP;
+-
+-	if (busy)
+-		return -EBUSY;
+-
+ 	if (copy_from_user(&id, useraddr, sizeof(id)))
+ 		return -EFAULT;
+ 
+-	rc = ops->set_phys_id(dev, ETHTOOL_ID_ACTIVE);
+-	if (rc < 0)
+-		return rc;
+-
+-	/* Drop the RTNL lock while waiting, but prevent reentry or
+-	 * removal of the device.
+-	 */
+-	busy = true;
+ 	dev_hold(dev);
+-	rtnl_unlock();
+-
+-	if (rc == 0) {
+-		/* Driver will handle this itself */
+-		schedule_timeout_interruptible(
+-			id.data ? (id.data * HZ) : MAX_SCHEDULE_TIMEOUT);
+-	} else {
+-		/* Driver expects to be called at twice the frequency in rc */
+-		int n = rc * 2, i, interval = HZ / n;
+-
+-		/* Count down seconds */
+-		do {
+-			/* Count down iterations per second */
+-			i = n;
+-			do {
+-				rtnl_lock();
+-				rc = ops->set_phys_id(dev,
+-				    (i & 1) ? ETHTOOL_ID_OFF : ETHTOOL_ID_ON);
+-				rtnl_unlock();
+-				if (rc)
+-					break;
+-				schedule_timeout_interruptible(interval);
+-			} while (!signal_pending(current) && --i != 0);
+-		} while (!signal_pending(current) &&
+-			 (id.data == 0 || --id.data != 0));
+-	}
+-
+-	rtnl_lock();
++	rc = __ethtool_phys_id(dev, id.data);
+ 	dev_put(dev);
+-	busy = false;
+ 
+-	(void) ops->set_phys_id(dev, ETHTOOL_ID_INACTIVE);
+ 	return rc;
+ }
+ 
+diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
+index 5f73984a9cb6..a83380a6a543 100644
+--- a/net/ethtool/netlink.c
++++ b/net/ethtool/netlink.c
+@@ -595,6 +595,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
+ 	[ETHTOOL_MSG_SETTINGS_NTF]	= ethnl_std_notify,
+ 	[ETHTOOL_MSG_PARAMS_NTF]	= ethnl_std_notify,
+ 	[ETHTOOL_MSG_NWAYRST_NTF]	= ethnl_nwayrst_notify,
++	[ETHTOOL_MSG_PHYSID_NTF]	= ethnl_physid_notify,
+ };
+ 
+ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
+@@ -683,6 +684,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+ 		.flags	= GENL_UNS_ADMIN_PERM,
+ 		.doit	= ethnl_act_nway_rst,
+ 	},
++	{
++		.cmd	= ETHTOOL_MSG_PHYSID_ACT,
++		.flags	= GENL_UNS_ADMIN_PERM,
++		.doit	= ethnl_act_phys_id,
++	},
+ };
+ 
+ static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
+diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
+index 905426eceacd..443b9f439073 100644
+--- a/net/ethtool/netlink.h
++++ b/net/ethtool/netlink.h
+@@ -261,11 +261,14 @@ extern const struct get_request_ops params_request_ops;
+ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
+ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
+ int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info);
++int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
+ 
+ /* notify handlers */
+ 
+ void ethnl_nwayrst_notify(struct net_device *dev,
+ 			  struct netlink_ext_ack *extack, unsigned int cmd,
+ 			  u32 req_mask, const void *data);
++void ethnl_physid_notify(struct net_device *dev, struct netlink_ext_ack *extack,
++			 unsigned int cmd, u32 req_mask, const void *data);
+ 
+ #endif /* _NET_ETHTOOL_NETLINK_H */
+-- 
+2.22.0
+

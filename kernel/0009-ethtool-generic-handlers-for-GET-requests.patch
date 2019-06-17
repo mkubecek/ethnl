@@ -1,4 +1,4 @@
-From 2ee7af8f3f28fc9054e708b44ad983b39c023540 Mon Sep 17 00:00:00 2001
+From 61e24f65f167e261ed84caf1ea841085b1576260 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 09/43] ethtool: generic handlers for GET requests
@@ -16,12 +16,12 @@ These callback are defined in an instance of struct get_request_ops.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/ethtool/netlink.c | 334 ++++++++++++++++++++++++++++++++++++++++++
+ net/ethtool/netlink.c | 332 ++++++++++++++++++++++++++++++++++++++++++
  net/ethtool/netlink.h | 111 ++++++++++++++
- 2 files changed, 445 insertions(+)
+ 2 files changed, 443 insertions(+)
 
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index d4b60112b6db..94eae9cfe3ad 100644
+index 5f0f6a8c345b..978c22f01add 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -7,6 +7,7 @@
@@ -32,7 +32,7 @@ index d4b60112b6db..94eae9cfe3ad 100644
  
  static const struct nla_policy dev_policy[ETHTOOL_A_DEV_MAX + 1] = {
  	[ETHTOOL_A_DEV_UNSPEC]	= { .type = NLA_REJECT },
-@@ -161,6 +162,339 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -161,6 +162,337 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  	return NULL;
  }
  
@@ -50,7 +50,7 @@ index d4b60112b6db..94eae9cfe3ad 100644
 +
 +/* GET request helpers */
 +
-+const struct get_request_ops *get_requests[__ETHNL_CMD_CNT] = {
++const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
 +};
 +
 +/**
@@ -306,6 +306,12 @@ index d4b60112b6db..94eae9cfe3ad 100644
 +	return 0;
 +}
 +
++static const struct get_request_ops *ethnl_std_notify_to_ops(unsigned int cmd)
++{
++	WARN_ONCE(1, "unexpected notification type %u\n", cmd);
++	return NULL;
++}
++
 +/* generic notification handler */
 +static void ethnl_std_notify(struct net_device *dev,
 +			     struct netlink_ext_ack *extack, unsigned int cmd,
@@ -318,16 +324,8 @@ index d4b60112b6db..94eae9cfe3ad 100644
 +	int reply_len;
 +	int ret;
 +
-+	ops = get_requests[cmd - 1];
-+	if (WARN_ONCE(!ops, "cmd %u has no get_request_ops\n", cmd - 1))
-+		return;
-+	/* when ethnl_std_notify() is used as notify handler, command id of
-+	 * corresponding GET request must be one less than cmd argument passed
-+	 * to ethnl_std_notify()
-+	 */
-+	if (WARN_ONCE(ops->reply_cmd != cmd,
-+		      "reply_cmd for %u is %u, expected %u\n", cmd - 1,
-+		      ops->reply_cmd, cmd))
++	ops = ethnl_std_notify_to_ops(cmd);
++	if (!ops)
 +		return;
 +
 +	req_info = ethnl_alloc_get_data(ops);
@@ -347,7 +345,7 @@ index d4b60112b6db..94eae9cfe3ad 100644
 +	skb = genlmsg_new(reply_len, GFP_KERNEL);
 +	if (!skb)
 +		goto err_data;
-+	reply_payload = ethnl_bcastmsg_put(skb, ops->reply_cmd);
++	reply_payload = ethnl_bcastmsg_put(skb, cmd);
 +	if (!reply_payload)
 +		goto err_skb;
 +
@@ -493,5 +491,5 @@ index 1698f8b56d4a..29743b76ffaa 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
-2.21.0
+2.22.0
 

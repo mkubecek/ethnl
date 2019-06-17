@@ -1,0 +1,479 @@
+From ec12742658b548f011134fc940e9f3702f20de85 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Sun, 10 Mar 2019 20:41:44 +0100
+Subject: [PATCH 26/43] ethtool: provide coalescing information in PARAMS_GET
+ request
+
+Introduce PARAMS_GET netlink request to get coalescing information as
+provided by ETHTOOL_GCOALESCE ioctl command if ETHTOOL_IM_PARAMS_COALESCE
+flag is set in the request.
+
+Send notification in the same format as the reqply message when coalescing
+parameters are modified using the ioctl interface (ETHTOOL_SCOALESCE
+command).
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ Documentation/networking/ethtool-netlink.txt |  54 +++++-
+ include/uapi/linux/ethtool_netlink.h         |  51 +++++
+ net/ethtool/Makefile                         |   2 +-
+ net/ethtool/ioctl.c                          |   7 +-
+ net/ethtool/netlink.c                        |  11 ++
+ net/ethtool/netlink.h                        |   1 +
+ net/ethtool/params.c                         | 192 +++++++++++++++++++
+ 7 files changed, 315 insertions(+), 3 deletions(-)
+ create mode 100644 net/ethtool/params.c
+
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index 97a0ae8bd2bb..fcc73582c923 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -139,6 +139,7 @@ Userspace to kernel:
+     ETHTOOL_MSG_SETTINGS_GET		get device settings
+     ETHTOOL_MSG_SETTINGS_SET		set device settings
+     ETHTOOL_MSG_INFO_GET		get device information
++    ETHTOOL_MSG_PARAMS_GET		get device parameters
+ 
+ Kernel to userspace:
+ 
+@@ -147,6 +148,8 @@ Kernel to userspace:
+     ETHTOOL_MSG_SETTINGS_NTF		device settings notification
+     ETHTOOL_MSG_SETTINGS_SET_REPLY	additional reply for SETTINGS_SET
+     ETHTOOL_MSG_INFO_GET_REPLY		device information
++    ETHTOOL_MSG_PARAMS_GET_REPLY	device parameters
++    ETHTOOL_MSG_PARAMS_NTF		device parameters notification
+ 
+ "GET" requests are sent by userspace applications to retrieve device
+ information. They usually do not contain any message specific attributes.
+@@ -407,6 +410,55 @@ value; if no PHC is associated, the attribute is not present.
+ INFO_GET requests allow dumps.
+ 
+ 
++PARAMS_GET
++----------
++
++PARAMS_GET request retrieves information provided by ioctl comand
++ETHTOOL_GCOALESCE (coalescing parameters).
++
++Request contents:
++
++    ETHTOOL_A_PARAMS_DEV		(nested)	device identification
++    ETHTOOL_A_PARAMS_INFOMASK		(u32)		info mask
++    ETHTOOL_A_PARAMS_COMPACT		(flag)		request compact bitsets
++
++Info mask bits:
++
++    ETHTOOL_IM_PARAMS_COALESCE		coalescing parameters
++
++Response contents: On top level, there is one attribute for each of the
++information categories, the information is nested in it.
++
++    ETHTOOL_A_PARAMS_DEV		(nested)	device identification
++    ETHTOOL_A_PARAMS_COALESCE		(nested)	coalescing parameters
++        ETHTOOL_A_COALESCE_RX_USECS	    (u32)
++        ETHTOOL_A_COALESCE_RX_MAXFRM	    (u32)
++        ETHTOOL_A_COALESCE_RX_USECS_IRQ	    (u32)
++        ETHTOOL_A_COALESCE_RX_MAXFRM_IRQ    (u32)
++        ETHTOOL_A_COALESCE_RX_USECS_LOW	    (u32)
++        ETHTOOL_A_COALESCE_RX_MAXFRM_LOW    (u32)
++        ETHTOOL_A_COALESCE_RX_USECS_HIGH    (u32)
++        ETHTOOL_A_COALESCE_RX_MAXFRM_HIGH   (u32)
++        ETHTOOL_A_COALESCE_TX_USECS	    (u32)
++        ETHTOOL_A_COALESCE_TX_MAXFRM	    (u32)
++        ETHTOOL_A_COALESCE_TX_USECS_IRQ	    (u32)
++        ETHTOOL_A_COALESCE_TX_MAXFRM_IRQ    (u32)
++        ETHTOOL_A_COALESCE_TX_USECS_LOW	    (u32)
++        ETHTOOL_A_COALESCE_TX_MAXFRM_LOW    (u32)
++        ETHTOOL_A_COALESCE_TX_USECS_HIGH    (u32)
++        ETHTOOL_A_COALESCE_TX_MAXFRM_HIGH   (u32)
++        ETHTOOL_A_COALESCE_PKT_RATE_LOW	    (u32)
++        ETHTOOL_A_COALESCE_PKT_RATE_HIGH    (u32)
++        ETHTOOL_A_COALESCE_RX_USE_ADAPTIVE  (bool)
++        ETHTOOL_A_COALESCE_TX_USE_ADAPTIVE  (bool)
++        ETHTOOL_A_COALESCE_RATE_SAMPLE_INTERVAL	(u32)
++        ETHTOOL_A_COALESCE_STATS_BLOCK_USECS	(u32)
++
++PARAMS_GET requests allow dumps and messages in the same format as response
++to them are broadcasted as notifications on change of these settings using
++netlink or ioctl ethtool interface.
++
++
+ Request translation
+ -------------------
+ 
+@@ -428,7 +480,7 @@ ETHTOOL_NWAY_RST		n/a
+ ETHTOOL_GLINK			ETHTOOL_MSG_SETTINGS_GET
+ ETHTOOL_GEEPROM			n/a
+ ETHTOOL_SEEPROM			n/a
+-ETHTOOL_GCOALESCE		n/a
++ETHTOOL_GCOALESCE		ETHTOOL_MSG_PARAMS_GET
+ ETHTOOL_SCOALESCE		n/a
+ ETHTOOL_GRINGPARAM		n/a
+ ETHTOOL_SRINGPARAM		n/a
+diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
+index ea96a40a937e..1a35ded874be 100644
+--- a/include/uapi/linux/ethtool_netlink.h
++++ b/include/uapi/linux/ethtool_netlink.h
+@@ -18,6 +18,7 @@ enum {
+ 	ETHTOOL_MSG_SETTINGS_GET,
+ 	ETHTOOL_MSG_SETTINGS_SET,
+ 	ETHTOOL_MSG_INFO_GET,
++	ETHTOOL_MSG_PARAMS_GET,
+ 
+ 	/* add new constants above here */
+ 	__ETHTOOL_MSG_USER_CNT,
+@@ -32,6 +33,8 @@ enum {
+ 	ETHTOOL_MSG_SETTINGS_NTF,
+ 	ETHTOOL_MSG_SETTINGS_SET_REPLY,
+ 	ETHTOOL_MSG_INFO_GET_REPLY,
++	ETHTOOL_MSG_PARAMS_GET_REPLY,
++	ETHTOOL_MSG_PARAMS_NTF,
+ 
+ 	/* add new constants above here */
+ 	__ETHTOOL_MSG_KERNEL_CNT,
+@@ -278,6 +281,54 @@ enum {
+ 	ETHTOOL_A_TSINFO_MAX = (__ETHTOOL_A_TSINFO_CNT - 1)
+ };
+ 
++/* GET_PARAMS / SET_PARAMS */
++
++enum {
++	ETHTOOL_A_PARAMS_UNSPEC,
++	ETHTOOL_A_PARAMS_DEV,			/* nest - ETHTOOL_A_DEV_* */
++	ETHTOOL_A_PARAMS_INFOMASK,		/* u32 */
++	ETHTOOL_A_PARAMS_COMPACT,		/* flag */
++	ETHTOOL_A_PARAMS_COALESCE,		/* nest - ETHTOOL_A_COALESCE_* */
++
++	/* add new constants above here */
++	__ETHTOOL_A_PARAMS_CNT,
++	ETHTOOL_A_PARAMS_MAX = (__ETHTOOL_A_PARAMS_CNT - 1)
++};
++
++#define ETHTOOL_IM_PARAMS_COALESCE		(1U << 0)
++
++#define ETHTOOL_IM_PARAMS_ALL (ETHTOOL_IM_PARAMS_COALESCE)
++
++enum {
++	ETHTOOL_A_COALESCE_UNSPEC,
++	ETHTOOL_A_COALESCE_RX_USECS,		/* u32 */
++	ETHTOOL_A_COALESCE_RX_MAXFRM,		/* u32 */
++	ETHTOOL_A_COALESCE_RX_USECS_IRQ,	/* u32 */
++	ETHTOOL_A_COALESCE_RX_MAXFRM_IRQ,	/* u32 */
++	ETHTOOL_A_COALESCE_RX_USECS_LOW,	/* u32 */
++	ETHTOOL_A_COALESCE_RX_MAXFRM_LOW,	/* u32 */
++	ETHTOOL_A_COALESCE_RX_USECS_HIGH,	/* u32 */
++	ETHTOOL_A_COALESCE_RX_MAXFRM_HIGH,	/* u32 */
++	ETHTOOL_A_COALESCE_TX_USECS,		/* u32 */
++	ETHTOOL_A_COALESCE_TX_MAXFRM,		/* u32 */
++	ETHTOOL_A_COALESCE_TX_USECS_IRQ,	/* u32 */
++	ETHTOOL_A_COALESCE_TX_MAXFRM_IRQ,	/* u32 */
++	ETHTOOL_A_COALESCE_TX_USECS_LOW,	/* u32 */
++	ETHTOOL_A_COALESCE_TX_MAXFRM_LOW,	/* u32 */
++	ETHTOOL_A_COALESCE_TX_USECS_HIGH,	/* u32 */
++	ETHTOOL_A_COALESCE_TX_MAXFRM_HIGH,	/* u32 */
++	ETHTOOL_A_COALESCE_PKT_RATE_LOW,	/* u32 */
++	ETHTOOL_A_COALESCE_PKT_RATE_HIGH,	/* u32 */
++	ETHTOOL_A_COALESCE_RX_USE_ADAPTIVE,	/* u8 */
++	ETHTOOL_A_COALESCE_TX_USE_ADAPTIVE,	/* u8 */
++	ETHTOOL_A_COALESCE_RATE_SAMPLE_INTERVAL, /* u32 */
++	ETHTOOL_A_COALESCE_STATS_BLOCK_USECS,	/* u32 */
++
++	/* add new constants above here */
++	__ETHTOOL_A_COALESCE_CNT,
++	ETHTOOL_A_COALESCE_MAX = (__ETHTOOL_A_COALESCE_CNT - 1)
++};
++
+ /* generic netlink info */
+ #define ETHTOOL_GENL_NAME "ethtool"
+ #define ETHTOOL_GENL_VERSION 1
+diff --git a/net/ethtool/Makefile b/net/ethtool/Makefile
+index 07e824c5eafa..c886f3d2c184 100644
+--- a/net/ethtool/Makefile
++++ b/net/ethtool/Makefile
+@@ -4,4 +4,4 @@ obj-y				+= ioctl.o common.o
+ 
+ obj-$(CONFIG_ETHTOOL_NETLINK)	+= ethtool_nl.o
+ 
+-ethtool_nl-y	:= netlink.o bitset.o strset.o settings.o info.o
++ethtool_nl-y	:= netlink.o bitset.o strset.o settings.o info.o params.o
+diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
+index 71dc2f9552ea..ce53590a7bea 100644
+--- a/net/ethtool/ioctl.c
++++ b/net/ethtool/ioctl.c
+@@ -1460,6 +1460,7 @@ static noinline_for_stack int ethtool_set_coalesce(struct net_device *dev,
+ 						   void __user *useraddr)
+ {
+ 	struct ethtool_coalesce coalesce;
++	int ret;
+ 
+ 	if (!dev->ethtool_ops->set_coalesce)
+ 		return -EOPNOTSUPP;
+@@ -1467,7 +1468,11 @@ static noinline_for_stack int ethtool_set_coalesce(struct net_device *dev,
+ 	if (copy_from_user(&coalesce, useraddr, sizeof(coalesce)))
+ 		return -EFAULT;
+ 
+-	return dev->ethtool_ops->set_coalesce(dev, &coalesce);
++	ret = dev->ethtool_ops->set_coalesce(dev, &coalesce);
++	if (ret >= 0)
++		ethtool_notify(dev, NULL, ETHTOOL_MSG_PARAMS_NTF,
++			       ETHTOOL_IM_PARAMS_COALESCE, NULL);
++	return ret;
+ }
+ 
+ static int ethtool_get_ringparam(struct net_device *dev, void __user *useraddr)
+diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
+index dcaffd747f78..96c141ffa607 100644
+--- a/net/ethtool/netlink.c
++++ b/net/ethtool/netlink.c
+@@ -260,6 +260,7 @@ const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
+ 	[ETHTOOL_MSG_STRSET_GET]	= &strset_request_ops,
+ 	[ETHTOOL_MSG_SETTINGS_GET]	= &settings_request_ops,
+ 	[ETHTOOL_MSG_INFO_GET]		= &info_request_ops,
++	[ETHTOOL_MSG_PARAMS_GET]	= &params_request_ops,
+ };
+ 
+ /**
+@@ -520,6 +521,8 @@ static const struct get_request_ops *ethnl_std_notify_to_ops(unsigned int cmd)
+ 	switch(cmd) {
+ 	case ETHTOOL_MSG_SETTINGS_NTF:
+ 		return &settings_request_ops;
++	case ETHTOOL_MSG_PARAMS_NTF:
++		return &params_request_ops;
+ 	};
+ 
+ 	WARN_ONCE(1, "unexpected notification type %u\n", cmd);
+@@ -590,6 +593,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+ 
+ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
+ 	[ETHTOOL_MSG_SETTINGS_NTF]	= ethnl_std_notify,
++	[ETHTOOL_MSG_PARAMS_NTF]	= ethnl_std_notify,
+ };
+ 
+ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
+@@ -661,6 +665,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+ 		.dumpit	= ethnl_get_dumpit,
+ 		.done	= ethnl_get_done,
+ 	},
++	{
++		.cmd	= ETHTOOL_MSG_PARAMS_GET,
++		.doit	= ethnl_get_doit,
++		.start	= ethnl_get_start,
++		.dumpit	= ethnl_get_dumpit,
++		.done	= ethnl_get_done,
++	},
+ };
+ 
+ static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
+diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
+index 377984469e4a..619b65becd97 100644
+--- a/net/ethtool/netlink.h
++++ b/net/ethtool/netlink.h
+@@ -254,6 +254,7 @@ struct get_request_ops {
+ extern const struct get_request_ops strset_request_ops;
+ extern const struct get_request_ops settings_request_ops;
+ extern const struct get_request_ops info_request_ops;
++extern const struct get_request_ops params_request_ops;
+ 
+ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
+ 
+diff --git a/net/ethtool/params.c b/net/ethtool/params.c
+new file mode 100644
+index 000000000000..68dde9b22e94
+--- /dev/null
++++ b/net/ethtool/params.c
+@@ -0,0 +1,192 @@
++/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
++
++#include "netlink.h"
++
++static const struct nla_policy get_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
++	[ETHTOOL_A_PARAMS_UNSPEC]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_PARAMS_DEV]			= { .type = NLA_NESTED },
++	[ETHTOOL_A_PARAMS_INFOMASK]		= { .type = NLA_U32 },
++	[ETHTOOL_A_PARAMS_COMPACT]		= { .type = NLA_FLAG },
++	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_REJECT },
++};
++
++struct params_data {
++	struct ethnl_req_info		reqinfo_base;
++
++	/* everything below here will be reset for each device in dumps */
++	struct ethnl_reply_data		repdata_base;
++	struct ethtool_coalesce		coalesce;
++};
++
++static int params_parse(struct ethnl_req_info *req_info, struct sk_buff *skb,
++			struct genl_info *info, const struct nlmsghdr *nlhdr)
++{
++	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
++	int ret;
++
++	ret = nlmsg_parse(nlhdr, GENL_HDRLEN, tb, ETHTOOL_A_PARAMS_MAX,
++			  get_params_policy, info ? info->extack : NULL);
++	if (ret < 0)
++		return ret;
++
++	if (tb[ETHTOOL_A_PARAMS_DEV]) {
++		req_info->dev = ethnl_dev_get(info, tb[ETHTOOL_A_PARAMS_DEV]);
++		if (IS_ERR(req_info->dev)) {
++			ret = PTR_ERR(req_info->dev);
++			req_info->dev = NULL;
++			return ret;
++		}
++	}
++	if (tb[ETHTOOL_A_PARAMS_INFOMASK])
++		req_info->req_mask = nla_get_u32(tb[ETHTOOL_A_PARAMS_INFOMASK]);
++	if (tb[ETHTOOL_A_PARAMS_COMPACT])
++		req_info->compact = true;
++	if (req_info->req_mask == 0)
++		req_info->req_mask = ETHTOOL_IM_PARAMS_ALL;
++
++	return 0;
++}
++
++static int ethnl_get_coalesce(struct net_device *dev,
++			      struct ethtool_coalesce *data)
++{
++	if (!dev->ethtool_ops->get_coalesce)
++		return -EOPNOTSUPP;
++	return dev->ethtool_ops->get_coalesce(dev, data);
++}
++
++static int params_prepare(struct ethnl_req_info *req_info,
++			  struct genl_info *info)
++{
++	struct params_data *data =
++		container_of(req_info, struct params_data, reqinfo_base);
++	struct net_device *dev = data->repdata_base.dev;
++	u32 req_mask = req_info->req_mask;
++	int ret;
++
++	ret = ethnl_before_ops(dev);
++	if (ret < 0)
++		return ret;
++	if (req_mask & ETHTOOL_IM_PARAMS_COALESCE) {
++		ret = ethnl_get_coalesce(dev, &data->coalesce);
++		if (ret < 0)
++			req_mask &= ~ETHTOOL_IM_PARAMS_COALESCE;
++	}
++	ethnl_after_ops(dev);
++
++	data->repdata_base.info_mask = req_mask;
++	if ((req_info->req_mask & ~req_mask) && info)
++		GENL_SET_ERR_MSG(info,
++				 "not all requested data could be retrieved");
++	return 0;
++}
++
++static int params_coalesce_size(void)
++{
++	return nla_total_size(20 * nla_total_size(sizeof(u32)) +
++			      2 * nla_total_size(sizeof(u8)));
++}
++
++static int params_size(const struct ethnl_req_info *req_info)
++{
++	struct params_data *data =
++		container_of(req_info, struct params_data, reqinfo_base);
++	u32 info_mask = data->repdata_base.info_mask;
++	int len = 0;
++
++	len += ethnl_dev_size();
++	if (info_mask & ETHTOOL_IM_PARAMS_COALESCE)
++		len += params_coalesce_size();
++
++	return len;
++}
++
++static int params_fill_coalesce(struct sk_buff *skb,
++				struct ethtool_coalesce *data)
++{
++	struct nlattr *nest;
++
++	nest = nla_nest_start(skb, ETHTOOL_A_PARAMS_COALESCE);
++	if (!nest)
++		return -EMSGSIZE;
++	if (nla_put_u32(skb, ETHTOOL_A_COALESCE_RX_USECS,
++			data->rx_coalesce_usecs) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_RX_MAXFRM,
++			data->rx_max_coalesced_frames) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_RX_USECS_IRQ,
++			data->rx_coalesce_usecs_irq) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_RX_MAXFRM_IRQ,
++			data->rx_max_coalesced_frames_irq) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_RX_USECS_LOW,
++			data->rx_coalesce_usecs_low) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_RX_MAXFRM_LOW,
++			data->rx_max_coalesced_frames_low) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_RX_USECS_HIGH,
++			data->rx_coalesce_usecs_high) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_RX_MAXFRM_HIGH,
++			data->rx_max_coalesced_frames_high) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_TX_USECS,
++			data->tx_coalesce_usecs) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_TX_MAXFRM,
++			data->tx_max_coalesced_frames) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_TX_USECS_IRQ,
++			data->tx_coalesce_usecs_irq) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_TX_MAXFRM_IRQ,
++			data->tx_max_coalesced_frames_irq) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_TX_USECS_LOW,
++			data->tx_coalesce_usecs_low) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_TX_MAXFRM_LOW,
++			data->tx_max_coalesced_frames_low) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_TX_USECS_HIGH,
++			data->tx_coalesce_usecs_high) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_TX_MAXFRM_HIGH,
++			data->tx_max_coalesced_frames_high) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_PKT_RATE_LOW,
++			data->pkt_rate_low) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_PKT_RATE_HIGH,
++			data->pkt_rate_high) ||
++	    nla_put_u8(skb, ETHTOOL_A_COALESCE_RX_USE_ADAPTIVE,
++		       !!data->use_adaptive_rx_coalesce) ||
++	    nla_put_u8(skb, ETHTOOL_A_COALESCE_TX_USE_ADAPTIVE,
++		       !!data->use_adaptive_tx_coalesce) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_RATE_SAMPLE_INTERVAL,
++			data->rate_sample_interval) ||
++	    nla_put_u32(skb, ETHTOOL_A_COALESCE_STATS_BLOCK_USECS,
++			data->stats_block_coalesce_usecs)) {
++		nla_nest_cancel(skb, nest);
++		return -EMSGSIZE;
++	}
++
++	nla_nest_end(skb, nest);
++	return 0;
++}
++
++static int params_fill(struct sk_buff *skb,
++		       const struct ethnl_req_info *req_info)
++{
++	struct params_data *data =
++		container_of(req_info, struct params_data, reqinfo_base);
++	u32 info_mask = data->repdata_base.info_mask;
++	int ret;
++
++	if (info_mask & ETHTOOL_IM_PARAMS_COALESCE) {
++		ret = params_fill_coalesce(skb, &data->coalesce);
++		if (ret < 0)
++			return ret;
++	}
++
++	return 0;
++}
++
++const struct get_request_ops params_request_ops = {
++	.request_cmd		= ETHTOOL_MSG_PARAMS_GET,
++	.reply_cmd		= ETHTOOL_MSG_PARAMS_GET_REPLY,
++	.dev_attrtype		= ETHTOOL_A_PARAMS_DEV,
++	.data_size		= sizeof(struct params_data),
++	.repdata_offset		= offsetof(struct params_data, repdata_base),
++
++	.parse_request		= params_parse,
++	.prepare_data		= params_prepare,
++	.reply_size		= params_size,
++	.fill_reply		= params_fill,
++};
+-- 
+2.22.0
+

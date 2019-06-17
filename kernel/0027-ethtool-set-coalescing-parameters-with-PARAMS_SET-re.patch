@@ -1,0 +1,304 @@
+From ceae28645e4eee524edc583b08e930f38488756d Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Sun, 10 Mar 2019 21:27:19 +0100
+Subject: [PATCH 27/43] ethtool: set coalescing parameters with PARAMS_SET
+ request
+
+Introduce PARAMS_SET request and allow setting of coalescing parameters
+with ETHTOOL_A_PARAMS_COALESCE nested attribute. This is a replacement of
+ETHTOOL_SCOALESCE ioctl command.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ Documentation/networking/ethtool-netlink.txt |  35 +++-
+ include/uapi/linux/ethtool_netlink.h         |   1 +
+ net/ethtool/netlink.c                        |   5 +
+ net/ethtool/netlink.h                        |   1 +
+ net/ethtool/params.c                         | 175 +++++++++++++++++++
+ 5 files changed, 216 insertions(+), 1 deletion(-)
+
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index fcc73582c923..49f50b42c753 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -140,6 +140,7 @@ Userspace to kernel:
+     ETHTOOL_MSG_SETTINGS_SET		set device settings
+     ETHTOOL_MSG_INFO_GET		get device information
+     ETHTOOL_MSG_PARAMS_GET		get device parameters
++    ETHTOOL_MSG_PARAMS_SET		set device parameters
+ 
+ Kernel to userspace:
+ 
+@@ -459,6 +460,38 @@ to them are broadcasted as notifications on change of these settings using
+ netlink or ioctl ethtool interface.
+ 
+ 
++PARAMS_SET
++----------
++
++PARAMS_SET request modifies the settings retrieved by PARAMS_GET, i.e. it
++replaces ETHTOOL_SCOALESCE ioctl commands. Relevant data attributes are
++contained in nest attribute ETHTOOL_A_PARAMS_COALESCE.
++
++    ETHTOOL_A_PARAMS_COALESCE		(nested)	coalescing parameters
++        ETHTOOL_A_COALESCE_RX_USECS	    (u32)
++        ETHTOOL_A_COALESCE_RX_MAXFRM	    (u32)
++        ETHTOOL_A_COALESCE_RX_USECS_IRQ	    (u32)
++        ETHTOOL_A_COALESCE_RX_MAXFRM_IRQ    (u32)
++        ETHTOOL_A_COALESCE_RX_USECS_LOW	    (u32)
++        ETHTOOL_A_COALESCE_RX_MAXFRM_LOW    (u32)
++        ETHTOOL_A_COALESCE_RX_USECS_HIGH    (u32)
++        ETHTOOL_A_COALESCE_RX_MAXFRM_HIGH   (u32)
++        ETHTOOL_A_COALESCE_TX_USECS	    (u32)
++        ETHTOOL_A_COALESCE_TX_MAXFRM	    (u32)
++        ETHTOOL_A_COALESCE_TX_USECS_IRQ	    (u32)
++        ETHTOOL_A_COALESCE_TX_MAXFRM_IRQ    (u32)
++        ETHTOOL_A_COALESCE_TX_USECS_LOW	    (u32)
++        ETHTOOL_A_COALESCE_TX_MAXFRM_LOW    (u32)
++        ETHTOOL_A_COALESCE_TX_USECS_HIGH    (u32)
++        ETHTOOL_A_COALESCE_TX_MAXFRM_HIGH   (u32)
++        ETHTOOL_A_COALESCE_PKT_RATE_LOW	    (u32)
++        ETHTOOL_A_COALESCE_PKT_RATE_HIGH    (u32)
++        ETHTOOL_A_COALESCE_RX_USE_ADAPTIVE  (bool)
++        ETHTOOL_A_COALESCE_TX_USE_ADAPTIVE  (bool)
++        ETHTOOL_A_COALESCE_RATE_SAMPLE_INTERVAL	(u32)
++        ETHTOOL_A_COALESCE_STATS_BLOCK_USECS	(u32)
++
++
+ Request translation
+ -------------------
+ 
+@@ -481,7 +514,7 @@ ETHTOOL_GLINK			ETHTOOL_MSG_SETTINGS_GET
+ ETHTOOL_GEEPROM			n/a
+ ETHTOOL_SEEPROM			n/a
+ ETHTOOL_GCOALESCE		ETHTOOL_MSG_PARAMS_GET
+-ETHTOOL_SCOALESCE		n/a
++ETHTOOL_SCOALESCE		ETHTOOL_MSG_PARAMS_SET
+ ETHTOOL_GRINGPARAM		n/a
+ ETHTOOL_SRINGPARAM		n/a
+ ETHTOOL_GPAUSEPARAM		n/a
+diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
+index 1a35ded874be..9b763671fd62 100644
+--- a/include/uapi/linux/ethtool_netlink.h
++++ b/include/uapi/linux/ethtool_netlink.h
+@@ -19,6 +19,7 @@ enum {
+ 	ETHTOOL_MSG_SETTINGS_SET,
+ 	ETHTOOL_MSG_INFO_GET,
+ 	ETHTOOL_MSG_PARAMS_GET,
++	ETHTOOL_MSG_PARAMS_SET,
+ 
+ 	/* add new constants above here */
+ 	__ETHTOOL_MSG_USER_CNT,
+diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
+index 96c141ffa607..785697e22e47 100644
+--- a/net/ethtool/netlink.c
++++ b/net/ethtool/netlink.c
+@@ -672,6 +672,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+ 		.dumpit	= ethnl_get_dumpit,
+ 		.done	= ethnl_get_done,
+ 	},
++	{
++		.cmd	= ETHTOOL_MSG_PARAMS_SET,
++		.flags	= GENL_UNS_ADMIN_PERM,
++		.doit	= ethnl_set_params,
++	},
+ };
+ 
+ static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
+diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
+index 619b65becd97..02b17ab620b0 100644
+--- a/net/ethtool/netlink.h
++++ b/net/ethtool/netlink.h
+@@ -257,5 +257,6 @@ extern const struct get_request_ops info_request_ops;
+ extern const struct get_request_ops params_request_ops;
+ 
+ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
++int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
+ 
+ #endif /* _NET_ETHTOOL_NETLINK_H */
+diff --git a/net/ethtool/params.c b/net/ethtool/params.c
+index 68dde9b22e94..d94f8b103c8e 100644
+--- a/net/ethtool/params.c
++++ b/net/ethtool/params.c
+@@ -190,3 +190,178 @@ const struct get_request_ops params_request_ops = {
+ 	.reply_size		= params_size,
+ 	.fill_reply		= params_fill,
+ };
++
++/* PARAMS_SET */
++
++static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
++	[ETHTOOL_A_PARAMS_UNSPEC]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_PARAMS_DEV]			= { .type = NLA_NESTED },
++	[ETHTOOL_A_PARAMS_INFOMASK]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_PARAMS_COMPACT]		= { .type = NLA_FLAG },
++	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_NESTED },
++};
++
++static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
++	[ETHTOOL_A_COALESCE_UNSPEC]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_COALESCE_RX_USECS]		= { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_RX_MAXFRM]		= { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_RX_USECS_IRQ]	= { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_RX_MAXFRM_IRQ]	= { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_RX_USECS_LOW]	= { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_RX_MAXFRM_LOW]	= { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_RX_USECS_HIGH]	= { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_RX_MAXFRM_HIGH]	= { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_TX_USECS]		= { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_TX_MAXFRM]		= { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_TX_USECS_IRQ]	= { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_TX_MAXFRM_IRQ]	= { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_TX_USECS_LOW]	= { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_TX_MAXFRM_LOW]	= { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_TX_USECS_HIGH]	= { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_TX_MAXFRM_HIGH]	= { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_PKT_RATE_LOW]	= { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_PKT_RATE_HIGH]	= { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_RX_USE_ADAPTIVE]	= { .type = NLA_U8 },
++	[ETHTOOL_A_COALESCE_TX_USE_ADAPTIVE]	= { .type = NLA_U8 },
++	[ETHTOOL_A_COALESCE_RATE_SAMPLE_INTERVAL] = { .type = NLA_U32 },
++	[ETHTOOL_A_COALESCE_STATS_BLOCK_USECS]	= { .type = NLA_U32 },
++};
++
++/**
++ * params_update_coalesce() - update coalescing info from nested attribute
++ * @info: genl_info pointer (only needed for extack)
++ * @dev:  device to set coalescing parameters for
++ * @nest: ETHTOOL_A_PARAMS_COALESCE nested attribute
++ *
++ * Return: negative code on error, 0 if no change, >0 if there was a change
++ */
++static int params_update_coalesce(struct genl_info *info,
++				  struct net_device *dev, struct nlattr *nest)
++{
++	struct nlattr *tb[ETHTOOL_A_COALESCE_MAX + 1];
++	struct ethtool_coalesce data = {};
++	bool mod = false;
++	int ret;
++
++	if (!nest)
++		return 0;
++	if (!dev->ethtool_ops->get_coalesce || !dev->ethtool_ops->set_coalesce)
++		return -EOPNOTSUPP;
++	ret = dev->ethtool_ops->get_coalesce(dev, &data);
++	if (ret < 0)
++		return ret;
++
++	ret = nla_parse_nested(tb, ETHTOOL_A_COALESCE_MAX, nest,
++			       coalesce_policy, info->extack);
++	if (ret < 0)
++		return ret;
++
++	if (ethnl_update_u32(&data.rx_coalesce_usecs,
++			     tb[ETHTOOL_A_COALESCE_RX_USECS]))
++		mod = true;
++	if (ethnl_update_u32(&data.rx_max_coalesced_frames,
++			     tb[ETHTOOL_A_COALESCE_RX_MAXFRM]))
++		mod = true;
++	if (ethnl_update_u32(&data.rx_coalesce_usecs_irq,
++			     tb[ETHTOOL_A_COALESCE_RX_USECS_IRQ]))
++		mod = true;
++	if (ethnl_update_u32(&data.rx_max_coalesced_frames_irq,
++			     tb[ETHTOOL_A_COALESCE_RX_MAXFRM_IRQ]))
++		mod = true;
++	if (ethnl_update_u32(&data.rx_coalesce_usecs_low,
++			     tb[ETHTOOL_A_COALESCE_RX_USECS_LOW]))
++		mod = true;
++	if (ethnl_update_u32(&data.rx_max_coalesced_frames_low,
++			     tb[ETHTOOL_A_COALESCE_RX_MAXFRM_LOW]))
++		mod = true;
++	if (ethnl_update_u32(&data.rx_coalesce_usecs_high,
++			     tb[ETHTOOL_A_COALESCE_RX_USECS_HIGH]))
++		mod = true;
++	if (ethnl_update_u32(&data.rx_max_coalesced_frames_high,
++			     tb[ETHTOOL_A_COALESCE_RX_MAXFRM_HIGH]))
++		mod = true;
++	if (ethnl_update_u32(&data.tx_coalesce_usecs,
++			     tb[ETHTOOL_A_COALESCE_TX_USECS]))
++		mod = true;
++	if (ethnl_update_u32(&data.tx_max_coalesced_frames,
++			     tb[ETHTOOL_A_COALESCE_TX_MAXFRM]))
++		mod = true;
++	if (ethnl_update_u32(&data.tx_coalesce_usecs_irq,
++			     tb[ETHTOOL_A_COALESCE_TX_USECS_IRQ]))
++		mod = true;
++	if (ethnl_update_u32(&data.tx_max_coalesced_frames_irq,
++			     tb[ETHTOOL_A_COALESCE_TX_MAXFRM_IRQ]))
++		mod = true;
++	if (ethnl_update_u32(&data.tx_coalesce_usecs_low,
++			     tb[ETHTOOL_A_COALESCE_TX_USECS_LOW]))
++		mod = true;
++	if (ethnl_update_u32(&data.tx_max_coalesced_frames_low,
++			     tb[ETHTOOL_A_COALESCE_TX_MAXFRM_LOW]))
++		mod = true;
++	if (ethnl_update_u32(&data.tx_coalesce_usecs_high,
++			     tb[ETHTOOL_A_COALESCE_TX_USECS_HIGH]))
++		mod = true;
++	if (ethnl_update_u32(&data.tx_max_coalesced_frames_high,
++			     tb[ETHTOOL_A_COALESCE_TX_MAXFRM_HIGH]))
++		mod = true;
++	if (ethnl_update_u32(&data.pkt_rate_low,
++			     tb[ETHTOOL_A_COALESCE_PKT_RATE_LOW]))
++		mod = true;
++	if (ethnl_update_u32(&data.pkt_rate_high,
++			     tb[ETHTOOL_A_COALESCE_PKT_RATE_HIGH]))
++		mod = true;
++	if (ethnl_update_bool32(&data.use_adaptive_rx_coalesce,
++				tb[ETHTOOL_A_COALESCE_RX_USE_ADAPTIVE]))
++		mod = true;
++	if (ethnl_update_bool32(&data.use_adaptive_tx_coalesce,
++				tb[ETHTOOL_A_COALESCE_TX_USE_ADAPTIVE]))
++		mod = true;
++	if (ethnl_update_u32(&data.rate_sample_interval,
++			     tb[ETHTOOL_A_COALESCE_RATE_SAMPLE_INTERVAL]))
++		mod = true;
++	if (ethnl_update_u32(&data.stats_block_coalesce_usecs,
++			     tb[ETHTOOL_A_COALESCE_STATS_BLOCK_USECS]))
++		mod = true;
++
++	if (!mod)
++		return 0;
++	ret = dev->ethtool_ops->set_coalesce(dev, &data);
++	return (ret < 0) ? ret : 1;
++}
++
++int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
++{
++	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
++	struct net_device *dev;
++	u32 req_mask = 0;
++	int ret;
++
++	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb, ETHTOOL_A_PARAMS_MAX,
++			  params_set_policy, info->extack);
++	if (ret < 0)
++		return ret;
++	dev = ethnl_dev_get(info, tb[ETHTOOL_A_PARAMS_DEV]);
++	if (IS_ERR(dev))
++		return PTR_ERR(dev);
++
++	rtnl_lock();
++	ret = ethnl_before_ops(dev);
++	if (ret < 0)
++		goto out_rtnl;
++	ret = params_update_coalesce(info, dev, tb[ETHTOOL_A_PARAMS_COALESCE]);
++	if (ret < 0)
++		goto out_ops;
++	if (ret)
++		req_mask |= ETHTOOL_IM_PARAMS_COALESCE;
++
++	ret = 0;
++out_ops:
++	if (req_mask)
++		ethtool_notify(dev, NULL, ETHTOOL_MSG_PARAMS_NTF, req_mask,
++			       NULL);
++	ethnl_after_ops(dev);
++out_rtnl:
++	rtnl_unlock();
++	dev_put(dev);
++	return ret;
++}
+-- 
+2.22.0
+

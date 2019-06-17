@@ -1,4 +1,4 @@
-From 5e94596c9b63af4bad347f2980aa63eb6cfe6f44 Mon Sep 17 00:00:00 2001
+From 76bb8cacb01ffeec1730b6f1fc04f755aef72e5c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
 Subject: [PATCH 08/43] ethtool: support for netlink notifications
@@ -59,10 +59,10 @@ index eeacebd7debb..dd4f021542d5 100644
  struct sk_buff *skb_gso_segment(struct sk_buff *skb, netdev_features_t features)
  {
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 71c6a648a030..428136f9f836 100644
+index 62501aab0745..2315dd8f1154 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -65,4 +65,6 @@ enum {
+@@ -80,4 +80,6 @@ enum {
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
  
@@ -70,7 +70,7 @@ index 71c6a648a030..428136f9f836 100644
 +
  #endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 7347a7c50838..d4b60112b6db 100644
+index cf065d368ba4..5f0f6a8c345b 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -6,6 +6,8 @@
@@ -142,5 +142,5 @@ index 7347a7c50838..d4b60112b6db 100644
  	return 0;
  }
 -- 
-2.21.0
+2.22.0
 

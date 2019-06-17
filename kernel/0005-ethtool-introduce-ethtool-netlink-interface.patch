@@ -1,4 +1,4 @@
-From 26ef787e83723ce7cafcacba178048f5ca273d53 Mon Sep 17 00:00:00 2001
+From 5e231dcbf0db7ef4644b6ae3b8205245d5039a42 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 05/43] ethtool: introduce ethtool netlink interface
@@ -9,14 +9,14 @@ option. Add interface description into Documentation/networking.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 164 +++++++++++++++++++
+ Documentation/networking/ethtool-netlink.txt | 197 +++++++++++++++++++
  include/linux/ethtool_netlink.h              |   9 +
- include/uapi/linux/ethtool_netlink.h         |  25 +++
+ include/uapi/linux/ethtool_netlink.h         |  36 ++++
  net/Kconfig                                  |   8 +
  net/ethtool/Makefile                         |   6 +-
  net/ethtool/netlink.c                        |  33 ++++
- net/ethtool/netlink.h                        |  10 ++
- 7 files changed, 254 insertions(+), 1 deletion(-)
+ net/ethtool/netlink.h                        |  10 +
+ 7 files changed, 298 insertions(+), 1 deletion(-)
  create mode 100644 Documentation/networking/ethtool-netlink.txt
  create mode 100644 include/linux/ethtool_netlink.h
  create mode 100644 include/uapi/linux/ethtool_netlink.h
@@ -25,10 +25,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 new file mode 100644
-index 000000000000..aadbf250c883
+index 000000000000..1d0a825a8a6d
 --- /dev/null
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -0,0 +1,164 @@
+@@ -0,0 +1,197 @@
 +                        Netlink interface for ethtool
 +                        =============================
 +
@@ -90,8 +90,41 @@ index 000000000000..aadbf250c883
 +List of message types
 +---------------------
 +
-+All constants use ETHNL_CMD_ prefix, usually followed by "GET", "SET" or "ACT"
-+to indicate the type.
++All constants identifying message types use ETHTOOL_CMD_ prefix and suffix
++according to message purpose:
++
++    _GET	userspace request to retrieve data
++    _SET	userspace request to set data
++    _ACT	userspace request to perform an action
++    _GET_REPLY	kernel reply to a GET request
++    _SET_REPLY	kernel reply to a SET request
++    _ACT_REPLY  kernel reply to an ACT request
++    _NTF	kernel notification
++
++"GET" requests are sent by userspace applications to retrieve device
++information. They usually do not contain any message specific attributes.
++Kernel replies with corresponding "GET_REPLY" message. For most types, "GET"
++request with NLM_F_DUMP and no device identification can be used to query the
++information for all devices supporting the request.
++
++If the data can be also modified, corresponding "SET" message with the same
++layout as "GET" reply is used to request changes. Only attributes where
++a change is requested are included in such request (also, not all attributes
++may be changed). Replies to most "SET" request consist only of error code and
++extack; if kernel provides additional data, it is sent in the form of
++corresponding "SET_REPLY" message.
++
++Data modification also triggers sending a "NTF" message with a notification.
++These usually bear only a subset of attributes which was affected by the
++change. The same notification is issued if the data is modified using other
++means (mostly ioctl ethtool interface). Unlike notifications from ethtool
++netlink code which are only sent if something actually changed, notifications
++triggered by ioctl interface may be sent even if the request did not actually
++change any data.
++
++"ACT" messages request kernel (driver) to perform a specific action. If some
++information is reported by kernel, the reply takes form of an "ACT_REPLY"
++message. Performing an action also triggers a notification ("NTF" message).
 +
 +Messages of type "get" are used by userspace to request information and
 +usually do not contain any attributes (that may be added later for dump
@@ -101,13 +134,13 @@ index 000000000000..aadbf250c883
 +NLM_F_DUMP flags and no device identification dump the information for all
 +devices supporting the request.
 +
-+Later sections describe the format and semantics of these request messages.
++Later sections describe the format and semantics of these messages.
 +
 +
 +Request translation
 +-------------------
 +
-+The following table maps iosctl commands to netlink commands providing their
++The following table maps ioctl commands to netlink commands providing their
 +functionality. Entries with "n/a" in right column are commands which do not
 +have their netlink replacement yet.
 +
@@ -210,10 +243,10 @@ index 000000000000..0412adb4f42f
 +#endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..6aa267451542
+index 000000000000..9a0fbd4f85d9
 --- /dev/null
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,25 @@
+@@ -0,0 +1,36 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +/*
 + * include/uapi/linux/ethtool_netlink.h - netlink interface for ethtool
@@ -227,11 +260,22 @@ index 000000000000..6aa267451542
 +
 +#include <linux/ethtool.h>
 +
++/* message types - userspace to kernel */
 +enum {
-+	ETHNL_CMD_NOOP,
++	ETHTOOL_MSG_USER_NONE,
 +
-+	__ETHNL_CMD_CNT,
-+	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
++	/* add new constants above here */
++	__ETHTOOL_MSG_USER_CNT,
++	ETHTOOL_MSG_USER_MAX = (__ETHTOOL_MSG_USER_CNT - 1)
++};
++
++/* message types - kernel to userspace */
++enum {
++	ETHTOOL_MSG_KERNEL_NONE,
++
++	/* add new constants above here */
++	__ETHTOOL_MSG_KERNEL_CNT,
++	ETHTOOL_MSG_KERNEL_MAX = (__ETHTOOL_MSG_KERNEL_CNT - 1)
 +};
 +
 +/* generic netlink info */
@@ -327,5 +371,5 @@ index 000000000000..257ae55ccc82
 +
 +#endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
-2.21.0
+2.22.0
 

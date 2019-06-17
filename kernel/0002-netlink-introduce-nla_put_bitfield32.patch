@@ -1,4 +1,4 @@
-From ca7b902cc868d0f53acf305060f44ba53780f08d Mon Sep 17 00:00:00 2001
+From 71f3f43d75084b61bb2230de27c0e361c4c5e4d2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 14:17:36 +0100
 Subject: [PATCH 02/43] netlink: introduce nla_put_bitfield32()
@@ -39,5 +39,5 @@ index 28ece67f5312..1894e988003c 100644
   * nla_get_u32 - return payload of u32 attribute
   * @nla: u32 netlink attribute
 -- 
-2.21.0
+2.22.0
 

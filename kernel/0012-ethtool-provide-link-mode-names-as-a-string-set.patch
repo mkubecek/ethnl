@@ -1,4 +1,4 @@
-From f6c5beafaa803c45a831d3e05d9270a6bf5dd65b Mon Sep 17 00:00:00 2001
+From 64655c37835bdbc389ec58cff3a186e482e91808 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:50:07 +0100
 Subject: [PATCH 12/43] ethtool: provide link mode names as a string set
@@ -51,7 +51,7 @@ index 4e4e28e77c7a..6ad298224352 100644
  	ETH_SS_COUNT
  };
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 68b0ab1a94d1..e5e60cf401ad 100644
+index 8d733edb7a3a..902eb42e5148 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -9,6 +9,86 @@ static struct genl_family ethtool_genl_family;
@@ -141,7 +141,7 @@ index 68b0ab1a94d1..e5e60cf401ad 100644
  static const struct nla_policy dev_policy[ETHTOOL_A_DEV_MAX + 1] = {
  	[ETHTOOL_A_DEV_UNSPEC]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -555,6 +635,9 @@ static int __init ethnl_init(void)
+@@ -553,6 +633,9 @@ static int __init ethnl_init(void)
  {
  	int ret;
  
@@ -165,7 +165,7 @@ index 45c3b64adb66..ca463ae65233 100644
  int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
  
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index 7319bfe14a09..36968448f301 100644
+index af50dd318a7f..950b04ae31d7 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -67,6 +67,12 @@ static const struct strset_info info_template[] = {
@@ -182,5 +182,5 @@ index 7319bfe14a09..36968448f301 100644
  
  struct strset_data {
 -- 
-2.21.0
+2.22.0
 

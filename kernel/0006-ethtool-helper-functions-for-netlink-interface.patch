@@ -1,4 +1,4 @@
-From f0638d5e03b877e7f0baac1030dcbeddc9655822 Mon Sep 17 00:00:00 2001
+From 394e9a4552a899baea82768e24d4cf22ab85e7d2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 06/43] ethtool: helper functions for netlink interface
@@ -7,17 +7,17 @@ Various helpers used by ethtool netlink code.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- include/uapi/linux/ethtool_netlink.h |  11 ++
+ include/uapi/linux/ethtool_netlink.h |  12 +++
  net/ethtool/netlink.c                | 156 +++++++++++++++++++++++++++
  net/ethtool/netlink.h                | 111 +++++++++++++++++++
- 3 files changed, 278 insertions(+)
+ 3 files changed, 279 insertions(+)
 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 6aa267451542..a648f7368d4e 100644
+index 9a0fbd4f85d9..37a89050dd53 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -18,6 +18,17 @@ enum {
- 	ETHNL_CMD_MAX = (__ETHNL_CMD_CNT - 1)
+@@ -29,6 +29,18 @@ enum {
+ 	ETHTOOL_MSG_KERNEL_MAX = (__ETHTOOL_MSG_KERNEL_CNT - 1)
  };
  
 +/* device specification */
@@ -27,6 +27,7 @@ index 6aa267451542..a648f7368d4e 100644
 +	ETHTOOL_A_DEV_INDEX,			/* u32 */
 +	ETHTOOL_A_DEV_NAME,			/* string */
 +
++	/* add new constants above here */
 +	__ETHTOOL_A_DEV_CNT,
 +	ETHTOOL_A_DEV_MAX = (__ETHTOOL_A_DEV_CNT - 1)
 +};
@@ -35,7 +36,7 @@ index 6aa267451542..a648f7368d4e 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 3c98b41f04e5..7347a7c50838 100644
+index 3c98b41f04e5..cf065d368ba4 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -1,8 +1,164 @@
@@ -162,7 +163,7 @@ index 3c98b41f04e5..7347a7c50838 100644
 + * ethnl_reply_init() - Create skb for a reply and fill device identification
 + * @payload: payload length (without netlink and genetlink header)
 + * @dev:     device the reply is about (may be null)
-+ * @cmd:     ETHNL_CMD_* command for reply
++ * @cmd:     ETHTOOL_MSG_* message type for reply
 + * @info:    genetlink info of the received packet we respond to
 + * @ehdrp:   place to store payload pointer returned by genlmsg_new()
 + *
@@ -325,5 +326,5 @@ index 257ae55ccc82..6effa23cdf26 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
-2.21.0
+2.22.0
 

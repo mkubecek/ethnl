@@ -1,0 +1,272 @@
+From 2e75de0b3350c418f76f0a68aeb93c5695b7d362 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Mon, 11 Mar 2019 07:40:58 +0100
+Subject: [PATCH 28/43] ethtool: provide ring sizes in PARAMS_GET request
+
+Add information about ring sizes (as provided by ETHTOOL_GRINGPARAM ioctl
+command) in PARAMS_GET reply when ETHTOOL_IM_PARAMS_RING flag is set in the
+request.
+
+Send notification in the same format as reply when ring sizes are modified
+using ioctl interface (ETHTOOL_SRINGPARAM command).
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ Documentation/networking/ethtool-netlink.txt | 18 +++++-
+ include/uapi/linux/ethtool_netlink.h         | 21 ++++++-
+ net/ethtool/ioctl.c                          |  7 ++-
+ net/ethtool/params.c                         | 60 ++++++++++++++++++++
+ 4 files changed, 101 insertions(+), 5 deletions(-)
+
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index 49f50b42c753..b932e28ad58b 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -414,8 +414,10 @@ INFO_GET requests allow dumps.
+ PARAMS_GET
+ ----------
+ 
+-PARAMS_GET request retrieves information provided by ioctl comand
+-ETHTOOL_GCOALESCE (coalescing parameters).
++PARAMS_GET request retrieves information provided by ioctl comands
++ETHTOOL_GCOALESCE (coalescing parameters) and ETHTOOL_GRINGPARAM (ring sizes).
++For each of these, there is a bit in header info_mask so that only one type of
++information can be requested.
+ 
+ Request contents:
+ 
+@@ -426,6 +428,7 @@ Request contents:
+ Info mask bits:
+ 
+     ETHTOOL_IM_PARAMS_COALESCE		coalescing parameters
++    ETHTOOL_IM_PARAMS_RING		ring sizes
+ 
+ Response contents: On top level, there is one attribute for each of the
+ information categories, the information is nested in it.
+@@ -454,6 +457,15 @@ information categories, the information is nested in it.
+         ETHTOOL_A_COALESCE_TX_USE_ADAPTIVE  (bool)
+         ETHTOOL_A_COALESCE_RATE_SAMPLE_INTERVAL	(u32)
+         ETHTOOL_A_COALESCE_STATS_BLOCK_USECS	(u32)
++    ETHTOOL_A_PARAMS_RING		(nested)	ring sizes
++        ETHTOOL_A_RING_RX_MAX_PENDING	    (u32)
++        ETHTOOL_A_RING_RX_MINI_MAX_PENDING  (u32)
++        ETHTOOL_A_RING_RX_JUMBO_MAX_PENDING (u32)
++        ETHTOOL_A_RING_TX_MAX_PENDING	    (u32)
++        ETHTOOL_A_RING_RX_PENDING	    (u32)
++        ETHTOOL_A_RING_RX_MINI_PENDING	    (u32)
++        ETHTOOL_A_RING_RX_JUMBO_PENDING	    (u32)
++        ETHTOOL_A_RING_TX_PENDING	    (u32)
+ 
+ PARAMS_GET requests allow dumps and messages in the same format as response
+ to them are broadcasted as notifications on change of these settings using
+@@ -515,7 +527,7 @@ ETHTOOL_GEEPROM			n/a
+ ETHTOOL_SEEPROM			n/a
+ ETHTOOL_GCOALESCE		ETHTOOL_MSG_PARAMS_GET
+ ETHTOOL_SCOALESCE		ETHTOOL_MSG_PARAMS_SET
+-ETHTOOL_GRINGPARAM		n/a
++ETHTOOL_GRINGPARAM		ETHTOOL_MSG_PARAMS_GET
+ ETHTOOL_SRINGPARAM		n/a
+ ETHTOOL_GPAUSEPARAM		n/a
+ ETHTOOL_SPAUSEPARAM		n/a
+diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
+index 9b763671fd62..39856959c272 100644
+--- a/include/uapi/linux/ethtool_netlink.h
++++ b/include/uapi/linux/ethtool_netlink.h
+@@ -290,6 +290,7 @@ enum {
+ 	ETHTOOL_A_PARAMS_INFOMASK,		/* u32 */
+ 	ETHTOOL_A_PARAMS_COMPACT,		/* flag */
+ 	ETHTOOL_A_PARAMS_COALESCE,		/* nest - ETHTOOL_A_COALESCE_* */
++	ETHTOOL_A_PARAMS_RING,			/* nest - ETHTOOL_A_RING_* */
+ 
+ 	/* add new constants above here */
+ 	__ETHTOOL_A_PARAMS_CNT,
+@@ -297,8 +298,10 @@ enum {
+ };
+ 
+ #define ETHTOOL_IM_PARAMS_COALESCE		(1U << 0)
++#define ETHTOOL_IM_PARAMS_RING			(1U << 1)
+ 
+-#define ETHTOOL_IM_PARAMS_ALL (ETHTOOL_IM_PARAMS_COALESCE)
++#define ETHTOOL_IM_PARAMS_ALL (ETHTOOL_IM_PARAMS_COALESCE | \
++			       ETHTOOL_IM_PARAMS_RING)
+ 
+ enum {
+ 	ETHTOOL_A_COALESCE_UNSPEC,
+@@ -330,6 +333,22 @@ enum {
+ 	ETHTOOL_A_COALESCE_MAX = (__ETHTOOL_A_COALESCE_CNT - 1)
+ };
+ 
++enum {
++	ETHTOOL_A_RING_UNSPEC,
++	ETHTOOL_A_RING_RX_MAX_PENDING,		/* u32 */
++	ETHTOOL_A_RING_RX_MINI_MAX_PENDING,	/* u32 */
++	ETHTOOL_A_RING_RX_JUMBO_MAX_PENDING,	/* u32 */
++	ETHTOOL_A_RING_TX_MAX_PENDING,		/* u32 */
++	ETHTOOL_A_RING_RX_PENDING,		/* u32 */
++	ETHTOOL_A_RING_RX_MINI_PENDING,		/* u32 */
++	ETHTOOL_A_RING_RX_JUMBO_PENDING,	/* u32 */
++	ETHTOOL_A_RING_TX_PENDING,		/* u32 */
++
++	/* add new constants above here */
++	__ETHTOOL_A_RING_CNT,
++	ETHTOOL_A_RING_MAX = (__ETHTOOL_A_RING_CNT - 1)
++};
++
+ /* generic netlink info */
+ #define ETHTOOL_GENL_NAME "ethtool"
+ #define ETHTOOL_GENL_VERSION 1
+diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
+index ce53590a7bea..684328ac7d4a 100644
+--- a/net/ethtool/ioctl.c
++++ b/net/ethtool/ioctl.c
+@@ -1492,6 +1492,7 @@ static int ethtool_get_ringparam(struct net_device *dev, void __user *useraddr)
+ static int ethtool_set_ringparam(struct net_device *dev, void __user *useraddr)
+ {
+ 	struct ethtool_ringparam ringparam, max = { .cmd = ETHTOOL_GRINGPARAM };
++	int ret;
+ 
+ 	if (!dev->ethtool_ops->set_ringparam || !dev->ethtool_ops->get_ringparam)
+ 		return -EOPNOTSUPP;
+@@ -1508,7 +1509,11 @@ static int ethtool_set_ringparam(struct net_device *dev, void __user *useraddr)
+ 	    ringparam.tx_pending > max.tx_max_pending)
+ 		return -EINVAL;
+ 
+-	return dev->ethtool_ops->set_ringparam(dev, &ringparam);
++	ret = dev->ethtool_ops->set_ringparam(dev, &ringparam);
++	if (ret >= 0)
++		ethtool_notify(dev, NULL, ETHTOOL_MSG_PARAMS_NTF,
++			       ETHTOOL_IM_PARAMS_RING, NULL);
++	return ret;
+ }
+ 
+ static noinline_for_stack int ethtool_get_channels(struct net_device *dev,
+diff --git a/net/ethtool/params.c b/net/ethtool/params.c
+index d94f8b103c8e..5eaee645f345 100644
+--- a/net/ethtool/params.c
++++ b/net/ethtool/params.c
+@@ -8,6 +8,7 @@ static const struct nla_policy get_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+ 	[ETHTOOL_A_PARAMS_INFOMASK]		= { .type = NLA_U32 },
+ 	[ETHTOOL_A_PARAMS_COMPACT]		= { .type = NLA_FLAG },
+ 	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_REJECT },
+ };
+ 
+ struct params_data {
+@@ -16,6 +17,7 @@ struct params_data {
+ 	/* everything below here will be reset for each device in dumps */
+ 	struct ethnl_reply_data		repdata_base;
+ 	struct ethtool_coalesce		coalesce;
++	struct ethtool_ringparam	ring;
+ };
+ 
+ static int params_parse(struct ethnl_req_info *req_info, struct sk_buff *skb,
+@@ -55,6 +57,15 @@ static int ethnl_get_coalesce(struct net_device *dev,
+ 	return dev->ethtool_ops->get_coalesce(dev, data);
+ }
+ 
++static int ethnl_get_ring(struct net_device *dev,
++			  struct ethtool_ringparam *data)
++{
++	if (!dev->ethtool_ops->get_ringparam)
++		return -EOPNOTSUPP;
++	dev->ethtool_ops->get_ringparam(dev, data);
++	return 0;
++}
++
+ static int params_prepare(struct ethnl_req_info *req_info,
+ 			  struct genl_info *info)
+ {
+@@ -72,6 +83,11 @@ static int params_prepare(struct ethnl_req_info *req_info,
+ 		if (ret < 0)
+ 			req_mask &= ~ETHTOOL_IM_PARAMS_COALESCE;
+ 	}
++	if (req_mask & ETHTOOL_IM_PARAMS_RING) {
++		ret = ethnl_get_ring(dev, &data->ring);
++		if (ret < 0)
++			req_mask &= ~ETHTOOL_IM_PARAMS_RING;
++	}
+ 	ethnl_after_ops(dev);
+ 
+ 	data->repdata_base.info_mask = req_mask;
+@@ -87,6 +103,11 @@ static int params_coalesce_size(void)
+ 			      2 * nla_total_size(sizeof(u8)));
+ }
+ 
++static int params_ring_size(void)
++{
++	return nla_total_size(8 * nla_total_size(sizeof(u32)));
++}
++
+ static int params_size(const struct ethnl_req_info *req_info)
+ {
+ 	struct params_data *data =
+@@ -97,6 +118,8 @@ static int params_size(const struct ethnl_req_info *req_info)
+ 	len += ethnl_dev_size();
+ 	if (info_mask & ETHTOOL_IM_PARAMS_COALESCE)
+ 		len += params_coalesce_size();
++	if (info_mask & ETHTOOL_IM_PARAMS_RING)
++		len += params_ring_size();
+ 
+ 	return len;
+ }
+@@ -161,6 +184,37 @@ static int params_fill_coalesce(struct sk_buff *skb,
+ 	return 0;
+ }
+ 
++static int params_fill_ring(struct sk_buff *skb, struct ethtool_ringparam *data)
++{
++	struct nlattr *nest;
++
++	nest = nla_nest_start(skb, ETHTOOL_A_PARAMS_RING);
++	if (!nest)
++		return -EMSGSIZE;
++	if (nla_put_u32(skb, ETHTOOL_A_RING_RX_MAX_PENDING,
++			data->rx_max_pending) ||
++	    nla_put_u32(skb, ETHTOOL_A_RING_RX_MINI_MAX_PENDING,
++			data->rx_mini_max_pending) ||
++	    nla_put_u32(skb, ETHTOOL_A_RING_RX_JUMBO_MAX_PENDING,
++			data->rx_jumbo_max_pending) ||
++	    nla_put_u32(skb, ETHTOOL_A_RING_TX_MAX_PENDING,
++			data->tx_max_pending) ||
++	    nla_put_u32(skb, ETHTOOL_A_RING_RX_PENDING,
++			data->rx_pending) ||
++	    nla_put_u32(skb, ETHTOOL_A_RING_RX_MINI_PENDING,
++			data->rx_mini_pending) ||
++	    nla_put_u32(skb, ETHTOOL_A_RING_RX_JUMBO_PENDING,
++			data->rx_jumbo_pending) ||
++	    nla_put_u32(skb, ETHTOOL_A_RING_TX_PENDING,
++			data->tx_pending)) {
++		nla_nest_cancel(skb, nest);
++		return -EMSGSIZE;
++	}
++
++	nla_nest_end(skb, nest);
++	return 0;
++}
++
+ static int params_fill(struct sk_buff *skb,
+ 		       const struct ethnl_req_info *req_info)
+ {
+@@ -174,6 +228,11 @@ static int params_fill(struct sk_buff *skb,
+ 		if (ret < 0)
+ 			return ret;
+ 	}
++	if (info_mask & ETHTOOL_IM_PARAMS_RING) {
++		ret = params_fill_ring(skb, &data->ring);
++		if (ret < 0)
++			return ret;
++	}
+ 
+ 	return 0;
+ }
+@@ -199,6 +258,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+ 	[ETHTOOL_A_PARAMS_INFOMASK]		= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_PARAMS_COMPACT]		= { .type = NLA_FLAG },
+ 	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_NESTED },
++	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_REJECT },
+ };
+ 
+ static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
+-- 
+2.22.0
+
