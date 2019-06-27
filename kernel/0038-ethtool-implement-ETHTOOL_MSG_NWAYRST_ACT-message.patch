@@ -1,4 +1,4 @@
-From 526f9a782a02d90a38383bd05cbb5bb3befa89cc Mon Sep 17 00:00:00 2001
+From 500624441f26e3e541a154242278897a4890b7b0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 38/43] ethtool: implement ETHTOOL_MSG_NWAYRST_ACT message
@@ -9,21 +9,21 @@ If successful, send a notification in the same format.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 16 ++++-
- include/uapi/linux/ethtool_netlink.h         | 13 ++++
+ Documentation/networking/ethtool-netlink.txt | 16 +++-
+ include/uapi/linux/ethtool_netlink.h         | 15 ++++
  net/ethtool/Makefile                         |  3 +-
- net/ethtool/actions.c                        | 72 ++++++++++++++++++++
+ net/ethtool/actions.c                        | 86 ++++++++++++++++++++
  net/ethtool/ioctl.c                          |  7 +-
  net/ethtool/netlink.c                        | 10 ++-
- net/ethtool/netlink.h                        |  9 +++
- 7 files changed, 125 insertions(+), 5 deletions(-)
+ net/ethtool/netlink.h                        |  9 ++
+ 7 files changed, 141 insertions(+), 5 deletions(-)
  create mode 100644 net/ethtool/actions.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 847aa165ff4b..96b93b9096f8 100644
+index d6a51381abb8..5532b39445f4 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -141,6 +141,7 @@ Userspace to kernel:
+@@ -156,6 +156,7 @@ Userspace to kernel:
      ETHTOOL_MSG_INFO_GET		get device information
      ETHTOOL_MSG_PARAMS_GET		get device parameters
      ETHTOOL_MSG_PARAMS_SET		set device parameters
@@ -31,7 +31,7 @@ index 847aa165ff4b..96b93b9096f8 100644
  
  Kernel to userspace:
  
-@@ -151,6 +152,7 @@ Kernel to userspace:
+@@ -166,6 +167,7 @@ Kernel to userspace:
      ETHTOOL_MSG_INFO_GET_REPLY		device information
      ETHTOOL_MSG_PARAMS_GET_REPLY	device parameters
      ETHTOOL_MSG_PARAMS_NTF		device parameters notification
@@ -39,7 +39,7 @@ index 847aa165ff4b..96b93b9096f8 100644
  
  "GET" requests are sent by userspace applications to retrieve device
  information. They usually do not contain any message specific attributes.
-@@ -561,6 +563,18 @@ cannot be set by PARAMS_SET request.
+@@ -580,6 +582,18 @@ cannot be set by PARAMS_SET request.
  		- change configured FEC encodings
  
  
@@ -50,7 +50,7 @@ index 847aa165ff4b..96b93b9096f8 100644
 +
 +Request contents:
 +
-+    ETHTOOL_A_NWAYRST_DEV		(nested)	device identification
++    ETHTOOL_A_NWAYRST_HEADER		(nested)	request header
 +
 +If successful, a notification in the same format is sent.
 +
@@ -58,7 +58,7 @@ index 847aa165ff4b..96b93b9096f8 100644
  Request translation
  -------------------
  
-@@ -578,7 +592,7 @@ ETHTOOL_GWOL			ETHTOOL_MSG_SETTINGS_GET
+@@ -597,7 +611,7 @@ ETHTOOL_GWOL			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SWOL			ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_GMSGLVL			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SMSGLVL			ETHTOOL_MSG_SETTINGS_SET
@@ -68,7 +68,7 @@ index 847aa165ff4b..96b93b9096f8 100644
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 0c913b0e76c5..fc0c8e383bf0 100644
+index d9285fdfa82c..d071bdb82803 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -20,6 +20,7 @@ enum {
@@ -87,7 +87,7 @@ index 0c913b0e76c5..fc0c8e383bf0 100644
  
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
-@@ -411,6 +413,17 @@ enum {
+@@ -434,6 +436,19 @@ enum {
  	ETHTOOL_A_FEC_MAX = (__ETHTOOL_A_FEC_CNT - 1)
  };
  
@@ -95,12 +95,14 @@ index 0c913b0e76c5..fc0c8e383bf0 100644
 +
 +enum {
 +	ETHTOOL_A_NWAYRST_UNSPEC,
-+	ETHTOOL_A_NWAYRST_DEV,			/* nest - ETHTOOL_A_DEV_* */
++	ETHTOOL_A_NWAYRST_HEADER,		/* nest - _A_HEADER_* */
 +
 +	/* add new constants above here */
 +	__ETHTOOL_A_NWAYRST_CNT,
 +	ETHTOOL_A_NWAYRST_MAX = (__ETHTOOL_A_NWAYRST_CNT - 1)
 +};
++
++#define ETHTOOL_RF_NWAYRST_ALL 0
 +
  /* generic netlink info */
  #define ETHTOOL_GENL_NAME "ethtool"
@@ -118,10 +120,10 @@ index c886f3d2c184..ca21edc7995f 100644
 +		   actions.o
 diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
 new file mode 100644
-index 000000000000..f66b381e7a18
+index 000000000000..db4211364840
 --- /dev/null
 +++ b/net/ethtool/actions.c
-@@ -0,0 +1,72 @@
+@@ -0,0 +1,86 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
@@ -131,7 +133,17 @@ index 000000000000..f66b381e7a18
 +
 +static const struct nla_policy nwayrst_policy[ETHTOOL_A_NWAYRST_MAX + 1] = {
 +	[ETHTOOL_A_NWAYRST_UNSPEC]	= { .type = NLA_REJECT },
-+	[ETHTOOL_A_NWAYRST_DEV]		= { .type = NLA_NESTED },
++	[ETHTOOL_A_NWAYRST_HEADER]	= { .type = NLA_NESTED },
++};
++
++static const struct nla_policy nwayrst_hdr_policy[ETHTOOL_A_HEADER_MAX + 1] = {
++	[ETHTOOL_A_HEADER_UNSPEC]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_HEADER_DEV_INDEX]	= { .type = NLA_U32 },
++	[ETHTOOL_A_HEADER_DEV_NAME]	= { .type = NLA_NUL_STRING,
++					    .len = IFNAMSIZ - 1 },
++	[ETHTOOL_A_HEADER_INFOMASK]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_HEADER_GFLAGS]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_HEADER_RFLAGS]	= { .type = NLA_REJECT },
 +};
 +
 +void ethnl_nwayrst_notify(struct net_device *dev,
@@ -143,7 +155,7 @@ index 000000000000..f66b381e7a18
 +	int msg_len;
 +	int ret;
 +
-+	msg_len = ethnl_dev_size();
++	msg_len = ethnl_reply_header_size();
 +	skb = genlmsg_new(msg_len, GFP_KERNEL);
 +	if (!skb)
 +		return;
@@ -151,7 +163,7 @@ index 000000000000..f66b381e7a18
 +	if (!msg_payload)
 +		goto err_skb;
 +
-+	ret = ethnl_fill_dev(skb, dev, ETHTOOL_A_NWAYRST_DEV);
++	ret = ethnl_fill_reply_header(skb, dev, ETHTOOL_A_NWAYRST_HEADER);
 +	if (ret < 0)
 +		goto err_skb;
 +	genlmsg_end(skb, msg_payload);
@@ -165,6 +177,7 @@ index 000000000000..f66b381e7a18
 +int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHTOOL_A_NWAYRST_MAX + 1];
++	struct ethnl_req_info req_info = {};
 +	struct net_device *dev;
 +	int ret;
 +
@@ -172,9 +185,12 @@ index 000000000000..f66b381e7a18
 +			  nwayrst_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
-+	dev = ethnl_dev_get(info, tb[ETHTOOL_A_NWAYRST_DEV]);
-+	if (IS_ERR(dev))
-+		return PTR_ERR(dev);
++	ret = ethnl_parse_header(&req_info, tb[ETHTOOL_A_NWAYRST_HEADER],
++				 genl_info_net(info), info->extack,
++				 nwayrst_hdr_policy, true);
++	if (ret < 0)
++		return ret;
++	dev = req_info.dev;
 +	ret = -EOPNOTSUPP;
 +	if (!dev->ethtool_ops->nway_reset)
 +		goto out_dev;
@@ -195,7 +211,7 @@ index 000000000000..f66b381e7a18
 +	return ret;
 +}
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index ae5cc1ea5b81..b979984cde7b 100644
+index 86bf698209f3..4e39b422865e 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1283,10 +1283,15 @@ static int ethtool_set_eee(struct net_device *dev, char __user *useraddr)
@@ -216,10 +232,10 @@ index ae5cc1ea5b81..b979984cde7b 100644
  
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 785697e22e47..5f73984a9cb6 100644
+index f43ca01adf29..f97a190a41ac 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -242,13 +242,13 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -259,13 +259,13 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  	return NULL;
  }
  
@@ -235,7 +251,7 @@ index 785697e22e47..5f73984a9cb6 100644
  {
  	return genlmsg_multicast_netns(&ethtool_genl_family, dev_net(dev), skb,
  				       0, ETHNL_MCGRP_MONITOR, GFP_KERNEL);
-@@ -594,6 +594,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -669,6 +669,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHTOOL_MSG_SETTINGS_NTF]	= ethnl_std_notify,
  	[ETHTOOL_MSG_PARAMS_NTF]	= ethnl_std_notify,
@@ -243,7 +259,7 @@ index 785697e22e47..5f73984a9cb6 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -677,6 +678,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -752,6 +753,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_params,
  	},
@@ -256,19 +272,19 @@ index 785697e22e47..5f73984a9cb6 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 02b17ab620b0..905426eceacd 100644
+index e5c57329f9b4..107023a63e97 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -25,6 +25,8 @@ int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
+@@ -30,6 +30,8 @@ int ethnl_fill_reply_header(struct sk_buff *skb, struct net_device *dev,
  struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
- 				 u16 dev_attrtype, struct genl_info *info,
+ 				 u16 hdr_attrtype, struct genl_info *info,
  				 void **ehdrp);
 +void *ethnl_bcastmsg_put(struct sk_buff *skb, u8 cmd);
 +int ethnl_multicast(struct sk_buff *skb, struct net_device *dev);
  
  #if BITS_PER_LONG == 64 && defined(__BIG_ENDIAN)
  void ethnl_bitmap_to_u32(unsigned long *bitmap, unsigned int nwords);
-@@ -258,5 +260,12 @@ extern const struct get_request_ops params_request_ops;
+@@ -288,5 +290,12 @@ extern const struct get_request_ops params_request_ops;
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);

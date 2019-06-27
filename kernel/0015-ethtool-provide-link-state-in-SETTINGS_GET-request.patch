@@ -1,4 +1,4 @@
-From f738f432fecfe523b8901317c058625760863682 Mon Sep 17 00:00:00 2001
+From 1e6eb95d53d2fe97c8d13016f7ecd00e62787e79 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:26:45 +0100
 Subject: [PATCH 15/43] ethtool: provide link state in SETTINGS_GET request
@@ -22,10 +22,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 69 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 5c1786d538c2..2ae7a720b794 100644
+index da459bc21f7c..5d0828902f98 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -230,6 +230,7 @@ Info mask bits meaning:
+@@ -250,6 +250,7 @@ Info mask bits meaning:
  
      ETHTOOL_IM_SETTINGS_LINKINFO	link settings
      ETHTOOL_IM_SETTINGS_LINKMODES	link modes and related
@@ -33,7 +33,7 @@ index 5c1786d538c2..2ae7a720b794 100644
  
  Response contents:
  
-@@ -246,6 +247,8 @@ Response contents:
+@@ -266,6 +267,8 @@ Response contents:
          ETHTOOL_A_LINKMODES_PEER	    (bitset)	    partner link modes
          ETHTOOL_A_LINKMODES_SPEED	    (u32)	    link speed (Mb/s)
          ETHTOOL_A_LINKMODES_DUPLEX	    (u8)	    duplex mode
@@ -42,7 +42,7 @@ index 5c1786d538c2..2ae7a720b794 100644
  
  Most of the attributes and their values have the same meaning as matching
  members of the corresponding ioctl structures. For ETHTOOL_A_LINKMODES_OURS,
-@@ -303,7 +306,7 @@ ETHTOOL_SWOL			n/a
+@@ -323,7 +326,7 @@ ETHTOOL_SWOL			n/a
  ETHTOOL_GMSGLVL			n/a
  ETHTOOL_SMSGLVL			n/a
  ETHTOOL_NWAY_RST		n/a
@@ -52,18 +52,18 @@ index 5c1786d538c2..2ae7a720b794 100644
  ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index b36226ea3439..f9ea20f71321 100644
+index 8ccf66ed3f58..46c13455246f 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -136,6 +136,7 @@ enum {
- 	ETHTOOL_A_SETTINGS_COMPACT,		/* flag */
- 	ETHTOOL_A_SETTINGS_LINK_INFO,		/* nest - ETHTOOL_A_LINKINFO_* */
- 	ETHTOOL_A_SETTINGS_LINK_MODES,		/* nest - ETHTOOL_A_LINKMODES_* */
-+	ETHTOOL_A_SETTINGS_LINK_STATE,		/* nest - ETHTOOL_A_LINKSTATE_* */
+@@ -158,6 +158,7 @@ enum {
+ 	ETHTOOL_A_SETTINGS_HEADER,		/* nest - _A_HEADER_* */
+ 	ETHTOOL_A_SETTINGS_LINK_INFO,		/* nest - _A_LINKINFO_* */
+ 	ETHTOOL_A_SETTINGS_LINK_MODES,		/* nest - _A_LINKMODES_* */
++	ETHTOOL_A_SETTINGS_LINK_STATE,		/* nest - _A_LINKSTATE_* */
  
  	/* add new constants above here */
  	__ETHTOOL_A_SETTINGS_CNT,
-@@ -144,9 +145,11 @@ enum {
+@@ -166,9 +167,11 @@ enum {
  
  #define ETHTOOL_IM_SETTINGS_LINKINFO		(1U << 0)
  #define ETHTOOL_IM_SETTINGS_LINKMODES		(1U << 1)
@@ -74,9 +74,9 @@ index b36226ea3439..f9ea20f71321 100644
 +				 ETHTOOL_IM_SETTINGS_LINKMODES | \
 +				 ETHTOOL_IM_SETTINGS_LINKSTATE)
  
- enum {
- 	ETHTOOL_A_LINKINFO_UNSPEC,
-@@ -174,6 +177,15 @@ enum {
+ #define ETHTOOL_RF_SETTINGS_ALL 0
+ 
+@@ -198,6 +201,15 @@ enum {
  	ETHTOOL_A_LINKMODES_MAX = (__ETHTOOL_A_LINKMODES_CNT - 1)
  };
  
@@ -130,7 +130,7 @@ index 0381936d8e1e..a2c1504576c2 100644
  	struct ethtool_link_ksettings *link_ksettings,
  	const struct ethtool_cmd *legacy_settings);
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 89ca8bd3643e..5c53d04f36c9 100644
+index dd6e0b6f96b0..bd8f0102b667 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1359,12 +1359,12 @@ static int ethtool_nway_reset(struct net_device *dev)
@@ -151,7 +151,7 @@ index 89ca8bd3643e..5c53d04f36c9 100644
  		return -EFAULT;
  	return 0;
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 0016b898f9cd..d8a052e1f489 100644
+index 2be0b51e5ac4..8d50792c02ec 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -11,6 +11,7 @@ struct settings_data {
@@ -162,15 +162,15 @@ index 0016b898f9cd..d8a052e1f489 100644
  	bool				lpm_empty;
  };
  
-@@ -114,6 +115,7 @@ static const struct nla_policy settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
- 	[ETHTOOL_A_SETTINGS_COMPACT]	= { .type = NLA_FLAG },
+@@ -112,6 +113,7 @@ static const struct nla_policy settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+ 	[ETHTOOL_A_SETTINGS_HEADER]	= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_INFO]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_LINK_MODES]	= { .type = NLA_REJECT },
 +	[ETHTOOL_A_SETTINGS_LINK_STATE]	= { .type = NLA_REJECT },
  };
  
- /* parse_request() handler */
-@@ -172,6 +174,7 @@ static int settings_prepare(struct ethnl_req_info *req_info,
+ static int ethnl_get_link_ksettings(struct genl_info *info,
+@@ -139,6 +141,7 @@ static int settings_prepare(struct ethnl_req_info *req_info,
  
  	data->lsettings = &data->ksettings.base;
  	data->lpm_empty = true;
@@ -178,7 +178,7 @@ index 0016b898f9cd..d8a052e1f489 100644
  
  	ret = ethnl_before_ops(dev);
  	if (ret < 0)
-@@ -194,6 +197,8 @@ static int settings_prepare(struct ethnl_req_info *req_info,
+@@ -161,6 +164,8 @@ static int settings_prepare(struct ethnl_req_info *req_info,
  		ethnl_bitmap_to_u32(data->ksettings.link_modes.lp_advertising,
  				    __ETHTOOL_LINK_MODE_MASK_NWORDS);
  	}
@@ -187,7 +187,7 @@ index 0016b898f9cd..d8a052e1f489 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -243,6 +248,13 @@ static int settings_linkmodes_size(const struct ethtool_link_ksettings *ksetting
+@@ -211,6 +216,13 @@ settings_linkmodes_size(const struct ethtool_link_ksettings *ksettings,
  	return nla_total_size(len);
  }
  
@@ -201,7 +201,7 @@ index 0016b898f9cd..d8a052e1f489 100644
  /* reply_size() handler
   *
   * To keep things simple, reserve space for some attributes which may not
-@@ -266,6 +278,8 @@ static int settings_size(const struct ethnl_req_info *req_info)
+@@ -234,6 +246,8 @@ static int settings_size(const struct ethnl_req_info *req_info)
  			return ret;
  		len += ret;
  	}
@@ -210,7 +210,7 @@ index 0016b898f9cd..d8a052e1f489 100644
  
  	return len;
  }
-@@ -340,6 +354,23 @@ static int settings_fill_linkmodes(struct sk_buff *skb,
+@@ -308,6 +322,23 @@ static int settings_fill_linkmodes(struct sk_buff *skb,
  	return -EMSGSIZE;
  }
  
@@ -234,7 +234,7 @@ index 0016b898f9cd..d8a052e1f489 100644
  /* fill_reply() handler */
  static int settings_fill(struct sk_buff *skb,
  			 const struct ethnl_req_info *req_info)
-@@ -361,6 +392,11 @@ static int settings_fill(struct sk_buff *skb,
+@@ -329,6 +360,11 @@ static int settings_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -246,8 +246,8 @@ index 0016b898f9cd..d8a052e1f489 100644
  
  	return 0;
  }
-@@ -405,6 +441,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
- 	[ETHTOOL_A_SETTINGS_COMPACT]		= { .type = NLA_FLAG },
+@@ -384,6 +420,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+ 	[ETHTOOL_A_SETTINGS_HEADER]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_INFO]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_MODES]		= { .type = NLA_NESTED },
 +	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },

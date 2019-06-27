@@ -1,4 +1,4 @@
-From 64655c37835bdbc389ec58cff3a186e482e91808 Mon Sep 17 00:00:00 2001
+From 267ba65fc0ab3c9c3c188c0396ab761c58fe426f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:50:07 +0100
 Subject: [PATCH 12/43] ethtool: provide link mode names as a string set
@@ -51,7 +51,7 @@ index 4e4e28e77c7a..6ad298224352 100644
  	ETH_SS_COUNT
  };
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 8d733edb7a3a..902eb42e5148 100644
+index a92bc8522e27..d1a4a7200b31 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -9,6 +9,86 @@ static struct genl_family ethtool_genl_family;
@@ -138,10 +138,10 @@ index 8d733edb7a3a..902eb42e5148 100644
 +	__DEFINE_LINK_MODE_NAME(1000, T1, Full),
 +};
 +
- static const struct nla_policy dev_policy[ETHTOOL_A_DEV_MAX + 1] = {
- 	[ETHTOOL_A_DEV_UNSPEC]	= { .type = NLA_REJECT },
- 	[ETHTOOL_A_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -553,6 +633,9 @@ static int __init ethnl_init(void)
+ static const struct nla_policy dflt_header_policy[ETHTOOL_A_HEADER_MAX + 1] = {
+ 	[ETHTOOL_A_HEADER_UNSPEC]	= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_HEADER_DEV_INDEX]	= { .type = NLA_U32 },
+@@ -628,6 +708,9 @@ static int __init ethnl_init(void)
  {
  	int ret;
  
@@ -152,20 +152,20 @@ index 8d733edb7a3a..902eb42e5148 100644
  	if (WARN(ret < 0, "ethtool: genetlink family registration failed"))
  		return ret;
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 45c3b64adb66..ca463ae65233 100644
+index 94b32f9563cd..4ad1da529ad7 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -8,6 +8,8 @@
- #include <net/genetlink.h>
- #include <net/sock.h>
+@@ -10,6 +10,8 @@
+ 
+ struct ethnl_req_info;
  
 +extern const char *const link_mode_names[];
 +
- struct net_device *ethnl_dev_get(struct genl_info *info, struct nlattr *nest);
- int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
- 
+ int ethnl_parse_header(struct ethnl_req_info *req_info,
+ 		       const struct nlattr *nest, struct net *net,
+ 		       struct netlink_ext_ack *extack,
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index af50dd318a7f..950b04ae31d7 100644
+index cec341f31063..686081274e8c 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -67,6 +67,12 @@ static const struct strset_info info_template[] = {

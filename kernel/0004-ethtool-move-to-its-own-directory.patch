@@ -1,4 +1,4 @@
-From 4886cbb59a997b19420356d25569073bef8eec3f Mon Sep 17 00:00:00 2001
+From bbe0e47e91e701427dd1247aec28fcc132a5dfeb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 13 May 2018 02:35:53 +0200
 Subject: [PATCH 04/43] ethtool: move to its own directory

@@ -1,4 +1,4 @@
-From eb4a1b39cf1f7c9a7e50e475b5f8db3ab3e0058a Mon Sep 17 00:00:00 2001
+From 93cdc170a68fe50d14a96990c45f4b4b137460aa Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 23/43] ethtool: set private flags with SETTINGS_SET request
@@ -15,18 +15,18 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 47 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 0b203f09b6b9..02b5a555dca3 100644
+index f616e66c21ef..d63923f1e533 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -327,6 +327,7 @@ to be passed with SETTINGS_SET request:
+@@ -346,6 +346,7 @@ to be passed with SETTINGS_SET request:
+         ETHTOOL_A_DEBUG_MSG_MASK	    (bitfield32)    message mask
      ETHTOOL_A_SETTINGS_FEATURES		(nested)	device features
          ETHTOOL_A_FEATURES_WANTED	    (bitset)	    wanted features
-         ETHTOOL_A_FEATURES_WANT_DIFF	    (flag)	    actual diff
 +    ETHTOOL_A_SETTINGS_PRIV_FLAGS	(bitset)	device private flags
  
  ETHTOOL_A_LINKMODES_OURS bit set allows setting advertised link modes. If
  autonegotiation is on (either set now or kept from before), advertised modes
-@@ -405,7 +406,7 @@ ETHTOOL_SGSO			ETHTOOL_MSG_SETTINGS_SET
+@@ -427,7 +428,7 @@ ETHTOOL_SGSO			ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_GFLAGS			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SFLAGS			ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_GPFLAGS			ETHTOOL_MSG_SETTINGS_GET
@@ -36,10 +36,10 @@ index 0b203f09b6b9..02b5a555dca3 100644
  ETHTOOL_SRXFH			n/a
  ETHTOOL_GGRO			ETHTOOL_MSG_SETTINGS_GET
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 57f9dfafa783..5119ec22b08e 100644
+index 58fda46a4463..5473e427a55d 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -784,7 +784,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -759,7 +759,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_FEATURES]		= { .type = NLA_NESTED },
@@ -48,7 +48,7 @@ index 57f9dfafa783..5119ec22b08e 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -1141,6 +1141,41 @@ static int settings_update_features(struct genl_info *info, struct net_device *d
+@@ -1121,6 +1121,41 @@ static int settings_update_features(struct genl_info *info,
  	return 0;
  }
  
@@ -90,7 +90,7 @@ index 57f9dfafa783..5119ec22b08e 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
-@@ -1198,6 +1233,15 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -1180,6 +1215,15 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret < 0)
  			goto out_ops;
  	}

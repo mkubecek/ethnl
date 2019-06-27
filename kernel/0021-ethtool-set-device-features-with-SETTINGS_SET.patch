@@ -1,4 +1,4 @@
-From e17213c44628e2a3b3880a7cfcfcce75a9fee889 Mon Sep 17 00:00:00 2001
+From dc2ec9a1fb1743530a55b8e654d2ebdad762d45b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 21/43] ethtool: set device features with SETTINGS_SET
@@ -8,23 +8,23 @@ ETHTOOL_A_SETTINGS_FEATURES nested attribute.
 
 Actual change is subject to netdev_change_features() sanity checks so that
 it can differ from what was requested. Unlike with most other GET requests,
-kernel can reply (if ETHTOOL_A_FEATURES_WANT_DIFF flag is used) with a
-message in the same format but with different semantics: information about
-difference between user request and actual result and difference between
-old and new state of dev->features.
+kernel can reply (if ETHTOOL_RF_REPLY flag is set in request header) with
+a message in the same format but with different semantics: information
+about difference between user request and actual result and difference
+between old and new state of dev->features.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  33 ++--
- include/uapi/linux/ethtool_netlink.h         |   2 +
- net/ethtool/settings.c                       | 159 ++++++++++++++++++-
- 3 files changed, 184 insertions(+), 10 deletions(-)
+ Documentation/networking/ethtool-netlink.txt |  35 ++--
+ include/uapi/linux/ethtool_netlink.h         |   1 +
+ net/ethtool/settings.c                       | 161 ++++++++++++++++++-
+ 3 files changed, 187 insertions(+), 10 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 9268af40251b..0c3bdc952138 100644
+index feb15529af31..253631ce645e 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -144,6 +144,7 @@ Kernel to userspace:
+@@ -159,6 +159,7 @@ Kernel to userspace:
      ETHTOOL_MSG_STRSET_GET_REPLY	string set contents
      ETHTOOL_MSG_SETTINGS_GET_REPLY	device settings
      ETHTOOL_MSG_SETTINGS_NTF		device settings notification
@@ -32,35 +32,37 @@ index 9268af40251b..0c3bdc952138 100644
  
  "GET" requests are sent by userspace applications to retrieve device
  information. They usually do not contain any message specific attributes.
-@@ -316,6 +317,9 @@ to be passed with SETTINGS_SET request:
+@@ -336,6 +337,8 @@ to be passed with SETTINGS_SET request:
          ETHTOOL_A_WOL_SOPASS		    (binary)	    SecureOn password
      ETHTOOL_A_SETTINGS_DEBUG		(nested)	debugging
          ETHTOOL_A_DEBUG_MSG_MASK	    (bitfield32)    message mask
 +    ETHTOOL_A_SETTINGS_FEATURES		(nested)	device features
 +        ETHTOOL_A_FEATURES_WANTED	    (bitset)	    wanted features
-+        ETHTOOL_A_FEATURES_WANT_DIFF	    (flag)	    actual diff
  
  ETHTOOL_A_LINKMODES_OURS bit set allows setting advertised link modes. If
  autonegotiation is on (either set now or kept from before), advertised modes
-@@ -335,6 +339,17 @@ enable mode not supported by device). ETHTOOL_A_SETTINGS_MSGLEVEL bitfield
+@@ -355,6 +358,20 @@ enable mode not supported by device). ETHTOOL_A_SETTINGS_MSGLEVEL bitfield
  also allows bits not recognized by kernel in selector as long as the request
  does not attempt to enable them.
  
 +When changing device features, only ETHTOOL_A_FEATURES_WANTED is passed. As
 +usual, mask defines which bits are to be set and value their values. If the
-+request has ETHTOOL_A_FEATURES_WANT_DIFF flag set, reply will contain
-+a message in the same format as response to GET request, except only two
-+bitsets are provided.  ETHTOOL_A_FEATURES_WANTED shows difference between
-+requested features and actual result (dev->features after the operation); mask
-+shows bits which differ and value their values from the original request (new
-+values are negated). Value shows changes between old dev->features (before the
-+operation) and new (after the operation); mask shows bits which have been
-+changed and value their new values.
++request header has ETHTOOL_RF_REPLY flag set, reply will contain a message in
++the same format as response to GET request, except only two bitsets are
++provided. ETHTOOL_A_FEATURES_WANTED shows difference between requested
++features and actual result (dev->features after the operation); mask shows
++bits which differ and value their values from the original request (new values
++are negated). ETHTOOL_RF_STRSET_COUNTS shows changes between old dev->features
++(before the operation) and new (after the operation); mask shows bits which
++have been changed and value their new values. This allows to identify features
++which were requested to be set but were not (e.g. because they cannot be set)
++and features which changed set even if it was not requested (e.g. because of
++dependencies).
 +
  
  Request translation
  -------------------
-@@ -364,30 +379,30 @@ ETHTOOL_SRINGPARAM		n/a
+@@ -384,30 +401,30 @@ ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
  ETHTOOL_SPAUSEPARAM		n/a
  ETHTOOL_GRXCSUM			ETHTOOL_MSG_SETTINGS_GET
@@ -99,7 +101,7 @@ index 9268af40251b..0c3bdc952138 100644
  ETHTOOL_GRXRINGS		n/a
  ETHTOOL_GRXCLSRLCNT		n/a
  ETHTOOL_GRXCLSRULE		n/a
-@@ -402,7 +417,7 @@ ETHTOOL_GSSET_INFO		ETHTOOL_MSG_STRSET_GET
+@@ -422,7 +439,7 @@ ETHTOOL_GSSET_INFO		ETHTOOL_MSG_STRSET_GET
  ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHTOOL_MSG_SETTINGS_GET
@@ -109,7 +111,7 @@ index 9268af40251b..0c3bdc952138 100644
  ETHTOOL_SCHANNELS		n/a
  ETHTOOL_SET_DUMP		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 83847369883b..5fc4a5aa543d 100644
+index 0875c5d88410..ce8e9d6a4718 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -29,6 +29,7 @@ enum {
@@ -120,19 +122,11 @@ index 83847369883b..5fc4a5aa543d 100644
  
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
-@@ -220,6 +221,7 @@ enum {
- 	ETHTOOL_A_FEATURES_WANTED,		/* bitset */
- 	ETHTOOL_A_FEATURES_ACTIVE,		/* bitset */
- 	ETHTOOL_A_FEATURES_NOCHANGE,		/* bitset */
-+	ETHTOOL_A_FEATURES_WANT_DIFF,		/* flag */
- 
- 	/* add new constants above here */
- 	__ETHTOOL_A_FEATURES_CNT,
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 5a5eaf6a89ad..37c90558de59 100644
+index 7e028e85cf20..511696e4d8f3 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -666,6 +666,15 @@ static const struct nla_policy debug_set_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
+@@ -644,6 +644,14 @@ static const struct nla_policy debug_set_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
  					    .validation_data = &all_bits },
  };
  
@@ -142,13 +136,12 @@ index 5a5eaf6a89ad..37c90558de59 100644
 +	[ETHTOOL_A_FEATURES_WANTED]		= { .type = NLA_NESTED },
 +	[ETHTOOL_A_FEATURES_ACTIVE]		= { .type = NLA_REJECT },
 +	[ETHTOOL_A_FEATURES_NOCHANGE]		= { .type = NLA_REJECT },
-+	[ETHTOOL_A_FEATURES_WANT_DIFF]		= { .type = NLA_FLAG },
 +};
 +
  static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
- 	[ETHTOOL_A_SETTINGS_DEV]		= { .type = NLA_NESTED },
-@@ -676,7 +685,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+ 	[ETHTOOL_A_SETTINGS_HEADER]		= { .type = NLA_NESTED },
+@@ -652,7 +660,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
@@ -157,7 +150,7 @@ index 5a5eaf6a89ad..37c90558de59 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -897,11 +906,148 @@ static int settings_update_debug(struct genl_info *info, struct nlattr *nest,
+@@ -873,12 +881,154 @@ static int settings_update_debug(struct genl_info *info, struct nlattr *nest,
  	return ret;
  }
  
@@ -182,26 +175,30 @@ index 5a5eaf6a89ad..37c90558de59 100644
 +	return ret;
 +}
 +
-+static int settings_update_features(struct genl_info *info, struct net_device *dev,
-+			   const struct nlattr *nest, bool compact,
-+			   bool *changed)
++static int settings_update_features(struct genl_info *info,
++				    struct net_device *dev,
++				    const struct nlattr *nest, u32 req_gflags,
++				    bool *changed)
 +{
-+	const unsigned int bitset_flags =
-+	       (compact ? ETHNL_BITSET_COMPACT : 0) |
-+	       ETHNL_BITSET_LEGACY_NAMES;
-+	struct nlattr *tb[ETHTOOL_A_FEATURES_MAX + 1];
-+	DECLARE_BITMAP(old_active, NETDEV_FEATURE_COUNT);
-+	DECLARE_BITMAP(req_wanted, NETDEV_FEATURE_COUNT);
-+	DECLARE_BITMAP(req_mask, NETDEV_FEATURE_COUNT);
-+	DECLARE_BITMAP(new_active, NETDEV_FEATURE_COUNT);
 +	DECLARE_BITMAP(wanted_diff_mask, NETDEV_FEATURE_COUNT);
 +	DECLARE_BITMAP(active_diff_mask, NETDEV_FEATURE_COUNT);
++	DECLARE_BITMAP(old_active, NETDEV_FEATURE_COUNT);
++	DECLARE_BITMAP(req_wanted, NETDEV_FEATURE_COUNT);
++	DECLARE_BITMAP(new_active, NETDEV_FEATURE_COUNT);
++	DECLARE_BITMAP(req_mask, NETDEV_FEATURE_COUNT);
++	struct nlattr *tb[ETHTOOL_A_FEATURES_MAX + 1];
++	unsigned int bitset_flags;
 +	struct nlattr *feat_attr;
 +	struct sk_buff *rskb;
 +	void *reply_payload;
 +	bool mod = false;
 +	int reply_len;
++	bool compact;
 +	int ret;
++
++	compact = req_gflags & ETHTOOL_RF_COMPACT;
++	bitset_flags = (compact ? ETHNL_BITSET_COMPACT : 0) |
++		       ETHNL_BITSET_LEGACY_NAMES;
 +
 +	*changed = false;
 +	ret = nla_parse_nested(tb, ETHTOOL_A_FEATURES_MAX, nest,
@@ -231,7 +228,7 @@ index 5a5eaf6a89ad..37c90558de59 100644
 +	__netdev_update_features(dev);
 +	bitmap_from_features(new_active, dev->features);
 +	*changed = !bitmap_equal(old_active, new_active, NETDEV_FEATURE_COUNT);
-+	if (!tb[ETHTOOL_A_FEATURES_WANT_DIFF])
++	if (!(req_gflags & ETHTOOL_RF_REPLY))
 +		return 0;
 +
 +	bitmap_xor(wanted_diff_mask, req_wanted, new_active,
@@ -259,10 +256,11 @@ index 5a5eaf6a89ad..37c90558de59 100644
 +	if (ret < 0)
 +		goto err;
 +	reply_len += ret;
-+	reply_len = ethnl_dev_size() + nla_total_size(reply_len);
++	reply_len = ethnl_reply_header_size() + nla_total_size(reply_len);
 +	ret = -ENOMEM;
 +	rskb = ethnl_reply_init(reply_len, dev, ETHTOOL_MSG_SETTINGS_SET_REPLY,
-+				ETHTOOL_A_SETTINGS_DEV, info, &reply_payload);
++				ETHTOOL_A_SETTINGS_HEADER, info,
++				&reply_payload);
 +	if (!rskb)
 +		goto err;
 +
@@ -300,22 +298,21 @@ index 5a5eaf6a89ad..37c90558de59 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
+ 	struct ethnl_req_info req_info = {};
  	struct net_device *dev;
  	u32 req_mask = 0;
 +	bool mod;
  	int ret;
  
  	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb,
-@@ -942,6 +1088,17 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -922,6 +1072,15 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret)
  			req_mask |= ETHTOOL_IM_SETTINGS_DEBUG;
  	}
 +	if (tb[ETHTOOL_A_SETTINGS_FEATURES]) {
-+		bool compact = tb[ETHTOOL_A_SETTINGS_COMPACT];
-+
 +		ret = settings_update_features(info, dev,
 +					       tb[ETHTOOL_A_SETTINGS_FEATURES],
-+					       compact, &mod);
++					       req_info.global_flags, &mod);
 +		if (mod)
 +			req_mask |= ETHTOOL_IM_SETTINGS_FEATURES;
 +		if (ret < 0)

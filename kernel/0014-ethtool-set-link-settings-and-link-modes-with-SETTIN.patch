@@ -1,4 +1,4 @@
-From 2eabb26c6709d03989d0622aa273f9c67f9e0b60 Mon Sep 17 00:00:00 2001
+From 32c12a17124e6abfe66864adc97d3a11b7226332 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
 Subject: [PATCH 14/43] ethtool: set link settings and link modes with
@@ -18,14 +18,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool_netlink.h         |   1 +
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   2 +
- net/ethtool/settings.c                       | 317 +++++++++++++++++++
- 5 files changed, 357 insertions(+), 2 deletions(-)
+ net/ethtool/settings.c                       | 329 +++++++++++++++++++
+ 5 files changed, 369 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 1bd05b19be86..5c1786d538c2 100644
+index cfeaa27dfec9..da459bc21f7c 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -137,11 +137,13 @@ Userspace to kernel:
+@@ -152,11 +152,13 @@ Userspace to kernel:
  
      ETHTOOL_MSG_STRSET_GET		get string set
      ETHTOOL_MSG_SETTINGS_GET		get device settings
@@ -39,7 +39,7 @@ index 1bd05b19be86..5c1786d538c2 100644
  
  "GET" requests are sent by userspace applications to retrieve device
  information. They usually do not contain any message specific attributes.
-@@ -255,6 +257,34 @@ to them are broadcasted as notifications on change of these settings using
+@@ -275,6 +277,34 @@ to them are broadcasted as notifications on change of these settings using
  netlink or ioctl ethtool interface.
  
  
@@ -50,7 +50,7 @@ index 1bd05b19be86..5c1786d538c2 100644
 +Request flags, info_mask and index are ignored. These attributes are allowed
 +to be passed with SETTINGS_SET request:
 +
-+    ETHTOOL_A_SETTINGS_DEV		(nested)	device identification
++    ETHTOOL_A_SETTINGS_HEADER		(nested)	request header
 +    ETHTOOL_A_SETTINGS_LINK_INFO	(nested)	link settings
 +        ETHTOOL_A_LINKINFO_PORT		    (u8)	    physical port
 +        ETHTOOL_A_LINKINFO_PHYADDR	    (u8)	    MDIO address of phy
@@ -74,7 +74,7 @@ index 1bd05b19be86..5c1786d538c2 100644
  Request translation
  -------------------
  
-@@ -265,7 +295,7 @@ have their netlink replacement yet.
+@@ -285,7 +315,7 @@ have their netlink replacement yet.
  ioctl command			netlink command
  ---------------------------------------------------------------------
  ETHTOOL_GSET			ETHTOOL_MSG_SETTINGS_GET
@@ -83,7 +83,7 @@ index 1bd05b19be86..5c1786d538c2 100644
  ETHTOOL_GDRVINFO		n/a
  ETHTOOL_GREGS			n/a
  ETHTOOL_GWOL			n/a
-@@ -339,7 +369,7 @@ ETHTOOL_STUNABLE		n/a
+@@ -359,7 +389,7 @@ ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
  ETHTOOL_GLINKSETTINGS		ETHTOOL_MSG_SETTINGS_GET
@@ -93,7 +93,7 @@ index 1bd05b19be86..5c1786d538c2 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 65eda33c17dc..b36226ea3439 100644
+index af0fd363c8b7..8ccf66ed3f58 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -16,6 +16,7 @@ enum {
@@ -105,10 +105,10 @@ index 65eda33c17dc..b36226ea3439 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_USER_CNT,
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index ee1e76a2c3e2..03f740a6004a 100644
+index 24d5d1855a57..4be0ba809641 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -624,6 +624,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -699,6 +699,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -121,10 +121,10 @@ index ee1e76a2c3e2..03f740a6004a 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index c3154458f3e2..a3e86c22ddc9 100644
+index 375de56dd6d2..ad97f9ba9c57 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -245,4 +245,6 @@ struct get_request_ops {
+@@ -275,4 +275,6 @@ struct get_request_ops {
  extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops settings_request_ops;
  
@@ -132,7 +132,7 @@ index c3154458f3e2..a3e86c22ddc9 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index e25eea452a75..0016b898f9cd 100644
+index 1fd32147973d..2be0b51e5ac4 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,99 @@ struct settings_data {
@@ -234,13 +234,23 @@ index e25eea452a75..0016b898f9cd 100644
 +
  static const struct nla_policy settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]	= { .type = NLA_REJECT },
- 	[ETHTOOL_A_SETTINGS_DEV]	= { .type = NLA_NESTED },
-@@ -284,3 +377,227 @@ const struct get_request_ops settings_request_ops = {
+ 	[ETHTOOL_A_SETTINGS_HEADER]	= { .type = NLA_NESTED },
+@@ -255,3 +348,239 @@ const struct get_request_ops settings_request_ops = {
  	.reply_size		= settings_size,
  	.fill_reply		= settings_fill,
  };
 +
 +/* SET_SETTINGS */
++
++static const struct nla_policy settings_hdr_policy[ETHTOOL_A_HEADER_MAX + 1] = {
++	[ETHTOOL_A_HEADER_UNSPEC]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_HEADER_DEV_INDEX]		= { .type = NLA_U32 },
++	[ETHTOOL_A_HEADER_DEV_NAME]		= { .type = NLA_NUL_STRING,
++						    .len = IFNAMSIZ - 1 },
++	[ETHTOOL_A_HEADER_INFOMASK]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_HEADER_GFLAGS]		= { .type = NLA_U32 },
++	[ETHTOOL_A_HEADER_RFLAGS]		= { .type = NLA_REJECT },
++};
 +
 +static const struct nla_policy linkinfo_set_policy[ETHTOOL_A_LINKINFO_MAX + 1] = {
 +	[ETHTOOL_A_LINKINFO_UNSPEC]		= { .type = NLA_REJECT },
@@ -262,9 +272,7 @@ index e25eea452a75..0016b898f9cd 100644
 +
 +static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
 +	[ETHTOOL_A_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
-+	[ETHTOOL_A_SETTINGS_DEV]		= { .type = NLA_NESTED },
-+	[ETHTOOL_A_SETTINGS_INFOMASK]		= { .type = NLA_REJECT },
-+	[ETHTOOL_A_SETTINGS_COMPACT]		= { .type = NLA_FLAG },
++	[ETHTOOL_A_SETTINGS_HEADER]		= { .type = NLA_NESTED },
 +	[ETHTOOL_A_SETTINGS_LINK_INFO]		= { .type = NLA_NESTED },
 +	[ETHTOOL_A_SETTINGS_LINK_MODES]		= { .type = NLA_NESTED },
 +};
@@ -425,6 +433,7 @@ index e25eea452a75..0016b898f9cd 100644
 +int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
++	struct ethnl_req_info req_info = {};
 +	struct net_device *dev;
 +	u32 req_mask = 0;
 +	int ret;
@@ -434,9 +443,12 @@ index e25eea452a75..0016b898f9cd 100644
 +			  info->extack);
 +	if (ret < 0)
 +		return ret;
-+	dev = ethnl_dev_get(info, tb[ETHTOOL_A_SETTINGS_DEV]);
-+	if (IS_ERR(dev))
-+		return PTR_ERR(dev);
++	ret = ethnl_parse_header(&req_info, tb[ETHTOOL_A_SETTINGS_HEADER],
++				 genl_info_net(info), info->extack,
++				 settings_hdr_policy, true);
++	if (ret < 0)
++		return ret;
++	dev = req_info.dev;
 +
 +	rtnl_lock();
 +	ret = ethnl_before_ops(dev);

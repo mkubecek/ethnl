@@ -1,4 +1,4 @@
-From 4bc3b5632716a8027b44a101b2676386a35263c8 Mon Sep 17 00:00:00 2001
+From a15c36b49185cd888eef61ac9328977ab18ec92d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:36:43 +0100
 Subject: [PATCH 33/43] ethtool: set channel counts with PARAMS_SET request
@@ -17,10 +17,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 165 insertions(+), 64 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 0e41714fae01..e294201cccba 100644
+index 96f03da583de..8bc261b765cb 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -492,10 +492,11 @@ PARAMS_SET
+@@ -510,10 +510,11 @@ PARAMS_SET
  ----------
  
  PARAMS_SET request modifies the settings retrieved by PARAMS_GET, i.e. it
@@ -34,9 +34,9 @@ index 0e41714fae01..e294201cccba 100644
 +provided by PARAMS_GET are read only and cannot be set by PARAMS_SET
 +request.
  
+     ETHTOOL_A_PARAMS_HEADER		(nested)	request header
      ETHTOOL_A_PARAMS_COALESCE		(nested)	coalescing parameters
-         ETHTOOL_A_COALESCE_RX_USECS	    (u32)
-@@ -529,6 +530,11 @@ PARAMS_GET are read only and cannot be set by PARAMS_SET request.
+@@ -548,6 +549,11 @@ PARAMS_GET are read only and cannot be set by PARAMS_SET request.
          ETHTOOL_A_PAUSE_AUTONEG		    (bool)
          ETHTOOL_A_PAUSE_RX		    (bool)
          ETHTOOL_A_PAUSE_TX		    (bool)
@@ -48,7 +48,7 @@ index 0e41714fae01..e294201cccba 100644
  
  
  Request translation
-@@ -599,7 +605,7 @@ ETHTOOL_SRXFHINDIR		n/a
+@@ -618,7 +624,7 @@ ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SFEATURES		ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_GCHANNELS		ETHTOOL_MSG_PARAMS_GET
@@ -152,7 +152,7 @@ index 937c5d21c72f..28e35dc400c6 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 139fdf51dc0f..78791452ef5a 100644
+index 703cece81eec..7ae838fae54f 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -24,7 +24,6 @@
@@ -243,7 +243,7 @@ index 139fdf51dc0f..78791452ef5a 100644
  		ethtool_notify(dev, NULL, ETHTOOL_MSG_PARAMS_NTF,
  			       ETHTOOL_IM_PARAMS_CHANNELS, NULL);
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index bb512353f566..6606e2ec145e 100644
+index 14e3823014ad..d07a0b128fe9 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -1,6 +1,7 @@
@@ -252,9 +252,9 @@ index bb512353f566..6606e2ec145e 100644
  #include "netlink.h"
 +#include "common.h"
  
- static const struct nla_policy get_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+ static const struct nla_policy params_get_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_UNSPEC]		= { .type = NLA_REJECT },
-@@ -361,7 +362,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+@@ -331,7 +332,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_NESTED },
@@ -262,8 +262,8 @@ index bb512353f566..6606e2ec145e 100644
 +	[ETHTOOL_A_PARAMS_CHANNELS]		= { .type = NLA_NESTED },
  };
  
- static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
-@@ -615,6 +616,84 @@ static int params_update_pause(struct genl_info *info, struct net_device *dev,
+ static const struct nla_policy params_hdr_policy[ETHTOOL_A_HEADER_MAX + 1] = {
+@@ -595,6 +596,84 @@ static int params_update_pause(struct genl_info *info, struct net_device *dev,
  	return (ret < 0) ? ret : 1;
  }
  
@@ -348,7 +348,7 @@ index bb512353f566..6606e2ec145e 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
-@@ -649,6 +728,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+@@ -633,6 +712,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
  		req_mask |= ETHTOOL_IM_PARAMS_PAUSE;

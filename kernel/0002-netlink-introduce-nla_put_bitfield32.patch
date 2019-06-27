@@ -1,4 +1,4 @@
-From 71f3f43d75084b61bb2230de27c0e361c4c5e4d2 Mon Sep 17 00:00:00 2001
+From 98f1a39a93d42ae859b370233ffa3c55865d0d94 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 14:17:36 +0100
 Subject: [PATCH 02/43] netlink: introduce nla_put_bitfield32()
@@ -13,10 +13,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  1 file changed, 15 insertions(+)
 
 diff --git a/include/net/netlink.h b/include/net/netlink.h
-index 28ece67f5312..1894e988003c 100644
+index e4650e5b64a1..518d130c649f 100644
 --- a/include/net/netlink.h
 +++ b/include/net/netlink.h
-@@ -1462,6 +1462,21 @@ static inline int nla_put_in6_addr(struct sk_buff *skb, int attrtype,
+@@ -1466,6 +1466,21 @@ static inline int nla_put_in6_addr(struct sk_buff *skb, int attrtype,
  	return nla_put(skb, attrtype, sizeof(*addr), addr);
  }
  

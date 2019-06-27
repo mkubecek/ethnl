@@ -1,4 +1,4 @@
-From 61e24f65f167e261ed84caf1ea841085b1576260 Mon Sep 17 00:00:00 2001
+From 67b24d2c39513037a337e9fc73df092d4b63a9c6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 09/43] ethtool: generic handlers for GET requests
@@ -16,12 +16,12 @@ These callback are defined in an instance of struct get_request_ops.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/ethtool/netlink.c | 332 ++++++++++++++++++++++++++++++++++++++++++
- net/ethtool/netlink.h | 111 ++++++++++++++
- 2 files changed, 443 insertions(+)
+ net/ethtool/netlink.c | 390 ++++++++++++++++++++++++++++++++++++++++++
+ net/ethtool/netlink.h | 107 ++++++++++++
+ 2 files changed, 497 insertions(+)
 
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 5f0f6a8c345b..978c22f01add 100644
+index a7a0bfe1818c..cd868ff3828c 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -7,6 +7,7 @@
@@ -30,9 +30,9 @@ index 5f0f6a8c345b..978c22f01add 100644
  static bool ethnl_ok __read_mostly;
 +static u32 ethnl_bcast_seq;
  
- static const struct nla_policy dev_policy[ETHTOOL_A_DEV_MAX + 1] = {
- 	[ETHTOOL_A_DEV_UNSPEC]	= { .type = NLA_REJECT },
-@@ -161,6 +162,337 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+ static const struct nla_policy dflt_header_policy[ETHTOOL_A_HEADER_MAX + 1] = {
+ 	[ETHTOOL_A_HEADER_UNSPEC]	= { .type = NLA_REJECT },
+@@ -178,6 +179,395 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  	return NULL;
  }
  
@@ -96,6 +96,64 @@ index 5f0f6a8c345b..978c22f01add 100644
 +}
 +
 +/**
++ * ethnl_std_parse() - Parse request message
++ * @req_info:    pointer to structure to put data into
++ * @nlhdr:       pointer to request message header
++ * @net:         request netns
++ * @request_ops: struct request_ops for request type
++ * @extack:      netlink extack for error reporting
++ * @require_dev: fail if no device identiified in header
++ *
++ * Parse universal request header and call request specific ->parse_request()
++ * callback (if defined) to parse the rest of the message.
++ *
++ * Return: 0 on success or negative error code
++ */
++static int ethnl_std_parse(struct ethnl_req_info *req_info,
++			   const struct nlmsghdr *nlhdr, struct net *net,
++			   const struct get_request_ops *request_ops,
++			   struct netlink_ext_ack *extack, bool require_dev)
++{
++	struct nlattr **tb;
++	int ret;
++
++	tb = kmalloc_array(request_ops->max_attr + 1, sizeof(tb[0]),
++			   GFP_KERNEL);
++	if (!tb)
++		return -ENOMEM;
++
++	ret = nlmsg_parse(nlhdr, GENL_HDRLEN, tb, request_ops->max_attr,
++			  request_ops->request_policy, extack);
++	if (ret < 0)
++		goto out;
++	ret = ethnl_parse_header(req_info, tb[request_ops->hdr_attr], net,
++				 extack, request_ops->header_policy,
++				 require_dev);
++	if (ret < 0)
++		goto out;
++
++	if (request_ops->parse_request) {
++		ret = request_ops->parse_request(req_info, tb, extack);
++		if (ret < 0)
++			goto out;
++	}
++
++	if (req_info->req_mask == 0)
++		req_info->req_mask = request_ops->default_infomask;
++	if (req_info->req_flags & ~request_ops->all_reqflags) {
++		ret = -EOPNOTSUPP;
++		NL_SET_ERR_MSG_ATTR(extack, tb[ETHTOOL_A_HEADER_RFLAGS],
++				    "unsupported request specific flags");
++		goto out;
++	}
++
++	ret = 0;
++out:
++	kfree(tb);
++	return ret;
++}
++
++/**
 + * ethnl_init_reply_data() - Initialize reply data for GET request
 + * @req_info: pointer to embedded struct ethnl_req_info
 + * @ops:      instance of struct get_request_ops describing the layout
@@ -131,13 +189,11 @@ index 5f0f6a8c345b..978c22f01add 100644
 +	req_info = ethnl_alloc_get_data(ops);
 +	if (!req_info)
 +		return -ENOMEM;
-+	ret = ops->parse_request(req_info, skb, info, info->nlhdr);
-+	if (!ops->allow_nodev_do && !req_info->dev) {
-+		GENL_SET_ERR_MSG(info, "device not specified in do request");
-+		ret = -EINVAL;
-+	}
++	ret = ethnl_std_parse(req_info, info->nlhdr, genl_info_net(info), ops,
++			      info->extack, !ops->allow_nodev_do);
 +	if (ret < 0)
 +		goto err_dev;
++	req_info->privileged = ethnl_is_privileged(skb);
 +	ethnl_init_reply_data(req_info, ops, req_info->dev);
 +
 +	rtnl_lock();
@@ -149,7 +205,7 @@ index 5f0f6a8c345b..978c22f01add 100644
 +		goto err_cleanup;
 +	ret = -ENOMEM;
 +	rskb = ethnl_reply_init(reply_len, req_info->dev, ops->reply_cmd,
-+				ops->dev_attrtype, info, &reply_payload);
++				ops->hdr_attr, info, &reply_payload);
 +	if (!rskb)
 +		goto err_cleanup;
 +	ret = ops->fill_reply(rskb, req_info);
@@ -190,7 +246,7 @@ index 5f0f6a8c345b..978c22f01add 100644
 +	ret = ops->prepare_data(req_info, NULL);
 +	if (ret < 0)
 +		goto out;
-+	ret = ethnl_fill_dev(skb, dev, ops->dev_attrtype);
++	ret = ethnl_fill_reply_header(skb, dev, ops->hdr_attr);
 +	if (ret < 0)
 +		goto out_cleanup;
 +	ret = ops->fill_reply(skb, req_info);
@@ -278,7 +334,8 @@ index 5f0f6a8c345b..978c22f01add 100644
 +	if (!req_info)
 +		return -ENOMEM;
 +
-+	ret = ops->parse_request(req_info, cb->skb, NULL, cb->nlh);
++	ret = ethnl_std_parse(req_info, cb->nlh, sock_net(cb->skb->sk), ops,
++			      cb->extack, false);
 +	if (req_info->dev) {
 +		/* We ignore device specification in dump requests but as the
 +		 * same parser as for non-dump (doit) requests is used, it
@@ -289,6 +346,7 @@ index 5f0f6a8c345b..978c22f01add 100644
 +	}
 +	if (ret < 0)
 +		return ret;
++	req_info->privileged = ethnl_is_privileged(cb->skb);
 +
 +	cb->args[0] = (long)ops;
 +	cb->args[1] = (long)req_info;
@@ -333,7 +391,7 @@ index 5f0f6a8c345b..978c22f01add 100644
 +		return;
 +	req_info->dev = dev;
 +	req_info->req_mask = req_mask;
-+	req_info->compact = true;
++	req_info->global_flags |= ETHTOOL_RF_COMPACT;
 +
 +	ethnl_init_reply_data(req_info, ops, dev);
 +	ret = ops->prepare_data(req_info, NULL);
@@ -349,7 +407,7 @@ index 5f0f6a8c345b..978c22f01add 100644
 +	if (!reply_payload)
 +		goto err_skb;
 +
-+	ret = ethnl_fill_dev(skb, dev, ops->dev_attrtype);
++	ret = ethnl_fill_reply_header(skb, dev, ops->hdr_attr);
 +	if (ret < 0)
 +		goto err_skb;
 +	ret = ops->fill_reply(skb, req_info);
@@ -371,10 +429,10 @@ index 5f0f6a8c345b..978c22f01add 100644
  
  typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 1698f8b56d4a..29743b76ffaa 100644
+index 7f1b9ec1ace7..f3fe2d5d17b7 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -127,4 +127,115 @@ static inline unsigned int ethnl_dev_size(void)
+@@ -143,8 +143,22 @@ static inline unsigned int ethnl_reply_header_size(void)
  			      nla_total_size(IFNAMSIZ));
  }
  
@@ -391,22 +449,24 @@ index 1698f8b56d4a..29743b76ffaa 100644
 + * ->prepare_data()
 + */
 +
-+/**
-+ * struct ethnl_req_info - base type of request information for GET requests
+ /**
+  * struct ethnl_req_info - base type of request information for GET requests
 + * @reply_data: pointer to reply data within the same block
-+ * @dev:        network device the request is for (may be null)
-+ * @req_mask:   request mask, bitmap of requested information
-+ * @compact:    true if compact format of bitsets in reply is requested
-+ *
-+ * This is a common base, additional members may follow after this structure.
-+ */
-+struct ethnl_req_info {
+  * @dev:          network device the request is for (may be null)
+  * @req_mask:     request mask, bitmap of requested information
+  * @global_flags: request flags common for all request types
+@@ -154,6 +168,7 @@ static inline unsigned int ethnl_reply_header_size(void)
+  * This is a common base, additional members may follow after this structure.
+  */
+ struct ethnl_req_info {
 +	struct ethnl_reply_data		*reply_data;
-+	struct net_device		*dev;
-+	u32				req_mask;
-+	bool				compact;
-+};
-+
+ 	struct net_device		*dev;
+ 	u32				req_mask;
+ 	u32				global_flags;
+@@ -161,4 +176,96 @@ struct ethnl_req_info {
+ 	bool				privileged;
+ };
+ 
 +/**
 + * struct ethnl_reply_data - base type of reply data for GET requests
 + * @dev:       device for current reply message; in single shot requests it is
@@ -440,12 +500,17 @@ index 1698f8b56d4a..29743b76ffaa 100644
 +
 +/**
 + * struct get_request_ops - unified handling of GET requests
-+ * @request_cmd:    command id for request (GET)
-+ * @reply_cmd:      command id for reply (SET)
-+ * @dev_attr:       attribute type for device specification
-+ * @data_size:      total length of data structure
-+ * @repdata_offset: offset of "reply data" part (struct ethnl_reply_data)
-+ * @allow_nodev_do: do not fail if device is not specified for non-dump request
++ * @request_cmd:      command id for request (GET)
++ * @reply_cmd:        command id for reply (SET)
++ * @hdr_attr:         attribute type for request header
++ * @max_attr:         maximum (top level) attribute type
++ * @data_size:        total length of data structure
++ * @repdata_offset:   offset of "reply data" part (struct ethnl_reply_data)
++ * @request_policy:   netlink policy for message contents
++ * @header_policy:    (optional) netlink policy for request header
++ * @default_infomask: default infomask (to use if none specified)
++ * @all_reqflags:     allowed request specific flags
++ * @allow_nodev_do:   allow non-dump request with no device identification
 + * @parse_request:
 + *	parse request message and fill request info; request info is zero
 + *	initialized on entry except reply_data pointer (which is initialized)
@@ -473,14 +538,19 @@ index 1698f8b56d4a..29743b76ffaa 100644
 +struct get_request_ops {
 +	u8			request_cmd;
 +	u8			reply_cmd;
-+	u16			dev_attrtype;
++	u16			hdr_attr;
++	unsigned int		max_attr;
 +	unsigned int		data_size;
 +	unsigned int		repdata_offset;
++	const struct nla_policy *request_policy;
++	const struct nla_policy *header_policy;
++	u32			default_infomask;
++	u32			all_reqflags;
 +	bool			allow_nodev_do;
 +
 +	int (*parse_request)(struct ethnl_req_info *req_info,
-+			     struct sk_buff *skb, struct genl_info *info,
-+			     const struct nlmsghdr *nlhdr);
++			     struct nlattr **tb,
++			     struct netlink_ext_ack *extack);
 +	int (*prepare_data)(struct ethnl_req_info *req_info,
 +			    struct genl_info *info);
 +	int (*reply_size)(const struct ethnl_req_info *req_info);

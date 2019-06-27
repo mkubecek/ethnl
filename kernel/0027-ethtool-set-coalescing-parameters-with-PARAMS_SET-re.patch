@@ -1,4 +1,4 @@
-From ceae28645e4eee524edc583b08e930f38488756d Mon Sep 17 00:00:00 2001
+From 8e23776cb98bdf3899d9abf99d30ee2db3103535 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 21:27:19 +0100
 Subject: [PATCH 27/43] ethtool: set coalescing parameters with PARAMS_SET
@@ -10,18 +10,18 @@ ETHTOOL_SCOALESCE ioctl command.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  35 +++-
+ Documentation/networking/ethtool-netlink.txt |  36 +++-
  include/uapi/linux/ethtool_netlink.h         |   1 +
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/params.c                         | 175 +++++++++++++++++++
- 5 files changed, 216 insertions(+), 1 deletion(-)
+ net/ethtool/params.c                         | 187 +++++++++++++++++++
+ 5 files changed, 229 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index fcc73582c923..49f50b42c753 100644
+index bad9e52c39e7..d3dd849b2460 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -140,6 +140,7 @@ Userspace to kernel:
+@@ -155,6 +155,7 @@ Userspace to kernel:
      ETHTOOL_MSG_SETTINGS_SET		set device settings
      ETHTOOL_MSG_INFO_GET		get device information
      ETHTOOL_MSG_PARAMS_GET		get device parameters
@@ -29,7 +29,7 @@ index fcc73582c923..49f50b42c753 100644
  
  Kernel to userspace:
  
-@@ -459,6 +460,38 @@ to them are broadcasted as notifications on change of these settings using
+@@ -477,6 +478,39 @@ to them are broadcasted as notifications on change of these settings using
  netlink or ioctl ethtool interface.
  
  
@@ -40,6 +40,7 @@ index fcc73582c923..49f50b42c753 100644
 +replaces ETHTOOL_SCOALESCE ioctl commands. Relevant data attributes are
 +contained in nest attribute ETHTOOL_A_PARAMS_COALESCE.
 +
++    ETHTOOL_A_PARAMS_HEADER		(nested)	request header
 +    ETHTOOL_A_PARAMS_COALESCE		(nested)	coalescing parameters
 +        ETHTOOL_A_COALESCE_RX_USECS	    (u32)
 +        ETHTOOL_A_COALESCE_RX_MAXFRM	    (u32)
@@ -68,7 +69,7 @@ index fcc73582c923..49f50b42c753 100644
  Request translation
  -------------------
  
-@@ -481,7 +514,7 @@ ETHTOOL_GLINK			ETHTOOL_MSG_SETTINGS_GET
+@@ -499,7 +533,7 @@ ETHTOOL_GLINK			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		ETHTOOL_MSG_PARAMS_GET
@@ -78,7 +79,7 @@ index fcc73582c923..49f50b42c753 100644
  ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 1a35ded874be..9b763671fd62 100644
+index 063d19f2b617..4084f7fc9275 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -19,6 +19,7 @@ enum {
@@ -90,10 +91,10 @@ index 1a35ded874be..9b763671fd62 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_USER_CNT,
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 96c141ffa607..785697e22e47 100644
+index cced7b32dddf..f43ca01adf29 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -672,6 +672,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -747,6 +747,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -106,10 +107,10 @@ index 96c141ffa607..785697e22e47 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 619b65becd97..02b17ab620b0 100644
+index 2782688c6525..e5c57329f9b4 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -257,5 +257,6 @@ extern const struct get_request_ops info_request_ops;
+@@ -287,5 +287,6 @@ extern const struct get_request_ops info_request_ops;
  extern const struct get_request_ops params_request_ops;
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
@@ -117,10 +118,10 @@ index 619b65becd97..02b17ab620b0 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 68dde9b22e94..d94f8b103c8e 100644
+index 6da578070ad6..4362136d774d 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -190,3 +190,178 @@ const struct get_request_ops params_request_ops = {
+@@ -162,3 +162,190 @@ const struct get_request_ops params_request_ops = {
  	.reply_size		= params_size,
  	.fill_reply		= params_fill,
  };
@@ -129,10 +130,18 @@ index 68dde9b22e94..d94f8b103c8e 100644
 +
 +static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
 +	[ETHTOOL_A_PARAMS_UNSPEC]		= { .type = NLA_REJECT },
-+	[ETHTOOL_A_PARAMS_DEV]			= { .type = NLA_NESTED },
-+	[ETHTOOL_A_PARAMS_INFOMASK]		= { .type = NLA_REJECT },
-+	[ETHTOOL_A_PARAMS_COMPACT]		= { .type = NLA_FLAG },
++	[ETHTOOL_A_PARAMS_HEADER]		= { .type = NLA_NESTED },
 +	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_NESTED },
++};
++
++static const struct nla_policy params_hdr_policy[ETHTOOL_A_HEADER_MAX + 1] = {
++	[ETHTOOL_A_HEADER_UNSPEC]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_HEADER_DEV_INDEX]		= { .type = NLA_U32 },
++	[ETHTOOL_A_HEADER_DEV_NAME]		= { .type = NLA_NUL_STRING,
++						    .len = IFNAMSIZ - 1 },
++	[ETHTOOL_A_HEADER_INFOMASK]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_HEADER_GFLAGS]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_HEADER_RFLAGS]		= { .type = NLA_REJECT },
 +};
 +
 +static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
@@ -266,6 +275,7 @@ index 68dde9b22e94..d94f8b103c8e 100644
 +int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
++	struct ethnl_req_info req_info = {};
 +	struct net_device *dev;
 +	u32 req_mask = 0;
 +	int ret;
@@ -274,9 +284,12 @@ index 68dde9b22e94..d94f8b103c8e 100644
 +			  params_set_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
-+	dev = ethnl_dev_get(info, tb[ETHTOOL_A_PARAMS_DEV]);
-+	if (IS_ERR(dev))
-+		return PTR_ERR(dev);
++	ret = ethnl_parse_header(&req_info, tb[ETHTOOL_A_SETTINGS_HEADER],
++				 genl_info_net(info), info->extack,
++				 params_hdr_policy, true);
++	if (ret < 0)
++		return ret;
++	dev = req_info.dev;
 +
 +	rtnl_lock();
 +	ret = ethnl_before_ops(dev);

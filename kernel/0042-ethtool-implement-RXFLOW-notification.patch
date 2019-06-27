@@ -1,4 +1,4 @@
-From add886dd6b6dbce1a4c8e15ac3ad04b5e4583088 Mon Sep 17 00:00:00 2001
+From d7966eb2d6106dc92b51d05dff872fee4aad953f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
 Subject: [PATCH 42/43] ethtool: implement RXFLOW notification
@@ -29,10 +29,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  7 files changed, 109 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 95d64e770ab4..670b9d7a3ef3 100644
+index bd66ad2795cf..591cbf6eaded 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -160,6 +160,7 @@ Kernel to userspace:
+@@ -175,6 +175,7 @@ Kernel to userspace:
      ETHTOOL_MSG_RESET_NTF		device reset notification
      ETHTOOL_MSG_RESET_ACT_REPLY		additional reply for RESET_ACT
      ETHTOOL_MSG_RXFLOW_GET_REPLY	Rx flow parameters
@@ -56,7 +56,7 @@ index e770e6e9acca..288e90f4dbb9 100644
 +
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 825427488b48..cf26c4185631 100644
+index 45af68bcb71a..c9c5bd72411e 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -45,6 +45,7 @@ enum {
@@ -68,7 +68,7 @@ index 825427488b48..cf26c4185631 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 2a890f99e7c7..c1829ee12f70 100644
+index 7916b7fcf158..1b8c67e3c9ff 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -714,6 +714,7 @@ static noinline_for_stack int ethtool_get_sset_info(struct net_device *dev,
@@ -165,10 +165,10 @@ index 2a890f99e7c7..c1829ee12f70 100644
  	if (copy_to_user(useraddr + offsetof(struct ethtool_rxfh, rss_context),
  			 &rxfh.rss_context, sizeof(rxfh.rss_context)))
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 42535f43e120..f91c1b234a6b 100644
+index f4dcad5f8c12..6d542739b7af 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -598,6 +598,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -673,6 +673,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHTOOL_MSG_NWAYRST_NTF]	= ethnl_nwayrst_notify,
  	[ETHTOOL_MSG_PHYSID_NTF]	= ethnl_physid_notify,
  	[ETHTOOL_MSG_RESET_NTF]		= ethnl_reset_notify,
@@ -177,10 +177,10 @@ index 42535f43e120..f91c1b234a6b 100644
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 394de389eba0..cedac49d9727 100644
+index 0b1a11a4c7ec..147903052fd0 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -275,5 +275,7 @@ void ethnl_physid_notify(struct net_device *dev, struct netlink_ext_ack *extack,
+@@ -305,5 +305,7 @@ void ethnl_physid_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  			 unsigned int cmd, u32 req_mask, const void *data);
  void ethnl_reset_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  			unsigned int cmd, u32 req_mask, const void *data);
@@ -189,10 +189,10 @@ index 394de389eba0..cedac49d9727 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index 1c093400ab12..9992ed7bb13d 100644
+index 00f36bac89d7..2f4ce2884958 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
-@@ -464,3 +464,70 @@ const struct get_request_ops rxflow_request_ops = {
+@@ -447,3 +447,70 @@ const struct get_request_ops rxflow_request_ops = {
  	.fill_reply		= rxflow_fill,
  	.cleanup		= rxflow_cleanup,
  };
@@ -213,7 +213,7 @@ index 1c093400ab12..9992ed7bb13d 100644
 +	req_info->reply_data = &data.repdata_base;
 +	req_info->dev = dev;
 +	req_info->req_mask = req_mask;
-+	req_info->compact = true;
++	req_info->global_flags = ETHTOOL_RF_COMPACT;
 +	data.repdata_base.dev = dev;
 +	if (ninfo) {
 +		data.req_context = ninfo->context;
@@ -233,7 +233,7 @@ index 1c093400ab12..9992ed7bb13d 100644
 +	if (!msg_payload)
 +		goto err_skb;
 +
-+	ret = ethnl_fill_dev(skb, dev, ETHTOOL_A_RXFLOW_DEV);
++	ret = ethnl_fill_reply_header(skb, dev, ETHTOOL_A_RXFLOW_HEADER);
 +	if (ret < 0)
 +		goto err_skb;
 +	if (ninfo) {

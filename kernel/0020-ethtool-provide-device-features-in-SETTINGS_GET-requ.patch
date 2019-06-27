@@ -1,4 +1,4 @@
-From a62a7924fbb642d4c911cd665c7d413e38c482fa Mon Sep 17 00:00:00 2001
+From 3c3c6a074be5494c2695777d7143659d5422c16e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 20/43] ethtool: provide device features in SETTINGS_GET
@@ -23,14 +23,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/common.h                         |   2 +
  net/ethtool/ioctl.c                          |   2 -
  net/ethtool/netlink.c                        |  28 ++++-
- net/ethtool/settings.c                       | 110 +++++++++++++++++++
- 6 files changed, 181 insertions(+), 14 deletions(-)
+ net/ethtool/settings.c                       | 112 +++++++++++++++++++
+ 6 files changed, 183 insertions(+), 14 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 9476bf7997bd..9268af40251b 100644
+index d051ce8ab573..feb15529af31 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -233,6 +233,7 @@ Info mask bits meaning:
+@@ -253,6 +253,7 @@ Info mask bits meaning:
      ETHTOOL_IM_SETTINGS_LINKSTATE	link state
      ETHTOOL_IM_SETTINGS_WOL		struct ethtool_wolinfo
      ETHTOOL_IM_SETTINGS_DEBUG		debugging
@@ -38,7 +38,7 @@ index 9476bf7997bd..9268af40251b 100644
  
  Response contents:
  
-@@ -256,6 +257,11 @@ Response contents:
+@@ -276,6 +277,11 @@ Response contents:
          ETHTOOL_A_WOL_SOPASS		    (binary)	    SecureOn password
      ETHTOOL_A_SETTINGS_DEBUG		(nested)	debugging
          ETHTOOL_A_DEBUG_MSG_MASK	    (bitfield32)    debug message mask
@@ -50,7 +50,7 @@ index 9476bf7997bd..9268af40251b 100644
  
  Most of the attributes and their values have the same meaning as matching
  members of the corresponding ioctl structures. For ETHTOOL_A_LINKMODES_OURS,
-@@ -269,13 +275,23 @@ ETHTOOL_A_DEBUG_MSG_MASK corresponds to message level (which is actually
+@@ -289,13 +295,23 @@ ETHTOOL_A_DEBUG_MSG_MASK corresponds to message level (which is actually
  a bitfield) as reported by ETHTOOL_GMSGLVL. The selector reports all message
  types recognized by kernel and value types enabled for the device.
  
@@ -75,7 +75,7 @@ index 9476bf7997bd..9268af40251b 100644
  
  
  SETTINGS_SET
-@@ -347,30 +363,30 @@ ETHTOOL_GRINGPARAM		n/a
+@@ -367,30 +383,30 @@ ETHTOOL_GRINGPARAM		n/a
  ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
  ETHTOOL_SPAUSEPARAM		n/a
@@ -114,7 +114,7 @@ index 9476bf7997bd..9268af40251b 100644
  ETHTOOL_SGRO			n/a
  ETHTOOL_GRXRINGS		n/a
  ETHTOOL_GRXCLSRLCNT		n/a
-@@ -385,7 +401,7 @@ ETHTOOL_GRXNTUPLE		n/a
+@@ -405,7 +421,7 @@ ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHTOOL_MSG_STRSET_GET
  ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
@@ -124,18 +124,18 @@ index 9476bf7997bd..9268af40251b 100644
  ETHTOOL_GCHANNELS		n/a
  ETHTOOL_SCHANNELS		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index f2784e2254e4..83847369883b 100644
+index 177f3d22eb98..0875c5d88410 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -139,6 +139,7 @@ enum {
- 	ETHTOOL_A_SETTINGS_LINK_STATE,		/* nest - ETHTOOL_A_LINKSTATE_* */
- 	ETHTOOL_A_SETTINGS_WOL,			/* nest - ETHTOOL_A_WOL_* */
- 	ETHTOOL_A_SETTINGS_DEBUG,		/* nest - ETHTOOL_A_DEBUG_* */
-+	ETHTOOL_A_SETTINGS_FEATURES,		/* nest - ETHTOOL_A_FEATURES_* */
+@@ -161,6 +161,7 @@ enum {
+ 	ETHTOOL_A_SETTINGS_LINK_STATE,		/* nest - _A_LINKSTATE_* */
+ 	ETHTOOL_A_SETTINGS_WOL,			/* nest - _A_WOL_* */
+ 	ETHTOOL_A_SETTINGS_DEBUG,		/* nest - _A_DEBUG_* */
++	ETHTOOL_A_SETTINGS_FEATURES,		/* nest - _A_FEATURES_* */
  
  	/* add new constants above here */
  	__ETHTOOL_A_SETTINGS_CNT,
-@@ -150,12 +151,14 @@ enum {
+@@ -172,12 +173,14 @@ enum {
  #define ETHTOOL_IM_SETTINGS_LINKSTATE		(1U << 2)
  #define ETHTOOL_IM_SETTINGS_WOL			(1U << 3)
  #define ETHTOOL_IM_SETTINGS_DEBUG		(1U << 4)
@@ -149,9 +149,9 @@ index f2784e2254e4..83847369883b 100644
 +				 ETHTOOL_IM_SETTINGS_DEBUG | \
 +				 ETHTOOL_IM_SETTINGS_FEATURES)
  
- enum {
- 	ETHTOOL_A_LINKINFO_UNSPEC,
-@@ -211,6 +214,18 @@ enum {
+ #define ETHTOOL_RF_SETTINGS_ALL 0
+ 
+@@ -235,6 +238,18 @@ enum {
  	ETHTOOL_A_DEBUG_MAX = (__ETHTOOL_A_DEBUG_CNT - 1)
  };
  
@@ -184,7 +184,7 @@ index c4dcb80df620..5f512dbbded5 100644
  netdev_features_strings[NETDEV_FEATURE_COUNT][ETH_GSTRING_LEN];
  extern const char
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 496b998f6614..e07ed4c8d2b7 100644
+index 94f09309e9d6..e23443a23651 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -55,8 +55,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
@@ -197,10 +197,10 @@ index 496b998f6614..e07ed4c8d2b7 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 03f740a6004a..d443c0634e87 100644
+index 4be0ba809641..f8d73dcd927c 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -607,6 +607,30 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
+@@ -682,6 +682,30 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  }
  EXPORT_SYMBOL(ethtool_notify);
  
@@ -231,7 +231,7 @@ index 03f740a6004a..d443c0634e87 100644
  /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
-@@ -660,7 +684,9 @@ static int __init ethnl_init(void)
+@@ -735,7 +759,9 @@ static int __init ethnl_init(void)
  		return ret;
  	ethnl_ok = true;
  
@@ -243,10 +243,10 @@ index 03f740a6004a..d443c0634e87 100644
  
  subsys_initcall(ethnl_init);
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 671935cbe9f7..5a5eaf6a89ad 100644
+index abb41ee33881..7e028e85cf20 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -15,6 +15,12 @@ struct settings_data {
+@@ -14,6 +14,12 @@ struct settings_data {
  	struct ethtool_link_settings	*lsettings;
  	int				link;
  	u32				msglevel;
@@ -259,18 +259,18 @@ index 671935cbe9f7..5a5eaf6a89ad 100644
  	bool				lpm_empty;
  };
  
-@@ -127,6 +133,7 @@ static const struct nla_policy settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -124,6 +130,7 @@ static const struct nla_policy settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_LINK_STATE]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_WOL]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_DEBUG]	= { .type = NLA_REJECT },
 +	[ETHTOOL_A_SETTINGS_FEATURES]	= { .type = NLA_REJECT },
  };
  
- /* parse_request() handler */
-@@ -188,6 +195,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
+ static int ethnl_get_link_ksettings(struct genl_info *info,
+@@ -149,6 +156,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
+ 	return ret;
  }
  
- /* prepare_data() handler */
 +static void features_to_bitmap32(u32 *dest, netdev_features_t src)
 +{
 +	unsigned int i;
@@ -289,10 +289,10 @@ index 671935cbe9f7..5a5eaf6a89ad 100644
 +	return 0;
 +}
 +
+ /* prepare_data() handler */
  static int settings_prepare(struct ethnl_req_info *req_info,
  			    struct genl_info *info)
- {
-@@ -236,6 +261,8 @@ static int settings_prepare(struct ethnl_req_info *req_info,
+@@ -198,6 +223,8 @@ static int settings_prepare(struct ethnl_req_info *req_info,
  		else
  			req_mask &= ~ETHTOOL_IM_SETTINGS_DEBUG;
  	}
@@ -301,16 +301,17 @@ index 671935cbe9f7..5a5eaf6a89ad 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -303,6 +330,38 @@ static int settings_debug_size(void)
+@@ -266,6 +293,39 @@ static int settings_debug_size(void)
  	return nla_total_size(nla_total_size(sizeof(struct nla_bitfield32)));
  }
  
 +static int settings_features_size(const struct settings_data *data)
 +{
-+	unsigned int flags =
-+		(data->reqinfo_base.compact ? ETHNL_BITSET_COMPACT : 0) |
-+		ETHNL_BITSET_LEGACY_NAMES;
++	unsigned int flags = ETHNL_BITSET_LEGACY_NAMES;
 +	int len = 0, ret;
++
++	if (data->reqinfo_base.global_flags & ETHTOOL_RF_COMPACT)
++		flags |= ETHNL_BITSET_COMPACT;
 +
 +	ret = ethnl_bitset32_size(NETDEV_FEATURE_COUNT, data->features.hw,
 +				  NULL, netdev_features_strings, flags);
@@ -340,7 +341,7 @@ index 671935cbe9f7..5a5eaf6a89ad 100644
  /* reply_size() handler
   *
   * To keep things simple, reserve space for some attributes which may not
-@@ -332,6 +391,12 @@ static int settings_size(const struct ethnl_req_info *req_info)
+@@ -295,6 +355,12 @@ static int settings_size(const struct ethnl_req_info *req_info)
  		len += settings_wol_size();
  	if (info_mask & ETHTOOL_IM_SETTINGS_DEBUG)
  		len += settings_debug_size();
@@ -353,18 +354,19 @@ index 671935cbe9f7..5a5eaf6a89ad 100644
  
  	return len;
  }
-@@ -469,6 +534,45 @@ static int settings_fill_debug(struct sk_buff *skb, u32 msglevel)
+@@ -432,6 +498,46 @@ static int settings_fill_debug(struct sk_buff *skb, u32 msglevel)
  	return -EMSGSIZE;
  }
  
 +static int settings_fill_features(struct sk_buff *skb,
 +				  const struct settings_data *data)
 +{
-+	unsigned int flags =
-+		(data->reqinfo_base.compact ? ETHNL_BITSET_COMPACT : 0) |
-+		ETHNL_BITSET_LEGACY_NAMES;
++	unsigned int flags = ETHNL_BITSET_LEGACY_NAMES;
 +	struct nlattr *feat_attr;
 +	int ret;
++
++	if (data->reqinfo_base.global_flags & ETHTOOL_RF_COMPACT)
++		flags |= ETHNL_BITSET_COMPACT;
 +
 +	feat_attr = nla_nest_start(skb, ETHTOOL_A_SETTINGS_FEATURES);
 +	if (!feat_attr)
@@ -399,7 +401,7 @@ index 671935cbe9f7..5a5eaf6a89ad 100644
  /* fill_reply() handler */
  static int settings_fill(struct sk_buff *skb,
  			 const struct ethnl_req_info *req_info)
-@@ -506,6 +610,11 @@ static int settings_fill(struct sk_buff *skb,
+@@ -469,6 +575,11 @@ static int settings_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -411,7 +413,7 @@ index 671935cbe9f7..5a5eaf6a89ad 100644
  
  	return 0;
  }
-@@ -567,6 +676,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -541,6 +652,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },

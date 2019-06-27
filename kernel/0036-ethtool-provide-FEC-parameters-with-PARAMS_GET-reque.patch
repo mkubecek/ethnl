@@ -1,4 +1,4 @@
-From 7196e0a3f4e76c17c5b8a4cde4991c5d0461084b Mon Sep 17 00:00:00 2001
+From 3c36dac343096507937e4ffb509f9b1d34586d9c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:53:42 +0100
 Subject: [PATCH 36/43] ethtool: provide FEC parameters with PARAMS_GET request
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 74 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index de6a9099738f..3c71f332f5a2 100644
+index a5b5c5102892..a1dec8e0106b 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -416,9 +416,10 @@ PARAMS_GET
+@@ -436,9 +436,10 @@ PARAMS_GET
  
  PARAMS_GET request retrieves information provided by ioctl comands
  ETHTOOL_GCOALESCE (coalescing parameters), ETHTOOL_GRINGPARAM (ring sizes),
@@ -36,7 +36,7 @@ index de6a9099738f..3c71f332f5a2 100644
  
  Request contents:
  
-@@ -433,6 +434,7 @@ Info mask bits:
+@@ -451,6 +452,7 @@ Info mask bits:
      ETHTOOL_IM_PARAMS_PAUSE		pause parameters
      ETHTOOL_IM_PARAMS_CHANNELS		channel counts
      ETHTOOL_IM_PARAMS_EEE		EEE settings
@@ -44,7 +44,7 @@ index de6a9099738f..3c71f332f5a2 100644
  
  Response contents: On top level, there is one attribute for each of the
  information categories, the information is nested in it.
-@@ -492,6 +494,9 @@ information categories, the information is nested in it.
+@@ -510,6 +512,9 @@ information categories, the information is nested in it.
          ETHTOOL_A_EEE_ENABLED		    (bool)
          ETHTOOL_A_EEE_TX_LPI_ENABLED	    (bool)
          ETHTOOL_A_EEE_TX_LPI_TIMER	    (u32)
@@ -54,7 +54,7 @@ index de6a9099738f..3c71f332f5a2 100644
  
  PARAMS_GET requests allow dumps and messages in the same format as response
  to them are broadcasted as notifications on change of these settings using
-@@ -640,5 +645,5 @@ ETHTOOL_GLINKSETTINGS		ETHTOOL_MSG_SETTINGS_GET
+@@ -659,5 +664,5 @@ ETHTOOL_GLINKSETTINGS		ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SLINKSETTINGS		ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a
@@ -62,18 +62,18 @@ index de6a9099738f..3c71f332f5a2 100644
 +ETHTOOL_GFECPARAM		ETHTOOL_MSG_PARAMS_GET
  ETHTOOL_SFECPARAM		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 1a725fb0996d..0c913b0e76c5 100644
+index c815d6930e70..d9285fdfa82c 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -294,6 +294,7 @@ enum {
- 	ETHTOOL_A_PARAMS_PAUSE,			/* nest - ETHTOOL_A_PAUSE_* */
- 	ETHTOOL_A_PARAMS_CHANNELS,		/* nest - ETHTOOL_A_CHANNELS_* */
- 	ETHTOOL_A_PARAMS_EEE,			/* nest - ETHTOOL_A_EEE_* */
-+	ETHTOOL_A_PARAMS_FEC,			/* nest - ETHTOOL_A_FEC_* */
+@@ -315,6 +315,7 @@ enum {
+ 	ETHTOOL_A_PARAMS_PAUSE,			/* nest - _A_PAUSE_* */
+ 	ETHTOOL_A_PARAMS_CHANNELS,		/* nest - _A_CHANNELS_* */
+ 	ETHTOOL_A_PARAMS_EEE,			/* nest - _A_EEE_* */
++	ETHTOOL_A_PARAMS_FEC,			/* nest - _A_FEC_* */
  
  	/* add new constants above here */
  	__ETHTOOL_A_PARAMS_CNT,
-@@ -305,12 +306,14 @@ enum {
+@@ -326,12 +327,14 @@ enum {
  #define ETHTOOL_IM_PARAMS_PAUSE			(1U << 2)
  #define ETHTOOL_IM_PARAMS_CHANNELS		(1U << 3)
  #define ETHTOOL_IM_PARAMS_EEE			(1U << 4)
@@ -87,9 +87,9 @@ index 1a725fb0996d..0c913b0e76c5 100644
 +			       ETHTOOL_IM_PARAMS_EEE | \
 +			       ETHTOOL_IM_PARAMS_FEC)
  
- enum {
- 	ETHTOOL_A_COALESCE_UNSPEC,
-@@ -399,6 +402,15 @@ enum {
+ #define ETHTOOL_RF_PARAMS_ALL 0
+ 
+@@ -422,6 +425,15 @@ enum {
  	ETHTOOL_A_EEE_MAX = (__ETHTOOL_A_EEE_CNT - 1)
  };
  
@@ -106,7 +106,7 @@ index 1a725fb0996d..0c913b0e76c5 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index d36f1f572b22..ae5cc1ea5b81 100644
+index 4e2b5955e837..86bf698209f3 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -2337,6 +2337,7 @@ static int ethtool_get_fecparam(struct net_device *dev, void __user *useraddr)
@@ -131,10 +131,10 @@ index d36f1f572b22..ae5cc1ea5b81 100644
  
  /* The main entry point in this file.  Called from net/core/dev_ioctl.c */
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index bc462ccdadb2..c7f5aa7991c7 100644
+index d2c71ed9b6bf..4b55441aad72 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -14,6 +14,7 @@ static const struct nla_policy get_params_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+@@ -12,6 +12,7 @@ static const struct nla_policy params_get_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_PARAMS_CHANNELS]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_PARAMS_EEE]			= { .type = NLA_REJECT },
@@ -142,15 +142,15 @@ index bc462ccdadb2..c7f5aa7991c7 100644
  };
  
  struct params_data {
-@@ -26,6 +27,7 @@ struct params_data {
+@@ -24,6 +25,7 @@ struct params_data {
  	struct ethtool_pauseparam	pause;
  	struct ethtool_channels		channels;
  	struct ethtool_eee		eee;
 +	struct ethtool_fecparam		fec;
  };
  
- static int params_parse(struct ethnl_req_info *req_info, struct sk_buff *skb,
-@@ -99,6 +101,13 @@ static int ethnl_get_eee(struct net_device *dev, struct ethtool_eee *data)
+ static int ethnl_get_coalesce(struct net_device *dev,
+@@ -68,6 +70,13 @@ static int ethnl_get_eee(struct net_device *dev, struct ethtool_eee *data)
  	return dev->ethtool_ops->get_eee(dev, data);
  }
  
@@ -164,7 +164,7 @@ index bc462ccdadb2..c7f5aa7991c7 100644
  static int params_prepare(struct ethnl_req_info *req_info,
  			  struct genl_info *info)
  {
-@@ -136,6 +145,11 @@ static int params_prepare(struct ethnl_req_info *req_info,
+@@ -105,6 +114,11 @@ static int params_prepare(struct ethnl_req_info *req_info,
  		if (ret < 0)
  			req_mask &= ~ETHTOOL_IM_PARAMS_EEE;
  	}
@@ -176,7 +176,7 @@ index bc462ccdadb2..c7f5aa7991c7 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -195,6 +209,13 @@ static int params_eee_size(const struct ethtool_eee *eee, bool compact)
+@@ -164,6 +178,13 @@ static int params_eee_size(const struct ethtool_eee *eee, bool compact)
  	return nla_total_size(len);
  }
  
@@ -190,7 +190,7 @@ index bc462ccdadb2..c7f5aa7991c7 100644
  static int params_size(const struct ethnl_req_info *req_info)
  {
  	struct params_data *data =
-@@ -218,6 +239,8 @@ static int params_size(const struct ethnl_req_info *req_info)
+@@ -188,6 +209,8 @@ static int params_size(const struct ethnl_req_info *req_info)
  			return ret;
  		len += ret;
  	}
@@ -199,7 +199,7 @@ index bc462ccdadb2..c7f5aa7991c7 100644
  
  	return len;
  }
-@@ -397,6 +420,23 @@ static int params_fill_eee(struct sk_buff *skb, struct ethtool_eee *data,
+@@ -367,6 +390,23 @@ static int params_fill_eee(struct sk_buff *skb, struct ethtool_eee *data,
  	return ret;
  }
  
@@ -223,7 +223,7 @@ index bc462ccdadb2..c7f5aa7991c7 100644
  static int params_fill(struct sk_buff *skb,
  		       const struct ethnl_req_info *req_info)
  {
-@@ -430,6 +470,11 @@ static int params_fill(struct sk_buff *skb,
+@@ -401,6 +441,11 @@ static int params_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -235,14 +235,14 @@ index bc462ccdadb2..c7f5aa7991c7 100644
  
  	return 0;
  }
-@@ -459,6 +504,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+@@ -431,6 +476,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_CHANNELS]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_EEE]			= { .type = NLA_NESTED },
 +	[ETHTOOL_A_PARAMS_FEC]			= { .type = NLA_REJECT },
  };
  
- static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
+ static const struct nla_policy params_hdr_policy[ETHTOOL_A_HEADER_MAX + 1] = {
 -- 
 2.22.0
 

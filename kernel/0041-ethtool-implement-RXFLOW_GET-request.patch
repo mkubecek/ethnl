@@ -1,4 +1,4 @@
-From 883cf47fb97fe14ed7f523155dd170fc51aa24f4 Mon Sep 17 00:00:00 2001
+From 8b732a1afcf07d99d56eb4f500f3f925f687c967 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 41/43] ethtool: implement RXFLOW_GET request
@@ -16,20 +16,20 @@ for a device and potentially also RSS context.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 124 ++++-
+ Documentation/networking/ethtool-netlink.txt | 121 ++++-
  include/uapi/linux/ethtool_netlink.h         | 108 +++++
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/netlink.c                        |   8 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/rxflow.c                         | 466 +++++++++++++++++++
- 6 files changed, 705 insertions(+), 4 deletions(-)
+ net/ethtool/rxflow.c                         | 449 +++++++++++++++++++
+ 6 files changed, 685 insertions(+), 4 deletions(-)
  create mode 100644 net/ethtool/rxflow.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 12d5a155f44c..95d64e770ab4 100644
+index ee4430a7d8cf..bd66ad2795cf 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -144,6 +144,7 @@ Userspace to kernel:
+@@ -159,6 +159,7 @@ Userspace to kernel:
      ETHTOOL_MSG_NWAYRST_ACT		perform renegotiation
      ETHTOOL_MSG_PHYSID_ACT		perform physical identification
      ETHTOOL_MSG_RESET_ACT		perform device reset
@@ -37,7 +37,7 @@ index 12d5a155f44c..95d64e770ab4 100644
  
  Kernel to userspace:
  
-@@ -158,6 +159,7 @@ Kernel to userspace:
+@@ -173,6 +174,7 @@ Kernel to userspace:
      ETHTOOL_MSG_PHYSID_NTF		physical identification notification
      ETHTOOL_MSG_RESET_NTF		device reset notification
      ETHTOOL_MSG_RESET_ACT_REPLY		additional reply for RESET_ACT
@@ -45,8 +45,8 @@ index 12d5a155f44c..95d64e770ab4 100644
  
  "GET" requests are sent by userspace applications to retrieve device
  information. They usually do not contain any message specific attributes.
-@@ -626,6 +628,122 @@ indicating which components _were_ actually reset (this is different from
- ioctl interface). The same message is also broadcasted as a notification.
+@@ -645,6 +647,119 @@ _were_ actually reset (this is different from ioctl interface). The same
+ message is also broadcasted as a notification.
  
  
 +RXFLOW_GET
@@ -55,10 +55,7 @@ index 12d5a155f44c..95d64e770ab4 100644
 +Request for receive flow hashing options provided by legacy commands
 +ETHTOOL_GRSSH and ETHTOOL_GRXFHINDIR. Request contents:
 +
-+    ETHTOOL_A_RXFLOW_DEV		(nested)	device identification
-+    ETHTOOL_A_RXFLOW_INFOMASK		(u32)		info mask
-+    ETHTOOL_A_RXFLOW_COMPACT		(flag)		request compact bitsets
-+    ETHTOOL_A_RXFLOW_CTXOP		(u32)		context operation
++    ETHTOOL_A_RXFLOW_HEADER		(nested)	request header
 +    ETHTOOL_A_RXFLOW_CONTEXT		(u32)		context id
 +
 +Info mask bits:
@@ -74,7 +71,7 @@ index 12d5a155f44c..95d64e770ab4 100644
 +
 +Reply contents:
 +
-+    ETHTOOL_A_RXFLOW_DEV		(nested)	device identification
++    ETHTOOL_A_RXFLOW_HEADER		(nested)	reply header
 +    ETHTOOL_A_RXFLOW_CONTEXT		(u32)		context id (only if not main)
 +    ETHTOOL_A_RXFLOW_NRINGS		(u32)		number of Rx rings
 +    ETHTOOL_A_RXFLOW_HASH_FN		(bitset)	hash function(s)
@@ -168,7 +165,7 @@ index 12d5a155f44c..95d64e770ab4 100644
  Request translation
  -------------------
  
-@@ -674,7 +792,7 @@ ETHTOOL_GFLAGS			ETHTOOL_MSG_SETTINGS_GET
+@@ -693,7 +808,7 @@ ETHTOOL_GFLAGS			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SFLAGS			ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_GPFLAGS			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SPFLAGS			ETHTOOL_MSG_SETTINGS_SET
@@ -177,7 +174,7 @@ index 12d5a155f44c..95d64e770ab4 100644
  ETHTOOL_SRXFH			n/a
  ETHTOOL_GGRO			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SGRO			ETHTOOL_MSG_SETTINGS_SET
-@@ -689,7 +807,7 @@ ETHTOOL_RESET			ETHTOOL_MSG_RESET_ACT
+@@ -708,7 +823,7 @@ ETHTOOL_RESET			ETHTOOL_MSG_RESET_ACT
  ETHTOOL_SRXNTUPLE		n/a
  ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHTOOL_MSG_STRSET_GET
@@ -186,7 +183,7 @@ index 12d5a155f44c..95d64e770ab4 100644
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SFEATURES		ETHTOOL_MSG_SETTINGS_SET
-@@ -703,7 +821,7 @@ ETHTOOL_GMODULEINFO		n/a
+@@ -722,7 +837,7 @@ ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			ETHTOOL_MSG_PARAMS_GET
  ETHTOOL_SEEE			ETHTOOL_MSG_PARAMS_SET
@@ -196,7 +193,7 @@ index 12d5a155f44c..95d64e770ab4 100644
  ETHTOOL_GTUNABLE		n/a
  ETHTOOL_STUNABLE		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 881131aa3653..825427488b48 100644
+index bc91f951a6b7..45af68bcb71a 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -23,6 +23,7 @@ enum {
@@ -215,25 +212,23 @@ index 881131aa3653..825427488b48 100644
  
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
-@@ -457,6 +459,112 @@ enum {
- 	ETHTOOL_A_RESET_MAX = (__ETHTOOL_A_RESET_CNT - 1)
- };
+@@ -485,6 +487,112 @@ enum {
+ 
+ #define ETHTOOL_RF_RESET_ALL 0
  
 +/* RXFLOW */
 +
 +enum {
 +	ETHTOOL_A_RXFLOW_UNSPEC,
-+	ETHTOOL_A_RXFLOW_DEV,			/* nest - ETHTOOL_A_DEV_* */
-+	ETHTOOL_A_RXFLOW_INFOMASK,		/* u32 */
-+	ETHTOOL_A_RXFLOW_COMPACT,		/* flag */
++	ETHTOOL_A_RXFLOW_HEADER,		/* nest - _A_HEADER_* */
 +	ETHTOOL_A_RXFLOW_CTXOP,			/* u32 - ETHTOOL_RXFLOW_CTXOP_* */
 +	ETHTOOL_A_RXFLOW_CONTEXT,		/* u32 */
 +	ETHTOOL_A_RXFLOW_NRINGS,		/* u32 */
 +	ETHTOOL_A_RXFLOW_HASH_FN,		/* bitset */
 +	ETHTOOL_A_RXFLOW_HASH_KEY,		/* binary */
-+	ETHTOOL_A_RXFLOW_HASH_OPTS,		/* nest - ETHTOOL_A_RXHASHOPTS_* */
++	ETHTOOL_A_RXFLOW_HASH_OPTS,		/* nest - _A_RXHASHOPTS_* */
 +	ETHTOOL_A_RXFLOW_INDTBL_SIZE,		/* u32 */
-+	ETHTOOL_A_RXFLOW_INDIR_TBL,		/* nest - ETHTOOL_A_INDTBL_* */
++	ETHTOOL_A_RXFLOW_INDIR_TBL,		/* nest - _A_INDTBL_* */
 +
 +	/* add new constants above here */
 +	__ETHTOOL_A_RXFLOW_CNT,
@@ -251,6 +246,8 @@ index 881131aa3653..825427488b48 100644
 +			       ETHTOOL_IM_RXFLOW_HKEY | \
 +			       ETHTOOL_IM_RXFLOW_HASHOPTS | \
 +			       ETHTOOL_IM_RXFLOW_INDTBL)
++
++#define ETHTOOL_RF_RXFLOW_ALL 0
 +
 +enum {
 +	ETHTOOL_RXFLOW_CTXOP_SET,		/* set context data */
@@ -339,10 +336,10 @@ index ca21edc7995f..632ab622e863 100644
 -		   actions.o
 +		   actions.o rxflow.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 13788bb8dc24..42535f43e120 100644
+index c9decca333a2..f4dcad5f8c12 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -261,6 +261,7 @@ const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
+@@ -278,6 +278,7 @@ const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
  	[ETHTOOL_MSG_SETTINGS_GET]	= &settings_request_ops,
  	[ETHTOOL_MSG_INFO_GET]		= &info_request_ops,
  	[ETHTOOL_MSG_PARAMS_GET]	= &params_request_ops,
@@ -350,7 +347,7 @@ index 13788bb8dc24..42535f43e120 100644
  };
  
  /**
-@@ -695,6 +696,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -770,6 +771,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_ADMIN_PERM,
  		.doit	= ethnl_act_reset,
  	},
@@ -365,10 +362,10 @@ index 13788bb8dc24..42535f43e120 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 0b3778f26526..394de389eba0 100644
+index 6d3689cb6f20..0b1a11a4c7ec 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -258,6 +258,7 @@ extern const struct get_request_ops strset_request_ops;
+@@ -288,6 +288,7 @@ extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops settings_request_ops;
  extern const struct get_request_ops info_request_ops;
  extern const struct get_request_ops params_request_ops;
@@ -378,10 +375,10 @@ index 0b3778f26526..394de389eba0 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
 new file mode 100644
-index 000000000000..1c093400ab12
+index 000000000000..00f36bac89d7
 --- /dev/null
 +++ b/net/ethtool/rxflow.c
-@@ -0,0 +1,466 @@
+@@ -0,0 +1,449 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
@@ -412,9 +409,7 @@ index 000000000000..1c093400ab12
 +
 +static const struct nla_policy rxflow_get_policy[ETHTOOL_A_RXFLOW_MAX + 1] = {
 +	[ETHTOOL_A_RXFLOW_UNSPEC]	= { .type = NLA_REJECT },
-+	[ETHTOOL_A_RXFLOW_DEV]		= { .type = NLA_NESTED },
-+	[ETHTOOL_A_RXFLOW_INFOMASK]	= { .type = NLA_U32 },
-+	[ETHTOOL_A_RXFLOW_COMPACT]	= { .type = NLA_FLAG },
++	[ETHTOOL_A_RXFLOW_HEADER]	= { .type = NLA_NESTED },
 +	[ETHTOOL_A_RXFLOW_CTXOP]	= { .type = NLA_REJECT },
 +	[ETHTOOL_A_RXFLOW_CONTEXT]	= { .type = NLA_U32 },
 +	[ETHTOOL_A_RXFLOW_NRINGS]	= { .type = NLA_REJECT },
@@ -442,35 +437,14 @@ index 000000000000..1c093400ab12
 +	u32				hash_fields[FLOW_TYPE_COUNT];
 +};
 +
-+static int rxflow_parse(struct ethnl_req_info *req_info, struct sk_buff *skb,
-+			struct genl_info *info, const struct nlmsghdr *nlhdr)
++static int rxflow_parse(struct ethnl_req_info *req_info, struct nlattr **tb,
++			struct netlink_ext_ack *extack)
 +{
-+	struct rxflow_data *data =
-+		container_of(req_info, struct rxflow_data, reqinfo_base);
-+	struct nlattr *tb[ETHTOOL_A_RXFLOW_MAX + 1];
-+	int ret;
++	struct rxflow_data *data;
 +
-+	ret = nlmsg_parse(nlhdr, GENL_HDRLEN, tb, ETHTOOL_A_RXFLOW_MAX,
-+			  rxflow_get_policy, info ? info->extack : NULL);
-+	if (ret < 0)
-+		return ret;
-+
-+	if (tb[ETHTOOL_A_RXFLOW_DEV]) {
-+		req_info->dev = ethnl_dev_get(info, tb[ETHTOOL_A_RXFLOW_DEV]);
-+		if (IS_ERR(req_info->dev)) {
-+			ret = PTR_ERR(req_info->dev);
-+			req_info->dev = NULL;
-+			return ret;
-+		}
-+	}
-+	if (tb[ETHTOOL_A_RXFLOW_INFOMASK])
-+		req_info->req_mask = nla_get_u32(tb[ETHTOOL_A_RXFLOW_INFOMASK]);
-+	if (tb[ETHTOOL_A_RXFLOW_COMPACT])
-+		req_info->compact = true;
++	data = container_of(req_info, struct rxflow_data, reqinfo_base);
 +	if (tb[ETHTOOL_A_RXFLOW_CONTEXT])
 +		data->req_context = nla_get_u32(tb[ETHTOOL_A_RXFLOW_CONTEXT]);
-+	if (req_info->req_mask == 0)
-+		req_info->req_mask = ETHTOOL_IM_RXFLOW_ALL;
 +
 +	return 0;
 +}
@@ -632,15 +606,16 @@ index 000000000000..1c093400ab12
 +	int len = 0;
 +	int ret;
 +
-+	len += ethnl_dev_size();
++	len += ethnl_reply_header_size();
 +	if (data->req_context)
 +		len += nla_total_size(sizeof(u32));
 +	if (info_mask & ETHTOOL_IM_RXFLOW_INFO)
 +		len += nla_total_size(sizeof(u32));
 +	if (info_mask & ETHTOOL_IM_RXFLOW_HASHFN) {
-+		const unsigned int flags =
-+			(req_info->compact ? ETHNL_BITSET_COMPACT : 0) |
-+			ETHNL_BITSET_LEGACY_NAMES;
++		unsigned int flags = ETHNL_BITSET_LEGACY_NAMES;
++
++		if (data->reqinfo_base.global_flags & ETHTOOL_RF_COMPACT)
++			flags |= ETHNL_BITSET_COMPACT;
 +
 +		ret = ethnl_bitset32_size(ETH_RSS_HASH_FUNCS_COUNT,
 +					  &data->hash_fn, &all_hashfn,
@@ -662,11 +637,12 @@ index 000000000000..1c093400ab12
 +static int rxflow_fill_hashfn(struct sk_buff *skb,
 +			      const struct rxflow_data *data)
 +{
-+	const unsigned int flags =
-+		(data->reqinfo_base.compact ? ETHNL_BITSET_COMPACT : 0) |
-+		ETHNL_BITSET_LEGACY_NAMES;
++	unsigned int flags = ETHNL_BITSET_LEGACY_NAMES;
 +	const u32 all_hashfn = RXFLOW_ALL_HASHFNS;
 +	int ret;
++
++	if (data->reqinfo_base.global_flags & ETHTOOL_RF_COMPACT)
++		flags |= ETHNL_BITSET_COMPACT;
 +
 +	ret = ethnl_put_bitset32(skb, ETHTOOL_A_RXFLOW_HASH_FN,
 +				 ETH_RSS_HASH_FUNCS_COUNT, &data->hash_fn,
@@ -838,9 +814,13 @@ index 000000000000..1c093400ab12
 +const struct get_request_ops rxflow_request_ops = {
 +	.request_cmd		= ETHTOOL_MSG_RXFLOW_GET,
 +	.reply_cmd		= ETHTOOL_MSG_RXFLOW_GET_REPLY,
-+	.dev_attrtype		= ETHTOOL_A_RXFLOW_DEV,
++	.hdr_attr		= ETHTOOL_A_RXFLOW_HEADER,
++	.max_attr		= ETHTOOL_A_RXFLOW_MAX,
 +	.data_size		= sizeof(struct rxflow_data),
 +	.repdata_offset		= offsetof(struct rxflow_data, repdata_base),
++	.request_policy		= rxflow_get_policy,
++	.default_infomask	= ETHTOOL_IM_RXFLOW_ALL,
++	.all_reqflags		= ETHTOOL_RF_RXFLOW_ALL,
 +
 +	.parse_request		= rxflow_parse,
 +	.prepare_data		= rxflow_prepare,

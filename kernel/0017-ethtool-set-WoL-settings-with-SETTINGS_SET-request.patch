@@ -1,4 +1,4 @@
-From c07af07bc124c21b4a5e30a480aeac333e7cb44b Mon Sep 17 00:00:00 2001
+From dd85e8e5badaa5dd39b0a8922c61a60741922254 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:50:30 +0100
 Subject: [PATCH 17/43] ethtool: set WoL settings with SETTINGS_SET request
@@ -16,10 +16,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 70 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index d3be9a097e58..d4491f305d3d 100644
+index b3176c3c7a8f..eb333aa7f37d 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -288,6 +288,9 @@ to be passed with SETTINGS_SET request:
+@@ -308,6 +308,9 @@ to be passed with SETTINGS_SET request:
          ETHTOOL_A_LINKMODES_OURS	    (bitset)	    advertised link modes
          ETHTOOL_A_LINKMODES_SPEED	    (u32)	    link speed (Mb/s)
          ETHTOOL_A_LINKMODES_DUPLEX	    (u8)	    duplex mode
@@ -29,7 +29,7 @@ index d3be9a097e58..d4491f305d3d 100644
  
  ETHTOOL_A_LINKMODES_OURS bit set allows setting advertised link modes. If
  autonegotiation is on (either set now or kept from before), advertised modes
-@@ -298,6 +301,13 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
+@@ -318,6 +321,13 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
  is supposed to allow requesting changes without knowing what exactly kernel
  supports.
  
@@ -43,7 +43,7 @@ index d3be9a097e58..d4491f305d3d 100644
  
  Request translation
  -------------------
-@@ -313,7 +323,7 @@ ETHTOOL_SSET			ETHTOOL_MSG_SETTINGS_SET
+@@ -333,7 +343,7 @@ ETHTOOL_SSET			ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_GDRVINFO		n/a
  ETHTOOL_GREGS			n/a
  ETHTOOL_GWOL			ETHTOOL_MSG_SETTINGS_GET
@@ -53,10 +53,10 @@ index d3be9a097e58..d4491f305d3d 100644
  ETHTOOL_SMSGLVL			n/a
  ETHTOOL_NWAY_RST		n/a
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 1c4953e7f88c..84b2ce7f153a 100644
+index 896305285a49..19251caa10ba 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -110,6 +110,12 @@ static const struct link_mode_info link_mode_params[] = {
+@@ -109,6 +109,12 @@ static const struct link_mode_info link_mode_params[] = {
  	__DEFINE_LINK_MODE_PARAMS(1000, T1, Full),
  };
  
@@ -68,8 +68,8 @@ index 1c4953e7f88c..84b2ce7f153a 100644
 +
  static const struct nla_policy settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]	= { .type = NLA_REJECT },
- 	[ETHTOOL_A_SETTINGS_DEV]	= { .type = NLA_NESTED },
-@@ -498,6 +504,14 @@ static const struct nla_policy linkmodes_set_policy[ETHTOOL_A_LINKMODES_MAX + 1]
+ 	[ETHTOOL_A_SETTINGS_HEADER]	= { .type = NLA_NESTED },
+@@ -474,13 +480,21 @@ static const struct nla_policy linkmodes_set_policy[ETHTOOL_A_LINKMODES_MAX + 1]
  	[ETHTOOL_A_LINKMODES_DUPLEX]		= { .type = NLA_U8 },
  };
  
@@ -83,8 +83,7 @@ index 1c4953e7f88c..84b2ce7f153a 100644
 +
  static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
- 	[ETHTOOL_A_SETTINGS_DEV]		= { .type = NLA_NESTED },
-@@ -506,7 +520,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+ 	[ETHTOOL_A_SETTINGS_HEADER]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_INFO]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_MODES]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
@@ -93,7 +92,7 @@ index 1c4953e7f88c..84b2ce7f153a 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -662,6 +676,42 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
+@@ -636,6 +650,42 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
  	return 0;
  }
  
@@ -136,7 +135,7 @@ index 1c4953e7f88c..84b2ce7f153a 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
-@@ -691,6 +741,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -669,6 +719,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret < 0)
  			goto out_ops;
  	}

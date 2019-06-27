@@ -1,4 +1,4 @@
-From edd8412e18c1c0ddb0ed7e09608ae648cb469524 Mon Sep 17 00:00:00 2001
+From 8014aabedfa9e76dde9c9d80323658aa3991e3a6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 07/43] ethtool: netlink bitset handling
@@ -8,22 +8,22 @@ parse arbitrary length bit sets.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  63 ++
+ Documentation/networking/ethtool-netlink.txt |  61 ++
  include/uapi/linux/ethtool_netlink.h         |  35 ++
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/bitset.c                         | 606 +++++++++++++++++++
  net/ethtool/bitset.h                         |  40 ++
  net/ethtool/netlink.h                        |   9 +
- 6 files changed, 754 insertions(+), 1 deletion(-)
+ 6 files changed, 752 insertions(+), 1 deletion(-)
  create mode 100644 net/ethtool/bitset.c
  create mode 100644 net/ethtool/bitset.h
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 1d0a825a8a6d..b727de687b8a 100644
+index fe56060d4536..75781a7dfa2a 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -56,6 +56,69 @@ replies with one message per network device (only those for which the request
- is supported).
+@@ -73,6 +73,67 @@ set, the behaviour is the same as (or closer to) the behaviour before it was
+ introduced.
  
  
 +Bit sets
@@ -62,13 +62,11 @@ index 1d0a825a8a6d..b727de687b8a 100644
 +
 +    ETHTOOL_A_BITSET_LIST	(flag)		no mask, only a list
 +    ETHTOOL_A_BITSET_SIZE	(u32)		number of significant bits
-+    ETHTOOL_A_BITSET_BITS	(nested)	array of bits
-+	ETHTOOL_A_BITSET_BIT
++    ETHTOOL_A_BITSET_BIT	(nested)	array of bits
++	ETHTOOL_A_BITSET_BIT+   (nested)	one bit
 +	    ETHTOOL_A_BIT_INDEX	(u32)		bit index (0 for LSB)
 +            ETHTOOL_A_BIT_NAME	(string)	bit name
 +	    ETHTOOL_A_BIT_VALUE	(flag)		present if bit is set
-+        ETHTOOL_A_BITSET_BIT
-+	...
 +
 +Bit size is optional for bit-by-bit form. ETHTOOL_A_BITSET_BITS nest can only
 +contain ETHTOOL_A_BITS_BIT attributes but there can be an arbitrary number of
@@ -93,11 +91,11 @@ index 1d0a825a8a6d..b727de687b8a 100644
  ---------------------
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 37a89050dd53..62501aab0745 100644
+index ffd7db0848ef..805f314f4454 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
-@@ -41,6 +41,41 @@ enum {
- 	ETHTOOL_A_DEV_MAX = (__ETHTOOL_A_DEV_CNT - 1)
+@@ -52,6 +52,41 @@ enum {
+ 	ETHTOOL_A_HEADER_MAX = (__ETHTOOL_A_HEADER_CNT - 1)
  };
  
 +/* bit sets */
@@ -126,7 +124,7 @@ index 37a89050dd53..62501aab0745 100644
 +	ETHTOOL_A_BITSET_UNSPEC,
 +	ETHTOOL_A_BITSET_LIST,			/* flag */
 +	ETHTOOL_A_BITSET_SIZE,			/* u32 */
-+	ETHTOOL_A_BITSET_BITS,			/* nest - ETHTOOL_A_BITS_* */
++	ETHTOOL_A_BITSET_BITS,			/* nest - _A_BITS_* */
 +	ETHTOOL_A_BITSET_VALUE,			/* binary */
 +	ETHTOOL_A_BITSET_MASK,			/* binary */
 +
@@ -807,11 +805,11 @@ index 000000000000..761d0c47fe23
 +
 +#endif /* _NET_ETHTOOL_BITSET_H */
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 6effa23cdf26..1698f8b56d4a 100644
+index 5510eb7054b3..7f1b9ec1ace7 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -15,6 +15,15 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
- 				 u16 dev_attrtype, struct genl_info *info,
+@@ -20,6 +20,15 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+ 				 u16 hdr_attrtype, struct genl_info *info,
  				 void **ehdrp);
  
 +#if BITS_PER_LONG == 64 && defined(__BIG_ENDIAN)

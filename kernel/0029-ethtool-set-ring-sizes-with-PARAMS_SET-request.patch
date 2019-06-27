@@ -1,4 +1,4 @@
-From 1c99eed52ec962173509687ee07d57432adf355c Mon Sep 17 00:00:00 2001
+From d403d90f9f6fb1c78d52b9c8a23344ace756aa36 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 07:53:54 +0100
 Subject: [PATCH 29/43] ethtool: set ring sizes with PARAMS_SET request
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 91 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index b932e28ad58b..a00d95f2f0ed 100644
+index 04ec3f1913d4..5a44166e9a58 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -476,8 +476,10 @@ PARAMS_SET
+@@ -494,8 +494,10 @@ PARAMS_SET
  ----------
  
  PARAMS_SET request modifies the settings retrieved by PARAMS_GET, i.e. it
@@ -28,9 +28,9 @@ index b932e28ad58b..a00d95f2f0ed 100644
 +attribute. Some of the attributes provided by PARAMS_GET are read only and
 +cannot be set by PARAMS_SET request.
  
+     ETHTOOL_A_PARAMS_HEADER		(nested)	request header
      ETHTOOL_A_PARAMS_COALESCE		(nested)	coalescing parameters
-         ETHTOOL_A_COALESCE_RX_USECS	    (u32)
-@@ -502,6 +504,11 @@ contained in nest attribute ETHTOOL_A_PARAMS_COALESCE.
+@@ -521,6 +523,11 @@ contained in nest attribute ETHTOOL_A_PARAMS_COALESCE.
          ETHTOOL_A_COALESCE_TX_USE_ADAPTIVE  (bool)
          ETHTOOL_A_COALESCE_RATE_SAMPLE_INTERVAL	(u32)
          ETHTOOL_A_COALESCE_STATS_BLOCK_USECS	(u32)
@@ -42,7 +42,7 @@ index b932e28ad58b..a00d95f2f0ed 100644
  
  
  Request translation
-@@ -528,7 +535,7 @@ ETHTOOL_SEEPROM			n/a
+@@ -547,7 +554,7 @@ ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		ETHTOOL_MSG_PARAMS_GET
  ETHTOOL_SCOALESCE		ETHTOOL_MSG_PARAMS_SET
  ETHTOOL_GRINGPARAM		ETHTOOL_MSG_PARAMS_GET
@@ -52,19 +52,19 @@ index b932e28ad58b..a00d95f2f0ed 100644
  ETHTOOL_SPAUSEPARAM		n/a
  ETHTOOL_GRXCSUM			ETHTOOL_MSG_SETTINGS_GET
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 5eaee645f345..2b90177f96de 100644
+index 4808a3ba3b04..85778482ffd4 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -258,7 +258,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
- 	[ETHTOOL_A_PARAMS_INFOMASK]		= { .type = NLA_REJECT },
- 	[ETHTOOL_A_PARAMS_COMPACT]		= { .type = NLA_FLAG },
+@@ -228,7 +228,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+ 	[ETHTOOL_A_PARAMS_UNSPEC]		= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_PARAMS_HEADER]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_NESTED },
 -	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_REJECT },
 +	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_NESTED },
  };
  
- static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
-@@ -389,6 +389,81 @@ static int params_update_coalesce(struct genl_info *info,
+ static const struct nla_policy params_hdr_policy[ETHTOOL_A_HEADER_MAX + 1] = {
+@@ -369,6 +369,81 @@ static int params_update_coalesce(struct genl_info *info,
  	return (ret < 0) ? ret : 1;
  }
  
@@ -146,7 +146,7 @@ index 5eaee645f345..2b90177f96de 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
-@@ -413,6 +488,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+@@ -397,6 +472,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
  		req_mask |= ETHTOOL_IM_PARAMS_COALESCE;

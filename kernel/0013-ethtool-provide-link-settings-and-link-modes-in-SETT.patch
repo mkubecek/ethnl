@@ -1,4 +1,4 @@
-From 0d1c5a143ff4f9408a818c4a32482a66175f102d Mon Sep 17 00:00:00 2001
+From ed9fa98c409f407cd6b8d8c561f641d10fe146a0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 13/43] ethtool: provide link settings and link modes in
@@ -18,7 +18,7 @@ ETHTOOL_SSET command).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  50 +++-
+ Documentation/networking/ethtool-netlink.txt |  48 +++-
  include/linux/ethtool_netlink.h              |   3 +
  include/uapi/linux/ethtool_netlink.h         |  50 ++++
  net/ethtool/Makefile                         |   2 +-
@@ -27,15 +27,15 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/ioctl.c                          |  66 ++---
  net/ethtool/netlink.c                        |  14 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/settings.c                       | 286 +++++++++++++++++++
- 10 files changed, 471 insertions(+), 53 deletions(-)
+ net/ethtool/settings.c                       | 257 +++++++++++++++++++
+ 10 files changed, 440 insertions(+), 53 deletions(-)
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 749c84bf2971..1bd05b19be86 100644
+index cdb48b43e04a..cfeaa27dfec9 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -136,10 +136,12 @@ according to message purpose:
+@@ -151,10 +151,12 @@ according to message purpose:
  Userspace to kernel:
  
      ETHTOOL_MSG_STRSET_GET		get string set
@@ -48,7 +48,7 @@ index 749c84bf2971..1bd05b19be86 100644
  
  "GET" requests are sent by userspace applications to retrieve device
  information. They usually do not contain any message specific attributes.
-@@ -209,6 +211,50 @@ Flag ETHTOOL_A_STRSET_COUNTS tells kernel to only return string counts of the
+@@ -231,6 +233,48 @@ Flag ETHTOOL_A_STRSET_COUNTS tells kernel to only return string counts of the
  sets, not the actual strings.
  
  
@@ -61,9 +61,7 @@ index 749c84bf2971..1bd05b19be86 100644
 +
 +Request attributes:
 +
-+    ETHTOOL_A_SETTINGS_DEV		(nested)	device identification
-+    ETHTOOL_A_SETTINGS_INFOMASK		(u32)		info mask
-+    ETHTOOL_A_SETTINGS_COMPACT		(flag)		compact bitsets
++    ETHTOOL_A_SETTINGS_HEADER		(nested)	request header
 +
 +Info mask bits meaning:
 +
@@ -72,7 +70,7 @@ index 749c84bf2971..1bd05b19be86 100644
 +
 +Response contents:
 +
-+    ETHTOOL_A_SETTINGS_DEV		(nested)	device identification
++    ETHTOOL_A_SETTINGS_HEADER		(nested)	reply header
 +    ETHTOOL_A_SETTINGS_LINK_INFO	(nested)	link settings
 +        ETHTOOL_A_LINKINFO_PORT		    (u8)	    physical port
 +        ETHTOOL_A_LINKINFO_PHYADDR	    (u8)	    phy MDIO address
@@ -99,7 +97,7 @@ index 749c84bf2971..1bd05b19be86 100644
  Request translation
  -------------------
  
-@@ -218,7 +264,7 @@ have their netlink replacement yet.
+@@ -240,7 +284,7 @@ have their netlink replacement yet.
  
  ioctl command			netlink command
  ---------------------------------------------------------------------
@@ -108,7 +106,7 @@ index 749c84bf2971..1bd05b19be86 100644
  ETHTOOL_SSET			n/a
  ETHTOOL_GDRVINFO		n/a
  ETHTOOL_GREGS			n/a
-@@ -292,7 +338,7 @@ ETHTOOL_GTUNABLE		n/a
+@@ -314,7 +358,7 @@ ETHTOOL_GTUNABLE		n/a
  ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
@@ -132,7 +130,7 @@ index 2a15e64a16f3..e770e6e9acca 100644
  	ETHNL_MCGRP_MONITOR,
  };
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index a197d0c0de8c..65eda33c17dc 100644
+index 11b8519d2c1d..af0fd363c8b7 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -15,6 +15,7 @@
@@ -152,19 +150,17 @@ index a197d0c0de8c..65eda33c17dc 100644
  
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
-@@ -123,6 +126,53 @@ enum {
- 	ETHTOOL_A_STRSET_MAX = (__ETHTOOL_A_STRSET_CNT - 1)
- };
+@@ -147,6 +150,53 @@ enum {
+ 
+ #define ETHTOOL_RF_STRSET_ALL (ETHTOOL_RF_STRSET_COUNTS)
  
 +/* SETTINGS */
 +
 +enum {
 +	ETHTOOL_A_SETTINGS_UNSPEC,
-+	ETHTOOL_A_SETTINGS_DEV,			/* nest - ETHTOOL_A_DEV_* */
-+	ETHTOOL_A_SETTINGS_INFOMASK,		/* u32 */
-+	ETHTOOL_A_SETTINGS_COMPACT,		/* flag */
-+	ETHTOOL_A_SETTINGS_LINK_INFO,		/* nest - ETHTOOL_A_LINKINFO_* */
-+	ETHTOOL_A_SETTINGS_LINK_MODES,		/* nest - ETHTOOL_A_LINKMODES_* */
++	ETHTOOL_A_SETTINGS_HEADER,		/* nest - _A_HEADER_* */
++	ETHTOOL_A_SETTINGS_LINK_INFO,		/* nest - _A_LINKINFO_* */
++	ETHTOOL_A_SETTINGS_LINK_MODES,		/* nest - _A_LINKMODES_* */
 +
 +	/* add new constants above here */
 +	__ETHTOOL_A_SETTINGS_CNT,
@@ -176,6 +172,8 @@ index a197d0c0de8c..65eda33c17dc 100644
 +
 +#define ETHTOOL_IM_SETTINGS_ALL (ETHTOOL_IM_SETTINGS_LINKINFO | \
 +				 ETHTOOL_IM_SETTINGS_LINKMODES)
++
++#define ETHTOOL_RF_SETTINGS_ALL 0
 +
 +enum {
 +	ETHTOOL_A_LINKINFO_UNSPEC,
@@ -286,7 +284,7 @@ index 41b2efc1e4e1..0381936d8e1e 100644
 +
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 130512ce6174..89ca8bd3643e 100644
+index d5f64ee3656f..dd6e0b6f96b0 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -26,6 +26,7 @@
@@ -391,10 +389,10 @@ index 130512ce6174..89ca8bd3643e 100644
  
  static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 902eb42e5148..ee1e76a2c3e2 100644
+index d1a4a7200b31..24d5d1855a57 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -258,6 +258,7 @@ static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)
+@@ -275,6 +275,7 @@ static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)
  
  const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
  	[ETHTOOL_MSG_STRSET_GET]	= &strset_request_ops,
@@ -402,7 +400,7 @@ index 902eb42e5148..ee1e76a2c3e2 100644
  };
  
  /**
-@@ -515,6 +516,11 @@ static int ethnl_get_done(struct netlink_callback *cb)
+@@ -590,6 +591,11 @@ static int ethnl_get_done(struct netlink_callback *cb)
  
  static const struct get_request_ops *ethnl_std_notify_to_ops(unsigned int cmd)
  {
@@ -414,7 +412,7 @@ index 902eb42e5148..ee1e76a2c3e2 100644
  	WARN_ONCE(1, "unexpected notification type %u\n", cmd);
  	return NULL;
  }
-@@ -582,6 +588,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -657,6 +663,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  				       const void *data);
  
  static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
@@ -422,7 +420,7 @@ index 902eb42e5148..ee1e76a2c3e2 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -610,6 +617,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -685,6 +692,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -437,10 +435,10 @@ index 902eb42e5148..ee1e76a2c3e2 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index ca463ae65233..c3154458f3e2 100644
+index 4ad1da529ad7..375de56dd6d2 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -243,5 +243,6 @@ struct get_request_ops {
+@@ -273,5 +273,6 @@ struct get_request_ops {
  /* request handlers */
  
  extern const struct get_request_ops strset_request_ops;
@@ -449,10 +447,10 @@ index ca463ae65233..c3154458f3e2 100644
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
-index 000000000000..e25eea452a75
+index 000000000000..1fd32147973d
 --- /dev/null
 +++ b/net/ethtool/settings.c
-@@ -0,0 +1,286 @@
+@@ -0,0 +1,257 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include "netlink.h"
@@ -471,43 +469,10 @@ index 000000000000..e25eea452a75
 +
 +static const struct nla_policy settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
 +	[ETHTOOL_A_SETTINGS_UNSPEC]	= { .type = NLA_REJECT },
-+	[ETHTOOL_A_SETTINGS_DEV]	= { .type = NLA_NESTED },
-+	[ETHTOOL_A_SETTINGS_INFOMASK]	= { .type = NLA_U32 },
-+	[ETHTOOL_A_SETTINGS_COMPACT]	= { .type = NLA_FLAG },
++	[ETHTOOL_A_SETTINGS_HEADER]	= { .type = NLA_NESTED },
 +	[ETHTOOL_A_SETTINGS_LINK_INFO]	= { .type = NLA_REJECT },
 +	[ETHTOOL_A_SETTINGS_LINK_MODES]	= { .type = NLA_REJECT },
 +};
-+
-+/* parse_request() handler */
-+static int settings_parse(struct ethnl_req_info *req_info,
-+			  struct sk_buff *skb, struct genl_info *info,
-+			  const struct nlmsghdr *nlhdr)
-+{
-+	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
-+	int ret;
-+
-+	ret = nlmsg_parse(nlhdr, GENL_HDRLEN, tb, ETHTOOL_A_SETTINGS_MAX,
-+			  settings_get_policy, info ? info->extack : NULL);
-+	if (ret < 0)
-+		return ret;
-+
-+	if (tb[ETHTOOL_A_SETTINGS_DEV]) {
-+		req_info->dev = ethnl_dev_get(info, tb[ETHTOOL_A_SETTINGS_DEV]);
-+		if (IS_ERR(req_info->dev)) {
-+			ret = PTR_ERR(req_info->dev);
-+			req_info->dev = NULL;
-+			return ret;
-+		}
-+	}
-+	if (tb[ETHTOOL_A_SETTINGS_INFOMASK])
-+		req_info->req_mask = nla_get_u32(tb[ETHTOOL_A_SETTINGS_INFOMASK]);
-+	if (tb[ETHTOOL_A_SETTINGS_COMPACT])
-+		req_info->compact = true;
-+	if (req_info->req_mask == 0)
-+		req_info->req_mask = ETHTOOL_IM_SETTINGS_ALL;
-+
-+	return 0;
-+}
 +
 +static int ethnl_get_link_ksettings(struct genl_info *info,
 +				    struct net_device *dev,
@@ -578,8 +543,9 @@ index 000000000000..e25eea452a75
 +	return nla_total_size(len);
 +}
 +
-+static int settings_linkmodes_size(const struct ethtool_link_ksettings *ksettings,
-+			   bool compact)
++static int
++settings_linkmodes_size(const struct ethtool_link_ksettings *ksettings,
++			bool compact)
 +{
 +	unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
 +	u32 *supported = (u32 *)ksettings->link_modes.supported;
@@ -616,10 +582,10 @@ index 000000000000..e25eea452a75
 +	struct settings_data *data =
 +		container_of(req_info, struct settings_data, reqinfo_base);
 +	u32 info_mask = data->repdata_base.info_mask;
-+	bool compact = req_info->compact;
++	bool compact = req_info->global_flags & ETHTOOL_RF_COMPACT;
 +	int len = 0, ret;
 +
-+	len += ethnl_dev_size();
++	len += ethnl_reply_header_size();
 +	if (info_mask & ETHTOOL_IM_SETTINGS_LINKINFO)
 +		len += settings_linkinfo_size();
 +	if (info_mask & ETHTOOL_IM_SETTINGS_LINKMODES) {
@@ -709,7 +675,7 @@ index 000000000000..e25eea452a75
 +	const struct settings_data *data =
 +		container_of(req_info, struct settings_data, reqinfo_base);
 +	u32 info_mask = data->repdata_base.info_mask;
-+	bool compact = req_info->compact;
++	bool compact = req_info->global_flags & ETHTOOL_RF_COMPACT;
 +	int ret;
 +
 +	if (info_mask & ETHTOOL_IM_SETTINGS_LINKINFO) {
@@ -730,11 +696,14 @@ index 000000000000..e25eea452a75
 +const struct get_request_ops settings_request_ops = {
 +	.request_cmd		= ETHTOOL_MSG_SETTINGS_GET,
 +	.reply_cmd		= ETHTOOL_MSG_SETTINGS_GET_REPLY,
-+	.dev_attrtype		= ETHTOOL_A_SETTINGS_DEV,
++	.hdr_attr		= ETHTOOL_A_SETTINGS_HEADER,
++	.max_attr		= ETHTOOL_A_SETTINGS_MAX,
 +	.data_size		= sizeof(struct settings_data),
 +	.repdata_offset		= offsetof(struct settings_data, repdata_base),
++	.request_policy		= settings_get_policy,
++	.default_infomask	= ETHTOOL_IM_SETTINGS_ALL,
++	.all_reqflags		= ETHTOOL_RF_SETTINGS_ALL,
 +
-+	.parse_request		= settings_parse,
 +	.prepare_data		= settings_prepare,
 +	.reply_size		= settings_size,
 +	.fill_reply		= settings_fill,

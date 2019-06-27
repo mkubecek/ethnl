@@ -1,4 +1,4 @@
-From ae7e2528d0ce93f008391cc16476c051ccd1ebdf Mon Sep 17 00:00:00 2001
+From 7818899dfbf7b0a9c093a02b7cf7de0e93df83ce Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 18:01:46 +0100
 Subject: [PATCH 19/43] ethtool: set message level with SETTINGS_SET request
@@ -17,10 +17,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 50 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 8e6c8464c188..9476bf7997bd 100644
+index aef16696990b..d051ce8ab573 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -298,6 +298,8 @@ to be passed with SETTINGS_SET request:
+@@ -318,6 +318,8 @@ to be passed with SETTINGS_SET request:
      ETHTOOL_A_SETTINGS_WOL		(nested)	wake on LAN settings
          ETHTOOL_A_WOL_MODES		    (bitfield32)    wake on LAN modes
          ETHTOOL_A_WOL_SOPASS		    (binary)	    SecureOn password
@@ -29,7 +29,7 @@ index 8e6c8464c188..9476bf7997bd 100644
  
  ETHTOOL_A_LINKMODES_OURS bit set allows setting advertised link modes. If
  autonegotiation is on (either set now or kept from before), advertised modes
-@@ -313,7 +315,9 @@ the selector are set to 0 or 1 according to value. To allow the semantics of
+@@ -333,7 +335,9 @@ the selector are set to 0 or 1 according to value. To allow the semantics of
  the ioctl interface where the whole bitmap is set rather than only modified,
  selectors may have also bits not supported by device set and an error is only
  issued if any of them is also set in the value (i.e. if userspace tries to
@@ -40,7 +40,7 @@ index 8e6c8464c188..9476bf7997bd 100644
  
  
  Request translation
-@@ -332,7 +336,7 @@ ETHTOOL_GREGS			n/a
+@@ -352,7 +356,7 @@ ETHTOOL_GREGS			n/a
  ETHTOOL_GWOL			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SWOL			ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_GMSGLVL			ETHTOOL_MSG_SETTINGS_GET
@@ -50,10 +50,10 @@ index 8e6c8464c188..9476bf7997bd 100644
  ETHTOOL_GLINK			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_GEEPROM			n/a
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 61bd2c9b3288..671935cbe9f7 100644
+index 92e790292011..abb41ee33881 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -551,6 +551,12 @@ static const struct nla_policy wol_set_policy[ETHTOOL_A_LINKINFO_MAX + 1] = {
+@@ -527,6 +527,12 @@ static const struct nla_policy wol_set_policy[ETHTOOL_A_LINKINFO_MAX + 1] = {
  					    .len = SOPASS_MAX },
  };
  
@@ -65,8 +65,8 @@ index 61bd2c9b3288..671935cbe9f7 100644
 +
  static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
- 	[ETHTOOL_A_SETTINGS_DEV]		= { .type = NLA_NESTED },
-@@ -560,7 +566,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+ 	[ETHTOOL_A_SETTINGS_HEADER]		= { .type = NLA_NESTED },
+@@ -534,7 +540,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
  	[ETHTOOL_A_SETTINGS_LINK_MODES]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
@@ -75,7 +75,7 @@ index 61bd2c9b3288..671935cbe9f7 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -752,6 +758,35 @@ static int settings_update_wol(struct genl_info *info, struct nlattr *nest,
+@@ -726,6 +732,35 @@ static int settings_update_wol(struct genl_info *info, struct nlattr *nest,
  	return ret;
  }
  
@@ -111,7 +111,7 @@ index 61bd2c9b3288..671935cbe9f7 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
-@@ -789,6 +824,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -767,6 +802,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret)
  			req_mask |= ETHTOOL_IM_SETTINGS_WOL;
  	}

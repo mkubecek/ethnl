@@ -1,4 +1,4 @@
-From bbb7463c545ed65525bbaf52ce6c2a721f84dff0 Mon Sep 17 00:00:00 2001
+From 72d92b949508017f188070d11c44805b3c62f435 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 40/43] ethtool: implement ETHTOOL_MSG_RESET_ACT message
@@ -11,19 +11,19 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  29 ++-
  include/uapi/linux/ethtool.h                 |   3 +
- include/uapi/linux/ethtool_netlink.h         |  19 ++
- net/ethtool/actions.c                        | 233 +++++++++++++++++++
+ include/uapi/linux/ethtool_netlink.h         |  20 ++
+ net/ethtool/actions.c                        | 246 +++++++++++++++++++
  net/ethtool/ioctl.c                          |   6 +
  net/ethtool/netlink.c                        |   6 +
  net/ethtool/netlink.h                        |   4 +
  net/ethtool/strset.c                         |   6 +
- 8 files changed, 305 insertions(+), 1 deletion(-)
+ 8 files changed, 319 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 2316996d033c..12d5a155f44c 100644
+index a1bd046677d9..ee4430a7d8cf 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -143,6 +143,7 @@ Userspace to kernel:
+@@ -158,6 +158,7 @@ Userspace to kernel:
      ETHTOOL_MSG_PARAMS_SET		set device parameters
      ETHTOOL_MSG_NWAYRST_ACT		perform renegotiation
      ETHTOOL_MSG_PHYSID_ACT		perform physical identification
@@ -31,7 +31,7 @@ index 2316996d033c..12d5a155f44c 100644
  
  Kernel to userspace:
  
-@@ -155,6 +156,8 @@ Kernel to userspace:
+@@ -170,6 +171,8 @@ Kernel to userspace:
      ETHTOOL_MSG_PARAMS_NTF		device parameters notification
      ETHTOOL_MSG_NWAYRST_NTF		renegotiation notification
      ETHTOOL_MSG_PHYSID_NTF		physical identification notification
@@ -40,7 +40,7 @@ index 2316996d033c..12d5a155f44c 100644
  
  "GET" requests are sent by userspace applications to retrieve device
  information. They usually do not contain any message specific attributes.
-@@ -599,6 +602,30 @@ other PHYSID_ACT requests for any device fail with EBUSY. The same holds for
+@@ -618,6 +621,30 @@ other PHYSID_ACT requests for any device fail with EBUSY. The same holds for
  requests using ETHTOOL_PHYS_ID ioctl command.
  
  
@@ -51,8 +51,7 @@ index 2316996d033c..12d5a155f44c 100644
 +
 +Request contents:
 +
-+    ETHTOOL_A_RESET_DEV			(nested)	device identification
-+    ETHTOOL_A_RESET_COMPACT		(flag)		request compact bitmaps
++    ETHTOOL_A_RESET_HEADER		(nested)	request header
 +    ETHTOOL_A_RESET_ALL			(flag)		reset all compontents
 +    ETHTOOL_A_RESET_ALL_DEDICATED	(flag)		reset all dedicated components
 +    ETHTOOL_A_RESET_DEDICATED		(bitset)	dedicated components to reset
@@ -63,15 +62,16 @@ index 2316996d033c..12d5a155f44c 100644
 +is present, it overrides both ETHTOOL_A_RESET_DEDICATED and
 +ETHTOOL_A_RESET_SHARED.
 +
-+If the request is successful, a message in the same format is returned,
-+indicating which components _were_ actually reset (this is different from
-+ioctl interface). The same message is also broadcasted as a notification.
++If the request is successful and ETHTOOL_RF_REPLY flag was set in request
++header, a message in the same format is returned, indicating which components
++_were_ actually reset (this is different from ioctl interface). The same
++message is also broadcasted as a notification.
 +
 +
  Request translation
  -------------------
  
-@@ -658,7 +685,7 @@ ETHTOOL_GRXCLSRLALL		n/a
+@@ -677,7 +704,7 @@ ETHTOOL_GRXCLSRLALL		n/a
  ETHTOOL_SRXCLSRLDEL		n/a
  ETHTOOL_SRXCLSRLINS		n/a
  ETHTOOL_FLASHDEV		n/a
@@ -109,7 +109,7 @@ index 3ba1508742d4..b9a7861fffd1 100644
  
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 08782475ab86..881131aa3653 100644
+index c6b3aee4dbb9..bc91f951a6b7 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -22,6 +22,7 @@ enum {
@@ -129,16 +129,15 @@ index 08782475ab86..881131aa3653 100644
  
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
-@@ -438,6 +441,22 @@ enum {
- 	ETHTOOL_A_PHYSID_MAX = (__ETHTOOL_A_PHYSID_CNT - 1)
- };
+@@ -465,6 +468,23 @@ enum {
+ 
+ #define ETHTOOL_RF_PHYSID_ALL 0
  
 +/* RESET */
 +
 +enum {
 +	ETHTOOL_A_RESET_UNSPEC,
-+	ETHTOOL_A_RESET_DEV,			/* nest - ETHTOOL_A_DEV_* */
-+	ETHTOOL_A_RESET_COMPACT,		/* flag */
++	ETHTOOL_A_RESET_HEADER,			/* nest - _A_HEADER_* */
 +	ETHTOOL_A_RESET_ALL,			/* flag */
 +	ETHTOOL_A_RESET_ALL_DEDICATED,		/* flag */
 +	ETHTOOL_A_RESET_DEDICATED,		/* bitset */
@@ -149,11 +148,13 @@ index 08782475ab86..881131aa3653 100644
 +	ETHTOOL_A_RESET_MAX = (__ETHTOOL_A_RESET_CNT - 1)
 +};
 +
++#define ETHTOOL_RF_RESET_ALL 0
++
  /* generic netlink info */
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
-index 3f300810dff1..34acb5c16b25 100644
+index 5fd4b962d786..2953527f8dd6 100644
 --- a/net/ethtool/actions.c
 +++ b/net/ethtool/actions.c
 @@ -2,6 +2,7 @@
@@ -164,7 +165,7 @@ index 3f300810dff1..34acb5c16b25 100644
  
  /* ACT_NWAY_RST */
  
-@@ -142,3 +143,235 @@ int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info)
+@@ -170,3 +171,248 @@ int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info)
  	dev_put(dev);
  	return ret;
  }
@@ -185,18 +186,27 @@ index 3f300810dff1..34acb5c16b25 100644
 +
 +static const struct nla_policy reset_policy[ETHTOOL_A_RESET_MAX + 1] = {
 +	[ETHTOOL_A_RESET_UNSPEC]	= { .type = NLA_REJECT },
-+	[ETHTOOL_A_RESET_DEV]		= { .type = NLA_NESTED },
-+	[ETHTOOL_A_RESET_COMPACT]	= { .type = NLA_FLAG },
++	[ETHTOOL_A_RESET_HEADER]	= { .type = NLA_NESTED },
 +	[ETHTOOL_A_RESET_ALL]		= { .type = NLA_FLAG },
 +	[ETHTOOL_A_RESET_ALL_DEDICATED]	= { .type = NLA_FLAG },
 +	[ETHTOOL_A_RESET_DEDICATED]	= { .type = NLA_NESTED },
 +	[ETHTOOL_A_RESET_SHARED]	= { .type = NLA_NESTED },
 +};
 +
++static const struct nla_policy reset_hdr_policy[ETHTOOL_A_HEADER_MAX + 1] = {
++	[ETHTOOL_A_HEADER_UNSPEC]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_HEADER_DEV_INDEX]	= { .type = NLA_U32 },
++	[ETHTOOL_A_HEADER_DEV_NAME]	= { .type = NLA_NUL_STRING,
++					    .len = IFNAMSIZ - 1 },
++	[ETHTOOL_A_HEADER_INFOMASK]	= { .type = NLA_REJECT },
++	[ETHTOOL_A_HEADER_GFLAGS]	= { .type = NLA_U32 },
++	[ETHTOOL_A_HEADER_RFLAGS]	= { .type = NLA_REJECT },
++};
++
 +static int reset_size(u32 flags, u32 orig_flags, bool compact)
 +{
 +	const unsigned int bitset_flags = compact ? ETHNL_BITSET_COMPACT : 0;
-+	int len = ethnl_dev_size();
++	int len = ethnl_reply_header_size();
 +	u32 bitmap, bitmask;
 +	int ret;
 +
@@ -277,7 +287,7 @@ index 3f300810dff1..34acb5c16b25 100644
 +	if (!msg_payload)
 +		goto err_skb;
 +
-+	ret = ethnl_fill_dev(skb, dev, ETHTOOL_A_RESET_DEV);
++	ret = ethnl_fill_reply_header(skb, dev, ETHTOOL_A_RESET_HEADER);
 +	if (ret < 0)
 +		goto err_skb;
 +	ret = reset_fill(skb, flags, flags, true);
@@ -329,6 +339,7 @@ index 3f300810dff1..34acb5c16b25 100644
 +int ethnl_act_reset(struct sk_buff *skb, struct genl_info *info)
 +{
 +	struct nlattr *tb[ETHTOOL_A_RESET_MAX + 1];
++	struct ethnl_req_info req_info = {};
 +	struct sk_buff *rskb = NULL;
 +	struct net_device *dev;
 +	u32 orig_flags, flags;
@@ -342,12 +353,13 @@ index 3f300810dff1..34acb5c16b25 100644
 +			  reset_policy, info->extack);
 +	if (ret < 0)
 +		return ret;
-+	dev = ethnl_dev_get(info, tb[ETHTOOL_A_RESET_DEV]);
-+	if (IS_ERR(dev))
-+		return PTR_ERR(dev);
-+	if (!dev->ethtool_ops->reset)
-+		return -EOPNOTSUPP;
-+	compact = (tb[ETHTOOL_A_RESET_COMPACT] != NULL);
++	ret = ethnl_parse_header(&req_info, tb[ETHTOOL_A_RESET_HEADER],
++				 genl_info_net(info), info->extack,
++				 reset_hdr_policy, true);
++	if (ret < 0)
++		return ret;
++	dev = req_info.dev;
++	compact = req_info.global_flags & ETHTOOL_RF_COMPACT;
 +	ret = reset_parse(tb, &flags, info);
 +	if (ret < 0)
 +		goto out_dev;
@@ -365,6 +377,8 @@ index 3f300810dff1..34acb5c16b25 100644
 +	flags = orig_flags & ~flags;
 +	if (flags)
 +		ethnl_reset_notify(dev, NULL, ETHTOOL_MSG_RESET_NTF, 0, &flags);
++	if (!(req_info.global_flags & ETHTOOL_RF_REPLY))
++		goto out_rtnl;
 +
 +	/* compose reply message */
 +	reply_len = reset_size(flags, orig_flags, compact);
@@ -373,7 +387,7 @@ index 3f300810dff1..34acb5c16b25 100644
 +		goto out;
 +	reply_ret = -ENOMEM;
 +	rskb = ethnl_reply_init(reply_len, dev, ETHTOOL_MSG_RESET_ACT_REPLY,
-+				ETHTOOL_A_RESET_DEV, info, &reply_payload);
++				ETHTOOL_A_RESET_HEADER, info, &reply_payload);
 +	if (!rskb)
 +		goto err_rskb;
 +	reply_ret = reset_fill(rskb, flags, orig_flags, compact);
@@ -401,7 +415,7 @@ index 3f300810dff1..34acb5c16b25 100644
 +	return ret;
 +}
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index bbd264883d96..2a890f99e7c7 100644
+index a514c7a86b36..7916b7fcf158 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1189,6 +1189,7 @@ static int ethtool_get_regs(struct net_device *dev, char __user *useraddr)
@@ -428,10 +442,10 @@ index bbd264883d96..2a890f99e7c7 100644
  	if (copy_to_user(useraddr, &reset, sizeof(reset)))
  		return -EFAULT;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index a83380a6a543..13788bb8dc24 100644
+index 220ba1f581a8..c9decca333a2 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -596,6 +596,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -671,6 +671,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHTOOL_MSG_PARAMS_NTF]	= ethnl_std_notify,
  	[ETHTOOL_MSG_NWAYRST_NTF]	= ethnl_nwayrst_notify,
  	[ETHTOOL_MSG_PHYSID_NTF]	= ethnl_physid_notify,
@@ -439,7 +453,7 @@ index a83380a6a543..13788bb8dc24 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -689,6 +690,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -764,6 +765,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_act_phys_id,
  	},
@@ -452,18 +466,18 @@ index a83380a6a543..13788bb8dc24 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 443b9f439073..0b3778f26526 100644
+index 84c0c5b62523..6d3689cb6f20 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -18,6 +18,7 @@ extern const char *const tstamp_tx_type_labels[];
+@@ -20,6 +20,7 @@ extern const char *const tstamp_tx_type_labels[];
  extern const char *const tstamp_rx_filter_labels[];
  
  extern const char *const link_mode_names[];
 +extern const char *const reset_flag_names[];
  
- struct net_device *ethnl_dev_get(struct genl_info *info, struct nlattr *nest);
- int ethnl_fill_dev(struct sk_buff *msg, struct net_device *dev, u16 attrtype);
-@@ -262,6 +263,7 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
+ int ethnl_parse_header(struct ethnl_req_info *req_info,
+ 		       const struct nlattr *nest, struct net *net,
+@@ -292,6 +293,7 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
@@ -471,7 +485,7 @@ index 443b9f439073..0b3778f26526 100644
  
  /* notify handlers */
  
-@@ -270,5 +272,7 @@ void ethnl_nwayrst_notify(struct net_device *dev,
+@@ -300,5 +302,7 @@ void ethnl_nwayrst_notify(struct net_device *dev,
  			  u32 req_mask, const void *data);
  void ethnl_physid_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  			 unsigned int cmd, u32 req_mask, const void *data);
@@ -480,7 +494,7 @@ index 443b9f439073..0b3778f26526 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index f8ec61129922..c8fd0bb2b6d5 100644
+index c497da1e85ef..1b85ed42e835 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -91,6 +91,12 @@ static const struct strset_info info_template[] = {

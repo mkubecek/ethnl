@@ -1,4 +1,4 @@
-From 28fc560016e79803bd0c0ffa8acd0d2f6bf8a0c9 Mon Sep 17 00:00:00 2001
+From f8da010d1c7aae4fcc0de4e1fa455c5de83fc0d7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:07:38 +0100
 Subject: [PATCH 31/43] ethtool: set pause parameters with PARAMS_SET request
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 63 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 707271ac61d7..dc0ad35944aa 100644
+index 95900886b455..990aa9d1e41c 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -481,10 +481,10 @@ PARAMS_SET
+@@ -499,10 +499,10 @@ PARAMS_SET
  ----------
  
  PARAMS_SET request modifies the settings retrieved by PARAMS_GET, i.e. it
@@ -30,9 +30,9 @@ index 707271ac61d7..dc0ad35944aa 100644
 +a corresponding nest attribute. Some of the attributes provided by
 +PARAMS_GET are read only and cannot be set by PARAMS_SET request.
  
+     ETHTOOL_A_PARAMS_HEADER		(nested)	request header
      ETHTOOL_A_PARAMS_COALESCE		(nested)	coalescing parameters
-         ETHTOOL_A_COALESCE_RX_USECS	    (u32)
-@@ -514,6 +514,10 @@ cannot be set by PARAMS_SET request.
+@@ -533,6 +533,10 @@ cannot be set by PARAMS_SET request.
          ETHTOOL_A_RING_RX_MINI_PENDING	    (u32)
          ETHTOOL_A_RING_RX_JUMBO_PENDING	    (u32)
          ETHTOOL_A_RING_TX_PENDING	    (u32)
@@ -43,7 +43,7 @@ index 707271ac61d7..dc0ad35944aa 100644
  
  
  Request translation
-@@ -542,7 +546,7 @@ ETHTOOL_SCOALESCE		ETHTOOL_MSG_PARAMS_SET
+@@ -561,7 +565,7 @@ ETHTOOL_SCOALESCE		ETHTOOL_MSG_PARAMS_SET
  ETHTOOL_GRINGPARAM		ETHTOOL_MSG_PARAMS_GET
  ETHTOOL_SRINGPARAM		ETHTOOL_MSG_PARAMS_SET
  ETHTOOL_GPAUSEPARAM		ETHTOOL_MSG_PARAMS_GET
@@ -53,19 +53,19 @@ index 707271ac61d7..dc0ad35944aa 100644
  ETHTOOL_SRXCSUM			ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_GTXCSUM			ETHTOOL_MSG_SETTINGS_GET
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 5af5448364c5..2751c30f6b64 100644
+index 66f95e2a16a4..fda1e03e8226 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -306,7 +306,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
- 	[ETHTOOL_A_PARAMS_COMPACT]		= { .type = NLA_FLAG },
+@@ -276,7 +276,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+ 	[ETHTOOL_A_PARAMS_HEADER]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_NESTED },
 -	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_REJECT },
 +	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_NESTED },
  };
  
- static const struct nla_policy coalesce_policy[ETHTOOL_A_COALESCE_MAX + 1] = {
-@@ -512,6 +512,54 @@ static int params_update_ring(struct genl_info *info, struct net_device *dev,
+ static const struct nla_policy params_hdr_policy[ETHTOOL_A_HEADER_MAX + 1] = {
+@@ -492,6 +492,54 @@ static int params_update_ring(struct genl_info *info, struct net_device *dev,
  	return (ret < 0) ? ret : 1;
  }
  
@@ -120,7 +120,7 @@ index 5af5448364c5..2751c30f6b64 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
-@@ -541,6 +589,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+@@ -525,6 +573,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
  		req_mask |= ETHTOOL_IM_PARAMS_RING;
