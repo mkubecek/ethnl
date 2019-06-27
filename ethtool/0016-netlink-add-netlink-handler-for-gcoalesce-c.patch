@@ -1,4 +1,4 @@
-From 82d03e592c55c9c3f0afe93ea7c3d9e24ebd8916 Mon Sep 17 00:00:00 2001
+From 246c4059f2881d9b7d112e23219532a4d5ee8438 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:54:51 +0100
 Subject: [PATCH 16/34] netlink: add netlink handler for gcoalesce (-c)
@@ -12,8 +12,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.c         |   3 +-
  netlink/extapi.h  |   1 +
  netlink/monitor.c |  10 +++++
- netlink/params.c  | 103 ++++++++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 117 insertions(+), 2 deletions(-)
+ netlink/params.c  | 101 ++++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 115 insertions(+), 2 deletions(-)
  create mode 100644 netlink/params.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -99,10 +99,10 @@ index c3f4bff05f35..bc20eb489058 100644
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
 new file mode 100644
-index 000000000000..b85b83531a57
+index 000000000000..d6ee5e3a7cc1
 --- /dev/null
 +++ b/netlink/params.c
-@@ -0,0 +1,103 @@
+@@ -0,0 +1,101 @@
 +#include <errno.h>
 +#include <string.h>
 +#include <stdio.h>
@@ -172,7 +172,7 @@ index 000000000000..b85b83531a57
 +	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return ret;
-+	nlctx->devname = get_dev_name(tb[ETHTOOL_A_PARAMS_DEV]);
++	nlctx->devname = get_dev_name(tb[ETHTOOL_A_PARAMS_HEADER]);
 +	if (!dev_ok(nlctx))
 +		return MNL_CB_OK;
 +
@@ -194,11 +194,9 @@ index 000000000000..b85b83531a57
 +	int ret;
 +
 +	ret = ethnl_prep_get_request(ctx, ETHTOOL_MSG_PARAMS_GET,
-+				     ETHTOOL_A_PARAMS_DEV);
++				     ETHTOOL_A_PARAMS_HEADER, info_mask, 0, 0);
 +	if (ret < 0)
 +		return ret;
-+	if (ethnla_put_u32(ctx->nlctx, ETHTOOL_A_PARAMS_INFOMASK, info_mask))
-+		return -EMSGSIZE;
 +	return ethnl_send_get_request(ctx->nlctx, params_reply_cb);
 +}
 +

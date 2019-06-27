@@ -1,4 +1,4 @@
-From 04aaa25e29c0633ad71a491871765829819e5a91 Mon Sep 17 00:00:00 2001
+From 85e6f661e5bf8da5b64c97b769931a093c6e17d1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 14:09:19 +0200
 Subject: [PATCH 05/34] netlink: add support for string sets
@@ -12,11 +12,11 @@ resolve bit indices to names when processing bitsets in compact format.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |   1 +
- netlink/netlink.c |   3 +-
- netlink/netlink.h |   4 +-
- netlink/strset.c  | 312 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/netlink.c |  66 ++++++++++
+ netlink/netlink.h |   4 +
+ netlink/strset.c  | 313 ++++++++++++++++++++++++++++++++++++++++++++++
  netlink/strset.h  |  18 +++
- 5 files changed, 335 insertions(+), 3 deletions(-)
+ 5 files changed, 402 insertions(+)
  create mode 100644 netlink/strset.c
  create mode 100644 netlink/strset.h
 
@@ -33,28 +33,96 @@ index 140769d20e4c..1e07f5d742e3 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index f5b467ca121f..8ea550f39320 100644
+index 7a8f21c4f180..27d4f602977b 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -162,7 +162,7 @@ err:
+@@ -6,6 +6,7 @@
+ #include "../internal.h"
+ #include "netlink.h"
+ #include "extapi.h"
++#include "strset.h"
+ 
+ /* misc helpers */
+ 
+@@ -162,6 +163,70 @@ err:
  	return true;
  }
  
--int walk_bitset(const struct nlattr *bitset, int ss_index,
 +int walk_bitset(const struct nlattr *bitset, const struct stringset *labels,
- 		bitset_walk_callback cb, void *data)
++		bitset_walk_callback cb, void *data)
++{
++	const struct nlattr *bitset_tb[ETHTOOL_A_BITSET_MAX + 1] = {};
++	DECLARE_ATTR_TB_INFO(bitset_tb);
++	const struct nlattr *bits;
++	const struct nlattr *bit;
++	bool is_list;
++	int ret;
++
++	ret = mnl_attr_parse_nested(bitset, attr_cb, &bitset_tb_info);
++	if (ret < 0)
++		return ret;
++	is_list = bitset_tb[ETHTOOL_A_BITSET_LIST];
++
++	bits = bitset_tb[ETHTOOL_A_BITSET_VALUE];
++	if (bits) {
++		const struct nlattr *mask = bitset_tb[ETHTOOL_A_BITSET_MASK];
++		unsigned int count, nwords, idx;
++		uint32_t *val_bm;
++		uint32_t *mask_bm;
++
++		if (!bitset_tb[ETHTOOL_A_BITSET_SIZE])
++			return -EFAULT;
++		count = mnl_attr_get_u32(bitset_tb[ETHTOOL_A_BITSET_SIZE]);
++		nwords = (count + 31) / 32;
++		if ((mnl_attr_get_payload_len(bits) / 4 < nwords) ||
++		    (mask && mnl_attr_get_payload_len(mask) / 4 < nwords))
++			return -EFAULT;
++
++		val_bm = mnl_attr_get_payload(bits);
++		mask_bm = mask ? mnl_attr_get_payload(mask) : NULL;
++		for (idx = 0; idx < count; idx++)
++			if (!mask_bm || (mask_bm[idx / 32] & (1 << (idx % 32))))
++				cb(idx, get_string(labels, idx),
++				   val_bm[idx / 32] & (1 << (idx % 32)), data);
++		return 0;
++	}
++
++	bits = bitset_tb[ETHTOOL_A_BITSET_BITS];
++	if (!bits)
++		return -EFAULT;
++	mnl_attr_for_each_nested(bit, bits) {
++		const struct nlattr *tb[ETHTOOL_A_BIT_MAX + 1] = {};
++		DECLARE_ATTR_TB_INFO(tb);
++		const char *name;
++		unsigned int idx;
++
++		if (mnl_attr_get_type(bit) != ETHTOOL_A_BITS_BIT)
++			continue;
++
++		ret = mnl_attr_parse_nested(bit, attr_cb, &tb_info);
++		if (ret < 0 ||
++		    !tb[ETHTOOL_A_BIT_INDEX] || !tb[ETHTOOL_A_BIT_NAME])
++			return -EFAULT;
++
++		idx = mnl_attr_get_u32(tb[ETHTOOL_A_BIT_INDEX]);
++		name = mnl_attr_get_str(tb[ETHTOOL_A_BIT_NAME]);
++		cb(idx, name, is_list || tb[ETHTOOL_A_BIT_VALUE], data);
++	}
++
++	return 0;
++}
++
+ static int msg_realloc(struct nl_context *nlctx, unsigned int new_size)
  {
- 	const struct nlattr *bitset_tb[ETHTOOL_A_BITSET_MAX + 1] = {};
-@@ -180,7 +180,6 @@ int walk_bitset(const struct nlattr *bitset, int ss_index,
- 	bits = bitset_tb[ETHTOOL_A_BITSET_VALUE];
- 	if (bits) {
- 		const struct nlattr *mask = bitset_tb[ETHTOOL_A_BITSET_MASK];
--		const struct stringset *labels = global_stringset(ss_index);
- 		unsigned int count, nwords, idx;
- 		uint32_t *val_bm;
- 		uint32_t *mask_bm;
+ 	unsigned int nlhdr_offset = (char *)nlctx->nlhdr - nlctx->buff;
+@@ -696,4 +761,5 @@ void netlink_done(struct cmd_context *ctx)
+ 	nlctx_done(ctx->nlctx);
+ 	free(ctx->nlctx);
+ 	ctx->nlctx = NULL;
++	cleanup_all_strings();
+ }
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index c8cd4cb9d35f..fa61a6bcf6a3 100644
+index 69736a4e6faf..b4a22d41911d 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -41,6 +41,8 @@ struct attr_tb_info {
@@ -66,21 +134,21 @@ index c8cd4cb9d35f..fa61a6bcf6a3 100644
  unsigned int nl_copy_payload(void *buff, unsigned int maxlen,
  			     const struct nlattr *attr);
  bool ethnla_put(struct nl_context *nlctx, uint16_t type, size_t len,
-@@ -56,7 +58,7 @@ bool bitset_get_bit(const struct nlattr *bitset, bool mask, unsigned int idx,
+@@ -57,6 +59,8 @@ bool bitset_get_bit(const struct nlattr *bitset, bool mask, unsigned int idx,
  		    int *retptr);
  bool bitset_is_empty(const struct nlattr *bitset, bool mask, int *retptr);
  typedef void (*bitset_walk_callback)(unsigned int, const char *, bool, void *);
--int walk_bitset(const struct nlattr *bitset, int ss_index,
 +int walk_bitset(const struct nlattr *bitset, const struct stringset *label,
- 		bitset_walk_callback cb, void *data);
++		bitset_walk_callback cb, void *data);
  
  int msg_init(struct nl_context *nlctx, int cmd, unsigned int flags);
+ int ethnl_process_reply(struct nl_context *nlctx, mnl_cb_t reply_cb);
 diff --git a/netlink/strset.c b/netlink/strset.c
 new file mode 100644
-index 000000000000..25ad17ee0dce
+index 000000000000..d32a87d50476
 --- /dev/null
 +++ b/netlink/strset.c
-@@ -0,0 +1,312 @@
+@@ -0,0 +1,313 @@
 +#include <errno.h>
 +#include <string.h>
 +
@@ -232,15 +300,13 @@ index 000000000000..25ad17ee0dce
 +	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return ret;
-+	if (tb[ETHTOOL_A_STRSET_DEV]) {
-+		ret = get_dev_info(tb[ETHTOOL_A_STRSET_DEV], &ifindex,
++	if (tb[ETHTOOL_A_STRSET_HEADER]) {
++		ret = get_dev_info(tb[ETHTOOL_A_STRSET_HEADER], &ifindex,
 +				   devname);
 +		if (ret < 0)
 +			return MNL_CB_OK;
 +		nlctx->devname = devname;
 +	}
-+	if (ifindex && !dev_ok(nlctx))
-+		return MNL_CB_OK;
 +
 +	if (ifindex) {
 +		struct perdev_strings *perdev = device_strings;
@@ -253,7 +319,7 @@ index 000000000000..25ad17ee0dce
 +		} else {
 +			perdev = calloc(sizeof(*perdev), 1);
 +			if (!perdev)
-+				return -ENOMEM;
++				return MNL_CB_OK;
 +			perdev->ifindex = ifindex;
 +			copy_devname(perdev->devname, devname);
 +			perdev->next = device_strings;
@@ -266,8 +332,11 @@ index 000000000000..25ad17ee0dce
 +		dest = global_strings;
 +	}
 +
-+	mnl_attr_for_each(attr, nlhdr, GENL_HDRLEN) {
-+		if (mnl_attr_get_type(attr) == ETHTOOL_A_STRSET_STRINGSET)
++	if (!tb[ETHTOOL_A_STRSET_STRINGSETS])
++		return MNL_CB_OK;
++	mnl_attr_for_each_nested(attr, tb[ETHTOOL_A_STRSET_STRINGSETS]) {
++		if (mnl_attr_get_type(attr) ==
++		    ETHTOOL_A_STRINGSETS_STRINGSET)
 +			import_stringset(dest, attr);
 +	}
 +
@@ -316,6 +385,8 @@ index 000000000000..25ad17ee0dce
 +		       NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return ret;
++	if (ethnla_fill_header(nlctx, ETHTOOL_A_STRSET_HEADER, NULL, 0, 0, 0))
++		return -EMSGSIZE;
 +	ret = ethnl_send_get_request(nlctx, strset_reply_cb);
 +	return ret;
 +}
@@ -328,10 +399,8 @@ index 000000000000..25ad17ee0dce
 +		       NLM_F_REQUEST | NLM_F_ACK | (dev ? 0 : NLM_F_DUMP));
 +	if (ret < 0)
 +		return ret;
-+	if (dev) {
-+		if (ethnla_put_dev(nlctx, ETHTOOL_A_STRSET_DEV, dev))
-+			return -EMSGSIZE;
-+	}
++	if (ethnla_fill_header(nlctx, ETHTOOL_A_STRSET_HEADER, dev, 0, 0, 0))
++		return -EMSGSIZE;
 +	ret = ethnl_send_get_request(nlctx, strset_reply_cb);
 +	return ret;
 +}

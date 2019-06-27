@@ -1,4 +1,4 @@
-From 1ae7b1019e8c633405d97161456cc143580cb0e3 Mon Sep 17 00:00:00 2001
+From 74b1c1f020df9801249a49a16819377c10e99e4a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 7 Oct 2018 19:50:11 +0200
 Subject: [PATCH 33/34] netlink: add netlink handler for getting flow hash
@@ -12,8 +12,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c        |   3 +-
  netlink/extapi.h |   1 +
- netlink/rxflow.c | 190 +++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 193 insertions(+), 1 deletion(-)
+ netlink/rxflow.c | 188 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 191 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
 index 03536ed96ce0..a63be354ddfa 100644
@@ -49,7 +49,7 @@ index 952a79e92188..30ec79f0e94e 100644
  
  void monitor_usage();
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
-index a7e02c201ce6..9ba86b443e30 100644
+index 9806350ca5a8..7d8f6a1e797f 100644
 --- a/netlink/rxflow.c
 +++ b/netlink/rxflow.c
 @@ -8,6 +8,33 @@
@@ -154,11 +154,12 @@ index a7e02c201ce6..9ba86b443e30 100644
  int rxflow_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  {
  	const struct nlattr *tb[ETHTOOL_A_RXFLOW_MAX + 1] = {};
-@@ -242,6 +330,13 @@ int rxflow_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -242,6 +330,14 @@ int rxflow_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			printf("    Operation not supported\n");
  		}
  	}
-+	if (mask_ok(nlctx, ETHTOOL_IM_RXFLOW_HASHOPTS)) {
++	if (mask_ok(nlctx, ETHTOOL_IM_RXFLOW_HASHOPTS) &&
++	    tb[ETHTOOL_A_RXFLOW_HASH_OPTS]) {
 +		ret = dump_hashopts(tb[ETHTOOL_A_RXFLOW_HASH_OPTS],
 +				    nlctx->cmd_private);
 +		if (ret < 0)
@@ -168,7 +169,7 @@ index a7e02c201ce6..9ba86b443e30 100644
  
  	return MNL_CB_OK;
  }
-@@ -285,6 +380,101 @@ int nl_grxfh(struct cmd_context *ctx)
+@@ -283,6 +379,98 @@ int nl_grxfh(struct cmd_context *ctx)
  	return ethnl_send_get_request(nlctx, rxflow_reply_cb);
  }
  
@@ -221,13 +222,10 @@ index a7e02c201ce6..9ba86b443e30 100644
 +		exit(2);
 +
 +	ret = ethnl_prep_get_request(ctx, ETHTOOL_MSG_RXFLOW_GET,
-+				     ETHTOOL_A_RXFLOW_DEV);
++				     ETHTOOL_A_RXFLOW_HEADER,
++				     ETHTOOL_IM_RXFLOW_HASHOPTS, 0, 0);
 +	if (ret < 0)
 +		return ret;
-+	if (ethnla_put_u32(nlctx, ETHTOOL_A_RXFLOW_INFOMASK,
-+			   ETHTOOL_IM_RXFLOW_HASHOPTS))
-+		return -EMSGSIZE;
-+	/* ETHTOOL_A_RXFLOW_COMPACT = false */
 +	ret = nl_parser(nlctx, grxfh_params, NULL);
 +	if (ret < 0)
 +		return ret;

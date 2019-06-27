@@ -1,4 +1,4 @@
-From 157767e53049fa5b891b79bd229190d0dd1740fa Mon Sep 17 00:00:00 2001
+From dd68bc5204ede67debba5df7f2be22388708348c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:20:40 +0200
 Subject: [PATCH 12/34] netlink: add netlink handler for gfeatures (-k)
@@ -275,7 +275,7 @@ index 0e422c2074db..07020e82adae 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 7afa75dda605..a66d053f9785 100644
+index ff3a4e8f8da8..69f502b215b1 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -252,6 +252,7 @@ static int dump_wol_info(struct nl_context *nlctx, const struct nlattr *nest,
@@ -524,7 +524,7 @@ index 7afa75dda605..a66d053f9785 100644
  
  	if (allfail && !nlctx->is_monitor && !nlctx->is_dump) {
  		fputs("No data available\n", stdout);
-@@ -393,6 +618,11 @@ int nl_gset(struct cmd_context *ctx)
+@@ -391,6 +616,11 @@ int nl_gset(struct cmd_context *ctx)
  	return (ret < 0) ? 75 : 0;
  }
  

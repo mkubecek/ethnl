@@ -1,4 +1,4 @@
-From 7ef8c867a7acdcda6a532fd39d00cddc300b9bc4 Mon Sep 17 00:00:00 2001
+From 28a5b6b29972a18809dde58fd2beffd89b6a788b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:43:19 +0100
 Subject: [PATCH 26/34] netlink: add netlink handler for seee (--set-eee)
@@ -51,10 +51,10 @@ index 0fff61c24c63..3f19931b699f 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index 186fddc138e1..8ba50d2fc8ff 100644
+index fbf0c94fb984..1c36d5e7ecf2 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
-@@ -609,3 +609,37 @@ int nl_schannels(struct cmd_context *ctx)
+@@ -608,3 +608,37 @@ int nl_schannels(struct cmd_context *ctx)
  	return nl_set_param(ctx, "-L", schannels_params,
  			    ETHTOOL_A_PARAMS_CHANNELS);
  }

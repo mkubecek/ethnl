@@ -1,4 +1,4 @@
-From a1f6d2ba2b602237430d83a2736864eda0fbf874 Mon Sep 17 00:00:00 2001
+From ee664db55f247b8fe8d1fcbfcc5ca6f377cac91a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 2 Nov 2018 19:41:56 +0100
 Subject: [PATCH 34/34] netlink: add netlink handler for setting flow hash
@@ -48,10 +48,10 @@ index 30ec79f0e94e..c86a4c7d0aa3 100644
  
  void monitor_usage();
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
-index 9ba86b443e30..f0e4067c0a7b 100644
+index 7d8f6a1e797f..d37cab569144 100644
 --- a/netlink/rxflow.c
 +++ b/netlink/rxflow.c
-@@ -803,3 +803,115 @@ out_free:
+@@ -799,3 +799,115 @@ out_free:
  	free(data.weight.weights);
  	return ret;
  }
@@ -83,7 +83,7 @@ index 9ba86b443e30..f0e4067c0a7b 100644
 +	int ret;
 +
 +	ret = ethnl_prep_get_request(ctx, ETHTOOL_MSG_RXFLOW_SET,
-+				     ETHTOOL_A_RXFLOW_DEV);
++				     ETHTOOL_A_RXFLOW_HEADER, 0, 0, 0);
 +	if (ret < 0)
 +		return 2;
 +

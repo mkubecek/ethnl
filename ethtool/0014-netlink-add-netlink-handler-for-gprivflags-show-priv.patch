@@ -1,4 +1,4 @@
-From 888d0253948bd7000889b5e9f486b610547ce972 Mon Sep 17 00:00:00 2001
+From 6d3b40341f38842794035fd8fc9b3a30c9ee4831 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:20:18 +0200
 Subject: [PATCH 14/34] netlink: add netlink handler for gprivflags
@@ -67,7 +67,7 @@ index 07020e82adae..c3f4bff05f35 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/settings.c b/netlink/settings.c
-index fa5affddbbe8..ffd547fcfc56 100644
+index 455d3f567c1b..5370a49453ff 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -519,6 +519,53 @@ out_free:
@@ -154,8 +154,8 @@ index fa5affddbbe8..ffd547fcfc56 100644
 +	}
  
  	ret = ethnl_prep_get_request(ctx, ETHTOOL_MSG_SETTINGS_GET,
- 				     ETHTOOL_A_SETTINGS_DEV);
-@@ -623,6 +680,11 @@ int nl_gfeatures(struct cmd_context *ctx)
+ 				     ETHTOOL_A_SETTINGS_HEADER, info_mask,
+@@ -621,6 +678,11 @@ int nl_gfeatures(struct cmd_context *ctx)
  	return settings_request(ctx, ETHTOOL_IM_SETTINGS_FEATURES);
  }
  

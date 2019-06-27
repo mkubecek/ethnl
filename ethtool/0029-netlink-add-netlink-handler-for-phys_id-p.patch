@@ -1,4 +1,4 @@
-From 6b76bb1e8fd5aff36f8d08f19ce8e8c9101cd3f1 Mon Sep 17 00:00:00 2001
+From 137bb167561ee7e8edf63ae12a9270a507f78bc7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 16:43:40 +0200
 Subject: [PATCH 29/34] netlink: add netlink handler for phys_id (-p)
@@ -9,10 +9,10 @@ ETHTOOL_MSG_PHYSID_ACT.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c         |  3 +-
- netlink/actions.c | 79 +++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/actions.c | 80 +++++++++++++++++++++++++++++++++++++++++++++++
  netlink/extapi.h  |  1 +
  netlink/monitor.c |  9 ++++++
- 4 files changed, 91 insertions(+), 1 deletion(-)
+ 4 files changed, 92 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
 index 6cb67d88983f..c057c444a91d 100644
@@ -36,10 +36,10 @@ index 6cb67d88983f..c057c444a91d 100644
  	  "               [ TIME-IN-SECONDS ]\n" },
  	{ "-t|--test", 1, do_test, NULL,
 diff --git a/netlink/actions.c b/netlink/actions.c
-index e4b83cf8c649..1208527159d5 100644
+index ed8216ee8875..4fa5d27bc743 100644
 --- a/netlink/actions.c
 +++ b/netlink/actions.c
-@@ -52,3 +52,82 @@ int nl_nway_rst(struct cmd_context *ctx)
+@@ -53,3 +53,83 @@ int nl_nway_rst(struct cmd_context *ctx)
  
  	return ret;
  }
@@ -57,7 +57,7 @@ index e4b83cf8c649..1208527159d5 100644
 +	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return ret;
-+	nlctx->devname = get_dev_name(tb[ETHTOOL_A_PHYSID_DEV]);
++	nlctx->devname = get_dev_name(tb[ETHTOOL_A_PHYSID_HEADER]);
 +	if (!dev_ok(nlctx))
 +		return MNL_CB_OK;
 +	if(tb[ETHTOOL_A_PHYSID_LENGTH])
@@ -107,7 +107,8 @@ index e4b83cf8c649..1208527159d5 100644
 +		       NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return -EFAULT;
-+	if (ethnla_put_dev(nlctx, ETHTOOL_A_PHYSID_DEV, ctx->devname))
++	if (ethnla_fill_header(nlctx, ETHTOOL_A_PHYSID_HEADER, ctx->devname,
++			       0, 0, 0))
 +		return -EMSGSIZE;
 +	if (have_length &&
 +	    ethnla_put_u32(nlctx, ETHTOOL_A_PHYSID_LENGTH, length))

@@ -1,4 +1,4 @@
-From a9ec3d0f1c588655ddb696420d40f6b577139bf7 Mon Sep 17 00:00:00 2001
+From db5b543335dc61d132b114c3ea08d257974014e4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 08:43:44 +0200
 Subject: [PATCH 30/34] netlink: add netlink handler for reset (--reset)
@@ -36,7 +36,7 @@ index c057c444a91d..f2075a6d98b2 100644
  	  "		[ flags %x ]\n"
  	  "		[ mgmt ]\n"
 diff --git a/netlink/actions.c b/netlink/actions.c
-index 1208527159d5..a5dc4c8daade 100644
+index 4fa5d27bc743..cf6ba5104e00 100644
 --- a/netlink/actions.c
 +++ b/netlink/actions.c
 @@ -6,6 +6,7 @@
@@ -47,7 +47,7 @@ index 1208527159d5..a5dc4c8daade 100644
  
  /* ACT_NWAY_RST */
  
-@@ -131,3 +132,248 @@ int nl_phys_id(struct cmd_context *ctx)
+@@ -133,3 +134,248 @@ int nl_phys_id(struct cmd_context *ctx)
  
  	return ret;
  }
@@ -83,7 +83,7 @@ index 1208527159d5..a5dc4c8daade 100644
 +	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return ret;
-+	nlctx->devname = get_dev_name(tb[ETHTOOL_A_RESET_DEV]);
++	nlctx->devname = get_dev_name(tb[ETHTOOL_A_RESET_HEADER]);
 +	if (!dev_ok(nlctx))
 +		return MNL_CB_OK;
 +
@@ -280,8 +280,8 @@ index 1208527159d5..a5dc4c8daade 100644
 +	ret = msg_init(nlctx, ETHTOOL_MSG_RESET_ACT, NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return -EFAULT;
-+	if (ethnla_put_dev(nlctx, ETHTOOL_A_RESET_DEV, ctx->devname) ||
-+	    ethnla_put_flag(nlctx, ETHTOOL_A_RESET_COMPACT, true))
++	if (ethnla_fill_header(nlctx, ETHTOOL_A_RESET_HEADER, ctx->devname,
++			       0, ETHTOOL_RF_COMPACT, 0))
 +		return -EMSGSIZE;
 +	ret = parse_reset(nlctx);
 +	if (ret < 0)

@@ -1,4 +1,4 @@
-From 43a8b072c42bb30f5a6990e6f86e789e95b351c5 Mon Sep 17 00:00:00 2001
+From 57ccbf1ffef32d304c8dc77ff951cbc58cae55b2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:05:40 +0100
 Subject: [PATCH 19/34] netlink: add netlink handler for gchannels (-l)
@@ -64,7 +64,7 @@ index ec5055e87eff..15fffea8dde2 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index 5350c7abdc88..7988f402a02b 100644
+index 2fa4a37120c1..35056ecf60c6 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -107,6 +107,34 @@ static int show_pause(struct nl_context *nlctx, const struct nlattr *nest)
@@ -118,7 +118,7 @@ index 5350c7abdc88..7988f402a02b 100644
  
  	return MNL_CB_OK;
  }
-@@ -179,3 +216,8 @@ int nl_gpause(struct cmd_context *ctx)
+@@ -177,3 +214,8 @@ int nl_gpause(struct cmd_context *ctx)
  {
  	return params_request(ctx, ETHTOOL_IM_PARAMS_PAUSE);
  }

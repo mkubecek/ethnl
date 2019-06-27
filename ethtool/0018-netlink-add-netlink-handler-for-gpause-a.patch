@@ -1,4 +1,4 @@
-From 46a73da6340a6ac384bb1b205d527cfaa03fd26e Mon Sep 17 00:00:00 2001
+From d166bfa3a6763149f650dd948e20f09c715fb48a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:04:09 +0100
 Subject: [PATCH 18/34] netlink: add netlink handler for gpause (-a)
@@ -64,7 +64,7 @@ index ba97c00688a8..ec5055e87eff 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index 002ea8892181..5350c7abdc88 100644
+index 6566285dd14f..2fa4a37120c1 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -85,6 +85,28 @@ static int show_ring(struct nl_context *nlctx, const struct nlattr *nest)
@@ -112,7 +112,7 @@ index 002ea8892181..5350c7abdc88 100644
  
  	return MNL_CB_OK;
  }
-@@ -143,3 +174,8 @@ int nl_gring(struct cmd_context *ctx)
+@@ -141,3 +172,8 @@ int nl_gring(struct cmd_context *ctx)
  {
  	return params_request(ctx, ETHTOOL_IM_PARAMS_RING);
  }

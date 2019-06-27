@@ -1,4 +1,4 @@
-From f70efcaa5d8ace15233f4344b5b22c526f92cf05 Mon Sep 17 00:00:00 2001
+From 514f7fac1552f135a8f05d4bdaf358c4fcf634ff Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:46:58 +0200
 Subject: [PATCH 31/34] netlink: add netlink handler for grxfh (-x)
@@ -11,8 +11,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Makefile.am      |   2 +-
  ethtool.c        |   3 +-
  netlink/extapi.h |   1 +
- netlink/rxflow.c | 287 +++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 291 insertions(+), 2 deletions(-)
+ netlink/rxflow.c | 285 +++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 289 insertions(+), 2 deletions(-)
  create mode 100644 netlink/rxflow.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -63,10 +63,10 @@ index 57f2267da967..ef4981ce29c8 100644
  void monitor_usage();
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
 new file mode 100644
-index 000000000000..46e8060b6139
+index 000000000000..89b4ee1f776f
 --- /dev/null
 +++ b/netlink/rxflow.c
-@@ -0,0 +1,287 @@
+@@ -0,0 +1,285 @@
 +#include <errno.h>
 +#include <string.h>
 +#include <stdio.h>
@@ -283,7 +283,7 @@ index 000000000000..46e8060b6139
 +	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return ret;
-+	nlctx->devname = get_dev_name(tb[ETHTOOL_A_RXFLOW_DEV]);
++	nlctx->devname = get_dev_name(tb[ETHTOOL_A_RXFLOW_HEADER]);
 +	if (!dev_ok(nlctx))
 +		return MNL_CB_OK;
 +
@@ -339,12 +339,10 @@ index 000000000000..46e8060b6139
 +	nlctx->filter_mask = GRXFH_REQ_MASK;
 +
 +	ret = ethnl_prep_get_request(ctx, ETHTOOL_MSG_RXFLOW_GET,
-+				     ETHTOOL_A_RXFLOW_DEV);
++				     ETHTOOL_A_RXFLOW_HEADER, GRXFH_REQ_MASK,
++				     0, 0);
 +	if (ret < 0)
 +		return ret;
-+	if (ethnla_put_u32(nlctx, ETHTOOL_A_RXFLOW_INFOMASK, GRXFH_REQ_MASK))
-+		return -EMSGSIZE;
-+	/* ETHTOOL_A_RXFLOW_COMPACT = false */
 +	ret = nl_parser(nlctx, grxfh_params, NULL);
 +	if (ret < 0)
 +		return ret;

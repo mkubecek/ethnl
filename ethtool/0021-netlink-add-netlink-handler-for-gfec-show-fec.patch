@@ -1,4 +1,4 @@
-From 8ac5c2b05be128b4892823b9b29423bc01862491 Mon Sep 17 00:00:00 2001
+From d662d42c57f3e63de874c96dd9749902c935653d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 9 Dec 2017 00:09:52 +0100
 Subject: [PATCH 21/34] netlink: add netlink handler for gfec (--show-fec)
@@ -101,7 +101,7 @@ index 3d1bdc327988..8e0e50084015 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index e598f805907e..38be3c173f75 100644
+index 999abc6b5cb0..de5aa7d0411f 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -190,6 +190,35 @@ static int show_eee(struct nl_context *nlctx, const struct nlattr *nest)
@@ -156,7 +156,7 @@ index e598f805907e..38be3c173f75 100644
  
  	return MNL_CB_OK;
  }
-@@ -290,3 +328,8 @@ int nl_geee(struct cmd_context *ctx)
+@@ -288,3 +326,8 @@ int nl_geee(struct cmd_context *ctx)
  {
  	return params_request(ctx, ETHTOOL_IM_PARAMS_EEE);
  }

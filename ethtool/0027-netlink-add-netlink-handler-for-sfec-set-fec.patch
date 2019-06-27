@@ -1,4 +1,4 @@
-From 24e1a2e9a21c52b080c5a26cfcdd11e1ff22ebd8 Mon Sep 17 00:00:00 2001
+From 2e65236e09c7f650305520aa30e5a195092d11f9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:51:36 +0100
 Subject: [PATCH 27/34] netlink: add netlink handler for sfec (--set-fec)
@@ -47,10 +47,10 @@ index 3f19931b699f..40715beaf07f 100644
  
  void monitor_usage();
 diff --git a/netlink/params.c b/netlink/params.c
-index 8ba50d2fc8ff..49ae4dfb85d3 100644
+index 1c36d5e7ecf2..dcda8bcf7e57 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
-@@ -643,3 +643,20 @@ int nl_seee(struct cmd_context *ctx)
+@@ -642,3 +642,20 @@ int nl_seee(struct cmd_context *ctx)
  	return nl_set_param(ctx, "--set-eee", seee_params,
  			    ETHTOOL_A_PARAMS_EEE);
  }

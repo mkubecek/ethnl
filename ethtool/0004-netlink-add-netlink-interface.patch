@@ -1,4 +1,4 @@
-From e8503776fd9d6bcbe40a134e7ced559502ac5b8f Mon Sep 17 00:00:00 2001
+From 2ab1bdee2a8ab1a102f564528bbe2d0fd4b40a50 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 04/34] netlink: add netlink interface
@@ -22,17 +22,17 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  common.c                     |   2 +
  common.h                     |   6 +
  configure.ac                 |  14 +-
- ethtool.c                    | 190 ++++++---
+ ethtool.c                    | 190 +++++++---
  internal.h                   |  11 +
  netlink/extapi.h             |  16 +
- netlink/netlink.c            | 750 +++++++++++++++++++++++++++++++++++
+ netlink/netlink.c            | 699 +++++++++++++++++++++++++++++++++++
  netlink/netlink.h            | 159 ++++++++
  uapi/linux/ethtool.h         |  13 +
- uapi/linux/ethtool_netlink.h | 577 +++++++++++++++++++++++++++
+ uapi/linux/ethtool_netlink.h | 605 ++++++++++++++++++++++++++++++
  uapi/linux/genetlink.h       |  89 +++++
  uapi/linux/net_tstamp.h      |  13 +
- uapi/linux/netlink.h         | 248 ++++++++++++
- 14 files changed, 2042 insertions(+), 65 deletions(-)
+ uapi/linux/netlink.h         | 248 +++++++++++++
+ 14 files changed, 2019 insertions(+), 65 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
  create mode 100644 netlink/extapi.h
@@ -555,10 +555,10 @@ index 000000000000..6fe8ad200e24
 +#endif /* ETHTOOL_EXTAPI_H__ */
 diff --git a/netlink/netlink.c b/netlink/netlink.c
 new file mode 100644
-index 000000000000..f5b467ca121f
+index 000000000000..7a8f21c4f180
 --- /dev/null
 +++ b/netlink/netlink.c
-@@ -0,0 +1,750 @@
+@@ -0,0 +1,699 @@
 +#include <stdio.h>
 +#include <string.h>
 +#include <time.h>
@@ -721,71 +721,6 @@ index 000000000000..f5b467ca121f
 +	fprintf(stderr, "malformed netlink message (bitset)\n");
 +	*retptr = ret;
 +	return true;
-+}
-+
-+int walk_bitset(const struct nlattr *bitset, int ss_index,
-+		bitset_walk_callback cb, void *data)
-+{
-+	const struct nlattr *bitset_tb[ETHTOOL_A_BITSET_MAX + 1] = {};
-+	DECLARE_ATTR_TB_INFO(bitset_tb);
-+	const struct nlattr *bits;
-+	const struct nlattr *bit;
-+	bool is_list;
-+	int ret;
-+
-+	ret = mnl_attr_parse_nested(bitset, attr_cb, &bitset_tb_info);
-+	if (ret < 0)
-+		return ret;
-+	is_list = bitset_tb[ETHTOOL_A_BITSET_LIST];
-+
-+	bits = bitset_tb[ETHTOOL_A_BITSET_VALUE];
-+	if (bits) {
-+		const struct nlattr *mask = bitset_tb[ETHTOOL_A_BITSET_MASK];
-+		const struct stringset *labels = global_stringset(ss_index);
-+		unsigned int count, nwords, idx;
-+		uint32_t *val_bm;
-+		uint32_t *mask_bm;
-+
-+		if (!bitset_tb[ETHTOOL_A_BITSET_SIZE])
-+			return -EFAULT;
-+		count = mnl_attr_get_u32(bitset_tb[ETHTOOL_A_BITSET_SIZE]);
-+		nwords = (count + 31) / 32;
-+		if ((mnl_attr_get_payload_len(bits) / 4 < nwords) ||
-+		    (mask && mnl_attr_get_payload_len(mask) / 4 < nwords))
-+			return -EFAULT;
-+
-+		val_bm = mnl_attr_get_payload(bits);
-+		mask_bm = mask ? mnl_attr_get_payload(mask) : NULL;
-+		for (idx = 0; idx < count; idx++)
-+			if (!mask_bm || (mask_bm[idx / 32] & (1 << (idx % 32))))
-+				cb(idx, get_string(labels, idx),
-+				   val_bm[idx / 32] & (1 << (idx % 32)), data);
-+		return 0;
-+	}
-+
-+	bits = bitset_tb[ETHTOOL_A_BITSET_BITS];
-+	if (!bits)
-+		return -EFAULT;
-+	mnl_attr_for_each_nested(bit, bits) {
-+		const struct nlattr *tb[ETHTOOL_A_BIT_MAX + 1] = {};
-+		DECLARE_ATTR_TB_INFO(tb);
-+		const char *name;
-+		unsigned int idx;
-+
-+		if (mnl_attr_get_type(bit) != ETHTOOL_A_BITS_BIT)
-+			continue;
-+
-+		ret = mnl_attr_parse_nested(bit, attr_cb, &tb_info);
-+		if (ret < 0 ||
-+		    !tb[ETHTOOL_A_BIT_INDEX] || !tb[ETHTOOL_A_BIT_NAME])
-+			return -EFAULT;
-+
-+		idx = mnl_attr_get_u32(tb[ETHTOOL_A_BIT_INDEX]);
-+		name = mnl_attr_get_str(tb[ETHTOOL_A_BIT_NAME]);
-+		cb(idx, name, is_list || tb[ETHTOOL_A_BIT_VALUE], data);
-+	}
-+
-+	return 0;
 +}
 +
 +static int msg_realloc(struct nl_context *nlctx, unsigned int new_size)
@@ -1063,41 +998,55 @@ index 000000000000..f5b467ca121f
 +	return NULL;
 +}
 +
-+bool ethnla_put_dev(struct nl_context *nlctx, uint16_t type,
-+		    const char *devname)
++bool ethnla_fill_header(struct nl_context *nlctx, uint16_t type,
++			const char *devname, uint32_t infomask,
++			uint32_t gflags, uint32_t rflags)
 +{
-+	struct nlattr *nest = ethnla_nest_start(nlctx, type);
 +	struct nlmsghdr *nlhdr = nlctx->nlhdr;
++	struct nlattr *nest;
 +
++	nest = ethnla_nest_start(nlctx, type);
 +	if (!nest)
 +		return true;
-+	if (ethnla_put_strz(nlctx, ETHTOOL_A_DEV_NAME, devname)) {
-+		mnl_attr_nest_cancel(nlhdr, nest);
-+		return true;
-+	}
-+	mnl_attr_nest_end(nlhdr, nest);
 +
++	if ((devname &&
++	     ethnla_put_strz(nlctx, ETHTOOL_A_HEADER_DEV_NAME, devname)) ||
++	    (infomask &&
++	     ethnla_put_u32(nlctx, ETHTOOL_A_HEADER_INFOMASK, infomask)) ||
++	    (gflags &&
++	     ethnla_put_u32(nlctx, ETHTOOL_A_HEADER_GFLAGS, gflags)) ||
++	    (rflags &&
++	     ethnla_put_u32(nlctx, ETHTOOL_A_HEADER_RFLAGS, rflags)))
++		goto err;
++
++	mnl_attr_nest_end(nlhdr, nest);
 +	return false;
++
++err:
++	mnl_attr_nest_cancel(nlhdr, nest);
++	return true;
 +}
 +
 +const char *get_dev_name(const struct nlattr *nest)
 +{
-+	const struct nlattr *dev_tb[ETHTOOL_A_DEV_MAX + 1] = {};
-+	DECLARE_ATTR_TB_INFO(dev_tb);
++	const struct nlattr *tb[ETHTOOL_A_HEADER_MAX + 1] = {};
++	DECLARE_ATTR_TB_INFO(tb);
 +	int ret;
 +
 +	if (!nest)
 +		return NULL;
-+	ret = mnl_attr_parse_nested(nest, attr_cb, &dev_tb_info);
-+	if (ret < 0 || !dev_tb[ETHTOOL_A_DEV_NAME])
++	ret = mnl_attr_parse_nested(nest, attr_cb, &tb_info);
++	if (ret < 0 || !tb[ETHTOOL_A_HEADER_DEV_NAME])
 +		return "(none)";
-+	return mnl_attr_get_str(dev_tb[ETHTOOL_A_DEV_NAME]);
++	return mnl_attr_get_str(tb[ETHTOOL_A_HEADER_DEV_NAME]);
 +}
 +
 +int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname)
 +{
-+	const struct nlattr *dev_tb[ETHTOOL_A_DEV_MAX + 1] = {};
-+	DECLARE_ATTR_TB_INFO(dev_tb);
++	const struct nlattr *tb[ETHTOOL_A_HEADER_MAX + 1] = {};
++	const struct nlattr *index_attr;
++	const struct nlattr *name_attr;
++	DECLARE_ATTR_TB_INFO(tb);
 +	int ret;
 +
 +	if (ifindex)
@@ -1107,21 +1056,20 @@ index 000000000000..f5b467ca121f
 +
 +	if (!nest)
 +		return -EFAULT;
-+	ret = mnl_attr_parse_nested(nest, attr_cb, &dev_tb_info);
-+	if (ret < 0 ||
-+	    (ifindex && !dev_tb[ETHTOOL_A_DEV_INDEX]) ||
-+	    (ifname && !dev_tb[ETHTOOL_A_DEV_NAME]))
++	ret = mnl_attr_parse_nested(nest, attr_cb, &tb_info);
++	index_attr = tb[ETHTOOL_A_HEADER_DEV_INDEX];
++	name_attr = tb[ETHTOOL_A_HEADER_DEV_NAME];
++	if (ret < 0 || (ifindex && !index_attr) || (ifname && !name_attr))
 +		return -EFAULT;
 +
 +	if (ifindex)
-+		*ifindex = mnl_attr_get_u32(dev_tb[ETHTOOL_A_DEV_INDEX]);
++		*ifindex = mnl_attr_get_u32(index_attr);
 +	if (ifname) {
-+		strncpy(ifname, mnl_attr_get_str(dev_tb[ETHTOOL_A_DEV_NAME]),
-+			IFNAMSIZ);
++		strncpy(ifname, mnl_attr_get_str(name_attr), IFNAMSIZ);
 +		if (ifname[IFNAMSIZ - 1]) {
 +			ifname[IFNAMSIZ - 1] = '\0';
 +			fprintf(stderr, "kernel device name too long: '%s'\n",
-+				mnl_attr_get_str(dev_tb[ETHTOOL_A_DEV_NAME]));
++				mnl_attr_get_str(name_attr));
 +			return -EFAULT;
 +		}
 +	}
@@ -1131,22 +1079,24 @@ index 000000000000..f5b467ca121f
 +/* request helpers */
 +
 +int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
-+			   uint16_t dev_attrtype)
++			   uint16_t hdr_attrtype, u32 infomask, u32 gflags,
++			   u32 rflags)
 +{
-+	bool is_dev = ctx->devname && strcmp(ctx->devname, WILDCARD_DEVNAME);
 +	struct nl_context *nlctx = ctx->nlctx;
++	const char *devname = ctx->devname;
 +	int ret;
 +
-+	nlctx->is_dump = !is_dev;
++	if (devname && !strcmp(devname, WILDCARD_DEVNAME))
++		devname = NULL;
++	nlctx->is_dump = !devname;
 +	ret = msg_init(nlctx, nlcmd,
-+		       NLM_F_REQUEST | NLM_F_ACK | (is_dev ? 0 : NLM_F_DUMP));
++		       NLM_F_REQUEST | NLM_F_ACK | (devname ? 0 : NLM_F_DUMP));
 +	if (ret < 0)
 +		return ret;
 +
-+	if (is_dev) {
-+		if (ethnla_put_dev(nlctx, dev_attrtype, ctx->devname))
-+			return -EMSGSIZE;
-+	}
++	if (ethnla_fill_header(nlctx, hdr_attrtype, devname, infomask,
++			       gflags, rflags))
++		return -EMSGSIZE;
 +
 +	return 0;
 +}
@@ -1307,11 +1257,10 @@ index 000000000000..f5b467ca121f
 +	nlctx_done(ctx->nlctx);
 +	free(ctx->nlctx);
 +	ctx->nlctx = NULL;
-+	cleanup_all_strings();
 +}
 diff --git a/netlink/netlink.h b/netlink/netlink.h
 new file mode 100644
-index 000000000000..c8cd4cb9d35f
+index 000000000000..69736a4e6faf
 --- /dev/null
 +++ b/netlink/netlink.h
 @@ -0,0 +1,159 @@
@@ -1363,8 +1312,9 @@ index 000000000000..c8cd4cb9d35f
 +bool ethnla_put(struct nl_context *nlctx, uint16_t type, size_t len,
 +		const void *data);
 +struct nlattr *ethnla_nest_start(struct nl_context *nlctx, uint16_t type);
-+bool ethnla_put_dev(struct nl_context *nlctx, uint16_t type,
-+		    const char *devname);
++bool ethnla_fill_header(struct nl_context *nlctx, uint16_t type,
++			const char *devname, uint32_t infomask,
++			uint32_t gflags, uint32_t rflags);
 +const char *get_dev_name(const struct nlattr *nest);
 +int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname);
 +
@@ -1373,14 +1323,13 @@ index 000000000000..c8cd4cb9d35f
 +		    int *retptr);
 +bool bitset_is_empty(const struct nlattr *bitset, bool mask, int *retptr);
 +typedef void (*bitset_walk_callback)(unsigned int, const char *, bool, void *);
-+int walk_bitset(const struct nlattr *bitset, int ss_index,
-+		bitset_walk_callback cb, void *data);
 +
 +int msg_init(struct nl_context *nlctx, int cmd, unsigned int flags);
 +int ethnl_process_reply(struct nl_context *nlctx, mnl_cb_t reply_cb);
 +int attr_cb(const struct nlattr *attr, void *data);
 +int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
-+			   uint16_t dev_attrtype);
++			   uint16_t hdr_attrtype, u32 infomask, u32 gflags,
++			   u32 rflags);
 +int ethnl_send_get_request(struct nl_context *nlctx, mnl_cb_t cb);
 +int __init_aux_nlctx(struct nl_context *nlctx);
 +
@@ -1514,10 +1463,10 @@ index 68a612570d4c..a1cb67270b3f 100644
  
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..14b4b996b986
+index 000000000000..65372093764f
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
-@@ -0,0 +1,577 @@
+@@ -0,0 +1,605 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +/*
 + * include/uapi/linux/ethtool_netlink.h - netlink interface for ethtool
@@ -1574,16 +1523,27 @@ index 000000000000..14b4b996b986
 +	ETHTOOL_MSG_KERNEL_MAX = (__ETHTOOL_MSG_KERNEL_CNT - 1)
 +};
 +
-+/* device specification */
++/* request header */
++
++/* use compact bitsets in reply */
++#define ETHTOOL_RF_COMPACT		(1 << 0)
++/* provide optional reply for SET or ACT requests */
++#define ETHTOOL_RF_REPLY		(1 << 1)
++
++#define ETHTOOL_RF_ALL (ETHTOOL_RF_COMPACT | \
++			ETHTOOL_RF_REPLY)
 +
 +enum {
-+	ETHTOOL_A_DEV_UNSPEC,
-+	ETHTOOL_A_DEV_INDEX,			/* u32 */
-+	ETHTOOL_A_DEV_NAME,			/* string */
++	ETHTOOL_A_HEADER_UNSPEC,
++	ETHTOOL_A_HEADER_DEV_INDEX,		/* u32 */
++	ETHTOOL_A_HEADER_DEV_NAME,		/* string */
++	ETHTOOL_A_HEADER_INFOMASK,		/* u32 */
++	ETHTOOL_A_HEADER_GFLAGS,		/* u32 - ETHTOOL_RF_* */
++	ETHTOOL_A_HEADER_RFLAGS,		/* u32 */
 +
 +	/* add new constants above here */
-+	__ETHTOOL_A_DEV_CNT,
-+	ETHTOOL_A_DEV_MAX = (__ETHTOOL_A_DEV_CNT - 1)
++	__ETHTOOL_A_HEADER_CNT,
++	ETHTOOL_A_HEADER_MAX = (__ETHTOOL_A_HEADER_CNT - 1)
 +};
 +
 +/* bit sets */
@@ -1612,7 +1572,7 @@ index 000000000000..14b4b996b986
 +	ETHTOOL_A_BITSET_UNSPEC,
 +	ETHTOOL_A_BITSET_LIST,			/* flag */
 +	ETHTOOL_A_BITSET_SIZE,			/* u32 */
-+	ETHTOOL_A_BITSET_BITS,			/* nest - ETHTOOL_A_BITS_* */
++	ETHTOOL_A_BITSET_BITS,			/* nest - _A_BITS_* */
 +	ETHTOOL_A_BITSET_VALUE,			/* binary */
 +	ETHTOOL_A_BITSET_MASK,			/* binary */
 +
@@ -1635,7 +1595,7 @@ index 000000000000..14b4b996b986
 +
 +enum {
 +	ETHTOOL_A_STRINGS_UNSPEC,
-+	ETHTOOL_A_STRINGS_STRING,		/* nest - ETHTOOL_A_STRINGS_* */
++	ETHTOOL_A_STRINGS_STRING,		/* nest - _A_STRINGS_* */
 +
 +	/* add new constants above here */
 +	__ETHTOOL_A_STRINGS_CNT,
@@ -1646,7 +1606,7 @@ index 000000000000..14b4b996b986
 +	ETHTOOL_A_STRINGSET_UNSPEC,
 +	ETHTOOL_A_STRINGSET_ID,			/* u32 */
 +	ETHTOOL_A_STRINGSET_COUNT,		/* u32 */
-+	ETHTOOL_A_STRINGSET_STRINGS,		/* nest - ETHTOOL_A_STRINGS_* */
++	ETHTOOL_A_STRINGSET_STRINGS,		/* nest - _A_STRINGS_* */
 +
 +	/* add new constants above here */
 +	__ETHTOOL_A_STRINGSET_CNT,
@@ -1657,28 +1617,39 @@ index 000000000000..14b4b996b986
 +
 +enum {
 +	ETHTOOL_A_STRSET_UNSPEC,
-+	ETHTOOL_A_STRSET_DEV,			/* nest - ETHTOOL_A_DEV_* */
-+	ETHTOOL_A_STRSET_COUNTS,		/* flag */
-+	ETHTOOL_A_STRSET_STRINGSET,		/* nest - ETHTOOL_A_STRSET_* */
++	ETHTOOL_A_STRSET_HEADER,		/* nest - _A_HEADER_* */
++	ETHTOOL_A_STRSET_STRINGSETS,		/* nest - _A_STRINGSETS_* */
 +
 +	/* add new constants above here */
 +	__ETHTOOL_A_STRSET_CNT,
 +	ETHTOOL_A_STRSET_MAX = (__ETHTOOL_A_STRSET_CNT - 1)
 +};
 +
++enum {
++	ETHTOOL_A_STRINGSETS_UNSPEC,
++	ETHTOOL_A_STRINGSETS_STRINGSET,		/* nest - _A_STRINGSET_* */
++
++	/* add new constants above here */
++	__ETHTOOL_A_STRINGSETS_CNT,
++	ETHTOOL_A_STRINGSETS_MAX = (__ETHTOOL_A_STRINGSETS_CNT - 1)
++};
++
++/* return only string counts, not the strings */
++#define ETHTOOL_RF_STRSET_COUNTS		(1 << 0)
++
++#define ETHTOOL_RF_STRSET_ALL (ETHTOOL_RF_STRSET_COUNTS)
++
 +/* SETTINGS */
 +
 +enum {
 +	ETHTOOL_A_SETTINGS_UNSPEC,
-+	ETHTOOL_A_SETTINGS_DEV,			/* nest - ETHTOOL_A_DEV_* */
-+	ETHTOOL_A_SETTINGS_INFOMASK,		/* u32 */
-+	ETHTOOL_A_SETTINGS_COMPACT,		/* flag */
-+	ETHTOOL_A_SETTINGS_LINK_INFO,		/* nest - ETHTOOL_A_LINKINFO_* */
-+	ETHTOOL_A_SETTINGS_LINK_MODES,		/* nest - ETHTOOL_A_LINKMODES_* */
-+	ETHTOOL_A_SETTINGS_LINK_STATE,		/* nest - ETHTOOL_A_LINKSTATE_* */
-+	ETHTOOL_A_SETTINGS_WOL,			/* nest - ETHTOOL_A_WOL_* */
-+	ETHTOOL_A_SETTINGS_DEBUG,		/* nest - ETHTOOL_A_DEBUG_* */
-+	ETHTOOL_A_SETTINGS_FEATURES,		/* nest - ETHTOOL_A_FEATURES_* */
++	ETHTOOL_A_SETTINGS_HEADER,		/* nest - _A_HEADER_* */
++	ETHTOOL_A_SETTINGS_LINK_INFO,		/* nest - _A_LINKINFO_* */
++	ETHTOOL_A_SETTINGS_LINK_MODES,		/* nest - _A_LINKMODES_* */
++	ETHTOOL_A_SETTINGS_LINK_STATE,		/* nest - _A_LINKSTATE_* */
++	ETHTOOL_A_SETTINGS_WOL,			/* nest - _A_WOL_* */
++	ETHTOOL_A_SETTINGS_DEBUG,		/* nest - _A_DEBUG_* */
++	ETHTOOL_A_SETTINGS_FEATURES,		/* nest - _A_FEATURES_* */
 +	ETHTOOL_A_SETTINGS_PRIV_FLAGS,		/* bitset */
 +
 +	/* add new constants above here */
@@ -1701,6 +1672,8 @@ index 000000000000..14b4b996b986
 +				 ETHTOOL_IM_SETTINGS_DEBUG | \
 +				 ETHTOOL_IM_SETTINGS_FEATURES | \
 +				 ETHTOOL_IM_SETTINGS_PRIVFLAGS)
++
++#define ETHTOOL_RF_SETTINGS_ALL 0
 +
 +enum {
 +	ETHTOOL_A_LINKINFO_UNSPEC,
@@ -1762,7 +1735,6 @@ index 000000000000..14b4b996b986
 +	ETHTOOL_A_FEATURES_WANTED,		/* bitset */
 +	ETHTOOL_A_FEATURES_ACTIVE,		/* bitset */
 +	ETHTOOL_A_FEATURES_NOCHANGE,		/* bitset */
-+	ETHTOOL_A_FEATURES_WANT_DIFF,		/* flag */
 +
 +	/* add new constants above here */
 +	__ETHTOOL_A_FEATURES_CNT,
@@ -1773,11 +1745,9 @@ index 000000000000..14b4b996b986
 +
 +enum {
 +	ETHTOOL_A_INFO_UNSPEC,
-+	ETHTOOL_A_INFO_DEV,			/* nest - ETHTOOL_A_DEV_* */
-+	ETHTOOL_A_INFO_INFOMASK,		/* u32 */
-+	ETHTOOL_A_INFO_COMPACT,			/* flag */
-+	ETHTOOL_A_INFO_DRVINFO,			/* nest - ETHTOOL_A_DRVINFO_* */
-+	ETHTOOL_A_INFO_TSINFO,			/* nest - ETHTOOL_A_TSINFO_* */
++	ETHTOOL_A_INFO_HEADER,			/* nest - _A_HEADER_* */
++	ETHTOOL_A_INFO_DRVINFO,			/* nest - _A_DRVINFO_* */
++	ETHTOOL_A_INFO_TSINFO,			/* nest - _A_TSINFO_* */
 +
 +	/* add new constants above here */
 +	__ETHTOOL_A_INFO_CNT,
@@ -1789,6 +1759,8 @@ index 000000000000..14b4b996b986
 +
 +#define ETHTOOL_IM_INFO_ALL (ETHTOOL_IM_INFO_DRVINFO | \
 +			     ETHTOOL_IM_INFO_TSINFO)
++
++#define ETHTOOL_RF_INFO_ALL 0
 +
 +enum {
 +	ETHTOOL_A_DRVINFO_UNSPEC,
@@ -1818,15 +1790,13 @@ index 000000000000..14b4b996b986
 +
 +enum {
 +	ETHTOOL_A_PARAMS_UNSPEC,
-+	ETHTOOL_A_PARAMS_DEV,			/* nest - ETHTOOL_A_DEV_* */
-+	ETHTOOL_A_PARAMS_INFOMASK,		/* u32 */
-+	ETHTOOL_A_PARAMS_COMPACT,		/* flag */
-+	ETHTOOL_A_PARAMS_COALESCE,		/* nest - ETHTOOL_A_COALESCE_* */
-+	ETHTOOL_A_PARAMS_RING,			/* nest - ETHTOOL_A_RING_* */
-+	ETHTOOL_A_PARAMS_PAUSE,			/* nest - ETHTOOL_A_PAUSE_* */
-+	ETHTOOL_A_PARAMS_CHANNELS,		/* nest - ETHTOOL_A_CHANNELS_* */
-+	ETHTOOL_A_PARAMS_EEE,			/* nest - ETHTOOL_A_EEE_* */
-+	ETHTOOL_A_PARAMS_FEC,			/* nest - ETHTOOL_A_FEC_* */
++	ETHTOOL_A_PARAMS_HEADER,		/* nest - _A_HEADER_* */
++	ETHTOOL_A_PARAMS_COALESCE,		/* nest - _A_COALESCE_* */
++	ETHTOOL_A_PARAMS_RING,			/* nest - _A_RING_* */
++	ETHTOOL_A_PARAMS_PAUSE,			/* nest - _A_PAUSE_* */
++	ETHTOOL_A_PARAMS_CHANNELS,		/* nest - _A_CHANNELS_* */
++	ETHTOOL_A_PARAMS_EEE,			/* nest - _A_EEE_* */
++	ETHTOOL_A_PARAMS_FEC,			/* nest - _A_FEC_* */
 +
 +	/* add new constants above here */
 +	__ETHTOOL_A_PARAMS_CNT,
@@ -1846,6 +1816,8 @@ index 000000000000..14b4b996b986
 +			       ETHTOOL_IM_PARAMS_CHANNELS | \
 +			       ETHTOOL_IM_PARAMS_EEE | \
 +			       ETHTOOL_IM_PARAMS_FEC)
++
++#define ETHTOOL_RF_PARAMS_ALL 0
 +
 +enum {
 +	ETHTOOL_A_COALESCE_UNSPEC,
@@ -1947,18 +1919,20 @@ index 000000000000..14b4b996b986
 +
 +enum {
 +	ETHTOOL_A_NWAYRST_UNSPEC,
-+	ETHTOOL_A_NWAYRST_DEV,			/* nest - ETHTOOL_A_DEV_* */
++	ETHTOOL_A_NWAYRST_HEADER,		/* nest - _A_HEADER_* */
 +
 +	/* add new constants above here */
 +	__ETHTOOL_A_NWAYRST_CNT,
 +	ETHTOOL_A_NWAYRST_MAX = (__ETHTOOL_A_NWAYRST_CNT - 1)
 +};
 +
++#define ETHTOOL_RF_NWAYRST_ALL 0
++
 +/* PHYSID */
 +
 +enum {
 +	ETHTOOL_A_PHYSID_UNSPEC,
-+	ETHTOOL_A_PHYSID_DEV,			/* nest - ETHTOOL_A_DEV_* */
++	ETHTOOL_A_PHYSID_HEADER,		/* nest - _A_HEADER_* */
 +	ETHTOOL_A_PHYSID_LENGTH,		/* u32 */
 +
 +	/* add new constants above here */
@@ -1966,12 +1940,13 @@ index 000000000000..14b4b996b986
 +	ETHTOOL_A_PHYSID_MAX = (__ETHTOOL_A_PHYSID_CNT - 1)
 +};
 +
++#define ETHTOOL_RF_PHYSID_ALL 0
++
 +/* RESET */
 +
 +enum {
 +	ETHTOOL_A_RESET_UNSPEC,
-+	ETHTOOL_A_RESET_DEV,			/* nest - ETHTOOL_A_DEV_* */
-+	ETHTOOL_A_RESET_COMPACT,		/* flag */
++	ETHTOOL_A_RESET_HEADER,			/* nest - _A_HEADER_* */
 +	ETHTOOL_A_RESET_ALL,			/* flag */
 +	ETHTOOL_A_RESET_ALL_DEDICATED,		/* flag */
 +	ETHTOOL_A_RESET_DEDICATED,		/* bitset */
@@ -1982,21 +1957,21 @@ index 000000000000..14b4b996b986
 +	ETHTOOL_A_RESET_MAX = (__ETHTOOL_A_RESET_CNT - 1)
 +};
 +
++#define ETHTOOL_RF_RESET_ALL 0
++
 +/* RXFLOW */
 +
 +enum {
 +	ETHTOOL_A_RXFLOW_UNSPEC,
-+	ETHTOOL_A_RXFLOW_DEV,			/* nest - ETHTOOL_A_DEV_* */
-+	ETHTOOL_A_RXFLOW_INFOMASK,		/* u32 */
-+	ETHTOOL_A_RXFLOW_COMPACT,		/* flag */
++	ETHTOOL_A_RXFLOW_HEADER,		/* nest - _A_HEADER_* */
 +	ETHTOOL_A_RXFLOW_CTXOP,			/* u32 - ETHTOOL_RXFLOW_CTXOP_* */
 +	ETHTOOL_A_RXFLOW_CONTEXT,		/* u32 */
 +	ETHTOOL_A_RXFLOW_NRINGS,		/* u32 */
 +	ETHTOOL_A_RXFLOW_HASH_FN,		/* bitset */
 +	ETHTOOL_A_RXFLOW_HASH_KEY,		/* binary */
-+	ETHTOOL_A_RXFLOW_HASH_OPTS,		/* nest - ETHTOOL_A_RXHASHOPTS_* */
++	ETHTOOL_A_RXFLOW_HASH_OPTS,		/* nest - _A_RXHASHOPTS_* */
 +	ETHTOOL_A_RXFLOW_INDTBL_SIZE,		/* u32 */
-+	ETHTOOL_A_RXFLOW_INDIR_TBL,		/* nest - ETHTOOL_A_INDTBL_* */
++	ETHTOOL_A_RXFLOW_INDIR_TBL,		/* nest - _A_INDTBL_* */
 +
 +	/* add new constants above here */
 +	__ETHTOOL_A_RXFLOW_CNT,
@@ -2014,6 +1989,8 @@ index 000000000000..14b4b996b986
 +			       ETHTOOL_IM_RXFLOW_HKEY | \
 +			       ETHTOOL_IM_RXFLOW_HASHOPTS | \
 +			       ETHTOOL_IM_RXFLOW_INDTBL)
++
++#define ETHTOOL_RF_RXFLOW_ALL 0
 +
 +enum {
 +	ETHTOOL_RXFLOW_CTXOP_SET,		/* set context data */

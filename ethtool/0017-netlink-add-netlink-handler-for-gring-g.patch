@@ -1,4 +1,4 @@
-From caf0bfc923fa1392aafaf52845bda74e05763594 Mon Sep 17 00:00:00 2001
+From 7d29896776b761a110a9928c30bb35497e8fd72b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:59:50 +0100
 Subject: [PATCH 17/34] netlink: add netlink handler for gring (-g)
@@ -64,7 +64,7 @@ index bc20eb489058..ba97c00688a8 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/params.c b/netlink/params.c
-index b85b83531a57..002ea8892181 100644
+index d6ee5e3a7cc1..6566285dd14f 100644
 --- a/netlink/params.c
 +++ b/netlink/params.c
 @@ -57,6 +57,34 @@ static int show_coalesce(struct nl_context *nlctx, const struct nlattr *nest)
@@ -118,7 +118,7 @@ index b85b83531a57..002ea8892181 100644
  
  	return MNL_CB_OK;
  }
-@@ -101,3 +138,8 @@ int nl_gcoalesce(struct cmd_context *ctx)
+@@ -99,3 +136,8 @@ int nl_gcoalesce(struct cmd_context *ctx)
  {
  	return params_request(ctx, ETHTOOL_IM_PARAMS_COALESCE);
  }

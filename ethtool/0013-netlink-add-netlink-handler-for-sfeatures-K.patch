@@ -1,4 +1,4 @@
-From 7d4266fa78eb0669aad4e9af49907d814483bd02 Mon Sep 17 00:00:00 2001
+From 876e4e2b400851bed57f9f2b2e59940be7d60446 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:25:31 +0200
 Subject: [PATCH 13/34] netlink: add netlink handler for sfeatures (-K)
@@ -17,8 +17,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c          |   3 +-
  netlink/extapi.h   |   1 +
- netlink/settings.c | 292 +++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 295 insertions(+), 1 deletion(-)
+ netlink/settings.c | 289 +++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 292 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
 index d9c68a295bce..3df59831aa41 100644
@@ -54,10 +54,10 @@ index f4bbb0b456ef..d0199cb440f8 100644
  
  void monitor_usage();
 diff --git a/netlink/settings.c b/netlink/settings.c
-index a66d053f9785..fa5affddbbe8 100644
+index 69f502b215b1..455d3f567c1b 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -792,3 +792,295 @@ int nl_sset(struct cmd_context *ctx)
+@@ -791,3 +791,292 @@ int nl_sset(struct cmd_context *ctx)
  		return 0;
  	return nlctx->exit_code ?: 75;
  }
@@ -228,7 +228,7 @@ index a66d053f9785..fa5affddbbe8 100644
 +	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return ret;
-+	devname = get_dev_name(tb[ETHTOOL_A_SETTINGS_DEV]);
++	devname = get_dev_name(tb[ETHTOOL_A_SETTINGS_HEADER]);
 +	if (strcmp(devname, nlctx->devname)) {
 +		fprintf(stderr, "warning: unexpected message for device %s\n",
 +			devname);
@@ -330,9 +330,8 @@ index a66d053f9785..fa5affddbbe8 100644
 +		       NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return 2;
-+	if (ethnla_put_dev(nlctx, ETHTOOL_A_SETTINGS_DEV, ctx->devname))
-+		return -EMSGSIZE;
-+	if (ethnla_put_flag(nlctx, ETHTOOL_A_SETTINGS_COMPACT, true))
++	if (ethnla_fill_header(nlctx, ETHTOOL_A_SETTINGS_HEADER, ctx->devname,
++			       0, ETHTOOL_RF_COMPACT | ETHTOOL_RF_REPLY, 0))
 +		return -EMSGSIZE;
 +
 +	feat_attr = ethnla_nest_start(nlctx, ETHTOOL_A_SETTINGS_FEATURES);
@@ -341,8 +340,6 @@ index a66d053f9785..fa5affddbbe8 100644
 +	ret = fill_sfeatures_bitmap(nlctx);
 +	if (ret < 0)
 +		return ret;
-+	if (ethnla_put_flag(nlctx, ETHTOOL_A_FEATURES_WANT_DIFF, true))
-+		return -EMSGSIZE;
 +	mnl_attr_nest_end(nlctx->nlhdr, feat_attr);
 +
 +	ret = ethnl_sendmsg(nlctx);

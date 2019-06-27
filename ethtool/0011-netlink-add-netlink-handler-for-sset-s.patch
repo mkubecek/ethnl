@@ -1,4 +1,4 @@
-From a59186f70873fc2bcc8af10fc2beda244d5d3d5c Mon Sep 17 00:00:00 2001
+From 85a9d5f3513ea51e89f0b89112ab68bb8b60343c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 11/34] netlink: add netlink handler for sset (-s)
@@ -17,8 +17,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  netlink/netlink.h  |   1 +
  netlink/parser.c   |  36 ++++++++++
  netlink/parser.h   |   2 +
- netlink/settings.c | 171 +++++++++++++++++++++++++++++++++++++++++++++
- 7 files changed, 225 insertions(+), 4 deletions(-)
+ netlink/settings.c | 172 +++++++++++++++++++++++++++++++++++++++++++++
+ 7 files changed, 226 insertions(+), 4 deletions(-)
 
 diff --git a/ethtool.c b/ethtool.c
 index 7709448985ae..cda051423e41 100644
@@ -69,10 +69,10 @@ index 5500835372b3..4f9e60c2fca8 100644
  
  void monitor_usage();
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 724e2bbca07b..73340b10442c 100644
+index 33ba4f46c2bf..d399fb326125 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -799,6 +799,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
+@@ -814,6 +814,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
  	return 0;
  }
  
@@ -89,12 +89,12 @@ index 724e2bbca07b..73340b10442c 100644
  
  static int nlctx_init(struct nl_context *nlctx, unsigned long debug)
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 355b71feb2a7..f75edab04612 100644
+index 72a3c429fffe..3549a7794643 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -80,6 +80,7 @@ int attr_cb(const struct nlattr *attr, void *data);
- int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
- 			   uint16_t dev_attrtype);
+@@ -82,6 +82,7 @@ int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
+ 			   uint16_t hdr_attrtype, u32 infomask, u32 gflags,
+ 			   u32 rflags);
  int ethnl_send_get_request(struct nl_context *nlctx, mnl_cb_t cb);
 +int nomsg_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int __init_aux_nlctx(struct nl_context *nlctx);
@@ -161,7 +161,7 @@ index c654d55d46f6..59f88145a61d 100644
  int nl_parser(struct nl_context *nlctx, const struct param_parser *params,
  	      void *dest);
 diff --git a/netlink/settings.c b/netlink/settings.c
-index e2b29a080860..7afa75dda605 100644
+index f1b99bf797ee..ff3a4e8f8da8 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -6,6 +6,7 @@
@@ -172,7 +172,7 @@ index e2b29a080860..7afa75dda605 100644
  
  /* GET_SETTINGS */
  
-@@ -391,3 +392,173 @@ int nl_gset(struct cmd_context *ctx)
+@@ -389,3 +390,174 @@ int nl_gset(struct cmd_context *ctx)
  				    ETHTOOL_IM_SETTINGS_WOL);
  	return (ret < 0) ? 75 : 0;
  }
@@ -331,7 +331,8 @@ index e2b29a080860..7afa75dda605 100644
 +		       NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return 2;
-+	if (ethnla_put_dev(nlctx, ETHTOOL_A_SETTINGS_DEV, ctx->devname))
++	if (ethnla_fill_header(nlctx, ETHTOOL_A_SETTINGS_HEADER, ctx->devname,
++			       0, 0, 0))
 +		return -EMSGSIZE;
 +
 +	ret = nl_parser(nlctx, sset_params, NULL);

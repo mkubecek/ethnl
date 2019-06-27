@@ -1,4 +1,4 @@
-From 889d50e062947d979366dec3dbb0a17b2c3b6232 Mon Sep 17 00:00:00 2001
+From d24420d84601852dbb9b52f9b22d1302f4ebf48d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:24:40 +0200
 Subject: [PATCH 32/34] netlink: add netlink handler for srxfh (-X)
@@ -83,10 +83,10 @@ index c322415e7345..ec1789e0ee9d 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/rxflow.c b/netlink/rxflow.c
-index 46e8060b6139..a7e02c201ce6 100644
+index 89b4ee1f776f..9806350ca5a8 100644
 --- a/netlink/rxflow.c
 +++ b/netlink/rxflow.c
-@@ -285,3 +285,331 @@ int nl_grxfh(struct cmd_context *ctx)
+@@ -283,3 +283,331 @@ int nl_grxfh(struct cmd_context *ctx)
  	return ethnl_send_get_request(nlctx, rxflow_reply_cb);
  }
  
@@ -405,7 +405,7 @@ index 46e8060b6139..a7e02c201ce6 100644
 +		return 2;
 +
 +	ret = ethnl_prep_get_request(ctx, ETHTOOL_MSG_RXFLOW_SET,
-+				     ETHTOOL_A_RXFLOW_DEV);
++				     ETHTOOL_A_RXFLOW_HEADER, 0, 0, 0);
 +	if (ret < 0)
 +		goto out_free;
 +	ret = fill_srxfh(nlctx, &data);

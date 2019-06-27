@@ -1,4 +1,4 @@
-From 5de74998dba2c36979c476a45f3e5b767c0ba7e1 Mon Sep 17 00:00:00 2001
+From 64e1ded24e988fcf03529f359eb03324cee82fb2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 14:23:10 +0200
 Subject: [PATCH 15/34] netlink: add netlink handler for sprivflags
@@ -11,8 +11,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  ethtool.c          |  3 ++-
  netlink/extapi.h   |  1 +
- netlink/settings.c | 34 ++++++++++++++++++++++++++++++++++
- 3 files changed, 37 insertions(+), 1 deletion(-)
+ netlink/settings.c | 35 +++++++++++++++++++++++++++++++++++
+ 3 files changed, 38 insertions(+), 1 deletion(-)
 
 diff --git a/ethtool.c b/ethtool.c
 index 2f23f7e6931d..6cbc42519db2 100644
@@ -48,10 +48,10 @@ index ce5fde1ddc35..f89c6d0e169c 100644
  
  void monitor_usage();
 diff --git a/netlink/settings.c b/netlink/settings.c
-index ffd547fcfc56..580d0ffecca9 100644
+index 5370a49453ff..aca3ba5ff77b 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -1146,3 +1146,37 @@ int nl_sfeatures(struct cmd_context *ctx)
+@@ -1142,3 +1142,38 @@ int nl_sfeatures(struct cmd_context *ctx)
  		return 0;
  	return nlctx->exit_code ?: 92;
  }
@@ -72,7 +72,8 @@ index ffd547fcfc56..580d0ffecca9 100644
 +		       NLM_F_REQUEST | NLM_F_ACK);
 +	if (ret < 0)
 +		return 2;
-+	if (ethnla_put_dev(nlctx, ETHTOOL_A_SETTINGS_DEV, ctx->devname))
++	if (ethnla_fill_header(nlctx, ETHTOOL_A_SETTINGS_HEADER, ctx->devname,
++			       0, 0, 0))
 +		return -EMSGSIZE;
 +
 +	ret = nl_parse_bitset(nlctx, ETHTOOL_A_SETTINGS_PRIV_FLAGS, NULL,
