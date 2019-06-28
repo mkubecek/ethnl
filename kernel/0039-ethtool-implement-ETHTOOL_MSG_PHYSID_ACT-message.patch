@@ -1,4 +1,4 @@
-From 08a5069687f6cddd411e265ba48fbfd7fb95fe11 Mon Sep 17 00:00:00 2001
+From f4b960c9646cdbd63564fcd25617a7180a76b43c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 39/43] ethtool: implement ETHTOOL_MSG_PHYSID_ACT message
@@ -12,13 +12,13 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt | 26 +++++-
  include/uapi/linux/ethtool_netlink.h         | 16 ++++
- net/ethtool/actions.c                        | 86 ++++++++++++++++++++
+ net/ethtool/actions.c                        | 87 ++++++++++++++++++++
  net/ethtool/common.c                         | 65 +++++++++++++++
  net/ethtool/common.h                         |  1 +
  net/ethtool/ioctl.c                          | 47 +----------
  net/ethtool/netlink.c                        |  6 ++
  net/ethtool/netlink.h                        |  3 +
- 8 files changed, 203 insertions(+), 47 deletions(-)
+ 8 files changed, 204 insertions(+), 47 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 5532b39445f4..a1bd046677d9 100644
@@ -120,10 +120,10 @@ index d071bdb82803..c6b3aee4dbb9 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
-index db4211364840..5fd4b962d786 100644
+index db4211364840..24c1d0d63ba2 100644
 --- a/net/ethtool/actions.c
 +++ b/net/ethtool/actions.c
-@@ -84,3 +84,89 @@ int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info)
+@@ -84,3 +84,90 @@ int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info)
  	dev_put(dev);
  	return ret;
  }
@@ -160,21 +160,22 @@ index db4211364840..5fd4b962d786 100644
 +	skb = genlmsg_new(msg_len, GFP_KERNEL);
 +	if (!skb)
 +		return;
++
 +	msg_payload = ethnl_bcastmsg_put(skb, ETHTOOL_MSG_PHYSID_NTF);
 +	if (!msg_payload)
-+		goto err_skb;
++		goto nla_put_failure;
 +
 +	ret = ethnl_fill_reply_header(skb, dev, ETHTOOL_A_PHYSID_HEADER);
 +	if (ret < 0)
-+		goto err_skb;
++		goto nla_put_failure;
 +	if (nla_put_u32(skb, ETHTOOL_A_PHYSID_LENGTH, timeout))
-+		goto err_skb;
++		goto nla_put_failure;
 +
 +	genlmsg_end(skb, msg_payload);
 +	ethnl_multicast(skb, dev);
 +	return;
 +
-+err_skb:
++nla_put_failure:
 +	nlmsg_free(skb);
 +}
 +
@@ -305,10 +306,10 @@ index 28e35dc400c6..2e4d7280c565 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 4e39b422865e..a514c7a86b36 100644
+index 0c2f854ad149..4c4682ef5e08 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -1645,60 +1645,15 @@ static int ethtool_get_strings(struct net_device *dev, void __user *useraddr)
+@@ -1646,60 +1646,15 @@ static int ethtool_get_strings(struct net_device *dev, void __user *useraddr)
  static int ethtool_phys_id(struct net_device *dev, void __user *useraddr)
  {
  	struct ethtool_value id;

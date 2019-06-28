@@ -1,4 +1,4 @@
-From 58591629e98890bf5ff101ddf8a149d6e9317d57 Mon Sep 17 00:00:00 2001
+From 6e8d8a820f3f2ad30b420996fb7ddb5adb805a38 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:08:55 +0100
 Subject: [PATCH 16/43] ethtool: provide WoL information in SETTINGS_GET
@@ -147,7 +147,7 @@ index a2c1504576c2..c4dcb80df620 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index bd8f0102b667..016ec9e8eafc 100644
+index 853b8c21a5e5..d95fffff3bfe 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1283,11 +1283,11 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
@@ -176,7 +176,7 @@ index bd8f0102b667..016ec9e8eafc 100644
  	return 0;
  }
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 8d50792c02ec..896305285a49 100644
+index 8702947b6bd1..36888f5947ba 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -10,6 +10,7 @@ struct settings_data {
@@ -261,7 +261,7 @@ index 8d50792c02ec..896305285a49 100644
 +		return -EMSGSIZE;
 +	if (nla_put_bitfield32(skb, ETHTOOL_A_WOL_MODES, wolinfo->wolopts,
 +			       wolinfo->supported))
-+		goto err;
++		goto nla_put_failure;
 +	/* ioctl() restricts read access to wolinfo but the actual
 +	 * reason is to hide sopass from unprivileged users; netlink
 +	 * can show wol modes without sopass
@@ -269,11 +269,11 @@ index 8d50792c02ec..896305285a49 100644
 +	if (privileged &&
 +	    nla_put(skb, ETHTOOL_A_WOL_SOPASS, sizeof(wolinfo->sopass),
 +		    wolinfo->sopass))
-+		goto err;
++		goto nla_put_failure;
 +	nla_nest_end(skb, nest);
 +	return 0;
 +
-+err:
++nla_put_failure:
 +	nla_nest_cancel(skb, nest);
 +	return -EMSGSIZE;
 +}

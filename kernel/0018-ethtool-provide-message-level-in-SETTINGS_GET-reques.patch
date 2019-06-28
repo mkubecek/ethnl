@@ -1,4 +1,4 @@
-From 2972a6f9f19cc6100dd77a6f5e8e2f12eed0f41a Mon Sep 17 00:00:00 2001
+From 3c41898234da5ebd37113beb6c2ee04b16ed39d1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:19:02 +0100
 Subject: [PATCH 18/43] ethtool: provide message level in SETTINGS_GET request
@@ -122,7 +122,7 @@ index bb2be3097614..177f3d22eb98 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 016ec9e8eafc..94f09309e9d6 100644
+index d95fffff3bfe..2f345eb7b694 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -2536,6 +2536,9 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
@@ -136,7 +136,7 @@ index 016ec9e8eafc..94f09309e9d6 100644
  	case ETHTOOL_GEEE:
  		rc = ethtool_get_eee(dev, useraddr);
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 19251caa10ba..92e790292011 100644
+index 42552bb51504..55714a9c8e13 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -13,6 +13,7 @@ struct settings_data {
@@ -210,11 +210,11 @@ index 19251caa10ba..92e790292011 100644
 +		return -EMSGSIZE;
 +	if (nla_put_bitfield32(skb, ETHTOOL_A_DEBUG_MSG_MASK, msglevel,
 +			       NETIF_MSG_ALL))
-+		goto err;
++		goto nla_put_failure;
 +	nla_nest_end(skb, nest);
 +	return 0;
 +
-+err:
++nla_put_failure:
 +	nla_nest_cancel(skb, nest);
 +	return -EMSGSIZE;
 +}

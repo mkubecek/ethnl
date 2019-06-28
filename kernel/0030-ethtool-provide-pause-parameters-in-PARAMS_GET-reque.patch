@@ -1,4 +1,4 @@
-From d199ab42611716c599c150c9d1296130aa076686 Mon Sep 17 00:00:00 2001
+From aff2159c814242c3f579744ac87e5f50e2b974e0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:02:27 +0100
 Subject: [PATCH 30/43] ethtool: provide pause parameters in PARAMS_GET request
@@ -107,7 +107,7 @@ index 4e101018a776..a77f5d0fcb67 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index d99f8970e21d..cc2c9346e49e 100644
+index e57585e724f5..7727768929ac 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1589,6 +1589,7 @@ static int ethtool_get_pauseparam(struct net_device *dev, void __user *useraddr)

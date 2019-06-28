@@ -1,4 +1,4 @@
-From ec16e80830aebf7512f5acd9e71f127c268c2364 Mon Sep 17 00:00:00 2001
+From 1448e28dced962b101a4d0f055661bbcc9c36281 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:56:10 +0100
 Subject: [PATCH 37/43] ethtool: set FEC parameters with PARAMS_SET request
@@ -49,7 +49,7 @@ index a1dec8e0106b..d6a51381abb8 100644
 -ETHTOOL_SFECPARAM		n/a
 +ETHTOOL_SFECPARAM		ETHTOOL_MSG_PARAMS_SET
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 4b55441aad72..6f049d014220 100644
+index 9ceeb2b0202d..fcaec3370050 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -476,7 +476,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {

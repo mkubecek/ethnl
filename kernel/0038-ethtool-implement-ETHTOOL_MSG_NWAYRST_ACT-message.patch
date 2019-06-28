@@ -1,4 +1,4 @@
-From 500624441f26e3e541a154242278897a4890b7b0 Mon Sep 17 00:00:00 2001
+From 41c7e0f30e6094410ede6d7e9cf1cb57a4448980 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 38/43] ethtool: implement ETHTOOL_MSG_NWAYRST_ACT message
@@ -211,10 +211,10 @@ index 000000000000..db4211364840
 +	return ret;
 +}
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 86bf698209f3..4e39b422865e 100644
+index d50cf13e4457..0c2f854ad149 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -1283,10 +1283,15 @@ static int ethtool_set_eee(struct net_device *dev, char __user *useraddr)
+@@ -1284,10 +1284,15 @@ static int ethtool_set_eee(struct net_device *dev, char __user *useraddr)
  
  static int ethtool_nway_reset(struct net_device *dev)
  {

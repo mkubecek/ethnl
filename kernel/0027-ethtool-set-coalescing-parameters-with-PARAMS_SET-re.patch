@@ -1,4 +1,4 @@
-From 8e23776cb98bdf3899d9abf99d30ee2db3103535 Mon Sep 17 00:00:00 2001
+From 6cc4b7ecf30368ccbe8a186bcc0cb9c73e92d7ce Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 21:27:19 +0100
 Subject: [PATCH 27/43] ethtool: set coalescing parameters with PARAMS_SET

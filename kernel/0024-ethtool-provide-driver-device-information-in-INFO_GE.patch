@@ -1,4 +1,4 @@
-From 20b3e18a2cec8002a45320b7c8caf201ef9b90ea Mon Sep 17 00:00:00 2001
+From 99f270b713751914dace9a7dac12b4e0533cebe1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 24/43] ethtool: provide driver/device information in INFO_GET
@@ -243,7 +243,7 @@ index 5f512dbbded5..fa878fff1564 100644
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
 new file mode 100644
-index 000000000000..3495648b62de
+index 000000000000..99c81c949434
 --- /dev/null
 +++ b/net/ethtool/info.c
 @@ -0,0 +1,152 @@
@@ -339,12 +339,11 @@ index 000000000000..3495648b62de
 +			     const struct ethtool_drvinfo *drvinfo)
 +{
 +	struct nlattr *nest;
-+	int ret;
 +
 +	nest = nla_nest_start(skb, ETHTOOL_A_INFO_DRVINFO);
 +	if (!nest)
 +		return -EMSGSIZE;
-+	ret = -EMSGSIZE;
++
 +	if ((drvinfo->driver[0] &&
 +	     nla_put_string(skb, ETHTOOL_A_DRVINFO_DRIVER, drvinfo->driver)) ||
 +	    (drvinfo->fw_version[0] &&
@@ -356,13 +355,14 @@ index 000000000000..3495648b62de
 +	    (drvinfo->erom_version[0] &&
 +	     nla_put_string(skb, ETHTOOL_A_DRVINFO_EROM_VER,
 +			    drvinfo->erom_version)))
-+		goto err;
++		goto nla_put_failure;
 +
 +	nla_nest_end(skb, nest);
 +	return 0;
-+err:
++
++nla_put_failure:
 +	nla_nest_cancel(skb, nest);
-+	return ret;
++	return -EMSGSIZE;
 +}
 +
 +/* fill_reply() handler */
@@ -400,7 +400,7 @@ index 000000000000..3495648b62de
 +	.fill_reply		= info_fill,
 +};
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 5d37cd5a2afc..c6addc7f7fd1 100644
+index 5c2e810bc886..edc4f60f7013 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -645,54 +645,14 @@ static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,

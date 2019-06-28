@@ -1,4 +1,4 @@
-From 658c28453b49519fed77e6389e31f8db0c1abc87 Mon Sep 17 00:00:00 2001
+From 1867098b1d89788be535e91cc58b53f6d6b077c3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
 Subject: [PATCH 25/43] ethtool: provide timestamping information in INFO_GET
@@ -18,13 +18,13 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool.h                 |   6 +
  include/uapi/linux/ethtool_netlink.h         |  19 ++-
  include/uapi/linux/net_tstamp.h              |  13 ++
- net/ethtool/common.c                         |  24 ++++
+ net/ethtool/common.c                         |  24 +++
  net/ethtool/common.h                         |   1 +
- net/ethtool/info.c                           | 143 +++++++++++++++++++
+ net/ethtool/info.c                           | 145 +++++++++++++++++++
  net/ethtool/ioctl.c                          |  20 +--
  net/ethtool/netlink.h                        |   9 ++
  net/ethtool/strset.c                         |  18 +++
- 10 files changed, 243 insertions(+), 21 deletions(-)
+ 10 files changed, 245 insertions(+), 21 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 5f4462785eca..559f439c02d3 100644
@@ -227,7 +227,7 @@ index fa878fff1564..937c5d21c72f 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
-index 3495648b62de..c0bd97fd0d5e 100644
+index 99c81c949434..fd00ce17b96f 100644
 --- a/net/ethtool/info.c
 +++ b/net/ethtool/info.c
 @@ -1,21 +1,68 @@
@@ -370,8 +370,8 @@ index 3495648b62de..c0bd97fd0d5e 100644
  
  	return len;
  }
-@@ -116,6 +213,45 @@ static int info_fill_drvinfo(struct sk_buff *skb,
- 	return ret;
+@@ -116,6 +213,47 @@ static int info_fill_drvinfo(struct sk_buff *skb,
+ 	return -EMSGSIZE;
  }
  
 +static int info_fill_tsinfo(struct sk_buff *skb,
@@ -389,26 +389,28 @@ index 3495648b62de..c0bd97fd0d5e 100644
 +				 &tsinfo->so_timestamping, NULL,
 +				 so_timestamping_labels, flags);
 +	if (ret < 0)
-+		goto err;
++		goto nla_put_failure;
++
 +	ret = -EMSGSIZE;
 +	if (tsinfo->phc_index >= 0 &&
 +	    nla_put_u32(skb, ETHTOOL_A_TSINFO_PHC_INDEX, tsinfo->phc_index))
-+		goto err;
++		goto nla_put_failure;
 +
 +	ret = ethnl_put_bitset32(skb, ETHTOOL_A_TSINFO_TX_TYPES,
 +				 __HWTSTAMP_TX_COUNT, &tsinfo->tx_types, NULL,
 +				 tstamp_tx_type_labels, flags);
 +	if (ret < 0)
-+		goto err;
++		goto nla_put_failure;
 +	ret = ethnl_put_bitset32(skb, ETHTOOL_A_TSINFO_RX_FILTERS,
 +				 __HWTSTAMP_FILTER_COUNT, &tsinfo->rx_filters,
 +				 NULL, tstamp_rx_filter_labels, flags);
 +	if (ret < 0)
-+		goto err;
++		goto nla_put_failure;
 +
 +	nla_nest_end(skb, nest);
 +	return 0;
-+err:
++
++nla_put_failure:
 +	nla_nest_cancel(skb, nest);
 +	return ret;
 +}
@@ -416,7 +418,7 @@ index 3495648b62de..c0bd97fd0d5e 100644
  /* fill_reply() handler */
  static int info_fill(struct sk_buff *skb,
  		     const struct ethnl_req_info *req_info)
-@@ -130,6 +266,13 @@ static int info_fill(struct sk_buff *skb,
+@@ -130,6 +268,13 @@ static int info_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -431,7 +433,7 @@ index 3495648b62de..c0bd97fd0d5e 100644
  	return 0;
  }
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index c6addc7f7fd1..33d6d9f46947 100644
+index edc4f60f7013..ac779fd6e40e 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -2006,28 +2006,12 @@ static int ethtool_get_dump_data(struct net_device *dev,
@@ -489,7 +491,7 @@ index 0790ea3bcbd2..8ea8968278e1 100644
  
  int ethnl_parse_header(struct ethnl_req_info *req_info,
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index 686081274e8c..c497da1e85ef 100644
+index 45ab4d540ce4..b8b823646317 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -73,6 +73,24 @@ static const struct strset_info info_template[] = {

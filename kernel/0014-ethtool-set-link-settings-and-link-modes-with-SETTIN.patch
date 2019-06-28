@@ -1,4 +1,4 @@
-From 32c12a17124e6abfe66864adc97d3a11b7226332 Mon Sep 17 00:00:00 2001
+From 214bf2f4fe45e66194a440dfc2c69825cee00f02 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
 Subject: [PATCH 14/43] ethtool: set link settings and link modes with
@@ -132,7 +132,7 @@ index 375de56dd6d2..ad97f9ba9c57 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 1fd32147973d..2be0b51e5ac4 100644
+index 1da8116e79ab..853eb20e429d 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,99 @@ struct settings_data {

@@ -1,4 +1,4 @@
-From b1c8b2838e204d81ff0d7d20569d3b1f63aec779 Mon Sep 17 00:00:00 2001
+From 85e20825da1f9f230c596f2645f6f5e47d9c6bd7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
 Subject: [PATCH 08/43] ethtool: support for netlink notifications

@@ -1,4 +1,4 @@
-From 51335c174fa504bb17dfce6cb7901b6bc10942de Mon Sep 17 00:00:00 2001
+From 13f5097d270ac7ef0b34ca53af42e29c1ec81c87 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:30:12 +0100
 Subject: [PATCH 32/43] ethtool: provide channel counts in PARAMS_GET request
@@ -119,7 +119,7 @@ index a77f5d0fcb67..c58a4582c667 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index cc2c9346e49e..703cece81eec 100644
+index 7727768929ac..e726c8eb5582 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1538,6 +1538,7 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,

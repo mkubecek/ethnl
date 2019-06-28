@@ -1,4 +1,4 @@
-From ed9fa98c409f407cd6b8d8c561f641d10fe146a0 Mon Sep 17 00:00:00 2001
+From 4972edde2decb6b817ec5461b22f4a8eb920737b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 13/43] ethtool: provide link settings and link modes in
@@ -284,7 +284,7 @@ index 41b2efc1e4e1..0381936d8e1e 100644
 +
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index d5f64ee3656f..dd6e0b6f96b0 100644
+index b35366dd9997..504ab2f7009c 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -26,6 +26,7 @@
@@ -447,7 +447,7 @@ index 4ad1da529ad7..375de56dd6d2 100644
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
-index 000000000000..1fd32147973d
+index 000000000000..1da8116e79ab
 --- /dev/null
 +++ b/net/ethtool/settings.c
 @@ -0,0 +1,257 @@
@@ -640,30 +640,30 @@ index 000000000000..1fd32147973d
 +	if (!nest)
 +		return -EMSGSIZE;
 +	if (nla_put_u8(skb, ETHTOOL_A_LINKMODES_AUTONEG, lsettings->autoneg))
-+		goto err;
++		goto nla_put_failure;
 +
 +	ret = ethnl_put_bitset32(skb, ETHTOOL_A_LINKMODES_OURS,
 +				 __ETHTOOL_LINK_MODE_MASK_NBITS, advertising,
 +				 supported, link_mode_names, flags);
 +	if (ret < 0)
-+		goto err;
++		goto nla_put_failure;
 +	if (!lpm_empty) {
 +		ret = ethnl_put_bitset32(skb, ETHTOOL_A_LINKMODES_PEER,
 +					 __ETHTOOL_LINK_MODE_MASK_NBITS,
 +					 lp_adv, NULL, link_mode_names,
 +					 flags | ETHNL_BITSET_LIST);
 +		if (ret < 0)
-+			goto err;
++			goto nla_put_failure;
 +	}
 +
 +	if (nla_put_u32(skb, ETHTOOL_A_LINKMODES_SPEED, lsettings->speed) ||
 +	    nla_put_u8(skb, ETHTOOL_A_LINKMODES_DUPLEX, lsettings->duplex))
-+		goto err;
++		goto nla_put_failure;
 +
 +	nla_nest_end(skb, nest);
 +	return 0;
 +
-+err:
++nla_put_failure:
 +	nla_nest_cancel(skb, nest);
 +	return -EMSGSIZE;
 +}

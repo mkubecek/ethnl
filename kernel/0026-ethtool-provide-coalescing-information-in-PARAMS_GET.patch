@@ -1,4 +1,4 @@
-From 2f89293c873636995490b123210a4105893908f6 Mon Sep 17 00:00:00 2001
+From 31527873ca72a5117644d360eb2cefb233e4ad79 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 20:41:44 +0100
 Subject: [PATCH 26/43] ethtool: provide coalescing information in PARAMS_GET
@@ -195,7 +195,7 @@ index 07e824c5eafa..c886f3d2c184 100644
 -ethtool_nl-y	:= netlink.o bitset.o strset.o settings.o info.o
 +ethtool_nl-y	:= netlink.o bitset.o strset.o settings.o info.o params.o
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 33d6d9f46947..660cd2bfad21 100644
+index ac779fd6e40e..d414d79a55cf 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -1460,6 +1460,7 @@ static noinline_for_stack int ethtool_set_coalesce(struct net_device *dev,

@@ -1,4 +1,4 @@
-From a15c36b49185cd888eef61ac9328977ab18ec92d Mon Sep 17 00:00:00 2001
+From b101ebdf9a8ccc6d948a6f56a44bffd5ebc3ce94 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:36:43 +0100
 Subject: [PATCH 33/43] ethtool: set channel counts with PARAMS_SET request
@@ -12,9 +12,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt | 16 ++--
  net/ethtool/common.c                         | 65 +++++++++++++++
  net/ethtool/common.h                         |  3 +
- net/ethtool/ioctl.c                          | 59 +-------------
+ net/ethtool/ioctl.c                          | 58 +------------
  net/ethtool/params.c                         | 86 +++++++++++++++++++-
- 5 files changed, 165 insertions(+), 64 deletions(-)
+ 5 files changed, 165 insertions(+), 63 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 96f03da583de..8bc261b765cb 100644
@@ -152,18 +152,10 @@ index 937c5d21c72f..28e35dc400c6 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 703cece81eec..7ae838fae54f 100644
+index e726c8eb5582..0ce138478786 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -24,7 +24,6 @@
- #include <linux/sched/signal.h>
- #include <linux/net.h>
- #include <net/devlink.h>
--#include <net/xdp_sock.h>
- #include <net/flow_offload.h>
- #include <linux/ethtool_netlink.h>
- 
-@@ -843,37 +842,6 @@ void netdev_rss_key_fill(void *buffer, size_t len)
+@@ -843,37 +843,6 @@ void netdev_rss_key_fill(void *buffer, size_t len)
  }
  EXPORT_SYMBOL(netdev_rss_key_fill);
  
@@ -201,7 +193,7 @@ index 703cece81eec..7ae838fae54f 100644
  static noinline_for_stack int ethtool_get_rxfh_indir(struct net_device *dev,
  						     void __user *useraddr)
  {
-@@ -1535,9 +1503,6 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
+@@ -1535,9 +1504,6 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
  						   void __user *useraddr)
  {
  	struct ethtool_channels channels, curr = { .cmd = ETHTOOL_GCHANNELS };
@@ -211,7 +203,7 @@ index 703cece81eec..7ae838fae54f 100644
  	int ret;
  
  	if (!dev->ethtool_ops->set_channels || !dev->ethtool_ops->get_channels)
-@@ -1548,29 +1513,7 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
+@@ -1548,29 +1514,7 @@ static noinline_for_stack int ethtool_set_channels(struct net_device *dev,
  
  	dev->ethtool_ops->get_channels(dev, &curr);
  

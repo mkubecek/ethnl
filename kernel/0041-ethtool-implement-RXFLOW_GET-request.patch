@@ -1,4 +1,4 @@
-From 8b732a1afcf07d99d56eb4f500f3f925f687c967 Mon Sep 17 00:00:00 2001
+From e0c8fa73988218f2d3abc678e83f53de7fbece14 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 41/43] ethtool: implement RXFLOW_GET request
@@ -21,8 +21,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/netlink.c                        |   8 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/rxflow.c                         | 449 +++++++++++++++++++
- 6 files changed, 685 insertions(+), 4 deletions(-)
+ net/ethtool/rxflow.c                         | 448 +++++++++++++++++++
+ 6 files changed, 684 insertions(+), 4 deletions(-)
  create mode 100644 net/ethtool/rxflow.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -375,10 +375,10 @@ index 6d3689cb6f20..0b1a11a4c7ec 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
 new file mode 100644
-index 000000000000..00f36bac89d7
+index 000000000000..66bea4ac8d57
 --- /dev/null
 +++ b/net/ethtool/rxflow.c
-@@ -0,0 +1,449 @@
+@@ -0,0 +1,448 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
@@ -658,7 +658,6 @@ index 000000000000..00f36bac89d7
 +	struct nlattr *attr_opts;
 +	struct nlattr *attr_opt;
 +	unsigned int i;
-+	int ret;
 +
 +	attr_opts = nla_nest_start(skb, ETHTOOL_A_RXFLOW_HASH_OPTS);
 +	if (!attr_opts)
@@ -667,20 +666,20 @@ index 000000000000..00f36bac89d7
 +	for (i = 0; i < FLOW_TYPE_COUNT; i++) {
 +		if (!fields[i])
 +			continue;
-+		ret = -EMSGSIZE;
++
 +		attr_opt = nla_nest_start(skb, ETHTOOL_A_RXHASHOPTS_OPT);
 +		if (!attr_opt)
-+			goto err;
++			goto nla_put_failure;
 +
 +		if (nla_put_u32(skb, ETHTOOL_A_RXHASHOPT_FLOWTYPE, i))
-+		       goto err;
++		       goto nla_put_failure;
 +		if (fields[i] & RXH_DISCARD) {
 +			if (nla_put_flag(skb, ETHTOOL_A_RXHASHOPT_DISCARD))
-+				goto err;
++				goto nla_put_failure;
 +		} else {
 +			if (nla_put_bitfield32(skb, ETHTOOL_A_RXHASHOPT_FIELDS,
 +					       fields[i], RXH_ALL))
-+				goto err;
++				goto nla_put_failure;
 +		}
 +
 +		nla_nest_end(skb, attr_opt);
@@ -688,9 +687,10 @@ index 000000000000..00f36bac89d7
 +
 +	nla_nest_end(skb, attr_opts);
 +	return 0;
-+err:
++
++nla_put_failure:
 +	nla_nest_cancel(skb, attr_opts);
-+	return ret;
++	return -EMSGSIZE;
 +}
 +
 +static int rxflow_fill_indtbl(struct sk_buff *skb,
@@ -699,7 +699,6 @@ index 000000000000..00f36bac89d7
 +	struct nlattr *tbl, *block, *attr;
 +	u16 block_attrtype;
 +	unsigned int i;
-+	int ret;
 +
 +	if (nla_put_u32(skb, ETHTOOL_A_RXFLOW_INDTBL_SIZE, data->indtbl_size))
 +		return -EMSGSIZE;
@@ -722,26 +721,26 @@ index 000000000000..00f36bac89d7
 +			  data->entry_size);
 +		return -EFAULT;
 +	}
-+	ret = -EMSGSIZE;
++
 +	block = nla_nest_start(skb, block_attrtype);
 +	if (!block)
-+		goto err;
++		goto nla_put_failure;
 +
 +	if (nla_put_u32(skb, ETHTOOL_A_ITBLK_START, 0) ||
 +	    nla_put_u32(skb, ETHTOOL_A_ITBLK_LEN, data->indtbl_size))
-+		goto err;
++		goto nla_put_failure;
 +	switch(data->entry_size) {
 +	case 4:
 +		if (nla_put(skb, ETHTOOL_A_ITBLK_DATA,
 +			    data->indtbl_size * sizeof(u32),
 +			    data->indir_tbl))
-+			goto err;
++			goto nla_put_failure;
 +		break;
 +	case 2:
 +		attr = nla_reserve(skb, ETHTOOL_A_ITBLK_DATA,
 +				   data->indtbl_size * data->entry_size);
 +		if (!attr)
-+			goto err;
++			goto nla_put_failure;
 +		for (i = 0; i < data->indtbl_size; i++)
 +			((u16 *)nla_data(attr))[i] = data->indir_tbl[i];
 +		break;
@@ -749,7 +748,7 @@ index 000000000000..00f36bac89d7
 +		attr = nla_reserve(skb, ETHTOOL_A_ITBLK_DATA,
 +				   data->indtbl_size * data->entry_size);
 +		if (!attr)
-+			goto err;
++			goto nla_put_failure;
 +		for (i = 0; i < data->indtbl_size; i++)
 +			((u8 *)nla_data(attr))[i] = data->indir_tbl[i];
 +		break;
@@ -759,9 +758,9 @@ index 000000000000..00f36bac89d7
 +	nla_nest_end(skb, tbl);
 +	return 0;
 +
-+err:
++nla_put_failure:
 +	nla_nest_cancel(skb, tbl);
-+	return ret;
++	return -EMSGSIZE;
 +}
 +
 +static int rxflow_fill(struct sk_buff *skb,

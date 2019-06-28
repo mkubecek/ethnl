@@ -1,4 +1,4 @@
-From 39efc5a1aadf3b6b7dccf23db4589ac7e5bbf6fd Mon Sep 17 00:00:00 2001
+From cb8f198f35ab8a9cf54ea6d98ae708fb56925299 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 15 Feb 2019 11:50:56 +0100
 Subject: [PATCH 10/43] ethtool: move string arrays into common file
@@ -143,7 +143,7 @@ index 000000000000..41b2efc1e4e1
 +
 +#endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 4d1011b2e24f..d5f64ee3656f 100644
+index 6288e69e94fc..b35366dd9997 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -27,6 +27,8 @@

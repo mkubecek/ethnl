@@ -1,4 +1,4 @@
-From c3a50eaa9cca492389afb5fb31ef0e0bcc3322b7 Mon Sep 17 00:00:00 2001
+From a59caee6469f531fa3b71c850a412f1b05194412 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 11/43] ethtool: provide string sets with STRSET_GET request
@@ -277,7 +277,7 @@ index f3fe2d5d17b7..94b32f9563cd 100644
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
 new file mode 100644
-index 000000000000..cec341f31063
+index 000000000000..73f5fdd6f3dc
 --- /dev/null
 +++ b/net/ethtool/strset.c
 @@ -0,0 +1,454 @@
@@ -667,15 +667,15 @@ index 000000000000..cec341f31063
 +
 +	if (nla_put_u32(skb, ETHTOOL_A_STRINGSET_ID, id) ||
 +	    nla_put_u32(skb, ETHTOOL_A_STRINGSET_COUNT, info->count))
-+		goto err;
++		goto nla_put_failure;
 +
 +	if (!data->counts_only) {
 +		strings = nla_nest_start(skb, ETHTOOL_A_STRINGSET_STRINGS);
 +		if (!strings)
-+			goto err;
++			goto nla_put_failure;
 +		for (i = 0; i < info->count; i++) {
 +			if (strset_fill_string(skb, info, i) < 0)
-+				goto err;
++				goto nla_put_failure;
 +		}
 +		nla_nest_end(skb, strings);
 +	}
@@ -683,7 +683,7 @@ index 000000000000..cec341f31063
 +	nla_nest_end(skb, nest);
 +	return 0;
 +
-+err:
++nla_put_failure:
 +	nla_nest_cancel(skb, nest);
 +	return -EMSGSIZE;
 +}

@@ -1,4 +1,4 @@
-From d7966eb2d6106dc92b51d05dff872fee4aad953f Mon Sep 17 00:00:00 2001
+From 48353871dfb9b395cb7219a5bfd1065686c893cf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
 Subject: [PATCH 42/43] ethtool: implement RXFLOW notification
@@ -68,10 +68,10 @@ index 45af68bcb71a..c9c5bd72411e 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 7916b7fcf158..1b8c67e3c9ff 100644
+index aa96aae96e34..fe9773c71358 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -714,6 +714,7 @@ static noinline_for_stack int ethtool_get_sset_info(struct net_device *dev,
+@@ -715,6 +715,7 @@ static noinline_for_stack int ethtool_get_sset_info(struct net_device *dev,
  static noinline_for_stack int ethtool_set_rxnfc(struct net_device *dev,
  						u32 cmd, void __user *useraddr)
  {
@@ -79,7 +79,7 @@ index 7916b7fcf158..1b8c67e3c9ff 100644
  	struct ethtool_rxnfc info;
  	size_t info_size = sizeof(info);
  	int rc;
-@@ -732,10 +733,16 @@ static noinline_for_stack int ethtool_set_rxnfc(struct net_device *dev,
+@@ -733,10 +734,16 @@ static noinline_for_stack int ethtool_set_rxnfc(struct net_device *dev,
  	if (copy_from_user(&info, useraddr, info_size))
  		return -EFAULT;
  
@@ -96,7 +96,7 @@ index 7916b7fcf158..1b8c67e3c9ff 100644
  	if (cmd == ETHTOOL_SRXCLSRLINS &&
  	    copy_to_user(useraddr, &info, info_size))
  		return -EFAULT;
-@@ -940,6 +947,8 @@ static noinline_for_stack int ethtool_set_rxfh_indir(struct net_device *dev,
+@@ -941,6 +948,8 @@ static noinline_for_stack int ethtool_set_rxfh_indir(struct net_device *dev,
  	ret = ops->set_rxfh(dev, indir, NULL, ETH_RSS_HASH_NO_CHANGE);
  	if (ret)
  		goto out;
@@ -105,7 +105,7 @@ index 7916b7fcf158..1b8c67e3c9ff 100644
  
  	/* indicate whether rxfh was set to default */
  	if (user_size == 0)
-@@ -1035,6 +1044,9 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+@@ -1036,6 +1045,9 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
  					       void __user *useraddr)
  {
  	int ret;
@@ -115,7 +115,7 @@ index 7916b7fcf158..1b8c67e3c9ff 100644
  	const struct ethtool_ops *ops = dev->ethtool_ops;
  	struct ethtool_rxnfc rx_rings;
  	struct ethtool_rxfh rxfh;
-@@ -1044,6 +1056,7 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+@@ -1045,6 +1057,7 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
  	u8 *rss_config;
  	u32 rss_cfg_offset = offsetof(struct ethtool_rxfh, rss_config[0]);
  	bool delete = false;
@@ -123,7 +123,7 @@ index 7916b7fcf158..1b8c67e3c9ff 100644
  
  	if (!ops->get_rxnfc || !ops->set_rxfh)
  		return -EOPNOTSUPP;
-@@ -1074,8 +1087,18 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+@@ -1075,8 +1088,18 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
  	     rxfh.key_size == 0 && rxfh.hfunc == ETH_RSS_HASH_NO_CHANGE))
  		return -EINVAL;
  
@@ -143,7 +143,7 @@ index 7916b7fcf158..1b8c67e3c9ff 100644
  
  	rss_config = kzalloc(indir_bytes + rxfh.key_size, GFP_USER);
  	if (!rss_config)
-@@ -1105,6 +1128,7 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+@@ -1106,6 +1129,7 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
  			for (i = 0; i < dev_indir_size; i++)
  				indir[i] = ethtool_rxfh_indir_default(i, rx_rings.data);
  		} else {
@@ -151,7 +151,7 @@ index 7916b7fcf158..1b8c67e3c9ff 100644
  			delete = true;
  		}
  	}
-@@ -1126,6 +1150,12 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+@@ -1127,6 +1151,12 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
  		ret = ops->set_rxfh(dev, indir, hkey, rxfh.hfunc);
  	if (ret)
  		goto out;
@@ -189,10 +189,10 @@ index 0b1a11a4c7ec..147903052fd0 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index 00f36bac89d7..2f4ce2884958 100644
+index 66bea4ac8d57..832219510617 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
-@@ -447,3 +447,70 @@ const struct get_request_ops rxflow_request_ops = {
+@@ -446,3 +446,70 @@ const struct get_request_ops rxflow_request_ops = {
  	.fill_reply		= rxflow_fill,
  	.cleanup		= rxflow_cleanup,
  };
@@ -229,28 +229,28 @@ index 00f36bac89d7..2f4ce2884958 100644
 +	skb = genlmsg_new(msg_len, GFP_KERNEL);
 +	if (!skb)
 +		goto err_data;
++
 +	msg_payload = ethnl_bcastmsg_put(skb, cmd);
 +	if (!msg_payload)
-+		goto err_skb;
-+
++		goto nla_put_failure;
 +	ret = ethnl_fill_reply_header(skb, dev, ETHTOOL_A_RXFLOW_HEADER);
 +	if (ret < 0)
-+		goto err_skb;
++		goto nla_put_failure;
 +	if (ninfo) {
 +		ret = -EMSGSIZE;
 +		if (ninfo->ctx_op &&
 +		    nla_put_u32(skb, ETHTOOL_A_RXFLOW_CTXOP, ninfo->ctx_op))
-+			goto err_skb;
++			goto nla_put_failure;
 +	}
 +
 +	if (ninfo && ninfo->ctx_op == ETHTOOL_RXFLOW_CTXOP_DEL) {
 +		ret = -EMSGSIZE;
 +		if (nla_put_u32(skb, ETHTOOL_A_RXFLOW_CONTEXT, ninfo->context))
-+			goto err_skb;
++			goto nla_put_failure;
 +	} else {
 +		ret = rxflow_fill(skb, req_info);
 +		if (ret < 0)
-+			goto err_skb;
++			goto nla_put_failure;
 +	}
 +	rxflow_cleanup(req_info);
 +	genlmsg_end(skb, msg_payload);
@@ -258,7 +258,7 @@ index 00f36bac89d7..2f4ce2884958 100644
 +	ethnl_multicast(skb, dev);
 +	return;
 +
-+err_skb:
++nla_put_failure:
 +	nlmsg_free(skb);
 +err_data:
 +	rxflow_cleanup(req_info);

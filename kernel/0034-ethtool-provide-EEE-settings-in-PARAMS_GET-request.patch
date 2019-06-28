@@ -1,4 +1,4 @@
-From 854f01917264e07b278bd7df090f86868d216e47 Mon Sep 17 00:00:00 2001
+From 8711c2bd39c5e127c2c581503797e8699670ef20 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:43:01 +0100
 Subject: [PATCH 34/43] ethtool: provide EEE settings in PARAMS_GET request
@@ -117,10 +117,10 @@ index c58a4582c667..c815d6930e70 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 7ae838fae54f..4e2b5955e837 100644
+index 0ce138478786..9aa89e9e8988 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -1266,6 +1266,7 @@ static int ethtool_get_eee(struct net_device *dev, char __user *useraddr)
+@@ -1267,6 +1267,7 @@ static int ethtool_get_eee(struct net_device *dev, char __user *useraddr)
  static int ethtool_set_eee(struct net_device *dev, char __user *useraddr)
  {
  	struct ethtool_eee edata;
@@ -128,7 +128,7 @@ index 7ae838fae54f..4e2b5955e837 100644
  
  	if (!dev->ethtool_ops->set_eee)
  		return -EOPNOTSUPP;
-@@ -1273,7 +1274,11 @@ static int ethtool_set_eee(struct net_device *dev, char __user *useraddr)
+@@ -1274,7 +1275,11 @@ static int ethtool_set_eee(struct net_device *dev, char __user *useraddr)
  	if (copy_from_user(&edata, useraddr, sizeof(edata)))
  		return -EFAULT;
  
@@ -142,7 +142,7 @@ index 7ae838fae54f..4e2b5955e837 100644
  
  static int ethtool_nway_reset(struct net_device *dev)
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index d07a0b128fe9..4fba9fcd0e9c 100644
+index d07a0b128fe9..03d8339d3a49 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -2,6 +2,7 @@
@@ -271,26 +271,26 @@ index d07a0b128fe9..4fba9fcd0e9c 100644
 +				 &data->advertised, &data->supported,
 +				 link_mode_names, flags);
 +	if (ret < 0)
-+		goto err;
++		goto nla_put_failure;
 +	ret = ethnl_put_bitset32(skb, ETHTOOL_A_EEE_PEER_MODES,
 +				 sizeof(data->lp_advertised) * BITS_PER_BYTE,
 +				 &data->lp_advertised, &data->lp_advertised,
 +				 link_mode_names, flags | ETHNL_BITSET_LIST);
 +	if (ret < 0)
-+		goto err;
++		goto nla_put_failure;
 +
++	ret = -EMSGSIZE;
 +	if (nla_put_u8(skb, ETHTOOL_A_EEE_ACTIVE, !!data->eee_active) ||
 +	    nla_put_u8(skb, ETHTOOL_A_EEE_ENABLED, !!data->eee_enabled) ||
 +	    nla_put_u8(skb, ETHTOOL_A_EEE_TX_LPI_ENABLED,
 +		       !!data->tx_lpi_enabled) ||
-+	    nla_put_u32(skb, ETHTOOL_A_EEE_TX_LPI_TIMER, data->tx_lpi_timer)) {
-+		ret = -EMSGSIZE;
-+		goto err;
-+	}
++	    nla_put_u32(skb, ETHTOOL_A_EEE_TX_LPI_TIMER, data->tx_lpi_timer))
++		goto nla_put_failure;
 +
 +	nla_nest_end(skb, nest);
 +	return 0;
-+err:
++
++nla_put_failure:
 +	nla_nest_cancel(skb, nest);
 +	return ret;
 +}

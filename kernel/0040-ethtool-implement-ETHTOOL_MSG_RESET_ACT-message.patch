@@ -1,4 +1,4 @@
-From 72d92b949508017f188070d11c44805b3c62f435 Mon Sep 17 00:00:00 2001
+From 206813d8edc0e2310abf18af34a1c9bd55b48a28 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 40/43] ethtool: implement ETHTOOL_MSG_RESET_ACT message
@@ -154,7 +154,7 @@ index c6b3aee4dbb9..bc91f951a6b7 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
-index 5fd4b962d786..2953527f8dd6 100644
+index 24c1d0d63ba2..aeb8a83baa9f 100644
 --- a/net/ethtool/actions.c
 +++ b/net/ethtool/actions.c
 @@ -2,6 +2,7 @@
@@ -165,7 +165,7 @@ index 5fd4b962d786..2953527f8dd6 100644
  
  /* ACT_NWAY_RST */
  
-@@ -170,3 +171,248 @@ int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info)
+@@ -171,3 +172,248 @@ int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info)
  	dev_put(dev);
  	return ret;
  }
@@ -283,22 +283,22 @@ index 5fd4b962d786..2953527f8dd6 100644
 +	skb = genlmsg_new(msg_len, GFP_KERNEL);
 +	if (!skb)
 +		return;
++
 +	msg_payload = ethnl_bcastmsg_put(skb, cmd);
 +	if (!msg_payload)
-+		goto err_skb;
-+
++		goto nla_put_failure;
 +	ret = ethnl_fill_reply_header(skb, dev, ETHTOOL_A_RESET_HEADER);
 +	if (ret < 0)
-+		goto err_skb;
++		goto nla_put_failure;
 +	ret = reset_fill(skb, flags, flags, true);
 +	if (ret < 0)
-+		goto err_skb;
++		goto nla_put_failure;
 +
 +	genlmsg_end(skb, msg_payload);
 +	ethnl_multicast(skb, dev);
 +	return;
 +
-+err_skb:
++nla_put_failure:
 +	nlmsg_free(skb);
 +}
 +
@@ -415,10 +415,10 @@ index 5fd4b962d786..2953527f8dd6 100644
 +	return ret;
 +}
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index a514c7a86b36..7916b7fcf158 100644
+index 4c4682ef5e08..aa96aae96e34 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -1189,6 +1189,7 @@ static int ethtool_get_regs(struct net_device *dev, char __user *useraddr)
+@@ -1190,6 +1190,7 @@ static int ethtool_get_regs(struct net_device *dev, char __user *useraddr)
  static int ethtool_reset(struct net_device *dev, char __user *useraddr)
  {
  	struct ethtool_value reset;
@@ -426,7 +426,7 @@ index a514c7a86b36..7916b7fcf158 100644
  	int ret;
  
  	if (!dev->ethtool_ops->reset)
-@@ -1197,9 +1198,14 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
+@@ -1198,9 +1199,14 @@ static int ethtool_reset(struct net_device *dev, char __user *useraddr)
  	if (copy_from_user(&reset, useraddr, sizeof(reset)))
  		return -EFAULT;
  
@@ -494,7 +494,7 @@ index 84c0c5b62523..6d3689cb6f20 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index c497da1e85ef..1b85ed42e835 100644
+index b8b823646317..785354e03e15 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -91,6 +91,12 @@ static const struct strset_info info_template[] = {

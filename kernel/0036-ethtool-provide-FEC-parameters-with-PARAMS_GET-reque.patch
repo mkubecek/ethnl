@@ -1,4 +1,4 @@
-From 3c36dac343096507937e4ffb509f9b1d34586d9c Mon Sep 17 00:00:00 2001
+From d40f1680f229e542922f8c807cf2ddb33a49329d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:53:42 +0100
 Subject: [PATCH 36/43] ethtool: provide FEC parameters with PARAMS_GET request
@@ -106,10 +106,10 @@ index c815d6930e70..d9285fdfa82c 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index 4e2b5955e837..86bf698209f3 100644
+index 9aa89e9e8988..d50cf13e4457 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -2337,6 +2337,7 @@ static int ethtool_get_fecparam(struct net_device *dev, void __user *useraddr)
+@@ -2338,6 +2338,7 @@ static int ethtool_get_fecparam(struct net_device *dev, void __user *useraddr)
  static int ethtool_set_fecparam(struct net_device *dev, void __user *useraddr)
  {
  	struct ethtool_fecparam fecparam;
@@ -117,7 +117,7 @@ index 4e2b5955e837..86bf698209f3 100644
  
  	if (!dev->ethtool_ops->set_fecparam)
  		return -EOPNOTSUPP;
-@@ -2344,7 +2345,11 @@ static int ethtool_set_fecparam(struct net_device *dev, void __user *useraddr)
+@@ -2345,7 +2346,11 @@ static int ethtool_set_fecparam(struct net_device *dev, void __user *useraddr)
  	if (copy_from_user(&fecparam, useraddr, sizeof(fecparam)))
  		return -EFAULT;
  
@@ -131,7 +131,7 @@ index 4e2b5955e837..86bf698209f3 100644
  
  /* The main entry point in this file.  Called from net/core/dev_ioctl.c */
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index d2c71ed9b6bf..4b55441aad72 100644
+index 732507cc34b5..9ceeb2b0202d 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -12,6 +12,7 @@ static const struct nla_policy params_get_policy[ETHTOOL_A_PARAMS_MAX + 1] = {

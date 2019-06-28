@@ -1,4 +1,4 @@
-From b1354feef7824ad147cbddce9a71d9ef09607625 Mon Sep 17 00:00:00 2001
+From 3d980970b282f98480e47c9407c7a74bc9d712d0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 43/43] ethtool: implement RXFLOW_SET request
@@ -21,8 +21,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool_netlink.h         |   2 +
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/rxflow.c                         | 653 +++++++++++++++++++
- 5 files changed, 705 insertions(+), 2 deletions(-)
+ net/ethtool/rxflow.c                         | 649 +++++++++++++++++++
+ 5 files changed, 701 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 591cbf6eaded..609654d1159a 100644
@@ -158,10 +158,10 @@ index 147903052fd0..52e58891b6a6 100644
  int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_reset(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index 2f4ce2884958..4a851ece810b 100644
+index 832219510617..d194b66dac0f 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
-@@ -514,3 +514,656 @@ void ethnl_rxflow_notify(struct net_device *dev,
+@@ -513,3 +513,652 @@ void ethnl_rxflow_notify(struct net_device *dev,
  err_data:
  	rxflow_cleanup(req_info);
  }
@@ -673,7 +673,6 @@ index 2f4ce2884958..4a851ece810b 100644
 +	struct sk_buff *skb;
 +	void *reply_payload;
 +	int reply_len;
-+	int ret;
 +
 +	reply_len = ethnl_reply_header_size();
 +	reply_len += 2 * nla_total_size(sizeof(u32));
@@ -682,22 +681,19 @@ index 2f4ce2884958..4a851ece810b 100644
 +	if (!skb)
 +		return -ENOMEM;
 +
-+	ret = -EMSGSIZE;
 +	if (nla_put_u32(skb, ETHTOOL_A_RXFLOW_CTXOP,
 +			ETHTOOL_RXFLOW_CTXOP_NEW) ||
 +	    nla_put_u32(skb, ETHTOOL_A_RXFLOW_CONTEXT, context))
-+		goto err_skb;
++		goto nla_put_failure;
 +
 +	genlmsg_end(skb, reply_payload);
 +	return genlmsg_reply(skb, info);
 +
-+err_skb:
-+	WARN_ONCE(ret == -EMSGSIZE,
-+		  "calculated message payload length (%d) not sufficient\n",
++nla_put_failure:
++	WARN_ONCE(1, "calculated message payload length (%d) not sufficient\n",
 +		  reply_len);
-+	if (skb)
-+		nlmsg_free(skb);
-+	return ret;
++	nlmsg_free(skb);
++	return -EMSGSIZE;
 +}
 +
 +int ethnl_set_rxflow(struct sk_buff *skb, struct genl_info *info)

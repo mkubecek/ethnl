@@ -1,4 +1,4 @@
-From dd85e8e5badaa5dd39b0a8922c61a60741922254 Mon Sep 17 00:00:00 2001
+From 5414f633c50d7379a5c56eaf613711abe362cfcf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:50:30 +0100
 Subject: [PATCH 17/43] ethtool: set WoL settings with SETTINGS_SET request
@@ -53,7 +53,7 @@ index b3176c3c7a8f..eb333aa7f37d 100644
  ETHTOOL_SMSGLVL			n/a
  ETHTOOL_NWAY_RST		n/a
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 896305285a49..19251caa10ba 100644
+index 36888f5947ba..42552bb51504 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -109,6 +109,12 @@ static const struct link_mode_info link_mode_params[] = {

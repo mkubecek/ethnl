@@ -1,4 +1,4 @@
-From 8014aabedfa9e76dde9c9d80323658aa3991e3a6 Mon Sep 17 00:00:00 2001
+From eab144b36050323e21bf96f6319a0413a27eb8d1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 07/43] ethtool: netlink bitset handling
@@ -11,10 +11,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  61 ++
  include/uapi/linux/ethtool_netlink.h         |  35 ++
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/bitset.c                         | 606 +++++++++++++++++++
+ net/ethtool/bitset.c                         | 605 +++++++++++++++++++
  net/ethtool/bitset.h                         |  40 ++
  net/ethtool/netlink.h                        |   9 +
- 6 files changed, 752 insertions(+), 1 deletion(-)
+ 6 files changed, 751 insertions(+), 1 deletion(-)
  create mode 100644 net/ethtool/bitset.c
  create mode 100644 net/ethtool/bitset.h
 
@@ -148,10 +148,10 @@ index f30e0da88be5..482fdb9380fa 100644
 +ethtool_nl-y	:= netlink.o bitset.o
 diff --git a/net/ethtool/bitset.c b/net/ethtool/bitset.c
 new file mode 100644
-index 000000000000..cf7b81b95948
+index 000000000000..7f43df2243ea
 --- /dev/null
 +++ b/net/ethtool/bitset.c
-@@ -0,0 +1,606 @@
+@@ -0,0 +1,605 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include <linux/ethtool_netlink.h>
@@ -311,7 +311,6 @@ index 000000000000..cf7b81b95948
 +	const bool is_u32 = flags & ETHNL_BITSET_U32;
 +	struct nlattr *nest;
 +	struct nlattr *attr;
-+	int ret;
 +
 +	if (WARN_ON(!compact && !names))
 +		return -EINVAL;
@@ -319,23 +318,22 @@ index 000000000000..cf7b81b95948
 +	if (!nest)
 +		return -EMSGSIZE;
 +
-+	ret = -EMSGSIZE;
 +	if (is_list && nla_put_flag(skb, ETHTOOL_A_BITSET_LIST))
-+		goto err;
++		goto nla_put_failure;
 +	if (nla_put_u32(skb, ETHTOOL_A_BITSET_SIZE, size))
-+		goto err;
++		goto nla_put_failure;
 +	if (compact) {
 +		unsigned int bytesize = DIV_ROUND_UP(size, 32) * sizeof(u32);
 +
 +		attr = nla_reserve(skb, ETHTOOL_A_BITSET_VALUE, bytesize);
 +		if (!attr)
-+			goto err;
++			goto nla_put_failure;
 +		__bitmap_to_u32(nla_data(attr), val, size, is_u32);
 +		if (mask) {
 +			attr = nla_reserve(skb, ETHTOOL_A_BITSET_MASK,
 +					   bytesize);
 +			if (!attr)
-+				goto err;
++				goto nla_put_failure;
 +			__bitmap_to_u32(nla_data(attr), mask, size, is_u32);
 +		}
 +	} else {
@@ -344,7 +342,7 @@ index 000000000000..cf7b81b95948
 +
 +		bits = nla_nest_start(skb, ETHTOOL_A_BITSET_BITS);
 +		if (!bits)
-+			goto err;
++			goto nla_put_failure;
 +		for (i = 0; i < size; i++) {
 +			const char *name = bit_name(names, legacy, i) ?: "";
 +
@@ -355,10 +353,10 @@ index 000000000000..cf7b81b95948
 +			if (!attr ||
 +			    nla_put_u32(skb, ETHTOOL_A_BIT_INDEX, i) ||
 +			    nla_put_string(skb, ETHTOOL_A_BIT_NAME, name))
-+				goto err;
++				goto nla_put_failure;
 +			if (!is_list && ethnl_test_bit(val, i, is_u32) &&
 +			    nla_put_flag(skb, ETHTOOL_A_BIT_VALUE))
-+				goto err;
++				goto nla_put_failure;
 +			nla_nest_end(skb, attr);
 +		}
 +		nla_nest_end(skb, bits);
@@ -366,9 +364,10 @@ index 000000000000..cf7b81b95948
 +
 +	nla_nest_end(skb, nest);
 +	return 0;
-+err:
++
++nla_put_failure:
 +	nla_nest_cancel(skb, nest);
-+	return ret;
++	return -EMSGSIZE;
 +}
 +
 +int ethnl_put_bitset(struct sk_buff *skb, int attrtype, unsigned int size,
@@ -681,7 +680,7 @@ index 000000000000..cf7b81b95948
 +			*err = ethnl_update_bit(val, mask, nbits, bit_attr,
 +						is_list, names, legacy, info);
 +			if (*err < 0)
-+				goto out_free;
++				goto out;
 +		}
 +		if (bitmask)
 +			__bitmap_to_any(bitmask, mask, nbits, is_u32);
@@ -690,15 +689,15 @@ index 000000000000..cf7b81b95948
 +
 +		*err = 0;
 +		if (change_bits == 0 && tb[ETHTOOL_A_BITSET_MASK])
-+			goto out_free;
++			goto out;
 +		*err = -EINVAL;
 +		if (nla_len(tb[ETHTOOL_A_BITSET_VALUE]) <
 +		    change_words * sizeof(u32))
-+			goto out_free;
++			goto out;
 +		if (tb[ETHTOOL_A_BITSET_MASK] &&
 +		    nla_len(tb[ETHTOOL_A_BITSET_MASK]) <
 +		    change_words * sizeof(u32))
-+			goto out_free;
++			goto out;
 +
 +		bitmap_from_arr32(val, nla_data(tb[ETHTOOL_A_BITSET_VALUE]),
 +				  change_bits);
@@ -714,7 +713,7 @@ index 000000000000..cf7b81b95948
 +
 +			*err = -EINVAL;
 +			if (idx < max_bits)
-+				goto out_free;
++				goto out;
 +		}
 +
 +		if (bitmask)
@@ -735,7 +734,7 @@ index 000000000000..cf7b81b95948
 +		__bitmap_to_any(bitmap, val, nbits, is_u32);
 +
 +	*err = 0;
-+out_free:
++out:
 +	bitmap_free(val);
 +	bitmap_free(mask);
 +	return mod;

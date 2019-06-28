@@ -1,4 +1,4 @@
-From 7818899dfbf7b0a9c093a02b7cf7de0e93df83ce Mon Sep 17 00:00:00 2001
+From cd91599629482038f4f0344d178e65666fb98f88 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 18:01:46 +0100
 Subject: [PATCH 19/43] ethtool: set message level with SETTINGS_SET request
@@ -50,7 +50,7 @@ index aef16696990b..d051ce8ab573 100644
  ETHTOOL_GLINK			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_GEEPROM			n/a
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 92e790292011..abb41ee33881 100644
+index 55714a9c8e13..a4a876268e0b 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -527,6 +527,12 @@ static const struct nla_policy wol_set_policy[ETHTOOL_A_LINKINFO_MAX + 1] = {
