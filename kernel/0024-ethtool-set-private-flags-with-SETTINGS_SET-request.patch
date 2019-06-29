@@ -1,0 +1,111 @@
+From aa47c59001c2cd32f7e2d4c123587d0fcf07748a Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Fri, 7 Sep 2018 13:23:31 +0200
+Subject: [PATCH 24/44] ethtool: set private flags with SETTINGS_SET request
+
+Add support for setting device private flags using ETHTOOL_MSG_SETTINGS_SET
+message. ETHTOOL_A_SETTINGS_PRIV_FLAGS nested attribute is a bit set used
+to define either requested set of enabled flags or changes against current
+state.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ Documentation/networking/ethtool-netlink.txt |  3 +-
+ net/ethtool/settings.c                       | 46 +++++++++++++++++++-
+ 2 files changed, 47 insertions(+), 2 deletions(-)
+
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index f616e66c21ef..d63923f1e533 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -346,6 +346,7 @@ to be passed with SETTINGS_SET request:
+         ETHTOOL_A_DEBUG_MSG_MASK	    (bitfield32)    message mask
+     ETHTOOL_A_SETTINGS_FEATURES		(nested)	device features
+         ETHTOOL_A_FEATURES_WANTED	    (bitset)	    wanted features
++    ETHTOOL_A_SETTINGS_PRIV_FLAGS	(bitset)	device private flags
+ 
+ ETHTOOL_A_LINKMODES_OURS bit set allows setting advertised link modes. If
+ autonegotiation is on (either set now or kept from before), advertised modes
+@@ -427,7 +428,7 @@ ETHTOOL_SGSO			ETHTOOL_MSG_SETTINGS_SET
+ ETHTOOL_GFLAGS			ETHTOOL_MSG_SETTINGS_GET
+ ETHTOOL_SFLAGS			ETHTOOL_MSG_SETTINGS_SET
+ ETHTOOL_GPFLAGS			ETHTOOL_MSG_SETTINGS_GET
+-ETHTOOL_SPFLAGS			n/a
++ETHTOOL_SPFLAGS			ETHTOOL_MSG_SETTINGS_SET
+ ETHTOOL_GRXFH			n/a
+ ETHTOOL_SRXFH			n/a
+ ETHTOOL_GGRO			ETHTOOL_MSG_SETTINGS_GET
+diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
+index 32a3036c2ab4..a1868bce5d1c 100644
+--- a/net/ethtool/settings.c
++++ b/net/ethtool/settings.c
+@@ -759,7 +759,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+ 	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
+ 	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
+ 	[ETHTOOL_A_SETTINGS_FEATURES]		= { .type = NLA_NESTED },
+-	[ETHTOOL_A_SETTINGS_PRIV_FLAGS]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_SETTINGS_PRIV_FLAGS]		= { .type = NLA_NESTED },
+ };
+ 
+ static int ethnl_set_link_ksettings(struct genl_info *info,
+@@ -1118,6 +1118,41 @@ static int settings_update_features(struct genl_info *info,
+ 	return 0;
+ }
+ 
++static int settings_update_priv_flags(struct genl_info *info,
++				      struct net_device *dev,
++				      const struct nlattr *bitset,
++				      bool *changed)
++{
++	const struct ethtool_ops *ops = dev->ethtool_ops;
++	unsigned int nflags;
++	void *names = NULL;
++	bool compact;
++	u32 flags;
++	int ret;
++
++	if (!ops->get_priv_flags || !ops->set_priv_flags)
++		return -EOPNOTSUPP;
++	ret = ethnl_bitset_is_compact(bitset, &compact);
++	if (ret < 0)
++		return ret;
++	ret = ethnl_get_priv_flags_info(dev, &nflags, compact ? NULL : &names);
++	if (ret < 0)
++		return ret;
++	flags = ops->get_priv_flags(dev);
++
++	*changed = ethnl_update_bitset32(&flags, NULL, nflags, bitset, &ret,
++					 names, true, info);
++	if (ret < 0)
++		goto out_free;
++	if (*changed)
++		ret = ops->set_priv_flags(dev, flags);
++
++out_free:
++	if (!compact)
++		kfree(names);
++	return ret;
++}
++
+ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+ {
+ 	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
+@@ -1177,6 +1212,15 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+ 		if (ret < 0)
+ 			goto out_ops;
+ 	}
++	if (tb[ETHTOOL_A_SETTINGS_PRIV_FLAGS]) {
++		ret = settings_update_priv_flags(info, dev,
++						 tb[ETHTOOL_A_SETTINGS_PRIV_FLAGS],
++						 &mod);
++		if (mod)
++			req_mask |= ETHTOOL_IM_SETTINGS_PRIVFLAGS;
++		if (ret < 0)
++			goto out_ops;
++	}
+ 	ret = 0;
+ 
+ out_ops:
+-- 
+2.22.0
+

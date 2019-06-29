@@ -1,0 +1,323 @@
+From a7087216e185d80d50d5a103cc61cf02ab50e859 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Sun, 29 Jul 2018 14:58:36 +0200
+Subject: [PATCH 22/44] ethtool: set device features with SETTINGS_SET
+
+Allow setting network device features using SETTINGS_SET request with
+ETHTOOL_A_SETTINGS_FEATURES nested attribute.
+
+Actual change is subject to netdev_change_features() sanity checks so that
+it can differ from what was requested. Unlike with most other GET requests,
+kernel can reply (if ETHTOOL_RF_REPLY flag is set in request header) with
+a message in the same format but with different semantics: information
+about difference between user request and actual result and difference
+between old and new state of dev->features.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ Documentation/networking/ethtool-netlink.txt |  35 ++--
+ include/uapi/linux/ethtool_netlink.h         |   1 +
+ net/ethtool/settings.c                       | 158 ++++++++++++++++++-
+ 3 files changed, 184 insertions(+), 10 deletions(-)
+
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index feb15529af31..253631ce645e 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -159,6 +159,7 @@ Kernel to userspace:
+     ETHTOOL_MSG_STRSET_GET_REPLY	string set contents
+     ETHTOOL_MSG_SETTINGS_GET_REPLY	device settings
+     ETHTOOL_MSG_SETTINGS_NTF		device settings notification
++    ETHTOOL_MSG_SETTINGS_SET_REPLY	additional reply for SETTINGS_SET
+ 
+ "GET" requests are sent by userspace applications to retrieve device
+ information. They usually do not contain any message specific attributes.
+@@ -336,6 +337,8 @@ to be passed with SETTINGS_SET request:
+         ETHTOOL_A_WOL_SOPASS		    (binary)	    SecureOn password
+     ETHTOOL_A_SETTINGS_DEBUG		(nested)	debugging
+         ETHTOOL_A_DEBUG_MSG_MASK	    (bitfield32)    message mask
++    ETHTOOL_A_SETTINGS_FEATURES		(nested)	device features
++        ETHTOOL_A_FEATURES_WANTED	    (bitset)	    wanted features
+ 
+ ETHTOOL_A_LINKMODES_OURS bit set allows setting advertised link modes. If
+ autonegotiation is on (either set now or kept from before), advertised modes
+@@ -355,6 +358,20 @@ enable mode not supported by device). ETHTOOL_A_SETTINGS_MSGLEVEL bitfield
+ also allows bits not recognized by kernel in selector as long as the request
+ does not attempt to enable them.
+ 
++When changing device features, only ETHTOOL_A_FEATURES_WANTED is passed. As
++usual, mask defines which bits are to be set and value their values. If the
++request header has ETHTOOL_RF_REPLY flag set, reply will contain a message in
++the same format as response to GET request, except only two bitsets are
++provided. ETHTOOL_A_FEATURES_WANTED shows difference between requested
++features and actual result (dev->features after the operation); mask shows
++bits which differ and value their values from the original request (new values
++are negated). ETHTOOL_RF_STRSET_COUNTS shows changes between old dev->features
++(before the operation) and new (after the operation); mask shows bits which
++have been changed and value their new values. This allows to identify features
++which were requested to be set but were not (e.g. because they cannot be set)
++and features which changed set even if it was not requested (e.g. because of
++dependencies).
++
+ 
+ Request translation
+ -------------------
+@@ -384,30 +401,30 @@ ETHTOOL_SRINGPARAM		n/a
+ ETHTOOL_GPAUSEPARAM		n/a
+ ETHTOOL_SPAUSEPARAM		n/a
+ ETHTOOL_GRXCSUM			ETHTOOL_MSG_SETTINGS_GET
+-ETHTOOL_SRXCSUM			n/a
++ETHTOOL_SRXCSUM			ETHTOOL_MSG_SETTINGS_SET
+ ETHTOOL_GTXCSUM			ETHTOOL_MSG_SETTINGS_GET
+-ETHTOOL_STXCSUM			n/a
++ETHTOOL_STXCSUM			ETHTOOL_MSG_SETTINGS_SET
+ ETHTOOL_GSG			ETHTOOL_MSG_SETTINGS_GET
+-ETHTOOL_SSG			n/a
++ETHTOOL_SSG			ETHTOOL_MSG_SETTINGS_SET
+ ETHTOOL_TEST			n/a
+ ETHTOOL_GSTRINGS		ETHTOOL_MSG_STRSET_GET
+ ETHTOOL_PHYS_ID			n/a
+ ETHTOOL_GSTATS			n/a
+ ETHTOOL_GTSO			ETHTOOL_MSG_SETTINGS_GET
+-ETHTOOL_STSO			n/a
++ETHTOOL_STSO			ETHTOOL_MSG_SETTINGS_SET
+ ETHTOOL_GPERMADDR		rtnetlink RTM_GETLINK
+ ETHTOOL_GUFO			ETHTOOL_MSG_SETTINGS_GET
+-ETHTOOL_SUFO			n/a
++ETHTOOL_SUFO			ETHTOOL_MSG_SETTINGS_SET
+ ETHTOOL_GGSO			ETHTOOL_MSG_SETTINGS_GET
+-ETHTOOL_SGSO			n/a
++ETHTOOL_SGSO			ETHTOOL_MSG_SETTINGS_SET
+ ETHTOOL_GFLAGS			ETHTOOL_MSG_SETTINGS_GET
+-ETHTOOL_SFLAGS			n/a
++ETHTOOL_SFLAGS			ETHTOOL_MSG_SETTINGS_SET
+ ETHTOOL_GPFLAGS			n/a
+ ETHTOOL_SPFLAGS			n/a
+ ETHTOOL_GRXFH			n/a
+ ETHTOOL_SRXFH			n/a
+ ETHTOOL_GGRO			ETHTOOL_MSG_SETTINGS_GET
+-ETHTOOL_SGRO			n/a
++ETHTOOL_SGRO			ETHTOOL_MSG_SETTINGS_SET
+ ETHTOOL_GRXRINGS		n/a
+ ETHTOOL_GRXCLSRLCNT		n/a
+ ETHTOOL_GRXCLSRULE		n/a
+@@ -422,7 +439,7 @@ ETHTOOL_GSSET_INFO		ETHTOOL_MSG_STRSET_GET
+ ETHTOOL_GRXFHINDIR		n/a
+ ETHTOOL_SRXFHINDIR		n/a
+ ETHTOOL_GFEATURES		ETHTOOL_MSG_SETTINGS_GET
+-ETHTOOL_SFEATURES		n/a
++ETHTOOL_SFEATURES		ETHTOOL_MSG_SETTINGS_SET
+ ETHTOOL_GCHANNELS		n/a
+ ETHTOOL_SCHANNELS		n/a
+ ETHTOOL_SET_DUMP		n/a
+diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
+index 0875c5d88410..ce8e9d6a4718 100644
+--- a/include/uapi/linux/ethtool_netlink.h
++++ b/include/uapi/linux/ethtool_netlink.h
+@@ -29,6 +29,7 @@ enum {
+ 	ETHTOOL_MSG_STRSET_GET_REPLY,
+ 	ETHTOOL_MSG_SETTINGS_GET_REPLY,
+ 	ETHTOOL_MSG_SETTINGS_NTF,
++	ETHTOOL_MSG_SETTINGS_SET_REPLY,
+ 
+ 	/* add new constants above here */
+ 	__ETHTOOL_MSG_KERNEL_CNT,
+diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
+index 215751f59f1d..bd8702c11165 100644
+--- a/net/ethtool/settings.c
++++ b/net/ethtool/settings.c
+@@ -644,6 +644,14 @@ static const struct nla_policy debug_set_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
+ 					    .validation_data = &all_bits },
+ };
+ 
++static const struct nla_policy features_set_policy[ETHTOOL_A_FEATURES_MAX + 1] = {
++	[ETHTOOL_A_FEATURES_UNSPEC]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_FEATURES_HW]			= { .type = NLA_REJECT },
++	[ETHTOOL_A_FEATURES_WANTED]		= { .type = NLA_NESTED },
++	[ETHTOOL_A_FEATURES_ACTIVE]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_FEATURES_NOCHANGE]		= { .type = NLA_REJECT },
++};
++
+ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
+ 	[ETHTOOL_A_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_SETTINGS_HEADER]		= { .type = NLA_NESTED },
+@@ -652,7 +660,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+ 	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
+ 	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
+ 	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
+-	[ETHTOOL_A_SETTINGS_FEATURES]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_SETTINGS_FEATURES]		= { .type = NLA_NESTED },
+ };
+ 
+ static int ethnl_set_link_ksettings(struct genl_info *info,
+@@ -873,12 +881,151 @@ static int settings_update_debug(struct genl_info *info, struct nlattr *nest,
+ 	return ret;
+ }
+ 
++static void bitmap_from_features(unsigned long *bitmap, netdev_features_t val)
++{
++	const unsigned int words = BITS_TO_LONGS(NETDEV_FEATURE_COUNT);
++	unsigned int i;
++
++	bitmap_zero(bitmap, NETDEV_FEATURE_COUNT);
++	for (i = 0; i < words; i++)
++		bitmap[i] = (unsigned long)(val >> (i * BITS_PER_LONG));
++}
++
++static netdev_features_t features_from_bitmap(unsigned long *bitmap)
++{
++	const unsigned int words = BITS_TO_LONGS(NETDEV_FEATURE_COUNT);
++	netdev_features_t ret = 0;
++	unsigned int i;
++
++	for (i = 0; i < words; i++)
++		ret |= (netdev_features_t)(bitmap[i]) << (i * BITS_PER_LONG);
++	return ret;
++}
++
++static int settings_update_features(struct genl_info *info,
++				    struct net_device *dev,
++				    const struct nlattr *nest, u32 req_gflags,
++				    bool *changed)
++{
++	DECLARE_BITMAP(wanted_diff_mask, NETDEV_FEATURE_COUNT);
++	DECLARE_BITMAP(active_diff_mask, NETDEV_FEATURE_COUNT);
++	DECLARE_BITMAP(old_active, NETDEV_FEATURE_COUNT);
++	DECLARE_BITMAP(req_wanted, NETDEV_FEATURE_COUNT);
++	DECLARE_BITMAP(new_active, NETDEV_FEATURE_COUNT);
++	DECLARE_BITMAP(req_mask, NETDEV_FEATURE_COUNT);
++	struct nlattr *tb[ETHTOOL_A_FEATURES_MAX + 1];
++	unsigned int bitset_flags;
++	struct nlattr *feat_attr;
++	struct sk_buff *rskb;
++	void *reply_payload;
++	bool mod = false;
++	int reply_len;
++	bool compact;
++	int ret;
++
++	compact = req_gflags & ETHTOOL_RF_COMPACT;
++	bitset_flags = (compact ? ETHNL_BITSET_COMPACT : 0) |
++		       ETHNL_BITSET_LEGACY_NAMES;
++
++	*changed = false;
++	ret = nla_parse_nested(tb, ETHTOOL_A_FEATURES_MAX, nest,
++			       features_set_policy, info->extack);
++	if (ret < 0)
++		return ret;
++	if (!tb[ETHTOOL_A_FEATURES_WANTED])
++		return -EINVAL;
++
++	bitmap_from_features(old_active, dev->features);
++	bitmap_copy(req_wanted, old_active, NETDEV_FEATURE_COUNT);
++	bitmap_zero(req_mask, NETDEV_FEATURE_COUNT);
++	mod = ethnl_update_bitset(req_wanted, req_mask, NETDEV_FEATURE_COUNT,
++				  tb[ETHTOOL_A_FEATURES_WANTED], &ret,
++				  netdev_features_strings, true, info);
++	if (ret < 0)
++		return ret;
++	if (features_from_bitmap(req_mask) & ~NETIF_F_ETHTOOL_BITS) {
++		GENL_SET_ERR_MSG(info,
++				 "attempt to change non-ethtool features");
++		return -EINVAL;
++	}
++	if (!mod)
++		return 0;
++
++	dev->wanted_features = features_from_bitmap(req_wanted);
++	__netdev_update_features(dev);
++	bitmap_from_features(new_active, dev->features);
++	*changed = !bitmap_equal(old_active, new_active, NETDEV_FEATURE_COUNT);
++	if (!(req_gflags & ETHTOOL_RF_REPLY))
++		return 0;
++
++	bitmap_xor(wanted_diff_mask, req_wanted, new_active,
++		   NETDEV_FEATURE_COUNT);
++	bitmap_xor(active_diff_mask, old_active, new_active,
++		   NETDEV_FEATURE_COUNT);
++	bitmap_and(wanted_diff_mask, wanted_diff_mask, req_mask,
++		   NETDEV_FEATURE_COUNT);
++	bitmap_and(req_wanted, req_wanted, wanted_diff_mask,
++		   NETDEV_FEATURE_COUNT);
++	bitmap_and(new_active, new_active, active_diff_mask,
++		   NETDEV_FEATURE_COUNT);
++
++	reply_len = 0;
++	ret = ethnl_bitset_size(NETDEV_FEATURE_COUNT, req_wanted,
++				wanted_diff_mask, netdev_features_strings,
++				bitset_flags);
++	if (ret < 0)
++		goto err;
++	reply_len += ret;
++	ret = ethnl_bitset_size(NETDEV_FEATURE_COUNT, new_active,
++				active_diff_mask, netdev_features_strings,
++				bitset_flags);
++	if (ret < 0)
++		goto err;
++	reply_len += ret;
++	reply_len = ethnl_reply_header_size() + nla_total_size(reply_len);
++	ret = -ENOMEM;
++	rskb = ethnl_reply_init(reply_len, dev, ETHTOOL_MSG_SETTINGS_SET_REPLY,
++				ETHTOOL_A_SETTINGS_HEADER, info,
++				&reply_payload);
++	if (!rskb)
++		goto err;
++
++	feat_attr = nla_nest_start(rskb, ETHTOOL_A_SETTINGS_FEATURES);
++	if (!feat_attr)
++		goto nla_put_failure;
++	ret = ethnl_put_bitset(rskb, ETHTOOL_A_FEATURES_WANTED,
++			       NETDEV_FEATURE_COUNT, req_wanted,
++			       wanted_diff_mask, netdev_features_strings,
++			       bitset_flags);
++	if (ret < 0)
++		goto nla_put_failure;
++	ret = ethnl_put_bitset(rskb, ETHTOOL_A_FEATURES_ACTIVE,
++			       NETDEV_FEATURE_COUNT, new_active,
++			       active_diff_mask, netdev_features_strings,
++			       bitset_flags);
++	if (ret < 0)
++		goto nla_put_failure;
++	nla_nest_end(rskb, feat_attr);
++
++	genlmsg_end(rskb, reply_payload);
++	return genlmsg_reply(rskb, info);
++
++nla_put_failure:
++	nlmsg_free(rskb);
++	WARN_ONCE(1, "calculated message payload length (%d) not sufficient\n",
++		  reply_len);
++err:
++	GENL_SET_ERR_MSG(info, "failed to send reply message");
++	return 0;
++}
++
+ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+ {
+ 	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
+ 	struct ethnl_req_info req_info = {};
+ 	struct net_device *dev;
+ 	u32 req_mask = 0;
++	bool mod;
+ 	int ret;
+ 
+ 	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb,
+@@ -922,6 +1069,15 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+ 		if (ret)
+ 			req_mask |= ETHTOOL_IM_SETTINGS_DEBUG;
+ 	}
++	if (tb[ETHTOOL_A_SETTINGS_FEATURES]) {
++		ret = settings_update_features(info, dev,
++					       tb[ETHTOOL_A_SETTINGS_FEATURES],
++					       req_info.global_flags, &mod);
++		if (mod)
++			req_mask |= ETHTOOL_IM_SETTINGS_FEATURES;
++		if (ret < 0)
++			goto out_ops;
++	}
+ 	ret = 0;
+ 
+ out_ops:
+-- 
+2.22.0
+

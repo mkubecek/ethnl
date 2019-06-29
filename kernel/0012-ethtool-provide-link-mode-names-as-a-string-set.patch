@@ -1,7 +1,7 @@
-From 80bcbb6ac2a964b60a0d0303496a016271231809 Mon Sep 17 00:00:00 2001
+From a3edd03aa7a7403b7005bbe6ae43e49b7bbd2c34 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:50:07 +0100
-Subject: [PATCH 12/43] ethtool: provide link mode names as a string set
+Subject: [PATCH 12/44] ethtool: provide link mode names as a string set
 
 Add table of ethernet link mode names and make it available as a string set
 to userspace GET_STRSET requests.
@@ -51,12 +51,12 @@ index 4e4e28e77c7a..6ad298224352 100644
  	ETH_SS_COUNT
  };
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index a92bc8522e27..d1a4a7200b31 100644
+index 48023fe27cb3..c9aaa244957e 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -9,6 +9,86 @@ static struct genl_family ethtool_genl_family;
+@@ -8,6 +8,86 @@ static struct genl_family ethtool_genl_family;
+ 
  static bool ethnl_ok __read_mostly;
- static u32 ethnl_bcast_seq;
  
 +#define __LINK_MODE_NAME(speed, type, duplex) \
 +	#speed "base" #type "/" #duplex
@@ -141,7 +141,7 @@ index a92bc8522e27..d1a4a7200b31 100644
  static const struct nla_policy dflt_header_policy[ETHTOOL_A_HEADER_MAX + 1] = {
  	[ETHTOOL_A_HEADER_UNSPEC]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_HEADER_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -628,6 +708,9 @@ static int __init ethnl_init(void)
+@@ -554,6 +634,9 @@ static int __init ethnl_init(void)
  {
  	int ret;
  
@@ -152,7 +152,7 @@ index a92bc8522e27..d1a4a7200b31 100644
  	if (WARN(ret < 0, "ethtool: genetlink family registration failed"))
  		return ret;
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 94b32f9563cd..4ad1da529ad7 100644
+index 2352fd9c17c3..d85b1edc1b91 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -10,6 +10,8 @@

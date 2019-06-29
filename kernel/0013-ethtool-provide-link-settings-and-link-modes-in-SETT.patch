@@ -1,7 +1,7 @@
-From 4972edde2decb6b817ec5461b22f4a8eb920737b Mon Sep 17 00:00:00 2001
+From ee0fde837c9c513ca54b3bdaaddc25d24a0b99ba Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
-Subject: [PATCH 13/43] ethtool: provide link settings and link modes in
+Subject: [PATCH 13/44] ethtool: provide link settings and link modes in
  SETTINGS_GET request
 
 Implement SETTINGS_GET netlink request to get link settings and link mode
@@ -12,23 +12,19 @@ two parts: autonegotiation, speed, duplex and supported, advertised and
 peer advertised link modes when ETHTOOL_IM_SETTINGS_LINKMODES flag is set
 in the request and other settings when ETHTOOL_IM_SETTINGS_LINKINFO is set.
 
-Send notification in the same format as the reply message when relevant
-fields are modified using the ioctl interface (ETHTOOL_SLINKSETTINGS or
-ETHTOOL_SSET command).
-
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  48 +++-
  include/linux/ethtool_netlink.h              |   3 +
- include/uapi/linux/ethtool_netlink.h         |  50 ++++
+ include/uapi/linux/ethtool_netlink.h         |  49 ++++
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/common.c                         |  48 ++++
  net/ethtool/common.h                         |   4 +
- net/ethtool/ioctl.c                          |  66 ++---
- net/ethtool/netlink.c                        |  14 +
+ net/ethtool/ioctl.c                          |  48 ----
+ net/ethtool/netlink.c                        |   8 +
  net/ethtool/netlink.h                        |   1 +
  net/ethtool/settings.c                       | 257 +++++++++++++++++++
- 10 files changed, 440 insertions(+), 53 deletions(-)
+ 10 files changed, 417 insertions(+), 51 deletions(-)
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -130,7 +126,7 @@ index 2a15e64a16f3..e770e6e9acca 100644
  	ETHNL_MCGRP_MONITOR,
  };
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 11b8519d2c1d..af0fd363c8b7 100644
+index 11b8519d2c1d..a046dd8da50e 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -15,6 +15,7 @@
@@ -141,16 +137,15 @@ index 11b8519d2c1d..af0fd363c8b7 100644
  
  	/* add new constants above here */
  	__ETHTOOL_MSG_USER_CNT,
-@@ -25,6 +26,8 @@ enum {
+@@ -25,6 +26,7 @@ enum {
  enum {
  	ETHTOOL_MSG_KERNEL_NONE,
  	ETHTOOL_MSG_STRSET_GET_REPLY,
 +	ETHTOOL_MSG_SETTINGS_GET_REPLY,
-+	ETHTOOL_MSG_SETTINGS_NTF,
  
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
-@@ -147,6 +150,53 @@ enum {
+@@ -147,6 +149,53 @@ enum {
  
  #define ETHTOOL_RF_STRSET_ALL (ETHTOOL_RF_STRSET_COUNTS)
  
@@ -284,18 +279,10 @@ index 41b2efc1e4e1..0381936d8e1e 100644
 +
  #endif /* _ETHTOOL_COMMON_H */
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index b35366dd9997..504ab2f7009c 100644
+index b35366dd9997..ed53e07d619e 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
-@@ -26,6 +26,7 @@
- #include <net/devlink.h>
- #include <net/xdp_sock.h>
- #include <net/flow_offload.h>
-+#include <linux/ethtool_netlink.h>
- 
- #include "common.h"
- 
-@@ -352,54 +353,6 @@ bool ethtool_convert_link_mode_to_legacy_u32(u32 *legacy_u32,
+@@ -352,54 +352,6 @@ bool ethtool_convert_link_mode_to_legacy_u32(u32 *legacy_u32,
  }
  EXPORT_SYMBOL(ethtool_convert_link_mode_to_legacy_u32);
  
@@ -350,49 +337,11 @@ index b35366dd9997..504ab2f7009c 100644
  /* return false if ksettings link modes had higher bits
   * set. legacy_settings always updated (best effort)
   */
-@@ -613,7 +566,13 @@ static int ethtool_set_link_ksettings(struct net_device *dev,
- 	    != link_ksettings.base.link_mode_masks_nwords)
- 		return -EINVAL;
- 
--	return dev->ethtool_ops->set_link_ksettings(dev, &link_ksettings);
-+	err = dev->ethtool_ops->set_link_ksettings(dev, &link_ksettings);
-+	if (err >= 0)
-+		ethtool_notify(dev, NULL, ETHTOOL_MSG_SETTINGS_NTF,
-+			       ETHTOOL_IM_SETTINGS_LINKINFO |
-+			       ETHTOOL_IM_SETTINGS_LINKMODES,
-+			       NULL);
-+	return err;
- }
- 
- /* Query device for its ethtool_cmd settings.
-@@ -662,6 +621,7 @@ static int ethtool_set_settings(struct net_device *dev, void __user *useraddr)
- {
- 	struct ethtool_link_ksettings link_ksettings;
- 	struct ethtool_cmd cmd;
-+	int ret;
- 
- 	ASSERT_RTNL();
- 
-@@ -674,7 +634,13 @@ static int ethtool_set_settings(struct net_device *dev, void __user *useraddr)
- 		return -EINVAL;
- 	link_ksettings.base.link_mode_masks_nwords =
- 		__ETHTOOL_LINK_MODE_MASK_NU32;
--	return dev->ethtool_ops->set_link_ksettings(dev, &link_ksettings);
-+	ret = dev->ethtool_ops->set_link_ksettings(dev, &link_ksettings);
-+	if (ret >= 0)
-+		ethtool_notify(dev, NULL, ETHTOOL_MSG_SETTINGS_NTF,
-+			       ETHTOOL_IM_SETTINGS_LINKINFO |
-+			       ETHTOOL_IM_SETTINGS_LINKMODES,
-+			       NULL);
-+	return ret;
- }
- 
- static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index d1a4a7200b31..24d5d1855a57 100644
+index c9aaa244957e..236993bd68b6 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -275,6 +275,7 @@ static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)
+@@ -262,6 +262,7 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  
  const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
  	[ETHTOOL_MSG_STRSET_GET]	= &strset_request_ops,
@@ -400,27 +349,7 @@ index d1a4a7200b31..24d5d1855a57 100644
  };
  
  /**
-@@ -590,6 +591,11 @@ static int ethnl_get_done(struct netlink_callback *cb)
- 
- static const struct get_request_ops *ethnl_std_notify_to_ops(unsigned int cmd)
- {
-+	switch(cmd) {
-+	case ETHTOOL_MSG_SETTINGS_NTF:
-+		return &settings_request_ops;
-+	};
-+
- 	WARN_ONCE(1, "unexpected notification type %u\n", cmd);
- 	return NULL;
- }
-@@ -657,6 +663,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
- 				       const void *data);
- 
- static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
-+	[ETHTOOL_MSG_SETTINGS_NTF]	= ethnl_std_notify,
- };
- 
- void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -685,6 +692,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -611,6 +612,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -435,10 +364,10 @@ index d1a4a7200b31..24d5d1855a57 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 4ad1da529ad7..375de56dd6d2 100644
+index d85b1edc1b91..27832a3956c8 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -273,5 +273,6 @@ struct get_request_ops {
+@@ -294,5 +294,6 @@ struct get_request_ops {
  /* request handlers */
  
  extern const struct get_request_ops strset_request_ops;

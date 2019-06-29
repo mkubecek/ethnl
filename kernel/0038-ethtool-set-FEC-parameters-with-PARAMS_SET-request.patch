@@ -1,0 +1,129 @@
+From 6a135fa92bfa87a7da8095f52675db638c613af8 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Mon, 11 Mar 2019 08:56:10 +0100
+Subject: [PATCH 38/44] ethtool: set FEC parameters with PARAMS_SET request
+
+Add support for setting FEC parameters using PARAMS_SET request with
+ETHTOOL_A_PARAMS_FEC nested attribute. This is a replacement for
+ETHTOOL_SFECPARAM ioctl command.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ Documentation/networking/ethtool-netlink.txt | 13 +++--
+ net/ethtool/params.c                         | 51 +++++++++++++++++++-
+ 2 files changed, 58 insertions(+), 6 deletions(-)
+
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index a1dec8e0106b..d6a51381abb8 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -526,10 +526,10 @@ PARAMS_SET
+ 
+ PARAMS_SET request modifies the settings retrieved by PARAMS_GET, i.e. it
+ replaces ETHTOOL_SCOALESCE, ETHTOOL_SRINGPARAM, ETHTOOL_SPAUSEPARAM,
+-ETHTOOL_SCHANNELS and ETHTOOL_SEEE ioctl commands. For each of these, relevant
+-data attributes are contained in a corresponding nest attribute. Some of the
+-attributes provided by PARAMS_GET are read only and cannot be set by
+-PARAMS_SET request.
++ETHTOOL_SCHANNELS, ETHTOOL_SEEE and ETHTOOL_SFECPARAM ioctl commands. For each
++of these, relevant data attributes are contained in a corresponding nest
++attribute. Some of the attributes provided by PARAMS_GET are read only and
++cannot be set by PARAMS_SET request.
+ 
+     ETHTOOL_A_PARAMS_HEADER		(nested)	request header
+     ETHTOOL_A_PARAMS_COALESCE		(nested)	coalescing parameters
+@@ -575,6 +575,9 @@ PARAMS_SET request.
+         ETHTOOL_A_EEE_ENABLED		    (bool)
+         ETHTOOL_A_EEE_TX_LPI_ENABLED	    (bool)
+         ETHTOOL_A_EEE_TX_LPI_TIMER	    (u32)
++    ETHTOOL_A_PARAMS_FEC		(nested)	FEC parameters
++        ETHTOOL_A_FEC_MODES		    (bitfield32)
++		- change configured FEC encodings
+ 
+ 
+ Request translation
+@@ -665,4 +668,4 @@ ETHTOOL_SLINKSETTINGS		ETHTOOL_MSG_SETTINGS_SET
+ ETHTOOL_PHY_GTUNABLE		n/a
+ ETHTOOL_PHY_STUNABLE		n/a
+ ETHTOOL_GFECPARAM		ETHTOOL_MSG_PARAMS_GET
+-ETHTOOL_SFECPARAM		n/a
++ETHTOOL_SFECPARAM		ETHTOOL_MSG_PARAMS_SET
+diff --git a/net/ethtool/params.c b/net/ethtool/params.c
+index 9ceeb2b0202d..fcaec3370050 100644
+--- a/net/ethtool/params.c
++++ b/net/ethtool/params.c
+@@ -476,7 +476,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+ 	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_NESTED },
+ 	[ETHTOOL_A_PARAMS_CHANNELS]		= { .type = NLA_NESTED },
+ 	[ETHTOOL_A_PARAMS_EEE]			= { .type = NLA_NESTED },
+-	[ETHTOOL_A_PARAMS_FEC]			= { .type = NLA_REJECT },
++	[ETHTOOL_A_PARAMS_FEC]			= { .type = NLA_NESTED },
+ };
+ 
+ static const struct nla_policy params_hdr_policy[ETHTOOL_A_HEADER_MAX + 1] = {
+@@ -879,6 +879,50 @@ static int params_update_eee(struct genl_info *info, struct net_device *dev,
+ 	return (ret < 0) ? ret : 1;
+ }
+ 
++static const struct nla_policy fec_policy[ETHTOOL_A_FEC_MAX + 1] = {
++	[ETHTOOL_A_FEC_UNSPEC]		= { .type = NLA_REJECT },
++	[ETHTOOL_A_FEC_MODES]		= { .type = NLA_U32 },
++};
++
++/**
++ * params_update_fec() - update FEC parameters from nested attribute
++ * @info: genl_info pointer (only needed for extack)
++ * @dev:  device to set FEC parameters for
++ * @nest: ETHTOOL_A_PARAMS_FEC nested attribute
++ *
++ * Return: negative code on error, 0 if no change, >0 if there was a change
++ */
++static int params_update_fec(struct genl_info *info, struct net_device *dev,
++			     struct nlattr *nest)
++{
++	struct nlattr *tb[ETHTOOL_A_FEC_MAX + 1];
++	struct ethtool_fecparam data = {};
++	bool mod = false;
++	int ret;
++
++	if (!nest)
++		return 0;
++	if (!dev->ethtool_ops->get_fecparam ||
++	    !dev->ethtool_ops->set_fecparam)
++		return -EOPNOTSUPP;
++	ret = dev->ethtool_ops->get_fecparam(dev, &data);
++	if (ret < 0)
++		return ret;
++
++	ret = nla_parse_nested(tb, ETHTOOL_A_FEC_MAX, nest, fec_policy,
++			       info->extack);
++	if (ret < 0)
++		return ret;
++
++	if (ethnl_update_bitfield32(&data.fec, tb[ETHTOOL_A_FEC_MODES]))
++		mod = true;
++
++	if (!mod)
++		return 0;
++	ret = dev->ethtool_ops->set_fecparam(dev, &data);
++	return (ret < 0) ? ret : 1;
++}
++
+ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+ {
+ 	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
+@@ -927,6 +971,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+ 		goto out_ops;
+ 	if (ret)
+ 		req_mask |= ETHTOOL_IM_PARAMS_EEE;
++	ret = params_update_fec(info, dev, tb[ETHTOOL_A_PARAMS_FEC]);
++	if (ret < 0)
++		goto out_ops;
++	if (ret)
++		req_mask |= ETHTOOL_IM_PARAMS_FEC;
+ 
+ 	ret = 0;
+ out_ops:
+-- 
+2.22.0
+

@@ -1,0 +1,268 @@
+From 3f35157af815acc9c6a558b6544c9de473b68795 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Sat, 15 Sep 2018 22:05:29 +0200
+Subject: [PATCH 43/44] ethtool: implement RXFLOW notification
+
+SET_RXFLOW notification message uses the same format as response to
+GET_RXFLOW request except for ETHTOOL_A_RXFLOW_CTXOP attribute which may be
+set to
+
+  - ETHTOOL_RXFLOW_CTXOP_NEW when new context is allocated;
+    ETHTOOL_A_RXFLOW_CONTEXT then contains id of the newly allocated
+    context
+  - ETHTOOL_RXFLOW_CTXOP_DEL when a context is deleted;
+    ETHTOOL_A_RXFLOW_CONTEXT then contains id of the deleted context and
+    other attributes (except ETHTOOL_A_RXFLOW_DEV) are omitted
+
+The notification is also sent if related data is modified using the ioctl
+interface (ETHTOOL_SRSSH, ETHTOOL_SRXFH or ETHTOOL_SRXFHINDIR command).
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ Documentation/networking/ethtool-netlink.txt |  1 +
+ include/linux/ethtool_netlink.h              |  6 ++
+ include/uapi/linux/ethtool_netlink.h         |  1 +
+ net/ethtool/ioctl.c                          | 32 +++++++++-
+ net/ethtool/netlink.c                        |  1 +
+ net/ethtool/netlink.h                        |  2 +
+ net/ethtool/rxflow.c                         | 67 ++++++++++++++++++++
+ 7 files changed, 109 insertions(+), 1 deletion(-)
+
+diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
+index bd66ad2795cf..591cbf6eaded 100644
+--- a/Documentation/networking/ethtool-netlink.txt
++++ b/Documentation/networking/ethtool-netlink.txt
+@@ -175,6 +175,7 @@ Kernel to userspace:
+     ETHTOOL_MSG_RESET_NTF		device reset notification
+     ETHTOOL_MSG_RESET_ACT_REPLY		additional reply for RESET_ACT
+     ETHTOOL_MSG_RXFLOW_GET_REPLY	Rx flow parameters
++    ETHTOOL_MSG_RXFLOW_NTF		Rx flow parameters notification
+ 
+ "GET" requests are sent by userspace applications to retrieve device
+ information. They usually do not contain any message specific attributes.
+diff --git a/include/linux/ethtool_netlink.h b/include/linux/ethtool_netlink.h
+index e770e6e9acca..288e90f4dbb9 100644
+--- a/include/linux/ethtool_netlink.h
++++ b/include/linux/ethtool_netlink.h
+@@ -14,4 +14,10 @@ enum ethtool_multicast_groups {
+ 	ETHNL_MCGRP_MONITOR,
+ };
+ 
++struct ethtool_rxflow_notification_info {
++	u32	ctx_op;
++	u32	context;
++	u32	flow_type;
++};
++
+ #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
+diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
+index 45af68bcb71a..c9c5bd72411e 100644
+--- a/include/uapi/linux/ethtool_netlink.h
++++ b/include/uapi/linux/ethtool_netlink.h
+@@ -45,6 +45,7 @@ enum {
+ 	ETHTOOL_MSG_RESET_NTF,
+ 	ETHTOOL_MSG_RESET_ACT_REPLY,
+ 	ETHTOOL_MSG_RXFLOW_GET_REPLY,
++	ETHTOOL_MSG_RXFLOW_NTF,
+ 
+ 	/* add new constants above here */
+ 	__ETHTOOL_MSG_KERNEL_CNT,
+diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
+index aa96aae96e34..fe9773c71358 100644
+--- a/net/ethtool/ioctl.c
++++ b/net/ethtool/ioctl.c
+@@ -715,6 +715,7 @@ static noinline_for_stack int ethtool_get_sset_info(struct net_device *dev,
+ static noinline_for_stack int ethtool_set_rxnfc(struct net_device *dev,
+ 						u32 cmd, void __user *useraddr)
+ {
++	struct ethtool_rxflow_notification_info notify_info = {};
+ 	struct ethtool_rxnfc info;
+ 	size_t info_size = sizeof(info);
+ 	int rc;
+@@ -733,10 +734,16 @@ static noinline_for_stack int ethtool_set_rxnfc(struct net_device *dev,
+ 	if (copy_from_user(&info, useraddr, info_size))
+ 		return -EFAULT;
+ 
++	if ((cmd != ETHTOOL_SRXFH) && (info.flow_type & FLOW_RSS))
++		notify_info.context = info.rss_context;
++	notify_info.flow_type = info.flow_type;
+ 	rc = dev->ethtool_ops->set_rxnfc(dev, &info);
+ 	if (rc)
+ 		return rc;
+ 
++	if (cmd == ETHTOOL_SRXFH)
++		ethtool_notify(dev, NULL, ETHTOOL_MSG_RXFLOW_NTF,
++			       ETHTOOL_IM_RXFLOW_HASHOPTS, &notify_info);
+ 	if (cmd == ETHTOOL_SRXCLSRLINS &&
+ 	    copy_to_user(useraddr, &info, info_size))
+ 		return -EFAULT;
+@@ -941,6 +948,8 @@ static noinline_for_stack int ethtool_set_rxfh_indir(struct net_device *dev,
+ 	ret = ops->set_rxfh(dev, indir, NULL, ETH_RSS_HASH_NO_CHANGE);
+ 	if (ret)
+ 		goto out;
++	ethtool_notify(dev, NULL, ETHTOOL_MSG_RXFLOW_NTF,
++		       ETHTOOL_IM_RXFLOW_INDTBL, NULL);
+ 
+ 	/* indicate whether rxfh was set to default */
+ 	if (user_size == 0)
+@@ -1036,6 +1045,9 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+ 					       void __user *useraddr)
+ {
+ 	int ret;
++	struct ethtool_rxflow_notification_info notify_info = {
++		.ctx_op		= ETHTOOL_RXFLOW_CTXOP_SET,
++	};
+ 	const struct ethtool_ops *ops = dev->ethtool_ops;
+ 	struct ethtool_rxnfc rx_rings;
+ 	struct ethtool_rxfh rxfh;
+@@ -1045,6 +1057,7 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+ 	u8 *rss_config;
+ 	u32 rss_cfg_offset = offsetof(struct ethtool_rxfh, rss_config[0]);
+ 	bool delete = false;
++	u32 notify_mask = 0;
+ 
+ 	if (!ops->get_rxnfc || !ops->set_rxfh)
+ 		return -EOPNOTSUPP;
+@@ -1075,8 +1088,18 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+ 	     rxfh.key_size == 0 && rxfh.hfunc == ETH_RSS_HASH_NO_CHANGE))
+ 		return -EINVAL;
+ 
+-	if (rxfh.indir_size != ETH_RXFH_INDIR_NO_CHANGE)
++	if (rxfh.hfunc != ETH_RSS_HASH_NO_CHANGE)
++		notify_mask |= ETHTOOL_IM_RXFLOW_HASHFN;
++	if (rxfh.key_size)
++		notify_mask |= ETHTOOL_IM_RXFLOW_HKEY;
++	if (rxfh.indir_size != ETH_RXFH_INDIR_NO_CHANGE) {
+ 		indir_bytes = dev_indir_size * sizeof(indir[0]);
++		notify_mask |= ETHTOOL_IM_RXFLOW_INDTBL;
++	}
++	if (rxfh.rss_context == ETH_RXFH_CONTEXT_ALLOC)
++		notify_info.ctx_op = ETHTOOL_RXFLOW_CTXOP_NEW;
++	else
++		notify_info.context = rxfh.rss_context;
+ 
+ 	rss_config = kzalloc(indir_bytes + rxfh.key_size, GFP_USER);
+ 	if (!rss_config)
+@@ -1106,6 +1129,7 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+ 			for (i = 0; i < dev_indir_size; i++)
+ 				indir[i] = ethtool_rxfh_indir_default(i, rx_rings.data);
+ 		} else {
++			notify_info.ctx_op = ETHTOOL_RXFLOW_CTXOP_DEL;
+ 			delete = true;
+ 		}
+ 	}
+@@ -1127,6 +1151,12 @@ static noinline_for_stack int ethtool_set_rxfh(struct net_device *dev,
+ 		ret = ops->set_rxfh(dev, indir, hkey, rxfh.hfunc);
+ 	if (ret)
+ 		goto out;
++	if (notify_mask) {
++		if (notify_info.ctx_op == ETHTOOL_RXFLOW_CTXOP_NEW)
++			notify_info.context = rxfh.rss_context;
++		ethtool_notify(dev, NULL, ETHTOOL_MSG_RXFLOW_NTF, notify_mask,
++			       &notify_info);
++	}
+ 
+ 	if (copy_to_user(useraddr + offsetof(struct ethtool_rxfh, rss_context),
+ 			 &rxfh.rss_context, sizeof(rxfh.rss_context)))
+diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
+index f4dcad5f8c12..6d542739b7af 100644
+--- a/net/ethtool/netlink.c
++++ b/net/ethtool/netlink.c
+@@ -673,6 +673,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
+ 	[ETHTOOL_MSG_NWAYRST_NTF]	= ethnl_nwayrst_notify,
+ 	[ETHTOOL_MSG_PHYSID_NTF]	= ethnl_physid_notify,
+ 	[ETHTOOL_MSG_RESET_NTF]		= ethnl_reset_notify,
++	[ETHTOOL_MSG_RXFLOW_NTF]	= ethnl_rxflow_notify,
+ };
+ 
+ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
+diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
+index b596d34bbc46..f5d4e4e8d9f1 100644
+--- a/net/ethtool/netlink.h
++++ b/net/ethtool/netlink.h
+@@ -327,5 +327,7 @@ void ethnl_physid_notify(struct net_device *dev, struct netlink_ext_ack *extack,
+ 			 unsigned int cmd, u32 req_mask, const void *data);
+ void ethnl_reset_notify(struct net_device *dev, struct netlink_ext_ack *extack,
+ 			unsigned int cmd, u32 req_mask, const void *data);
++void ethnl_rxflow_notify(struct net_device *dev, struct netlink_ext_ack *extack,
++			 unsigned int cmd, u32 req_mask, const void *data);
+ 
+ #endif /* _NET_ETHTOOL_NETLINK_H */
+diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
+index 66bea4ac8d57..832219510617 100644
+--- a/net/ethtool/rxflow.c
++++ b/net/ethtool/rxflow.c
+@@ -446,3 +446,70 @@ const struct get_request_ops rxflow_request_ops = {
+ 	.fill_reply		= rxflow_fill,
+ 	.cleanup		= rxflow_cleanup,
+ };
++
++void ethnl_rxflow_notify(struct net_device *dev,
++			 struct netlink_ext_ack *extack, unsigned int cmd,
++			 u32 req_mask, const void *_data)
++{
++	const struct ethtool_rxflow_notification_info *ninfo = _data;
++	struct ethnl_req_info *req_info;
++	struct rxflow_data data = {};
++	struct sk_buff *skb;
++	void *msg_payload;
++	int msg_len;
++	int ret;
++
++	req_info = &data.reqinfo_base;
++	req_info->reply_data = &data.repdata_base;
++	req_info->dev = dev;
++	req_info->req_mask = req_mask;
++	req_info->global_flags = ETHTOOL_RF_COMPACT;
++	data.repdata_base.dev = dev;
++	if (ninfo) {
++		data.req_context = ninfo->context;
++		data.req_flow_type = ninfo->flow_type;
++	}
++
++	ret = rxflow_prepare(req_info, NULL);
++	if (ret < 0)
++		goto err_data;
++	msg_len = rxflow_size(req_info);
++	if (msg_len < 0)
++		goto err_data;
++	skb = genlmsg_new(msg_len, GFP_KERNEL);
++	if (!skb)
++		goto err_data;
++
++	msg_payload = ethnl_bcastmsg_put(skb, cmd);
++	if (!msg_payload)
++		goto nla_put_failure;
++	ret = ethnl_fill_reply_header(skb, dev, ETHTOOL_A_RXFLOW_HEADER);
++	if (ret < 0)
++		goto nla_put_failure;
++	if (ninfo) {
++		ret = -EMSGSIZE;
++		if (ninfo->ctx_op &&
++		    nla_put_u32(skb, ETHTOOL_A_RXFLOW_CTXOP, ninfo->ctx_op))
++			goto nla_put_failure;
++	}
++
++	if (ninfo && ninfo->ctx_op == ETHTOOL_RXFLOW_CTXOP_DEL) {
++		ret = -EMSGSIZE;
++		if (nla_put_u32(skb, ETHTOOL_A_RXFLOW_CONTEXT, ninfo->context))
++			goto nla_put_failure;
++	} else {
++		ret = rxflow_fill(skb, req_info);
++		if (ret < 0)
++			goto nla_put_failure;
++	}
++	rxflow_cleanup(req_info);
++	genlmsg_end(skb, msg_payload);
++
++	ethnl_multicast(skb, dev);
++	return;
++
++nla_put_failure:
++	nlmsg_free(skb);
++err_data:
++	rxflow_cleanup(req_info);
++}
+-- 
+2.22.0
+
