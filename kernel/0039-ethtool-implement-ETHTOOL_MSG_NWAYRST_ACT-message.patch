@@ -1,4 +1,4 @@
-From cd16c9b811e41c0cd912bb6a5e4367deae494515 Mon Sep 17 00:00:00 2001
+From cc6d00865f6d822f026bcece5e8726d956923f95 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 39/44] ethtool: implement ETHTOOL_MSG_NWAYRST_ACT message
@@ -232,7 +232,7 @@ index d50cf13e4457..0c2f854ad149 100644
  
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index b46eec06c28f..7d6e589d6a3d 100644
+index 96b8c5ee2d22..5ed7f2519743 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -259,13 +259,13 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,

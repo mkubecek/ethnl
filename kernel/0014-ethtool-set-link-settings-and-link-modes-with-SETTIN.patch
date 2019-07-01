@@ -1,4 +1,4 @@
-From fd795e807f5fc685d7f304fc016dcc51128f17b6 Mon Sep 17 00:00:00 2001
+From 99b6d6e2987346732343bdeb97e2cfc64e09250b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
 Subject: [PATCH 14/44] ethtool: set link settings and link modes with
@@ -24,7 +24,7 @@ ETHTOOL_A_SETTINGS_LINK_INFO nested attribute is used to set physical port,
 phy MDIO address and MDI(-X) control. An attempt to modify other attributes
 provided by corresponding GET request is rejected.
 
-When any data is modified, ETHTOOL_MSG_SETTINGS_NTF messsage in the same
+When any data is modified, ETHTOOL_MSG_SETTINGS_NTF message in the same
 format as a reply to GET request is sent to notify userspace about the
 changes. The same notification is also sent when these settings are
 modified using the ioctl interface.
@@ -36,8 +36,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/ioctl.c                          |  18 +-
  net/ethtool/netlink.c                        |  11 +
  net/ethtool/netlink.h                        |   2 +
- net/ethtool/settings.c                       | 329 +++++++++++++++++++
- 6 files changed, 392 insertions(+), 4 deletions(-)
+ net/ethtool/settings.c                       | 332 +++++++++++++++++++
+ 6 files changed, 395 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 1d803488e02c..05bc8f5f8654 100644
@@ -181,14 +181,14 @@ index ed53e07d619e..504ab2f7009c 100644
  
  static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index c7138481014d..aa0731c58aef 100644
+index c7138481014d..445fe8c2e314 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -591,6 +591,11 @@ static int ethnl_get_done(struct netlink_callback *cb)
  
  static const struct get_request_ops *ethnl_std_notify_to_ops(unsigned int cmd)
  {
-+	switch(cmd) {
++	switch (cmd) {
 +	case ETHTOOL_MSG_SETTINGS_NTF:
 +		return &settings_request_ops;
 +	};
@@ -228,7 +228,7 @@ index 6512d9d508bf..43fdf11cfc6d 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 1da8116e79ab..853eb20e429d 100644
+index 11ec30b9d48b..2fc961297076 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,99 @@ struct settings_data {
@@ -328,10 +328,10 @@ index 1da8116e79ab..853eb20e429d 100644
 +	__DEFINE_LINK_MODE_PARAMS(1000, T1, Full),
 +};
 +
- static const struct nla_policy settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
+ static const struct nla_policy
+ settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]	= { .type = NLA_REJECT },
- 	[ETHTOOL_A_SETTINGS_HEADER]	= { .type = NLA_NESTED },
-@@ -255,3 +348,239 @@ const struct get_request_ops settings_request_ops = {
+@@ -257,3 +350,242 @@ const struct get_request_ops settings_request_ops = {
  	.reply_size		= settings_size,
  	.fill_reply		= settings_fill,
  };
@@ -348,7 +348,8 @@ index 1da8116e79ab..853eb20e429d 100644
 +	[ETHTOOL_A_HEADER_RFLAGS]		= { .type = NLA_REJECT },
 +};
 +
-+static const struct nla_policy linkinfo_set_policy[ETHTOOL_A_LINKINFO_MAX + 1] = {
++static const struct nla_policy
++linkinfo_set_policy[ETHTOOL_A_LINKINFO_MAX + 1] = {
 +	[ETHTOOL_A_LINKINFO_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHTOOL_A_LINKINFO_PORT]		= { .type = NLA_U8 },
 +	[ETHTOOL_A_LINKINFO_PHYADDR]		= { .type = NLA_U8 },
@@ -357,7 +358,8 @@ index 1da8116e79ab..853eb20e429d 100644
 +	[ETHTOOL_A_LINKINFO_TRANSCEIVER]	= { .type = NLA_REJECT },
 +};
 +
-+static const struct nla_policy linkmodes_set_policy[ETHTOOL_A_LINKMODES_MAX + 1] = {
++static const struct nla_policy
++linkmodes_set_policy[ETHTOOL_A_LINKMODES_MAX + 1] = {
 +	[ETHTOOL_A_LINKMODES_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHTOOL_A_LINKMODES_AUTONEG]		= { .type = NLA_U8 },
 +	[ETHTOOL_A_LINKMODES_OURS]		= { .type = NLA_NESTED },
@@ -366,7 +368,8 @@ index 1da8116e79ab..853eb20e429d 100644
 +	[ETHTOOL_A_LINKMODES_DUPLEX]		= { .type = NLA_U8 },
 +};
 +
-+static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
++static const struct nla_policy
++settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
 +	[ETHTOOL_A_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
 +	[ETHTOOL_A_SETTINGS_HEADER]		= { .type = NLA_NESTED },
 +	[ETHTOOL_A_SETTINGS_LINK_INFO]		= { .type = NLA_NESTED },

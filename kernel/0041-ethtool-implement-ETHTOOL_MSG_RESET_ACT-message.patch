@@ -1,4 +1,4 @@
-From 64bba3ecafa61992d608f65fbc854461dc8f9418 Mon Sep 17 00:00:00 2001
+From b245f5376a1e9248a4c329a7046f3a0f1249e9d9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 41/44] ethtool: implement ETHTOOL_MSG_RESET_ACT message
@@ -442,7 +442,7 @@ index 4c4682ef5e08..aa96aae96e34 100644
  	if (copy_to_user(useraddr, &reset, sizeof(reset)))
  		return -EFAULT;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 78425d405e6d..a3eb27201aa3 100644
+index 85e4296ef02e..58204e850b7f 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -671,6 +671,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
@@ -494,7 +494,7 @@ index 44c592e84e95..9fdd30eeb1b1 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index b8b823646317..785354e03e15 100644
+index 665d527809eb..3eed797e3cfa 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -91,6 +91,12 @@ static const struct strset_info info_template[] = {

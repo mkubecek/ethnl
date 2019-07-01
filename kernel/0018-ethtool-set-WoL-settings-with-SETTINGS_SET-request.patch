@@ -1,4 +1,4 @@
-From 0c918268385e3c701d219a7ae5cc1b0a7a4beeed Mon Sep 17 00:00:00 2001
+From 3d6828447f7c36220d96555dfc2f2a6006e3beaf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:50:30 +0100
 Subject: [PATCH 18/44] ethtool: set WoL settings with SETTINGS_SET request
@@ -53,7 +53,7 @@ index 9929f574f590..6505e66ae9f4 100644
  ETHTOOL_SMSGLVL			n/a
  ETHTOOL_NWAY_RST		n/a
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 36888f5947ba..42552bb51504 100644
+index fd29d843b2d9..20242b0d5afc 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -109,6 +109,12 @@ static const struct link_mode_info link_mode_params[] = {
@@ -66,10 +66,10 @@ index 36888f5947ba..42552bb51504 100644
 + */
 +static u32 all_bits = ~(u32)0;
 +
- static const struct nla_policy settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
+ static const struct nla_policy
+ settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]	= { .type = NLA_REJECT },
- 	[ETHTOOL_A_SETTINGS_HEADER]	= { .type = NLA_NESTED },
-@@ -474,13 +480,21 @@ static const struct nla_policy linkmodes_set_policy[ETHTOOL_A_LINKMODES_MAX + 1]
+@@ -478,6 +484,14 @@ linkmodes_set_policy[ETHTOOL_A_LINKMODES_MAX + 1] = {
  	[ETHTOOL_A_LINKMODES_DUPLEX]		= { .type = NLA_U8 },
  };
  
@@ -81,9 +81,10 @@ index 36888f5947ba..42552bb51504 100644
 +					    .len = SOPASS_MAX },
 +};
 +
- static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
+ static const struct nla_policy
+ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
- 	[ETHTOOL_A_SETTINGS_HEADER]		= { .type = NLA_NESTED },
+@@ -485,7 +499,7 @@ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_LINK_INFO]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_MODES]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
@@ -92,7 +93,7 @@ index 36888f5947ba..42552bb51504 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -636,6 +650,42 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
+@@ -641,6 +655,42 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
  	return 0;
  }
  
@@ -135,7 +136,7 @@ index 36888f5947ba..42552bb51504 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
-@@ -669,6 +719,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -674,6 +724,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret < 0)
  			goto out_ops;
  	}

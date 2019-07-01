@@ -1,4 +1,4 @@
-From 81665dd2e7fc913520800f4517ccb6ed10cdfa2e Mon Sep 17 00:00:00 2001
+From 49b24100da9d36d8c533ab09cc52fa316d0e648a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
 Subject: [PATCH 07/44] ethtool: support for netlink notifications
@@ -15,7 +15,7 @@ requests only trigger a notification if some data is actually changed.
 To trigger an ethtool notification, both ethtool netlink and external code
 use ethtool_notify() helper. This helper requires RTNL to be held and may
 sleep. Handlers sending messages for specific notification message types
-are registed in ethnl_notify_handlers array. As notifications can be
+are registered in ethnl_notify_handlers array. As notifications can be
 triggered from other code, ethnl_ok flag is used to prevent an attempt to
 send notification before genetlink family is registered.
 

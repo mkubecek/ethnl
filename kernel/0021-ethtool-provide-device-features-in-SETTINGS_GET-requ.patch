@@ -1,4 +1,4 @@
-From 740893b5559c123af86cdc6a4b9378cd5e523c6e Mon Sep 17 00:00:00 2001
+From 17d6d8a9c4a22801093209d848e69b74eaf7bb27 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 21/44] ethtool: provide device features in SETTINGS_GET
@@ -197,7 +197,7 @@ index 2f345eb7b694..16482a266eec 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index aa0731c58aef..7fffcfed7d83 100644
+index 445fe8c2e314..6a0d80e142d2 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -682,6 +682,30 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
@@ -243,7 +243,7 @@ index aa0731c58aef..7fffcfed7d83 100644
  
  subsys_initcall(ethnl_init);
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index a4a876268e0b..215751f59f1d 100644
+index 484ce8f4f4bf..f85451aba649 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,12 @@ struct settings_data {
@@ -259,7 +259,7 @@ index a4a876268e0b..215751f59f1d 100644
  	bool				lpm_empty;
  };
  
-@@ -124,6 +130,7 @@ static const struct nla_policy settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -125,6 +131,7 @@ settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_LINK_STATE]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_WOL]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_DEBUG]	= { .type = NLA_REJECT },
@@ -267,7 +267,7 @@ index a4a876268e0b..215751f59f1d 100644
  };
  
  static int ethnl_get_link_ksettings(struct genl_info *info,
-@@ -149,6 +156,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
+@@ -150,6 +157,24 @@ static int ethnl_get_wol(struct genl_info *info, struct net_device *dev,
  	return ret;
  }
  
@@ -292,7 +292,7 @@ index a4a876268e0b..215751f59f1d 100644
  /* prepare_data() handler */
  static int settings_prepare(struct ethnl_req_info *req_info,
  			    struct genl_info *info)
-@@ -198,6 +223,8 @@ static int settings_prepare(struct ethnl_req_info *req_info,
+@@ -199,6 +224,8 @@ static int settings_prepare(struct ethnl_req_info *req_info,
  		else
  			req_mask &= ~ETHTOOL_IM_SETTINGS_DEBUG;
  	}
@@ -301,7 +301,7 @@ index a4a876268e0b..215751f59f1d 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -266,6 +293,39 @@ static int settings_debug_size(void)
+@@ -267,6 +294,39 @@ static int settings_debug_size(void)
  	return nla_total_size(nla_total_size(sizeof(struct nla_bitfield32)));
  }
  
@@ -341,7 +341,7 @@ index a4a876268e0b..215751f59f1d 100644
  /* reply_size() handler
   *
   * To keep things simple, reserve space for some attributes which may not
-@@ -295,6 +355,12 @@ static int settings_size(const struct ethnl_req_info *req_info)
+@@ -296,6 +356,12 @@ static int settings_size(const struct ethnl_req_info *req_info)
  		len += settings_wol_size();
  	if (info_mask & ETHTOOL_IM_SETTINGS_DEBUG)
  		len += settings_debug_size();
@@ -354,7 +354,7 @@ index a4a876268e0b..215751f59f1d 100644
  
  	return len;
  }
-@@ -432,6 +498,46 @@ static int settings_fill_debug(struct sk_buff *skb, u32 msglevel)
+@@ -434,6 +500,46 @@ static int settings_fill_debug(struct sk_buff *skb, u32 msglevel)
  	return -EMSGSIZE;
  }
  
@@ -401,7 +401,7 @@ index a4a876268e0b..215751f59f1d 100644
  /* fill_reply() handler */
  static int settings_fill(struct sk_buff *skb,
  			 const struct ethnl_req_info *req_info)
-@@ -469,6 +575,11 @@ static int settings_fill(struct sk_buff *skb,
+@@ -471,6 +577,11 @@ static int settings_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -413,7 +413,7 @@ index a4a876268e0b..215751f59f1d 100644
  
  	return 0;
  }
-@@ -541,6 +652,7 @@ static const struct nla_policy settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] =
+@@ -546,6 +657,7 @@ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },

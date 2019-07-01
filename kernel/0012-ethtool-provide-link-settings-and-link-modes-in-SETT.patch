@@ -1,4 +1,4 @@
-From 07952594dade438c16972f9966d096cbf644f62d Mon Sep 17 00:00:00 2001
+From 7b7e34e2eec188280cbe4dabede3f3b7b1297775 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 12/44] ethtool: provide link settings and link modes in
@@ -32,8 +32,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/ioctl.c                          |  48 ----
  net/ethtool/netlink.c                        |   8 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/settings.c                       | 257 +++++++++++++++++++
- 10 files changed, 417 insertions(+), 51 deletions(-)
+ net/ethtool/settings.c                       | 259 +++++++++++++++++++
+ 10 files changed, 419 insertions(+), 51 deletions(-)
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -385,10 +385,10 @@ index d85b1edc1b91..27832a3956c8 100644
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
-index 000000000000..1da8116e79ab
+index 000000000000..11ec30b9d48b
 --- /dev/null
 +++ b/net/ethtool/settings.c
-@@ -0,0 +1,257 @@
+@@ -0,0 +1,259 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include "netlink.h"
@@ -405,7 +405,8 @@ index 000000000000..1da8116e79ab
 +	bool				lpm_empty;
 +};
 +
-+static const struct nla_policy settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
++static const struct nla_policy
++settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
 +	[ETHTOOL_A_SETTINGS_UNSPEC]	= { .type = NLA_REJECT },
 +	[ETHTOOL_A_SETTINGS_HEADER]	= { .type = NLA_NESTED },
 +	[ETHTOOL_A_SETTINGS_LINK_INFO]	= { .type = NLA_REJECT },
@@ -537,7 +538,7 @@ index 000000000000..1da8116e79ab
 +}
 +
 +static int settings_fill_linkinfo(struct sk_buff *skb,
-+			  const struct ethtool_link_settings *lsettings)
++				  const struct ethtool_link_settings *lsettings)
 +{
 +	struct nlattr *nest;
 +
@@ -562,9 +563,10 @@ index 000000000000..1da8116e79ab
 +	return 0;
 +}
 +
-+static int settings_fill_linkmodes(struct sk_buff *skb,
-+			   const struct ethtool_link_ksettings *ksettings,
-+			   bool lpm_empty, bool compact)
++static int
++settings_fill_linkmodes(struct sk_buff *skb,
++			const struct ethtool_link_ksettings *ksettings,
++			bool lpm_empty, bool compact)
 +{
 +	const u32 *supported = (const u32 *)ksettings->link_modes.supported;
 +	const u32 *advertising = (const u32 *)ksettings->link_modes.advertising;

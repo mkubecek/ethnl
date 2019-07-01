@@ -1,4 +1,4 @@
-From 32da95b2ce9a6158d2d28fc68c5ca1e12cef3da1 Mon Sep 17 00:00:00 2001
+From cb81c0bda91cdfd634e62415993fe282df6c8939 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 44/44] ethtool: implement RXFLOW_SET request
@@ -130,7 +130,7 @@ index c9c5bd72411e..8b9aee940ca2 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index c4592782e444..d602c31520c9 100644
+index e02c99bf6ee8..6ba80517f7f4 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -779,6 +779,11 @@ static const struct genl_ops ethtool_genl_ops[] = {

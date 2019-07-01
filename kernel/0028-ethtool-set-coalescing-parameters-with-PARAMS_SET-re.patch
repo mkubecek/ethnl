@@ -1,4 +1,4 @@
-From d39fc98a8e196c057fcbab7f6dd1503eec66e579 Mon Sep 17 00:00:00 2001
+From 03adc32a91b08cd8b3d3637b49d3571a387f4955 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 21:27:19 +0100
 Subject: [PATCH 28/44] ethtool: set coalescing parameters with PARAMS_SET
@@ -138,11 +138,11 @@ index ac779fd6e40e..d414d79a55cf 100644
  
  static int ethtool_get_ringparam(struct net_device *dev, void __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 05aff6cbc056..b46eec06c28f 100644
+index c2db64e0e415..96b8c5ee2d22 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -596,6 +596,8 @@ static const struct get_request_ops *ethnl_std_notify_to_ops(unsigned int cmd)
- 	switch(cmd) {
+ 	switch (cmd) {
  	case ETHTOOL_MSG_SETTINGS_NTF:
  		return &settings_request_ops;
 +	case ETHTOOL_MSG_PARAMS_NTF:

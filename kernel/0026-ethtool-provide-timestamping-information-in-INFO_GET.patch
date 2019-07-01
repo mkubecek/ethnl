@@ -1,4 +1,4 @@
-From d362d3fdb2d23578f3b360209ec64124828e76ca Mon Sep 17 00:00:00 2001
+From c2ac1a4d3f3547405f4f4f8c5914a1aeadd1ed75 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
 Subject: [PATCH 26/44] ethtool: provide timestamping information in INFO_GET
@@ -491,7 +491,7 @@ index 10d75fca5056..dc41095f71ca 100644
  
  int ethnl_parse_header(struct ethnl_req_info *req_info,
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index 45ab4d540ce4..b8b823646317 100644
+index 58fe650a816e..665d527809eb 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -73,6 +73,24 @@ static const struct strset_info info_template[] = {

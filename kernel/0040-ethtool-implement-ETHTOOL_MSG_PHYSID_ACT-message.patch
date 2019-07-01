@@ -1,4 +1,4 @@
-From d290aeeb75d68b4e98b1fc09ef682c1342fd4e5a Mon Sep 17 00:00:00 2001
+From 8d981d712a3af8f895aac7c10ca8f6a61c611e55 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 40/44] ethtool: implement ETHTOOL_MSG_PHYSID_ACT message
@@ -372,7 +372,7 @@ index 0c2f854ad149..4c4682ef5e08 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 7d6e589d6a3d..78425d405e6d 100644
+index 5ed7f2519743..85e4296ef02e 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -670,6 +670,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
