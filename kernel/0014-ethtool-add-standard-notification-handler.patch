@@ -1,12 +1,12 @@
-From 15ce0c52a0267693dc21086a4653581e91849213 Mon Sep 17 00:00:00 2001
+From 23436c8f44860e343dfd1f8b6db5ef9786ee83bb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 29 Jun 2019 19:54:07 +0200
 Subject: [PATCH 14/44] ethtool: add standard notification handler
 
 The ethtool netlink notifications have the same format as related GET
 replies so that if generic GET handling framework is used to process GET
-requests, its callbacks and instance of struct get_request_ops can be used
-to compose corresponding notification message.
+requests, its callbacks and instance of struct get_request_ops can be
+also used to compose corresponding notification message.
 
 Provide function ethnl_std_notify() to be used as notification handler in
 ethnl_notify_handlers table.

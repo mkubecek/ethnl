@@ -1,22 +1,24 @@
-From 68257e21bf91c276f7d0a2d8fe26d18dd78deb76 Mon Sep 17 00:00:00 2001
+From c74782c7701facf6518a43c0341b8a733654bf20 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 05/44] ethtool: introduce ethtool netlink interface
 
 Basic genetlink and init infrastructure for the netlink interface, register
-genetlink family "ethtool". Introduce CONFIG_ETHTOOL_NETLINK Kconfig
-option. Add interface description into Documentation/networking.
+genetlink family "ethtool". Add CONFIG_ETHTOOL_NETLINK Kconfig option to
+make the build optional. Add initial overall interface description into
+Documentation/networking/ethtool-netlink.txt, further patches will add more
+detailed information.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 216 +++++++++++++++++++
+ Documentation/networking/ethtool-netlink.txt | 208 +++++++++++++++++++
  include/linux/ethtool_netlink.h              |   9 +
  include/uapi/linux/ethtool_netlink.h         |  36 ++++
  net/Kconfig                                  |   8 +
  net/ethtool/Makefile                         |   6 +-
  net/ethtool/netlink.c                        |  33 +++
  net/ethtool/netlink.h                        |  10 +
- 7 files changed, 317 insertions(+), 1 deletion(-)
+ 7 files changed, 309 insertions(+), 1 deletion(-)
  create mode 100644 Documentation/networking/ethtool-netlink.txt
  create mode 100644 include/linux/ethtool_netlink.h
  create mode 100644 include/uapi/linux/ethtool_netlink.h
@@ -25,10 +27,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 new file mode 100644
-index 000000000000..fe56060d4536
+index 000000000000..97c369aa290b
 --- /dev/null
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -0,0 +1,216 @@
+@@ -0,0 +1,208 @@
 +                        Netlink interface for ethtool
 +                        =============================
 +
@@ -144,14 +146,6 @@ index 000000000000..fe56060d4536
 +information is reported by kernel (as requested by ETHTOOL_RF_REPLY flag in
 +request header), the reply takes form of an "ACT_REPLY" message. Performing an
 +action also triggers a notification ("NTF" message).
-+
-+Messages of type "get" are used by userspace to request information and
-+usually do not contain any attributes (that may be added later for dump
-+filtering). Kernel response is in the form of corresponding "set" message;
-+the same message can be also used to set (some of) the parameters, except for
-+messages marked as "response only" in the table above. "Get" messages with
-+NLM_F_DUMP flags and no device identification dump the information for all
-+devices supporting the request.
 +
 +Later sections describe the format and semantics of these messages.
 +

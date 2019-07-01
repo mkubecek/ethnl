@@ -1,16 +1,25 @@
-From ee0fde837c9c513ca54b3bdaaddc25d24a0b99ba Mon Sep 17 00:00:00 2001
+From c7f123a57d28def45480e2fd450caae6f1aee1a6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 13/44] ethtool: provide link settings and link modes in
  SETTINGS_GET request
 
 Implement SETTINGS_GET netlink request to get link settings and link mode
-information provided by ETHTOOL_GLINKSETTINGS ioctl command.
+information provided by ETHTOOL_GLINKSETTINGS and ETHTOOL_GSET ioctl
+commands.
 
 The information in SETTINGS_GET_REPLY message sent as reply is divided into
-two parts: autonegotiation, speed, duplex and supported, advertised and
-peer advertised link modes when ETHTOOL_IM_SETTINGS_LINKMODES flag is set
-in the request and other settings when ETHTOOL_IM_SETTINGS_LINKINFO is set.
+two parts and client can use info mask in request header to select only
+one of them:
+
+  - ETHTOOL_IM_SETTINGS_LINKINFO: physical port, phy MDIO address, MDI(-X)
+    status, MDI(-X) control and transceiver
+  - ETHTOOL_IM_SETTINGS_LINKMODES: supported and advertised link modes,
+    autonegotiation state, link speed and duplex
+
+SETTINGS_GET request can be used with NLM_F_DUMP (and without device
+identification) to request the information for all devices in current
+network namespace providing the data.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -28,7 +37,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index cdb48b43e04a..cfeaa27dfec9 100644
+index 21e5030734aa..1d803488e02c 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -151,10 +151,12 @@ according to message purpose:

@@ -1,4 +1,4 @@
-From 4351c91c9a7869098da3740e2cd291a2bafeb96c Mon Sep 17 00:00:00 2001
+From a19744ddef3e66f8bf9049f9e9601b3bf0699e0c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 42/44] ethtool: implement RXFLOW_GET request
@@ -26,7 +26,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/rxflow.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index ee4430a7d8cf..bd66ad2795cf 100644
+index 39b556878d6a..49df427aad0a 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -159,6 +159,7 @@ Userspace to kernel:

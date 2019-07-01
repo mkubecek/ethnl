@@ -1,4 +1,4 @@
-From 551461faadfdb9cddf5db1926a52f26e67c21e1f Mon Sep 17 00:00:00 2001
+From b2dc2ec867d1e490d8ebdb033b7a991bcd6e001b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 44/44] ethtool: implement RXFLOW_SET request
@@ -25,7 +25,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 701 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 591cbf6eaded..609654d1159a 100644
+index 277d6f3ab946..ef52d3fa09b6 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -160,6 +160,7 @@ Userspace to kernel:

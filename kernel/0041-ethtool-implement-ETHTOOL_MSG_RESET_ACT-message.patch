@@ -1,4 +1,4 @@
-From a6c86bdb1eeec976caed345f88328b4bd6eb7754 Mon Sep 17 00:00:00 2001
+From cba7db2586b1e0fad4e1bfcd5b6badf6e15467ab Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 41/44] ethtool: implement ETHTOOL_MSG_RESET_ACT message
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 319 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index a1bd046677d9..ee4430a7d8cf 100644
+index fe98d39eddc9..39b556878d6a 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -158,6 +158,7 @@ Userspace to kernel:

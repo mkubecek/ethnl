@@ -1,4 +1,4 @@
-From 9b2377fd85dab1ef910346d50184ca4218c53018 Mon Sep 17 00:00:00 2001
+From b691490a689c8c4cc045a8a4abe94b52b536ae47 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 10/44] ethtool: generic handlers for GET requests
@@ -8,7 +8,7 @@ types but unfortunately it cannot be easily separated from type specific
 code as we need to alternate between common actions (parsing common request
 header, allocating message and filling netlink/genetlink headers etc.) and
 specific actions (querying the device, composing the reply). The processing
-alao happens in three different situations: "do" request, "dump" request
+also happens in three different situations: "do" request, "dump" request
 and notification, each doing things in slightly different way.
 
 The request specific code is implemented in four or five callbacks defined

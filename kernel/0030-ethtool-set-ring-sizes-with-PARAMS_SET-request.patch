@@ -1,4 +1,4 @@
-From 4ae424faccb7b384fcb940b9c67e1be7343af2f5 Mon Sep 17 00:00:00 2001
+From ddb5ecb8cc3c99c6e782d50dd33963a136b39bec Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 07:53:54 +0100
 Subject: [PATCH 30/44] ethtool: set ring sizes with PARAMS_SET request
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 91 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 04ec3f1913d4..5a44166e9a58 100644
+index 73c78182bc7b..835723706a7d 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -494,8 +494,10 @@ PARAMS_SET

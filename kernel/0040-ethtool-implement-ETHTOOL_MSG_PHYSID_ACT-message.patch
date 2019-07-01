@@ -1,4 +1,4 @@
-From b39c82b8b84745d495ec6fd8d99227725958b0c4 Mon Sep 17 00:00:00 2001
+From 785ed30bdede789997f10f699b35ceb8bc441647 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 40/44] ethtool: implement ETHTOOL_MSG_PHYSID_ACT message
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 204 insertions(+), 47 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 5532b39445f4..a1bd046677d9 100644
+index 701b13be3f2e..fe98d39eddc9 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -157,6 +157,7 @@ Userspace to kernel:

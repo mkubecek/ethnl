@@ -1,4 +1,4 @@
-From 6aa45115e477a488aea1174bc6830a990a9883d8 Mon Sep 17 00:00:00 2001
+From 5be6fd7ec08d8322e4e683663135592fa0115bcf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:43:01 +0100
 Subject: [PATCH 35/44] ethtool: provide EEE settings in PARAMS_GET request
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 136 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 8bc261b765cb..5275805e9877 100644
+index fcc536a05c60..da04d6428db5 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -436,9 +436,9 @@ PARAMS_GET

@@ -1,10 +1,32 @@
-From abb8af78383c0b976bd81db8c4b35f0e9c7eac0a Mon Sep 17 00:00:00 2001
+From afa5795cad85358a6cbfb5205a098f5609262fb9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 07/44] ethtool: netlink bitset handling
 
-Declare attribute type constants and add helper functions to generate and
-parse arbitrary length bit sets.
+The ethtool netlink code uses common framework for passing arbitrary
+length bit sets to allow future extensions. A bitset can be a list (only
+one bitmap) or can consist of value and mask pair (used e.g. when client
+want to modify only some bits). A bitset can use one of two formats:
+verbose (bit by bit) or compact.
+
+Verbose format consists of bitset size (number of bits), list flag and
+an array of bit nests, telling which bits are part of the list or which
+bits are in the mask and which of them are to be set. In requests, bits
+can be identified by index (position) or by name. In replies, kernel
+provides both index and name. Verbose format is suitable for "one shot"
+applications like standard ethtool command as it avoids the need to
+either keep bit names (e.g. link modes) in sync with kernel or having to
+add an extra roundtrip for string set request (e.g. for private flags).
+
+Compact format uses one (list) or two (value/mask) arrays of 32-bit
+words to store the bitmap(s). It is more suitable for long running
+applications (ethtool in monitor mode or network management daemons)
+which can retrieve the names once and then pass only compact bitmaps to
+save space.
+
+Userspace requests can use either format and ETHTOOL_RF_COMPACT flag in
+request header tells kernel which format to use in reply. Notifications
+always use compact format.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -19,7 +41,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/bitset.h
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index fe56060d4536..75781a7dfa2a 100644
+index 97c369aa290b..4636682c551f 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -73,6 +73,67 @@ set, the behaviour is the same as (or closer to) the behaviour before it was
@@ -65,7 +87,7 @@ index fe56060d4536..75781a7dfa2a 100644
 +    ETHTOOL_A_BITSET_BIT	(nested)	array of bits
 +	ETHTOOL_A_BITSET_BIT+   (nested)	one bit
 +	    ETHTOOL_A_BIT_INDEX	(u32)		bit index (0 for LSB)
-+            ETHTOOL_A_BIT_NAME	(string)	bit name
++	    ETHTOOL_A_BIT_NAME	(string)	bit name
 +	    ETHTOOL_A_BIT_VALUE	(flag)		present if bit is set
 +
 +Bit size is optional for bit-by-bit form. ETHTOOL_A_BITSET_BITS nest can only

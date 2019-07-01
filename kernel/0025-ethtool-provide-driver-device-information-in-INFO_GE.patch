@@ -1,4 +1,4 @@
-From 067a1c32031ea7237ef038e8704721dec1640f6d Mon Sep 17 00:00:00 2001
+From 7a9dd94209765025030246543f172b85330275dd Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 25/44] ethtool: provide driver/device information in INFO_GET
@@ -26,7 +26,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/info.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index d63923f1e533..5f4462785eca 100644
+index 8a492a727cc2..3c97a69bb49f 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -153,6 +153,7 @@ Userspace to kernel:

@@ -1,15 +1,15 @@
-From 168f185018bedf401a3665ab03861869aed52abd Mon Sep 17 00:00:00 2001
+From 932877a232f0e92f9c5ffbea90e9bc54ce6efb6c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:26:45 +0100
 Subject: [PATCH 16/44] ethtool: provide link state in SETTINGS_GET request
 
 Add information about device link state (as provided by ETHTOOL_GLINK ioctl
 command) into the SETTINGS_GET reply when ETHTOOL_IM_SETTINGS_LINKSTATE
-flag is set in the request.
+bit is set in the request info mask.
 
-Note: we cannot use NLA_FLAG for link state as we need three states: off,
-on and unknown. The attribute is also encapsulated in a nest to allow
-future extensions.
+We cannot use NLA_FLAG for link state as we need three states: off, on and
+unknown. The attribute is encapsulated in a nest to allow future extensions
+(e.g. link down reason or more detailed link state information).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -22,7 +22,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 69 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index da459bc21f7c..5d0828902f98 100644
+index 05bc8f5f8654..dc06e33329a4 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -250,6 +250,7 @@ Info mask bits meaning:

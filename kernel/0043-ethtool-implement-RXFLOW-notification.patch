@@ -1,4 +1,4 @@
-From 3f35157af815acc9c6a558b6544c9de473b68795 Mon Sep 17 00:00:00 2001
+From 9a76c2327385f339f40d462720e7b40eec1d5c1d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
 Subject: [PATCH 43/44] ethtool: implement RXFLOW notification
@@ -29,7 +29,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  7 files changed, 109 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index bd66ad2795cf..591cbf6eaded 100644
+index 49df427aad0a..277d6f3ab946 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -175,6 +175,7 @@ Kernel to userspace:

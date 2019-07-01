@@ -1,16 +1,23 @@
-From 3d95b928a5a02f68b6a9b8519ebc8431bc847d37 Mon Sep 17 00:00:00 2001
+From d10a79213d9e9b80c2ca95b08fad3d73d87ef59d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
 Subject: [PATCH 08/44] ethtool: support for netlink notifications
 
 Add infrastructure for ethtool netlink notifications. There is only one
-multicast group "monitor" which is used to notify userspace about changes.
+multicast group "monitor" which is used to notify userspace about changes
+and actions performed. Notification messages (types using suffix _NTF)
+share the format with replies to GET requests.
+
 Notifications are supposed to be broadcasted on every configuration change,
-whether it is done using the netlink interface or legacy ioctl one.
+whether it is done using the netlink interface or ioctl one. Netlink SET
+requests only trigger a notification if some data is actually changed.
 
 To trigger an ethtool notification, both ethtool netlink and external code
 use ethtool_notify() helper. This helper requires RTNL to be held and may
-sleep.
+sleep. Handlers sending messages for specific notification message types
+are registed in ethnl_notify_handlers array. As notifications can be
+triggered from other code, ethnl_ok flag is used to prevent an attempt to
+send notification before genetlink family is registered.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---

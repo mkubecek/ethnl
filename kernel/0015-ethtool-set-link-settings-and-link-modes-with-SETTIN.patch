@@ -1,20 +1,33 @@
-From 3febc526c30f67c5b89d6231b9cffb6ad6901336 Mon Sep 17 00:00:00 2001
+From f9814559f863407ec7bdf1eb7bc1e59c00a0b46f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
 Subject: [PATCH 15/44] ethtool: set link settings and link modes with
  SETTINGS_SET request
 
 Implement SETTINGS_SET netlink request allowing to set link settings and
-advertised link modes as an alternative to ETHTOOL_SLINKSETTINGS ioctl
-command.
+advertised link modes as an alternative to ETHTOOL_SLINKSETTINGS and
+ETHTOOL_SSET ioctl commands.
 
-ETHTOOL_A_SETTINGS_LINK_MODES attribute is used to set (or modify)
+Only values which are intended to be set are to be included in the request.
+Omitted attributes will be left at current values.
+
+ETHTOOL_A_SETTINGS_LINK_MODES nested attribute is used to set (or modify)
 advertised link modes and related settings (autonegotiation, speed and
-duplex) and ETHTOOL_A_SETTINGS_LINK_INFO to set other link settings.
+duplex). Kernel implements logic which was already partially implemented in
+ethtool for ioctl interface: if autonegotiation is on (either it was on
+already or the request turns it on), no link mode change is requested (no
+ETHTOOL_A_LINKMODES_OURS attribute) and speed or duplex are provided,
+advertised link modes are set to supported modes matching requested speed
+and/or duplex.
+
+ETHTOOL_A_SETTINGS_LINK_INFO nested attribute is used to set physical port,
+phy MDIO address and MDI(-X) control. An attempt to modify other attributes
+provided by corresponding GET request is rejected.
 
 When any data is modified, ETHTOOL_MSG_SETTINGS_NTF messsage in the same
 format as a reply to GET request is sent to notify userspace about the
-changes.
+changes. The same notification is also sent when these settings are
+modified using the ioctl interface.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -27,7 +40,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 392 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index cfeaa27dfec9..da459bc21f7c 100644
+index 1d803488e02c..05bc8f5f8654 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -152,11 +152,13 @@ Userspace to kernel:

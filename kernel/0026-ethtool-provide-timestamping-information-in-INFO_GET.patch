@@ -1,4 +1,4 @@
-From 2ff1deb22b92d938b0ce5340dd97fe9a544a27b6 Mon Sep 17 00:00:00 2001
+From acbbc3c7bf807692d0c0ac613dd66590839b6d6a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
 Subject: [PATCH 26/44] ethtool: provide timestamping information in INFO_GET
@@ -27,7 +27,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  10 files changed, 245 insertions(+), 21 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 5f4462785eca..559f439c02d3 100644
+index 3c97a69bb49f..1ba89f087fcb 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -399,6 +399,7 @@ Request contents:

@@ -1,4 +1,4 @@
-From e322203fd49d6dfbf536e1f60b619fee04410ae0 Mon Sep 17 00:00:00 2001
+From 499f4ca9a5fdbb1469a269c5bc2978305023afd5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 21:27:19 +0100
 Subject: [PATCH 28/44] ethtool: set coalescing parameters with PARAMS_SET
@@ -24,7 +24,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 240 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index c074e99f3d3d..d3dd849b2460 100644
+index 7b576489556d..1265492977b8 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -155,6 +155,7 @@ Userspace to kernel:

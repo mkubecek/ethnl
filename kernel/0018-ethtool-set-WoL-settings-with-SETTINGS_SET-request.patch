@@ -1,4 +1,4 @@
-From f2fd8e737206b63f20c44336e7d08043bc82d992 Mon Sep 17 00:00:00 2001
+From 5df47d68b420831b1c7875564611e6d8a41e5517 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:50:30 +0100
 Subject: [PATCH 18/44] ethtool: set WoL settings with SETTINGS_SET request
@@ -16,7 +16,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 70 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index b3176c3c7a8f..eb333aa7f37d 100644
+index 9929f574f590..6505e66ae9f4 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -308,6 +308,9 @@ to be passed with SETTINGS_SET request:

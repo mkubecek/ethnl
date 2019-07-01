@@ -1,4 +1,4 @@
-From e47fa0042baaadcbc3fe9226a5a034e767757dda Mon Sep 17 00:00:00 2001
+From 7d7ae38cedc403270605126766ee9bfd9da6db42 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:36:43 +0100
 Subject: [PATCH 34/44] ethtool: set channel counts with PARAMS_SET request
@@ -17,7 +17,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 165 insertions(+), 63 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 96f03da583de..8bc261b765cb 100644
+index f2b2f36b6aa0..fcc536a05c60 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -510,10 +510,11 @@ PARAMS_SET

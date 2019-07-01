@@ -1,4 +1,4 @@
-From b48d0bec056728b3c07e6c4b2a54b2617b7a0a21 Mon Sep 17 00:00:00 2001
+From a1d6348fbbd1af25b3a277330742c69de56cfc23 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 16:19:21 +0100
 Subject: [PATCH 23/44] ethtool: provide private flags in SETTINGS_GET request
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 114 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 253631ce645e..f616e66c21ef 100644
+index 35ea19b9baea..966c25a258af 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -255,6 +255,7 @@ Info mask bits meaning:
