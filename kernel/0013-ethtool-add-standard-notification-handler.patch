@@ -1,4 +1,4 @@
-From 59a1d4aae65c4e1b66dbca0eb8ab637611f6efb5 Mon Sep 17 00:00:00 2001
+From 7a8643988ae81a4604703d5865b10ffbb5fc9b26 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 29 Jun 2019 19:54:07 +0200
 Subject: [PATCH 13/44] ethtool: add standard notification handler
@@ -18,7 +18,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 76 insertions(+), 1 deletion(-)
 
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 236993bd68b6..f42c9c46e1a1 100644
+index 3e7a9a5047e7..c7138481014d 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -7,6 +7,7 @@
@@ -47,7 +47,7 @@ index 236993bd68b6..f42c9c46e1a1 100644
 +
  /* GET request helpers */
  
- const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
+ static const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
 @@ -576,6 +589,67 @@ static int ethnl_get_done(struct netlink_callback *cb)
  	return 0;
  }

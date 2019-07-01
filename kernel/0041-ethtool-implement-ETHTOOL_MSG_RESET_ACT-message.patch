@@ -1,4 +1,4 @@
-From a1dd09926ef76dd18ad2817ccd5d24dea3dd5d5a Mon Sep 17 00:00:00 2001
+From 64bba3ecafa61992d608f65fbc854461dc8f9418 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 41/44] ethtool: implement ETHTOOL_MSG_RESET_ACT message
@@ -442,7 +442,7 @@ index 4c4682ef5e08..aa96aae96e34 100644
  	if (copy_to_user(useraddr, &reset, sizeof(reset)))
  		return -EFAULT;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 220ba1f581a8..c9decca333a2 100644
+index 78425d405e6d..a3eb27201aa3 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -671,6 +671,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {

@@ -1,4 +1,4 @@
-From 7d9007bdbd50f2bec5ba4703666127549095175f Mon Sep 17 00:00:00 2001
+From 07952594dade438c16972f9966d096cbf644f62d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 12/44] ethtool: provide link settings and link modes in
@@ -347,12 +347,12 @@ index b35366dd9997..ed53e07d619e 100644
   * set. legacy_settings always updated (best effort)
   */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index c9aaa244957e..236993bd68b6 100644
+index 073ca9eb5013..3e7a9a5047e7 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -262,6 +262,7 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  
- const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
+ static const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
  	[ETHTOOL_MSG_STRSET_GET]	= &strset_request_ops,
 +	[ETHTOOL_MSG_SETTINGS_GET]	= &settings_request_ops,
  };

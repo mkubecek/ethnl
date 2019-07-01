@@ -1,4 +1,4 @@
-From 656fdc061e581032b38a794d7cc4e82a3b1b0b5c Mon Sep 17 00:00:00 2001
+From 740893b5559c123af86cdc6a4b9378cd5e523c6e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 21/44] ethtool: provide device features in SETTINGS_GET
@@ -197,7 +197,7 @@ index 2f345eb7b694..16482a266eec 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 4be0ba809641..f8d73dcd927c 100644
+index aa0731c58aef..7fffcfed7d83 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -682,6 +682,30 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,

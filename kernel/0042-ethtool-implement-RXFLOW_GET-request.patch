@@ -1,4 +1,4 @@
-From 835105ca80e9ea179a58e0e628468a319c0212f7 Mon Sep 17 00:00:00 2001
+From 9096cd8d0c0fda474cd692444fcda75412f4547a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 42/44] ethtool: implement RXFLOW_GET request
@@ -336,10 +336,10 @@ index ca21edc7995f..632ab622e863 100644
 -		   actions.o
 +		   actions.o rxflow.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index c9decca333a2..f4dcad5f8c12 100644
+index a3eb27201aa3..ae816553173d 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -278,6 +278,7 @@ const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
+@@ -278,6 +278,7 @@ static const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
  	[ETHTOOL_MSG_SETTINGS_GET]	= &settings_request_ops,
  	[ETHTOOL_MSG_INFO_GET]		= &info_request_ops,
  	[ETHTOOL_MSG_PARAMS_GET]	= &params_request_ops,

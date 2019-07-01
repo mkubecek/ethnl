@@ -1,4 +1,4 @@
-From 5f9c3d3053e4f9c5d150573135476dcba7438f52 Mon Sep 17 00:00:00 2001
+From fd795e807f5fc685d7f304fc016dcc51128f17b6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
 Subject: [PATCH 14/44] ethtool: set link settings and link modes with
@@ -181,7 +181,7 @@ index ed53e07d619e..504ab2f7009c 100644
  
  static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index f42c9c46e1a1..4be0ba809641 100644
+index c7138481014d..aa0731c58aef 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -591,6 +591,11 @@ static int ethnl_get_done(struct netlink_callback *cb)
