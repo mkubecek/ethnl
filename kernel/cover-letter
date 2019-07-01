@@ -1,22 +1,24 @@
 This is first part of netlink based alternative userspace interface for
-ethtool. The aim is to address some long known issues with the ioctl
+ethtool. It aims to address some long known issues with the ioctl
 interface, mainly lack of extensibility, raciness, limited error reporting
 and absence of notifications. The goal is to allow userspace ethtool
 utility to provide all features it currently does but without using the
-ioctl interface.
+ioctl interface. However, some features provided by ethtool ioctl API will
+be available through other netlink interfaces (rtnetlink, devlink) if it's
+more appropriate.
 
-The interface uses generic netlink family "ethtool"; it provides multicast
+The interface uses generic netlink family "ethtool" and provides multicast
 group "monitor" which is used for notifications. Documentation for the
 interface is in Documentation/networking/ethtool-netlink.txt file. The
 netlink interface is optional, it is built when CONFIG_ETHTOOL_NETLINK
 (bool) option is enabled.
 
-There are three types of requests distinguished by prefix "GET" (query for
-information), "SET" (modify parameters) and "ACT" (perform an action). The
-GET_* and SET_* messages are paired even if the data they deal with is read
-only because SET_* message is also used for reply to corresponding GET_*
-message. Notifications on parameter changes are also sent as SET_* messages
-in the same format as reply to corresponding GET request.
+There are three types of request messages distinguished by suffix "_GET"
+(query for information), "_SET" (modify parameters) and "_ACT" (perform an
+action). Kernel reply messages have name with additional suffix "_REPLY"
+(e.g. ETHTOOL_MSG_SETTINGS_GET_REPLY). Most "_SET" and "_ACT" message types
+do not have matching reply type as only some of them need additional reply
+data beyond numeric error code and extack.
 
 Basic concepts:
 
@@ -26,17 +28,17 @@ Basic concepts:
   strings
 - use extack for error reporting and warnings
 - send netlink notifications on changes (even if they were done using the
-  ioctl interfaces)
+  ioctl interface) and actions
 - avoid the racy read/modify/write cycle between kernel and userspace by
   sending only attributes which userspace wants to change; there is still
   a read/modify/write cycle between generic kernel code and ethtool_ops
   handler in NIC driver but it is only in kernel and under a lock
-- reduce the number of value lists that need to be kept in sync between
+- reduce the number of name lists that need to be kept in sync between
   kernel and userspace (e.g. recognized link modes)
 - where feasible, allow dump requests to query specific information for all
   network devices
 - as the lack of extensibility of the ioctl interface led to having too
-  many commands, group some of these together to one netlink message but
+  many commands, group some of them together to one netlink message but
   allow querying only part(s) of the information (using "info mask" bitmap)
   and modifying only some of the parameters (by providing only some
   attributes)
@@ -48,6 +50,26 @@ Basic concepts:
 
 The full (work in progress) series, together with the (userspace) ethtool
 counterpart can be found at https://github.com/mkubecek/ethnl
+
+Main changes between v5 and v6:
+
+- use ETHTOOL_MSG_ prefix for message types
+- replace ETHA_ prefix for netlink attributes by ETHTOOL_A_
+- replace ETH_x_IM_y for infomask bits by ETHTOOL_IM_x_y
+- split GET reply types from SET requests and notifications
+- split kernel and userspace message types into different enums
+- remove INFO_GET requests from submitted part
+- drop EVENT notifications (use rtnetlink and on-demand string set load)
+- reorganize patches to reduce the number of intermitent warnings
+- unify request/reply header and its processing
+- another nest around strings in a string set for consistency
+- more consistent identifier naming
+- coding style cleanup
+- get rid of some of the helpers
+- set bad attribute in extack where applicable
+- various bug fixes
+- improve documentation and code comments, more kerneldoc comments
+- more verbose commit messages
 
 Changes between v4 and v5:
 
@@ -83,29 +105,3 @@ Main changes between RFC v1 and RFC v2:
 - get rid of family specific header, everything passed as attributes
 - split netlink code into multiple files in net/ethtool/ directory
 
-ToDo / open questions:
-
-- some features provided by ethtool would rather belong to devlink (and
-  some are already superseded by devlink); however, only few drivers
-  provide devlink interface at the moment and as recent discussion on
-  flashing revealed, we cannot rely on devlink's presence
-
-- while the netlink interface allows easy future extensions, ethtool_ops
-  interface does not; some settings could be implemented using tunables and
-  accessed via relevant netlink messages (as well as tunables) from
-  userspace but in the long term, something better will be needed
-
-- currently, all communication with drivers via ethtool_ops is done
-  under RTNL as this is what ioctl interface does and likely many
-  ethtool_ops handlers rely on that; if we are going to rework ethtool_ops
-  in the future ("phase two"), it would be nice to get rid of it
-
-- ethtool_ops should pass extack pointer to allow drivers more meaningful
-  error reporting; it's not clear, however, how to pass information about
-  offending attribute
-
-- notifications are sent whenever a change is done via netlink API or
-  ioctl API and for netdev features also whenever they are updated using
-  netdev_change_features(); it would be desirable to notify also about
-  link state and negotiation result (speed/duplex and partner link
-  modes) but it would be more tricky
