@@ -1,4 +1,4 @@
-From 5df47d68b420831b1c7875564611e6d8a41e5517 Mon Sep 17 00:00:00 2001
+From 4d095e7f95b8d9a71116fcea4289351d71d05e2e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:50:30 +0100
 Subject: [PATCH 18/44] ethtool: set WoL settings with SETTINGS_SET request

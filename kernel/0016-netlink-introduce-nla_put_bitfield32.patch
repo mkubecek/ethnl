@@ -1,7 +1,7 @@
-From c5a48c30136bad256be6c2063733248e082b10a7 Mon Sep 17 00:00:00 2001
+From e7e8519cba7501e6327ecbdfc02eac6445ea3f11 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 14:17:36 +0100
-Subject: [PATCH 02/44] netlink: introduce nla_put_bitfield32()
+Subject: [PATCH 16/44] netlink: introduce nla_put_bitfield32()
 
 Similar to other data types, this helper puts NLA_BITFIELD32 attribute into
 a netlink message. It takes separate value and selector arguments, if there
@@ -13,7 +13,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  1 file changed, 15 insertions(+)
 
 diff --git a/include/net/netlink.h b/include/net/netlink.h
-index e4650e5b64a1..518d130c649f 100644
+index edb36bf29261..2971af63575b 100644
 --- a/include/net/netlink.h
 +++ b/include/net/netlink.h
 @@ -1466,6 +1466,21 @@ static inline int nla_put_in6_addr(struct sk_buff *skb, int attrtype,

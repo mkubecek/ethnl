@@ -1,4 +1,4 @@
-From cba7db2586b1e0fad4e1bfcd5b6badf6e15467ab Mon Sep 17 00:00:00 2001
+From a1dd09926ef76dd18ad2817ccd5d24dea3dd5d5a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 41/44] ethtool: implement ETHTOOL_MSG_RESET_ACT message

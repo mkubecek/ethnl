@@ -1,7 +1,7 @@
-From b691490a689c8c4cc045a8a4abe94b52b536ae47 Mon Sep 17 00:00:00 2001
+From 96ce72ff161f99c6f374b0a12725b71d3dfaa4d6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
-Subject: [PATCH 10/44] ethtool: generic handlers for GET requests
+Subject: [PATCH 09/44] ethtool: generic handlers for GET requests
 
 Significant part of GET request processing is common for most request
 types but unfortunately it cannot be easily separated from type specific

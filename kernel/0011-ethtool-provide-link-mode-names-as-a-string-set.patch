@@ -1,7 +1,7 @@
-From 396664730db6addf50b988ecf773fb8d4ed7e285 Mon Sep 17 00:00:00 2001
+From fe98b1dc0bf578c9b067235c8068a7bbd1d1c6b5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:50:07 +0100
-Subject: [PATCH 12/44] ethtool: provide link mode names as a string set
+Subject: [PATCH 11/44] ethtool: provide link mode names as a string set
 
 Unlike e.g. netdev features, the ethtool ioctl interface requires link mode
 table to be in sync between kernel and userspace for userspace to be able

@@ -1,7 +1,7 @@
-From 932877a232f0e92f9c5ffbea90e9bc54ce6efb6c Mon Sep 17 00:00:00 2001
+From ef0bfc107ae9854c580886a64c184ae496ad3c97 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:26:45 +0100
-Subject: [PATCH 16/44] ethtool: provide link state in SETTINGS_GET request
+Subject: [PATCH 15/44] ethtool: provide link state in SETTINGS_GET request
 
 Add information about device link state (as provided by ETHTOOL_GLINK ioctl
 command) into the SETTINGS_GET reply when ETHTOOL_IM_SETTINGS_LINKSTATE

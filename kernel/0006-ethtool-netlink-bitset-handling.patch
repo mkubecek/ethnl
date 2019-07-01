@@ -1,7 +1,7 @@
-From afa5795cad85358a6cbfb5205a098f5609262fb9 Mon Sep 17 00:00:00 2001
+From 1e55e3187008be7a5585fc6e1c642e09f8f24d25 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
-Subject: [PATCH 07/44] ethtool: netlink bitset handling
+Subject: [PATCH 06/44] ethtool: netlink bitset handling
 
 The ethtool netlink code uses common framework for passing arbitrary
 length bit sets to allow future extensions. A bitset can be a list (only
