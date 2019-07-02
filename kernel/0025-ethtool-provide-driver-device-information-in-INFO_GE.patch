@@ -1,4 +1,4 @@
-From 80b3df51f0f1eee45f1e7715c4bc3c1f5b1bd15a Mon Sep 17 00:00:00 2001
+From 1f332c2613a28793c723075139042ceac70efc70 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 25/44] ethtool: provide driver/device information in INFO_GET
@@ -464,18 +464,18 @@ index 5c2e810bc886..edc4f60f7013 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 6a0d80e142d2..4a7d565e6f35 100644
+index 1366a6e94b3f..bc7ee6806769 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -276,6 +276,7 @@ static int ethnl_multicast(struct sk_buff *skb, struct net_device *dev)
+@@ -294,6 +294,7 @@ struct ethnl_dump_ctx {
  static const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
  	[ETHTOOL_MSG_STRSET_GET]	= &strset_request_ops,
  	[ETHTOOL_MSG_SETTINGS_GET]	= &settings_request_ops,
 +	[ETHTOOL_MSG_INFO_GET]		= &info_request_ops,
  };
  
- /**
-@@ -728,6 +729,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+ static struct ethnl_dump_ctx *ethnl_dump_context(struct netlink_callback *cb)
+@@ -749,6 +750,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_settings,
  	},

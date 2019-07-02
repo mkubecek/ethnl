@@ -1,4 +1,4 @@
-From 5c57c7f419bdce9a912a6931ed2ac0066d07f4e8 Mon Sep 17 00:00:00 2001
+From 3f67fddcf3e34271120c3c1b97ad21d5af596f96 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:56:10 +0100
 Subject: [PATCH 38/44] ethtool: set FEC parameters with PARAMS_SET request

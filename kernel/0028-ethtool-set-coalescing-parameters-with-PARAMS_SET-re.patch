@@ -1,4 +1,4 @@
-From 03adc32a91b08cd8b3d3637b49d3571a387f4955 Mon Sep 17 00:00:00 2001
+From e40c1b01913412c1903d9678b813b7bd081682f2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 21:27:19 +0100
 Subject: [PATCH 28/44] ethtool: set coalescing parameters with PARAMS_SET
@@ -138,10 +138,10 @@ index ac779fd6e40e..d414d79a55cf 100644
  
  static int ethtool_get_ringparam(struct net_device *dev, void __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index c2db64e0e415..96b8c5ee2d22 100644
+index 498fecc1eb13..1664912dd94f 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -596,6 +596,8 @@ static const struct get_request_ops *ethnl_std_notify_to_ops(unsigned int cmd)
+@@ -617,6 +617,8 @@ static const struct get_request_ops *ethnl_std_notify_to_ops(unsigned int cmd)
  	switch (cmd) {
  	case ETHTOOL_MSG_SETTINGS_NTF:
  		return &settings_request_ops;
@@ -150,7 +150,7 @@ index c2db64e0e415..96b8c5ee2d22 100644
  	};
  
  	WARN_ONCE(1, "unexpected notification type %u\n", cmd);
-@@ -666,6 +668,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -687,6 +689,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  
  static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHTOOL_MSG_SETTINGS_NTF]	= ethnl_std_notify,
@@ -158,7 +158,7 @@ index c2db64e0e415..96b8c5ee2d22 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -744,6 +747,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -765,6 +768,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},

@@ -1,4 +1,4 @@
-From f4c285a2f828936dfefc553c18727af63de29467 Mon Sep 17 00:00:00 2001
+From b6e0aefbcb58297b3ec0a12ee4be8e5194eee61a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 6 Mar 2019 08:20:31 +0100
 Subject: [PATCH 01/44] rtnetlink: provide permanent hardware address in

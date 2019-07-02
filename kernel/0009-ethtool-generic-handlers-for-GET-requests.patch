@@ -1,4 +1,4 @@
-From 4c9bfeaf9b5024c1174585f4d2eef926f10c2fff Mon Sep 17 00:00:00 2001
+From 5f271a3d374561d25d0e338e7386dc144fbdd715 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 09/44] ethtool: generic handlers for GET requests
@@ -28,22 +28,45 @@ handler will be introduced in a later patch.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- net/ethtool/netlink.c | 316 ++++++++++++++++++++++++++++++++++++++++++
- net/ethtool/netlink.h | 128 +++++++++++++++++
- 2 files changed, 444 insertions(+)
+ net/ethtool/netlink.c | 337 ++++++++++++++++++++++++++++++++++++++++++
+ net/ethtool/netlink.h | 128 ++++++++++++++++
+ 2 files changed, 465 insertions(+)
 
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index a7a0bfe1818c..31777d6a33d6 100644
+index a7a0bfe1818c..6d326cc25aac 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -178,6 +178,322 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -178,6 +178,343 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  	return NULL;
  }
  
 +/* GET request helpers */
 +
++/**
++ * struct ethnl_dump_ctx - context structure for generic dumpit() callback
++ * @ops:      request ops of currently processed message type
++ * @req_info: parsed request header of processed request
++ * @pos_hash: saved iteration position - hashbucket
++ * @pos_idx:  saved iteration position - index
++ *
++ * These parameters are kept in struct netlink_callback as context preserved
++ * between iterations. They are initialized by ethnl_get_start() and used in
++ * ethnl_get_dumpit() and ethnl_get_done().
++ */
++struct ethnl_dump_ctx {
++	const struct get_request_ops	*ops;
++	struct ethnl_req_info		*req_info;
++	int				pos_hash;
++	int				pos_idx;
++};
++
 +static const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
 +};
++
++static struct ethnl_dump_ctx *ethnl_dump_context(struct netlink_callback *cb)
++{
++	return (struct ethnl_dump_ctx *)cb->ctx;
++}
 +
 +/**
 + * ethnl_alloc_get_data() - Allocate and initialize data for a GET request
@@ -254,28 +277,21 @@ index a7a0bfe1818c..31777d6a33d6 100644
 +
 +/* generic ->dumpit() handler for GET requests; device iteration copied from
 + * rtnl_dump_ifinfo()
-+ * cb->args[0]: pointer to struct get_request_ops
-+ * cb->args[1]: pointer to request data
-+ * cb->args[2]: iteration position - hashbucket
-+ * cb->args[3]: iteration position - ifindex
 + */
 +static int ethnl_get_dumpit(struct sk_buff *skb, struct netlink_callback *cb)
 +{
++	struct ethnl_dump_ctx *ctx = ethnl_dump_context(cb);
++	struct ethnl_req_info *req_info = ctx->req_info;
++	const struct get_request_ops *ops = ctx->ops;
 +	struct net *net = sock_net(skb->sk);
-+	struct ethnl_req_info *req_info;
-+	const struct get_request_ops *ops;
-+	int h, s_h, idx = 0, s_idx;
++	int s_idx = ctx->pos_idx;
 +	struct hlist_head *head;
 +	struct net_device *dev;
++	int h, idx = 0;
 +	int ret = 0;
 +	void *ehdr;
 +
-+	ops = (const struct get_request_ops *)cb->args[0];
-+	req_info = (struct ethnl_req_info *)cb->args[1];
-+	s_h = cb->args[2];
-+	s_idx = cb->args[3];
-+
-+	for (h = s_h; h < NETDEV_HASHENTRIES; h++, s_idx = 0) {
++	for (h = ctx->pos_hash; h < NETDEV_HASHENTRIES; h++, s_idx = 0) {
 +		idx = 0;
 +		head = &net->dev_index_head[h];
 +		hlist_for_each_entry(dev, head, index_hlist) {
@@ -302,8 +318,8 @@ index a7a0bfe1818c..31777d6a33d6 100644
 +out:
 +	ret = skb->len;
 +out_err:
-+	cb->args[2] = h;
-+	cb->args[3] = idx;
++	ctx->pos_hash = h;
++	ctx->pos_idx = idx;
 +	cb->seq = net->dev_base_seq;
 +	nl_dump_check_consistent(cb, nlmsg_hdr(skb));
 +
@@ -313,10 +329,13 @@ index a7a0bfe1818c..31777d6a33d6 100644
 +/* generic ->start() handler for GET requests */
 +static int ethnl_get_start(struct netlink_callback *cb)
 +{
++	struct ethnl_dump_ctx *ctx = ethnl_dump_context(cb);
 +	const struct get_request_ops *ops;
 +	struct ethnl_req_info *req_info;
 +	struct genlmsghdr *ghdr;
 +	int ret;
++
++	BUILD_BUG_ON(sizeof(*ctx) > sizeof(cb->ctx));
 +
 +	ghdr = nlmsg_data(cb->nlh);
 +	ops = get_requests[ghdr->cmd];
@@ -340,10 +359,10 @@ index a7a0bfe1818c..31777d6a33d6 100644
 +		return ret;
 +	req_info->privileged = ethnl_is_privileged(cb->skb);
 +
-+	cb->args[0] = (long)ops;
-+	cb->args[1] = (long)req_info;
-+	cb->args[2] = 0;
-+	cb->args[3] = 0;
++	ctx->ops = ops;
++	ctx->req_info = req_info;
++	ctx->pos_hash = 0;
++	ctx->pos_idx = 0;
 +
 +	return 0;
 +}
@@ -351,7 +370,9 @@ index a7a0bfe1818c..31777d6a33d6 100644
 +/* generic ->done() handler for GET requests */
 +static int ethnl_get_done(struct netlink_callback *cb)
 +{
-+	kfree((struct ethnl_req_info *)cb->args[1]);
++	struct ethnl_dump_ctx *ctx = ethnl_dump_context(cb);
++
++	kfree(ctx->req_info);
 +
 +	return 0;
 +}
