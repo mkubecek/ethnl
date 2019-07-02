@@ -1,4 +1,4 @@
-From 3f67fddcf3e34271120c3c1b97ad21d5af596f96 Mon Sep 17 00:00:00 2001
+From ce9ca36f523b26d353a25085e466c98dca66f7f1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:56:10 +0100
 Subject: [PATCH 38/44] ethtool: set FEC parameters with PARAMS_SET request
@@ -49,10 +49,10 @@ index 29e8731d1f9f..b100ac728afc 100644
 -ETHTOOL_SFECPARAM		n/a
 +ETHTOOL_SFECPARAM		ETHTOOL_MSG_PARAMS_SET
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 9ceeb2b0202d..fcaec3370050 100644
+index 779295c44660..95278783c793 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -476,7 +476,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+@@ -475,7 +475,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_CHANNELS]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_EEE]			= { .type = NLA_NESTED },
@@ -61,7 +61,7 @@ index 9ceeb2b0202d..fcaec3370050 100644
  };
  
  static const struct nla_policy params_hdr_policy[ETHTOOL_A_HEADER_MAX + 1] = {
-@@ -879,6 +879,50 @@ static int params_update_eee(struct genl_info *info, struct net_device *dev,
+@@ -878,6 +878,50 @@ static int params_update_eee(struct genl_info *info, struct net_device *dev,
  	return (ret < 0) ? ret : 1;
  }
  
@@ -112,7 +112,7 @@ index 9ceeb2b0202d..fcaec3370050 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
-@@ -927,6 +971,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+@@ -926,6 +970,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
  		req_mask |= ETHTOOL_IM_PARAMS_EEE;

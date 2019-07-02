@@ -1,4 +1,4 @@
-From 301c18500855208009c81adad1cfec884a128ac5 Mon Sep 17 00:00:00 2001
+From 9d73ea0a7cbbc0e0f8138e22ef2f431586ac380f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:36:43 +0100
 Subject: [PATCH 34/44] ethtool: set channel counts with PARAMS_SET request
@@ -235,7 +235,7 @@ index e726c8eb5582..0ce138478786 100644
  		ethtool_notify(dev, NULL, ETHTOOL_MSG_PARAMS_NTF,
  			       ETHTOOL_IM_PARAMS_CHANNELS, NULL);
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 14e3823014ad..d07a0b128fe9 100644
+index ed887013f0a7..d2668c7754ba 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -1,6 +1,7 @@
@@ -246,7 +246,7 @@ index 14e3823014ad..d07a0b128fe9 100644
  
  static const struct nla_policy params_get_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_UNSPEC]		= { .type = NLA_REJECT },
-@@ -331,7 +332,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+@@ -330,7 +331,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_NESTED },
@@ -255,7 +255,7 @@ index 14e3823014ad..d07a0b128fe9 100644
  };
  
  static const struct nla_policy params_hdr_policy[ETHTOOL_A_HEADER_MAX + 1] = {
-@@ -595,6 +596,84 @@ static int params_update_pause(struct genl_info *info, struct net_device *dev,
+@@ -594,6 +595,84 @@ static int params_update_pause(struct genl_info *info, struct net_device *dev,
  	return (ret < 0) ? ret : 1;
  }
  
@@ -340,7 +340,7 @@ index 14e3823014ad..d07a0b128fe9 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
-@@ -633,6 +712,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+@@ -632,6 +711,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
  		req_mask |= ETHTOOL_IM_PARAMS_PAUSE;

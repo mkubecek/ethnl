@@ -1,4 +1,4 @@
-From ce32a8ec59e7759d7271760b15a0777f66e3bd83 Mon Sep 17 00:00:00 2001
+From c793756d1c4a7eca0471f83765227d26186594a4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 44/44] ethtool: implement RXFLOW_SET request
@@ -158,10 +158,10 @@ index f5d4e4e8d9f1..9555d1d20a52 100644
  int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_reset(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index 832219510617..d194b66dac0f 100644
+index e75008ef6614..1a195246bf1e 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
-@@ -513,3 +513,652 @@ void ethnl_rxflow_notify(struct net_device *dev,
+@@ -512,3 +512,652 @@ void ethnl_rxflow_notify(struct net_device *dev,
  err_data:
  	rxflow_cleanup(req_info);
  }

@@ -1,4 +1,4 @@
-From dc40375699aa155ebf134b387c150c8dda9080ca Mon Sep 17 00:00:00 2001
+From 1d89819515cab38cc02c7ce415d5c39c0df4e858 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 10/44] ethtool: provide string sets with STRSET_GET request
@@ -27,8 +27,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/netlink.c                        |   8 +
  net/ethtool/netlink.h                        |   4 +
- net/ethtool/strset.c                         | 454 +++++++++++++++++++
- 7 files changed, 584 insertions(+), 3 deletions(-)
+ net/ethtool/strset.c                         | 453 +++++++++++++++++++
+ 7 files changed, 583 insertions(+), 3 deletions(-)
  create mode 100644 net/ethtool/strset.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -269,10 +269,10 @@ index 6a9695c3b0c6..2352fd9c17c3 100644
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
 new file mode 100644
-index 000000000000..e3c3ea77b056
+index 000000000000..fd7229379158
 --- /dev/null
 +++ b/net/ethtool/strset.c
-@@ -0,0 +1,454 @@
+@@ -0,0 +1,453 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include <linux/ethtool.h>
@@ -531,8 +531,7 @@ index 000000000000..e3c3ea77b056
 +			if ((data->req_ids & (1U << i)) &&
 +			    data->info[i].per_dev) {
 +				if (info)
-+					GENL_SET_ERR_MSG(info,
-+							 "requested per device strings without dev");
++					GENL_SET_ERR_MSG(info, "requested per device strings without dev");
 +				return -EINVAL;
 +			}
 +		}

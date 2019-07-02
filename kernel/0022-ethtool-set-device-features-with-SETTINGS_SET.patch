@@ -1,4 +1,4 @@
-From 1407ea7fb9236e09de01bd926a0c325c49d1be34 Mon Sep 17 00:00:00 2001
+From ca7df3c2da2db85724616e13a37a9d304f8190ec Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 22/44] ethtool: set device features with SETTINGS_SET
@@ -17,8 +17,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  35 ++--
  include/uapi/linux/ethtool_netlink.h         |   1 +
- net/ethtool/settings.c                       | 159 ++++++++++++++++++-
- 3 files changed, 185 insertions(+), 10 deletions(-)
+ net/ethtool/settings.c                       | 158 ++++++++++++++++++-
+ 3 files changed, 184 insertions(+), 10 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index f2b0eeaf6461..35ea19b9baea 100644
@@ -123,7 +123,7 @@ index 0875c5d88410..ce8e9d6a4718 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index f85451aba649..487ddc3e1dde 100644
+index f85451aba649..4b06f824540e 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -648,6 +648,15 @@ static const struct nla_policy debug_set_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
@@ -151,7 +151,7 @@ index f85451aba649..487ddc3e1dde 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -878,12 +887,151 @@ static int settings_update_debug(struct genl_info *info, struct nlattr *nest,
+@@ -878,12 +887,150 @@ static int settings_update_debug(struct genl_info *info, struct nlattr *nest,
  	return ret;
  }
  
@@ -218,8 +218,7 @@ index f85451aba649..487ddc3e1dde 100644
 +	if (ret < 0)
 +		return ret;
 +	if (features_from_bitmap(req_mask) & ~NETIF_F_ETHTOOL_BITS) {
-+		GENL_SET_ERR_MSG(info,
-+				 "attempt to change non-ethtool features");
++		GENL_SET_ERR_MSG(info, "attempt to change non-ethtool features");
 +		return -EINVAL;
 +	}
 +	if (!mod)
@@ -303,7 +302,7 @@ index f85451aba649..487ddc3e1dde 100644
  	int ret;
  
  	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb,
-@@ -927,6 +1075,15 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -927,6 +1074,15 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret)
  			req_mask |= ETHTOOL_IM_SETTINGS_DEBUG;
  	}

@@ -1,4 +1,4 @@
-From 3388d0b9e24024b1b59bc96e0b1a2300d0e40632 Mon Sep 17 00:00:00 2001
+From 789a7d69de1f3f08428cb52ee740a28655444154 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 41/44] ethtool: implement ETHTOOL_MSG_RESET_ACT message
@@ -494,7 +494,7 @@ index 44c592e84e95..9fdd30eeb1b1 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index 665d527809eb..3eed797e3cfa 100644
+index 52bab3301bac..3713bd309a66 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -91,6 +91,12 @@ static const struct strset_info info_template[] = {

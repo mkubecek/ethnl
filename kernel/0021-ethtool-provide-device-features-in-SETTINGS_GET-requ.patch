@@ -1,4 +1,4 @@
-From 3a0d4478fef1598c393c4ba9ba171f3109dd8386 Mon Sep 17 00:00:00 2001
+From f310cdae9f4799dbd418d7900c6b94d7bb80afc4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 21/44] ethtool: provide device features in SETTINGS_GET

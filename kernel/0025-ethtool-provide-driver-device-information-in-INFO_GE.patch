@@ -1,4 +1,4 @@
-From 1f332c2613a28793c723075139042ceac70efc70 Mon Sep 17 00:00:00 2001
+From 8afd4ff9ff4d3a804e0ddddae0179215a5611a7e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 25/44] ethtool: provide driver/device information in INFO_GET
@@ -18,11 +18,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/common.c                         |  52 +++++++
  net/ethtool/common.h                         |   1 +
- net/ethtool/info.c                           | 152 +++++++++++++++++++
+ net/ethtool/info.c                           | 151 +++++++++++++++++++
  net/ethtool/ioctl.c                          |  50 +-----
  net/ethtool/netlink.c                        |   8 +
  net/ethtool/netlink.h                        |   1 +
- 9 files changed, 290 insertions(+), 47 deletions(-)
+ 9 files changed, 289 insertions(+), 47 deletions(-)
  create mode 100644 net/ethtool/info.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -243,10 +243,10 @@ index 5f512dbbded5..fa878fff1564 100644
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
 new file mode 100644
-index 000000000000..99c81c949434
+index 000000000000..63f64506f8a5
 --- /dev/null
 +++ b/net/ethtool/info.c
-@@ -0,0 +1,152 @@
+@@ -0,0 +1,151 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include "netlink.h"
@@ -299,8 +299,7 @@ index 000000000000..99c81c949434
 +
 +	data->repdata_base.info_mask = req_mask;
 +	if (req_info->req_mask & ~req_mask && info)
-+		GENL_SET_ERR_MSG(info,
-+				 "not all requested data could be retrieved");
++		GENL_SET_ERR_MSG(info, "not all requested data could be retrieved");
 +	return 0;
 +}
 +

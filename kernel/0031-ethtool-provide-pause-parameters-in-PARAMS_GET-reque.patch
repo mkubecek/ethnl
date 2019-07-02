@@ -1,4 +1,4 @@
-From 9d595f538b8c1b73ad5917b38edef767c623584f Mon Sep 17 00:00:00 2001
+From 562cf2347ea9d265169829778857122d12bbbb3e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:02:27 +0100
 Subject: [PATCH 31/44] ethtool: provide pause parameters in PARAMS_GET request
@@ -132,7 +132,7 @@ index e57585e724f5..7727768929ac 100644
  
  static int ethtool_self_test(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 85778482ffd4..66f95e2a16a4 100644
+index 17e3a8ff3e94..63142d910aeb 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -7,6 +7,7 @@ static const struct nla_policy params_get_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
@@ -179,7 +179,7 @@ index 85778482ffd4..66f95e2a16a4 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -77,6 +93,11 @@ static int params_ring_size(void)
+@@ -76,6 +92,11 @@ static int params_ring_size(void)
  	return nla_total_size(8 * nla_total_size(sizeof(u32)));
  }
  
@@ -191,7 +191,7 @@ index 85778482ffd4..66f95e2a16a4 100644
  static int params_size(const struct ethnl_req_info *req_info)
  {
  	struct params_data *data =
-@@ -89,6 +110,8 @@ static int params_size(const struct ethnl_req_info *req_info)
+@@ -88,6 +109,8 @@ static int params_size(const struct ethnl_req_info *req_info)
  		len += params_coalesce_size();
  	if (info_mask & ETHTOOL_IM_PARAMS_RING)
  		len += params_ring_size();
@@ -200,7 +200,7 @@ index 85778482ffd4..66f95e2a16a4 100644
  
  	return len;
  }
-@@ -184,6 +207,25 @@ static int params_fill_ring(struct sk_buff *skb, struct ethtool_ringparam *data)
+@@ -183,6 +206,25 @@ static int params_fill_ring(struct sk_buff *skb, struct ethtool_ringparam *data)
  	return 0;
  }
  
@@ -226,7 +226,7 @@ index 85778482ffd4..66f95e2a16a4 100644
  static int params_fill(struct sk_buff *skb,
  		       const struct ethnl_req_info *req_info)
  {
-@@ -202,6 +244,11 @@ static int params_fill(struct sk_buff *skb,
+@@ -201,6 +243,11 @@ static int params_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -238,7 +238,7 @@ index 85778482ffd4..66f95e2a16a4 100644
  
  	return 0;
  }
-@@ -229,6 +276,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+@@ -228,6 +275,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_HEADER]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_COALESCE]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_NESTED },

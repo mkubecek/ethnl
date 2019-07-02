@@ -1,4 +1,4 @@
-From 992ed15ad4841220ef492ef20fc015080852d88f Mon Sep 17 00:00:00 2001
+From ce3a28d37e0e617140e118489d48696fab739bf8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 13 May 2018 02:35:53 +0200
 Subject: [PATCH 03/44] ethtool: move to its own directory
@@ -9,6 +9,8 @@ net/ethtool. Start by moving current ethtool.c with ioctl interface into
 this directory and renaming it to ioctl.c.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+Acked-by: Jiri Pirko <jiri@mellanox.com>
+Reviewed-by: Florian Fainelli <f.fainelli@gmail.com>
 ---
  net/Makefile                            | 2 +-
  net/core/Makefile                       | 2 +-

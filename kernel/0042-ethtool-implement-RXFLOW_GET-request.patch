@@ -1,4 +1,4 @@
-From 56a7bccfe6da30432fce6f5688e1f46ced919185 Mon Sep 17 00:00:00 2001
+From ae619203a5b1170b77d87e85af5749eaa2ec2d70 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 42/44] ethtool: implement RXFLOW_GET request
@@ -21,8 +21,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/netlink.c                        |   8 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/rxflow.c                         | 448 +++++++++++++++++++
- 6 files changed, 684 insertions(+), 4 deletions(-)
+ net/ethtool/rxflow.c                         | 447 +++++++++++++++++++
+ 6 files changed, 683 insertions(+), 4 deletions(-)
  create mode 100644 net/ethtool/rxflow.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -375,10 +375,10 @@ index 9fdd30eeb1b1..b596d34bbc46 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
 new file mode 100644
-index 000000000000..66bea4ac8d57
+index 000000000000..489eaa46afbb
 --- /dev/null
 +++ b/net/ethtool/rxflow.c
-@@ -0,0 +1,448 @@
+@@ -0,0 +1,447 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#include "netlink.h"
@@ -559,8 +559,7 @@ index 000000000000..66bea4ac8d57
 +
 +	data->repdata_base.info_mask = req_mask;
 +	if (ret == 0 && (req_info->req_mask & ~req_mask) && info)
-+		GENL_SET_ERR_MSG(info,
-+				 "not all requested data could be retrieved");
++		GENL_SET_ERR_MSG(info, "not all requested data could be retrieved");
 +	return ret;
 +}
 +

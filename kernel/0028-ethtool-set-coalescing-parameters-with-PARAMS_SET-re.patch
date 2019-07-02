@@ -1,4 +1,4 @@
-From e40c1b01913412c1903d9678b813b7bd081682f2 Mon Sep 17 00:00:00 2001
+From 91913af99df6bf51802dd50f3ae8b1dc70c6983a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 21:27:19 +0100
 Subject: [PATCH 28/44] ethtool: set coalescing parameters with PARAMS_SET
@@ -182,10 +182,10 @@ index 991da65f1b46..b560924f0a98 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 6da578070ad6..4362136d774d 100644
+index 5082b7f97eb3..6f9434cfbf06 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -162,3 +162,190 @@ const struct get_request_ops params_request_ops = {
+@@ -161,3 +161,190 @@ const struct get_request_ops params_request_ops = {
  	.reply_size		= params_size,
  	.fill_reply		= params_fill,
  };
