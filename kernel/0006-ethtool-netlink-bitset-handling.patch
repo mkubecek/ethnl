@@ -1,4 +1,4 @@
-From 5f73b0634ffdecc77da2151564628fd133937d66 Mon Sep 17 00:00:00 2001
+From cb614bebee1686293127194e8f7ced72955c7c7f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 06/44] ethtool: netlink bitset handling
@@ -33,10 +33,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  61 ++
  include/uapi/linux/ethtool_netlink.h         |  35 ++
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/bitset.c                         | 605 +++++++++++++++++++
+ net/ethtool/bitset.c                         | 606 +++++++++++++++++++
  net/ethtool/bitset.h                         |  40 ++
  net/ethtool/netlink.h                        |   9 +
- 6 files changed, 751 insertions(+), 1 deletion(-)
+ 6 files changed, 752 insertions(+), 1 deletion(-)
  create mode 100644 net/ethtool/bitset.c
  create mode 100644 net/ethtool/bitset.h
 
@@ -170,10 +170,10 @@ index f30e0da88be5..482fdb9380fa 100644
 +ethtool_nl-y	:= netlink.o bitset.o
 diff --git a/net/ethtool/bitset.c b/net/ethtool/bitset.c
 new file mode 100644
-index 000000000000..7f43df2243ea
+index 000000000000..80bb6fbb1268
 --- /dev/null
 +++ b/net/ethtool/bitset.c
-@@ -0,0 +1,605 @@
+@@ -0,0 +1,606 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include <linux/ethtool_netlink.h>
@@ -230,7 +230,8 @@ index 000000000000..7f43df2243ea
 +static const char *bit_name(const void *const names, bool legacy,
 +			    unsigned int idx)
 +{
-+	const char (*const legacy_names)[ETH_GSTRING_LEN] = names;
++	const char (*const legacy_names)[ETH_GSTRING_LEN] =
++	       (const char (*const)[ETH_GSTRING_LEN])names;
 +	const char *const *simple_names = names;
 +
 +	return legacy ? legacy_names[idx] : simple_names[idx];
@@ -320,7 +321,7 @@ index 000000000000..7f43df2243ea
 + * for unsigned long based bitmaps or ethnl_put_bitset32() for u32 based ones.
 + * Cleans the nest up on error.
 + *
-+ * Return:    0 on success, error value on error
++ * Return:    0 on success, negative error value on error
 + */
 +static int __ethnl_put_bitset(struct sk_buff *skb, int attrtype,
 +			      unsigned int size, const void *val,
@@ -639,7 +640,7 @@ index 000000000000..7f43df2243ea
 + * @legacy:  true if @names is ioctl style array of char[32], false if it is
 + *           a simple array of (char *) strings
 + * @info:    genetlink info (also used for extack error reporting)
-+ * @is_u32:  true: bitmaps are unsigned long based, false: u32 based bitmaps
++ * @is_u32:  false: bitmaps are unsigned long based, true: u32 based bitmaps
 + *
 + * This is the actual implementation of bitset nested attribute parser but
 + * callers are supposed to use ethnl_update_bitset() for unsigned long based

@@ -1,4 +1,4 @@
-From c40979b201c2d28578b93ac4625db16ff41ae10a Mon Sep 17 00:00:00 2001
+From 1751d1ece5d80a51d65b7f898f94d9cbae478613 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
 Subject: [PATCH 26/44] ethtool: provide timestamping information in INFO_GET

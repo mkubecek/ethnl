@@ -1,4 +1,4 @@
-From 3e38ea66c85da7431491c455c1f9b0ad715a71d3 Mon Sep 17 00:00:00 2001
+From 5d4b73d1bc36d85ab6d025d57bf0ee3a5967efaa Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:43:01 +0100
 Subject: [PATCH 35/44] ethtool: provide EEE settings in PARAMS_GET request

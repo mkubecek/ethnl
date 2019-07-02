@@ -1,4 +1,4 @@
-From 9d73ea0a7cbbc0e0f8138e22ef2f431586ac380f Mon Sep 17 00:00:00 2001
+From 116373b7ead5a4823ec9cbcc27cbc709adf3cbdc Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:36:43 +0100
 Subject: [PATCH 34/44] ethtool: set channel counts with PARAMS_SET request

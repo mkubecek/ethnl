@@ -1,4 +1,4 @@
-From 3010240bb5f18fda9092dda93dbc5218abdda457 Mon Sep 17 00:00:00 2001
+From 639d441f4b5b0e827344eae9eeec88ddea48909d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 24/44] ethtool: set private flags with SETTINGS_SET request

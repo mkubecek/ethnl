@@ -1,4 +1,4 @@
-From 1d89819515cab38cc02c7ce415d5c39c0df4e858 Mon Sep 17 00:00:00 2001
+From 3c30527bef64c030078a1e305613080bb372cbe6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 10/44] ethtool: provide string sets with STRSET_GET request
