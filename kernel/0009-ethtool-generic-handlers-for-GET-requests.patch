@@ -1,4 +1,4 @@
-From 4faa0ce52dfe02c9cde5a46012b16c9af6764c5e Mon Sep 17 00:00:00 2001
+From e7d2195bd95966bc00a989211ee66b425112f02d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 09/44] ethtool: generic handlers for GET requests
@@ -33,10 +33,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 465 insertions(+)
 
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index a7a0bfe1818c..6d326cc25aac 100644
+index f599cc5a5cd4..9b55a1a03180 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -178,6 +178,343 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -177,6 +177,343 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  	return NULL;
  }
  
@@ -381,7 +381,7 @@ index a7a0bfe1818c..6d326cc25aac 100644
  
  typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 7f1b9ec1ace7..6a9695c3b0c6 100644
+index 979c1456e001..d34558bb7e83 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -143,8 +143,32 @@ static inline unsigned int ethnl_reply_header_size(void)

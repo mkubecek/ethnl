@@ -1,4 +1,4 @@
-From 1e1bf53de26780ecc0e448aa07dc429ef590798a Mon Sep 17 00:00:00 2001
+From 80c9a40730dcc8d82a1b0e29e4378b2a8f035815 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:50:07 +0100
 Subject: [PATCH 11/44] ethtool: provide link mode names as a string set
@@ -59,7 +59,7 @@ index 4e4e28e77c7a..6ad298224352 100644
  	ETH_SS_COUNT
  };
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 41d7fedd3dd6..cba1f2259248 100644
+index a3237528cac7..11da3ec5bf19 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -8,6 +8,86 @@ static struct genl_family ethtool_genl_family;
@@ -149,7 +149,7 @@ index 41d7fedd3dd6..cba1f2259248 100644
  static const struct nla_policy dflt_header_policy[ETHTOOL_A_HEADER_MAX + 1] = {
  	[ETHTOOL_A_HEADER_UNSPEC]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_HEADER_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -575,6 +655,9 @@ static int __init ethnl_init(void)
+@@ -574,6 +654,9 @@ static int __init ethnl_init(void)
  {
  	int ret;
  
@@ -160,7 +160,7 @@ index 41d7fedd3dd6..cba1f2259248 100644
  	if (WARN(ret < 0, "ethtool: genetlink family registration failed"))
  		return ret;
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 2352fd9c17c3..d85b1edc1b91 100644
+index eec805b98670..69985fa4028f 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -10,6 +10,8 @@

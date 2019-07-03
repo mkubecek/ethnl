@@ -1,4 +1,4 @@
-From 082c67d5b40617477bcb58c125b5e02d0c48c1d1 Mon Sep 17 00:00:00 2001
+From 400d04f196b3ecf84ea04f9a3a14b0cf16005503 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 40/44] ethtool: implement ETHTOOL_MSG_PHYSID_ACT message
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 204 insertions(+), 47 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 701b13be3f2e..fe98d39eddc9 100644
+index 2df4875440a1..9100d9abf90a 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -157,6 +157,7 @@ Userspace to kernel:
@@ -372,10 +372,10 @@ index 0c2f854ad149..4c4682ef5e08 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 953aa013e243..02361b2198f8 100644
+index 336b2ccf7da5..61e444129eb4 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -691,6 +691,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -690,6 +690,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHTOOL_MSG_SETTINGS_NTF]	= ethnl_std_notify,
  	[ETHTOOL_MSG_PARAMS_NTF]	= ethnl_std_notify,
  	[ETHTOOL_MSG_NWAYRST_NTF]	= ethnl_nwayrst_notify,
@@ -383,7 +383,7 @@ index 953aa013e243..02361b2198f8 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -779,6 +780,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -778,6 +779,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_act_nway_rst,
  	},
@@ -396,7 +396,7 @@ index 953aa013e243..02361b2198f8 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 101b3eff3b00..44c592e84e95 100644
+index 9aa90064e689..d031a37a9383 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -313,11 +313,14 @@ extern const struct get_request_ops params_request_ops;

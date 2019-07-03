@@ -1,4 +1,4 @@
-From 1a8aa0c6bd3002389651ab5cea20f56abcd0ec63 Mon Sep 17 00:00:00 2001
+From 1572f096436d53bc5e392f9400c8406753f99bd2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
 Subject: [PATCH 43/44] ethtool: implement RXFLOW notification
@@ -29,7 +29,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  7 files changed, 109 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 49df427aad0a..277d6f3ab946 100644
+index 7d70c85207a1..82d5a99374b8 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -175,6 +175,7 @@ Kernel to userspace:
@@ -165,10 +165,10 @@ index aa96aae96e34..fe9773c71358 100644
  	if (copy_to_user(useraddr + offsetof(struct ethtool_rxfh, rss_context),
  			 &rxfh.rss_context, sizeof(rxfh.rss_context)))
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index f4a022f196a5..5b7e9452d266 100644
+index 9cd2e07678c9..04f36f800cb7 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -694,6 +694,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
+@@ -693,6 +693,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHTOOL_MSG_NWAYRST_NTF]	= ethnl_nwayrst_notify,
  	[ETHTOOL_MSG_PHYSID_NTF]	= ethnl_physid_notify,
  	[ETHTOOL_MSG_RESET_NTF]		= ethnl_reset_notify,
@@ -177,7 +177,7 @@ index f4a022f196a5..5b7e9452d266 100644
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index b596d34bbc46..f5d4e4e8d9f1 100644
+index 805255dd95a1..ca1282746ed3 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -327,5 +327,7 @@ void ethnl_physid_notify(struct net_device *dev, struct netlink_ext_ack *extack,

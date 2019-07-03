@@ -1,4 +1,4 @@
-From be28520576c288746b45e8d7603782e73dae7e89 Mon Sep 17 00:00:00 2001
+From 3f0f57f9ddbe727737e801fd7cb803b9dfe2f748 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 22/44] ethtool: set device features with SETTINGS_SET
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 184 insertions(+), 10 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index f2b0eeaf6461..35ea19b9baea 100644
+index 0ccec2961882..31d8d6a2bad3 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -159,6 +159,7 @@ Kernel to userspace:

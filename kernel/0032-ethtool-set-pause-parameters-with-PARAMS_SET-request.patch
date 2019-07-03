@@ -1,4 +1,4 @@
-From be49bd1512950d5db183995185f53d32526caf8a Mon Sep 17 00:00:00 2001
+From 0978febfd62c453c9e4ace518c72b1e41da18754 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:07:38 +0100
 Subject: [PATCH 32/44] ethtool: set pause parameters with PARAMS_SET request
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 63 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 2eccb616bd3d..a617dbedde38 100644
+index 3319e030e51a..1171d7813e6e 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -499,10 +499,10 @@ PARAMS_SET

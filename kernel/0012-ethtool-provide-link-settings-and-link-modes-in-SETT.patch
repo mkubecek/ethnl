@@ -1,4 +1,4 @@
-From 6a734345f85fb2010015303ee14941cdeea9559a Mon Sep 17 00:00:00 2001
+From 73725f375fe2c13fb006653f1e5c85e80369e16d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 12/44] ethtool: provide link settings and link modes in
@@ -37,7 +37,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 21e5030734aa..1d803488e02c 100644
+index 684cb532b71c..91b45381c17a 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -151,10 +151,12 @@ according to message purpose:
@@ -347,10 +347,10 @@ index b35366dd9997..ed53e07d619e 100644
   * set. legacy_settings always updated (best effort)
   */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index cba1f2259248..6c0cfa9001a1 100644
+index 11da3ec5bf19..54fbcf2413d1 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -280,6 +280,7 @@ struct ethnl_dump_ctx {
+@@ -279,6 +279,7 @@ struct ethnl_dump_ctx {
  
  static const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
  	[ETHTOOL_MSG_STRSET_GET]	= &strset_request_ops,
@@ -358,7 +358,7 @@ index cba1f2259248..6c0cfa9001a1 100644
  };
  
  static struct ethnl_dump_ctx *ethnl_dump_context(struct netlink_callback *cb)
-@@ -632,6 +633,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -631,6 +632,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -373,7 +373,7 @@ index cba1f2259248..6c0cfa9001a1 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index d85b1edc1b91..27832a3956c8 100644
+index 69985fa4028f..6d3d5ded7d1a 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -294,5 +294,6 @@ struct get_request_ops {

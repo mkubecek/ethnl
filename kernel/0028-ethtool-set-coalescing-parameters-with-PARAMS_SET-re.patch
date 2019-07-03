@@ -1,4 +1,4 @@
-From f07166aa67b8f00c0358fed75b3b515c7e5d6134 Mon Sep 17 00:00:00 2001
+From 8d642de7acc52b39e8e2e0c3ec5537c3506e7d1a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 21:27:19 +0100
 Subject: [PATCH 28/44] ethtool: set coalescing parameters with PARAMS_SET
@@ -24,7 +24,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 240 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 7b576489556d..1265492977b8 100644
+index 20c75926e07f..e6c88bc88529 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -155,6 +155,7 @@ Userspace to kernel:
@@ -138,10 +138,10 @@ index ac779fd6e40e..d414d79a55cf 100644
  
  static int ethtool_get_ringparam(struct net_device *dev, void __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 498fecc1eb13..1664912dd94f 100644
+index 90ca03adf1d4..839d28878a09 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -617,6 +617,8 @@ static const struct get_request_ops *ethnl_std_notify_to_ops(unsigned int cmd)
+@@ -616,6 +616,8 @@ static const struct get_request_ops *ethnl_std_notify_to_ops(unsigned int cmd)
  	switch (cmd) {
  	case ETHTOOL_MSG_SETTINGS_NTF:
  		return &settings_request_ops;
@@ -150,7 +150,7 @@ index 498fecc1eb13..1664912dd94f 100644
  	};
  
  	WARN_ONCE(1, "unexpected notification type %u\n", cmd);
-@@ -687,6 +689,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -686,6 +688,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  
  static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHTOOL_MSG_SETTINGS_NTF]	= ethnl_std_notify,
@@ -158,7 +158,7 @@ index 498fecc1eb13..1664912dd94f 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -765,6 +768,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -764,6 +767,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -171,7 +171,7 @@ index 498fecc1eb13..1664912dd94f 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 991da65f1b46..b560924f0a98 100644
+index 9e827ee045cf..29eb24a19a45 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -309,5 +309,6 @@ extern const struct get_request_ops info_request_ops;

@@ -1,4 +1,4 @@
-From bcb192f819bf169b7e96e5c2c5132e9554834eb5 Mon Sep 17 00:00:00 2001
+From a6ed5592ca924875e0d2fd00637c9ed80857a7ef Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 44/44] ethtool: implement RXFLOW_SET request
@@ -25,7 +25,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 701 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 277d6f3ab946..ef52d3fa09b6 100644
+index 82d5a99374b8..9b88200bc9f1 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -160,6 +160,7 @@ Userspace to kernel:
@@ -130,10 +130,10 @@ index c9c5bd72411e..8b9aee940ca2 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 5b7e9452d266..82875beedf18 100644
+index 04f36f800cb7..7c63963f584c 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -800,6 +800,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -799,6 +799,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -146,7 +146,7 @@ index 5b7e9452d266..82875beedf18 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index f5d4e4e8d9f1..9555d1d20a52 100644
+index ca1282746ed3..ae9e752ac2b7 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -314,6 +314,7 @@ extern const struct get_request_ops rxflow_request_ops;

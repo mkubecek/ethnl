@@ -1,4 +1,4 @@
-From 77ee89e7c89081ecf36dcfd44c7ce3c7bd33a86a Mon Sep 17 00:00:00 2001
+From dac2eab953a388221ffd007a3aebbf0d6b812e25 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 42/44] ethtool: implement RXFLOW_GET request
@@ -26,7 +26,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/rxflow.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 39b556878d6a..49df427aad0a 100644
+index 52e1f5114cd9..7d70c85207a1 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -159,6 +159,7 @@ Userspace to kernel:
@@ -336,10 +336,10 @@ index ca21edc7995f..632ab622e863 100644
 -		   actions.o
 +		   actions.o rxflow.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index e5891cbbae4d..f4a022f196a5 100644
+index 9e517b1d515b..9cd2e07678c9 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -296,6 +296,7 @@ static const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
+@@ -295,6 +295,7 @@ static const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
  	[ETHTOOL_MSG_SETTINGS_GET]	= &settings_request_ops,
  	[ETHTOOL_MSG_INFO_GET]		= &info_request_ops,
  	[ETHTOOL_MSG_PARAMS_GET]	= &params_request_ops,
@@ -347,7 +347,7 @@ index e5891cbbae4d..f4a022f196a5 100644
  };
  
  static struct ethnl_dump_ctx *ethnl_dump_context(struct netlink_callback *cb)
-@@ -791,6 +792,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -790,6 +791,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_ADMIN_PERM,
  		.doit	= ethnl_act_reset,
  	},
@@ -362,7 +362,7 @@ index e5891cbbae4d..f4a022f196a5 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 9fdd30eeb1b1..b596d34bbc46 100644
+index 31a66ed55f95..805255dd95a1 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -310,6 +310,7 @@ extern const struct get_request_ops strset_request_ops;

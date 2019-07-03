@@ -1,4 +1,4 @@
-From d9e4129981288d00f715c7b8eb9552f812a70a58 Mon Sep 17 00:00:00 2001
+From 308f9b93e986567995b2d50e3bd4a5ec046e79da Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:19:02 +0100
 Subject: [PATCH 19/44] ethtool: provide message level in SETTINGS_GET request
@@ -25,7 +25,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 66 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 6505e66ae9f4..291c73ce6019 100644
+index 21430e08cbf4..3c64d98ac16a 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -252,6 +252,7 @@ Info mask bits meaning:

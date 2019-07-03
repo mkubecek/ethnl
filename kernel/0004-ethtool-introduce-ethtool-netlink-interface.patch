@@ -1,4 +1,4 @@
-From e7fa3ad7e9cf4d7a8f9a2085e3166f7260845b0a Mon Sep 17 00:00:00 2001
+From 79f30246807df8e83829a18bc0936d7e2b9aeb3e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 04/44] ethtool: introduce ethtool netlink interface
@@ -27,7 +27,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 new file mode 100644
-index 000000000000..97c369aa290b
+index 000000000000..028c29eeed93
 --- /dev/null
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -0,0 +1,208 @@
@@ -93,17 +93,17 @@ index 000000000000..97c369aa290b
 +
 +Optional info mask allows to ask only for a part of data provided by GET
 +request types. If omitted or zero, all data is returned. The two flag bitmaps
-+allow enabling requestoptions; ETHTOOL_A_HEADER_GFLAGS are global flags common
-+for all request types, flags recognized in ETHTOOL_A_HEADER_RFLAGS and their
-+interpretation are specific for each request type. Global flags are
++allow enabling request options; ETHTOOL_A_HEADER_GFLAGS are global flags
++common for all request types, flags recognized in ETHTOOL_A_HEADER_RFLAGS and
++their interpretation are specific for each request type. Global flags are
 +
 +    ETHTOOL_RF_COMPACT		use compact format bitsets in reply
 +    ETHTOOL_RF_REPLY		send optional reply (SET and ACT requests)
 +
 +Request specific flags are described with each request type. For both flag
 +attributes, new flags should follow the general idea that if the flag is not
-+set, the behaviour is the same as (or closer to) the behaviour before it was
-+introduced.
++set, the behaviour is backward compatible, i.e. requests from old clients not
++aware of the flag should be interpreted the way the client expects.
 +
 +
 +List of message types
@@ -127,12 +127,12 @@ index 000000000000..97c369aa290b
 +information for all devices supporting the request.
 +
 +If the data can be also modified, corresponding "SET" message with the same
-+layout as "GET" reply is used to request changes. Only attributes where
-+a change is requested are included in such request (also, not all attributes
-+may be changed). Replies to most "SET" request consist only of error code and
-+extack; if kernel provides additional data, it is sent in the form of
-+corresponding "SET_REPLY" message (if ETHTOOL_RF_REPLY flag was set in request
-+header).
++layout as corresponding "GET_REPLY" is used to request changes. Only
++attributes where a change is requested are included in such request (also, not
++all attributes may be changed). Replies to most "SET" request consist only of
++error code and extack; if kernel provides additional data, it is sent in the
++form of corresponding "SET_REPLY" message (if ETHTOOL_RF_REPLY flag was set in
++request header).
 +
 +Data modification also triggers sending a "NTF" message with a notification.
 +These usually bear only a subset of attributes which was affected by the

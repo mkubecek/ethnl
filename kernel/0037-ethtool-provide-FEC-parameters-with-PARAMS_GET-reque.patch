@@ -1,4 +1,4 @@
-From 3443bdf2bb3053f936811042529e653f1b97db82 Mon Sep 17 00:00:00 2001
+From 97e9a6af617b51657d45080ffefe91a53c5cb786 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:53:42 +0100
 Subject: [PATCH 37/44] ethtool: provide FEC parameters with PARAMS_GET request
@@ -19,7 +19,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 74 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index ea6529e77a2b..29e8731d1f9f 100644
+index 7a97ea5b5e07..231046b69fd9 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -436,9 +436,10 @@ PARAMS_GET

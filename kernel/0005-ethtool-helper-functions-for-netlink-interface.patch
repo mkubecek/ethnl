@@ -1,4 +1,4 @@
-From 44957b13e8edbced71aca893908d184eb9e57341 Mon Sep 17 00:00:00 2001
+From f860dae65ee82ea1d09cae5db2bc07b3276ec361 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 05/44] ethtool: helper functions for netlink interface
@@ -10,9 +10,9 @@ structure members from request attributes (to be used for *_SET requests).
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  include/uapi/linux/ethtool_netlink.h |  23 ++++
- net/ethtool/netlink.c                | 173 +++++++++++++++++++++++++++
+ net/ethtool/netlink.c                | 172 +++++++++++++++++++++++++++
  net/ethtool/netlink.h                | 145 ++++++++++++++++++++++
- 3 files changed, 341 insertions(+)
+ 3 files changed, 340 insertions(+)
 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 index 9a0fbd4f85d9..ffd7db0848ef 100644
@@ -49,10 +49,10 @@ index 9a0fbd4f85d9..ffd7db0848ef 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 3c98b41f04e5..e13f29bbd625 100644
+index 3c98b41f04e5..12a46e3b1043 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -1,8 +1,181 @@
+@@ -1,8 +1,180 @@
  // SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
  
 +#include <net/sock.h>
@@ -74,7 +74,7 @@ index 3c98b41f04e5..e13f29bbd625 100644
 +/**
 + * ethnl_parse_header() - parse request header
 + * @req_info:    structure to put results into
-+ * @nest:        nest attribute with request header
++ * @header:      nest attribute with request header
 + * @net:         request netns
 + * @extack:      netlink extack for error reporting
 + * @policy:      netlink attribute policy to validate header; use
@@ -90,7 +90,7 @@ index 3c98b41f04e5..e13f29bbd625 100644
 + * Return: 0 on success or negative error code
 + */
 +int ethnl_parse_header(struct ethnl_req_info *req_info,
-+		       const struct nlattr *nest, struct net *net,
++		       const struct nlattr *header, struct net *net,
 +		       struct netlink_ext_ack *extack,
 +		       const struct nla_policy *policy, bool require_dev)
 +{
@@ -99,11 +99,11 @@ index 3c98b41f04e5..e13f29bbd625 100644
 +	struct net_device *dev = NULL;
 +	int ret;
 +
-+	if (!nest) {
++	if (!header) {
 +		NL_SET_ERR_MSG(extack, "request header missing");
 +		return -EINVAL;
 +	}
-+	ret = nla_parse_nested(tb, ETHTOOL_A_HEADER_MAX, nest,
++	ret = nla_parse_nested(tb, ETHTOOL_A_HEADER_MAX, header,
 +			       policy ?: dflt_header_policy, extack);
 +	if (ret < 0)
 +		return ret;
@@ -123,7 +123,7 @@ index 3c98b41f04e5..e13f29bbd625 100644
 +		if (devname_attr &&
 +		    strncmp(dev->name, nla_data(devname_attr), IFNAMSIZ)) {
 +			dev_put(dev);
-+			NL_SET_ERR_MSG_ATTR(extack, nest,
++			NL_SET_ERR_MSG_ATTR(extack, header,
 +					    "ifindex and name do not match");
 +			return -ENODEV;
 +		}
@@ -135,7 +135,7 @@ index 3c98b41f04e5..e13f29bbd625 100644
 +			return -ENODEV;
 +		}
 +	} else if (require_dev) {
-+		NL_SET_ERR_MSG_ATTR(extack, nest,
++		NL_SET_ERR_MSG_ATTR(extack, header,
 +				    "neither ifindex nor name specified");
 +		return -EINVAL;
 +	}
@@ -161,7 +161,6 @@ index 3c98b41f04e5..e13f29bbd625 100644
 + * @attrtype: attribute type to use for the nest
 + *
 + * Create a nested attribute with attributes describing given network device.
-+ * Clean up on error.
 + *
 + * Return: 0 on success, error value (-EMSGSIZE only) on error
 + */
@@ -219,15 +218,15 @@ index 3c98b41f04e5..e13f29bbd625 100644
 +
 +		ret = ethnl_fill_reply_header(skb, dev, hdr_attrtype);
 +		if (ret < 0)
-+			goto err;
++			goto err_free;
 +	}
 +	return skb;
 +
 +err_free:
 +	nlmsg_free(skb);
++err:
 +	if (info)
 +		GENL_SET_ERR_MSG(info, "failed to setup reply message");
-+err:
 +	return NULL;
 +}
 +
@@ -235,7 +234,7 @@ index 3c98b41f04e5..e13f29bbd625 100644
  
  static const struct genl_ops ethtool_genl_ops[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 257ae55ccc82..5510eb7054b3 100644
+index 257ae55ccc82..71fca54f9c03 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -6,5 +6,150 @@
@@ -308,7 +307,7 @@ index 257ae55ccc82..5510eb7054b3 100644
 +	return true;
 +}
 +
-+static inline bool ethnl_update_binary(u8 *dst, unsigned int len,
++static inline bool ethnl_update_binary(void *dst, unsigned int len,
 +				       struct nlattr *attr)
 +{
 +	if (!attr)

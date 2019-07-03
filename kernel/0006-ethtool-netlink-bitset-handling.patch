@@ -1,4 +1,4 @@
-From cb614bebee1686293127194e8f7ced72955c7c7f Mon Sep 17 00:00:00 2001
+From 7af50c79d7fb1a19e878c0852ee0b11339bf7dcb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 06/44] ethtool: netlink bitset handling
@@ -41,11 +41,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/bitset.h
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 97c369aa290b..4636682c551f 100644
+index 028c29eeed93..b02b6b5d3660 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -73,6 +73,67 @@ set, the behaviour is the same as (or closer to) the behaviour before it was
- introduced.
+@@ -73,6 +73,67 @@ set, the behaviour is backward compatible, i.e. requests from old clients not
+ aware of the flag should be interpreted the way the client expects.
  
  
 +Bit sets
@@ -827,7 +827,7 @@ index 000000000000..761d0c47fe23
 +
 +#endif /* _NET_ETHTOOL_BITSET_H */
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 5510eb7054b3..7f1b9ec1ace7 100644
+index 71fca54f9c03..979c1456e001 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -20,6 +20,15 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,

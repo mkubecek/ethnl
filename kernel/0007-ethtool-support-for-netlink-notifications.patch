@@ -1,4 +1,4 @@
-From 4dcac81783de8686edefa262a1db75f9e961b123 Mon Sep 17 00:00:00 2001
+From f8a04b244dd5304a5ed4ee047ec827f3bb1ab662 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
 Subject: [PATCH 07/44] ethtool: support for netlink notifications
@@ -77,7 +77,7 @@ index 805f314f4454..8938a1f09057 100644
 +
  #endif /* _UAPI_LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index e13f29bbd625..a7a0bfe1818c 100644
+index 12a46e3b1043..f599cc5a5cd4 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -6,6 +6,8 @@
@@ -89,7 +89,7 @@ index e13f29bbd625..a7a0bfe1818c 100644
  static const struct nla_policy dflt_header_policy[ETHTOOL_A_HEADER_MAX + 1] = {
  	[ETHTOOL_A_HEADER_UNSPEC]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_HEADER_DEV_INDEX]	= { .type = NLA_U32 },
-@@ -176,11 +178,41 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -175,11 +177,41 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  	return NULL;
  }
  
@@ -131,7 +131,7 @@ index e13f29bbd625..a7a0bfe1818c 100644
  static struct genl_family ethtool_genl_family = {
  	.name		= ETHTOOL_GENL_NAME,
  	.version	= ETHTOOL_GENL_VERSION,
-@@ -188,6 +220,8 @@ static struct genl_family ethtool_genl_family = {
+@@ -187,6 +219,8 @@ static struct genl_family ethtool_genl_family = {
  	.parallel_ops	= true,
  	.ops		= ethtool_genl_ops,
  	.n_ops		= ARRAY_SIZE(ethtool_genl_ops),
@@ -140,7 +140,7 @@ index e13f29bbd625..a7a0bfe1818c 100644
  };
  
  /* module setup */
-@@ -199,6 +233,7 @@ static int __init ethnl_init(void)
+@@ -198,6 +232,7 @@ static int __init ethnl_init(void)
  	ret = genl_register_family(&ethtool_genl_family);
  	if (WARN(ret < 0, "ethtool: genetlink family registration failed"))
  		return ret;

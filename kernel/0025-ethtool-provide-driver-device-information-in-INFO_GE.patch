@@ -1,4 +1,4 @@
-From 2311dbd73a087dbf9852999998090639164660cb Mon Sep 17 00:00:00 2001
+From 7d778350c6be3209e812b7b1b1437e2087d99d88 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 25/44] ethtool: provide driver/device information in INFO_GET
@@ -26,7 +26,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/info.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 8a492a727cc2..3c97a69bb49f 100644
+index 3e2e41d09479..995500dec965 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -153,6 +153,7 @@ Userspace to kernel:
@@ -463,10 +463,10 @@ index 5c2e810bc886..edc4f60f7013 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 1366a6e94b3f..bc7ee6806769 100644
+index ec1cde8dc5a7..2b5b71cf0d49 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -294,6 +294,7 @@ struct ethnl_dump_ctx {
+@@ -293,6 +293,7 @@ struct ethnl_dump_ctx {
  static const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
  	[ETHTOOL_MSG_STRSET_GET]	= &strset_request_ops,
  	[ETHTOOL_MSG_SETTINGS_GET]	= &settings_request_ops,
@@ -474,7 +474,7 @@ index 1366a6e94b3f..bc7ee6806769 100644
  };
  
  static struct ethnl_dump_ctx *ethnl_dump_context(struct netlink_callback *cb)
-@@ -749,6 +750,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -748,6 +749,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_settings,
  	},
@@ -489,7 +489,7 @@ index 1366a6e94b3f..bc7ee6806769 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 43fdf11cfc6d..10d75fca5056 100644
+index 2d0388bc8d36..0fd69ef160b3 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -296,6 +296,7 @@ struct get_request_ops {
