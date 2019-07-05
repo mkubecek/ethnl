@@ -1,4 +1,4 @@
-From d17178ee4265e61d695b7c6d853f3d541ae3c461 Mon Sep 17 00:00:00 2001
+From beea2a4e31aab3327de9b82c18d705ec17f1f76e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 29 Jun 2019 19:54:07 +0200
 Subject: [PATCH 13/44] ethtool: add standard notification handler
@@ -18,7 +18,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 76 insertions(+), 1 deletion(-)
 
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 54fbcf2413d1..0631f2935ab0 100644
+index 4322a53f00fc..e812183ba715 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -7,6 +7,7 @@
@@ -29,7 +29,7 @@ index 54fbcf2413d1..0631f2935ab0 100644
  
  #define __LINK_MODE_NAME(speed, type, duplex) \
  	#speed "base" #type "/" #duplex
-@@ -257,6 +258,18 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
+@@ -260,6 +261,18 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  	return NULL;
  }
  
@@ -48,7 +48,7 @@ index 54fbcf2413d1..0631f2935ab0 100644
  /* GET request helpers */
  
  /**
-@@ -596,6 +609,67 @@ static int ethnl_get_done(struct netlink_callback *cb)
+@@ -599,6 +612,67 @@ static int ethnl_get_done(struct netlink_callback *cb)
  	return 0;
  }
  
@@ -117,10 +117,10 @@ index 54fbcf2413d1..0631f2935ab0 100644
  
  typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 6d3d5ded7d1a..c856a37a5902 100644
+index 658ea8a32e81..f30eb8cad857 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -265,7 +265,8 @@ static inline void ethnl_after_ops(struct net_device *dev)
+@@ -319,7 +319,8 @@ static inline void ethnl_after_ops(struct net_device *dev)
   * infrastructure. When used, a pointer to an instance of this structure is to
   * be added to &get_requests array and generic handlers ethnl_get_doit(),
   * ethnl_get_dumpit(), ethnl_get_start() and ethnl_get_done() used in

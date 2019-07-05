@@ -1,4 +1,4 @@
-From 6c99424a50b8ee3acdc91896df48859df52334b8 Mon Sep 17 00:00:00 2001
+From f488a7052b481862b69fc5d4a65c9763909e1be7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:43:01 +0100
 Subject: [PATCH 35/44] ethtool: provide EEE settings in PARAMS_GET request
@@ -142,7 +142,7 @@ index 0ce138478786..9aa89e9e8988 100644
  
  static int ethtool_nway_reset(struct net_device *dev)
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index d2668c7754ba..ac6b5ad3e914 100644
+index fcdf338cba0a..2a6a977b9f61 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -2,6 +2,7 @@

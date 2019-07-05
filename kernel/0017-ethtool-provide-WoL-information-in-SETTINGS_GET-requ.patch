@@ -1,4 +1,4 @@
-From 6f8e7462494a6613111db00d30cc61ee2554a2ac Mon Sep 17 00:00:00 2001
+From f25c3fc61165904c6d3a8c380da7b9c7caad0b63 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:08:55 +0100
 Subject: [PATCH 17/44] ethtool: provide WoL information in SETTINGS_GET
@@ -176,7 +176,7 @@ index 853b8c21a5e5..d95fffff3bfe 100644
  	return 0;
  }
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 079d3776df71..fd29d843b2d9 100644
+index edb3cce5079c..6396c25b68b4 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -10,6 +10,7 @@ struct settings_data {

@@ -1,4 +1,4 @@
-From c4bdba11491e028dd91c56f8eb07cab3ab0ce000 Mon Sep 17 00:00:00 2001
+From 49cf35b6675437ef9e3724836189630b2de909be Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:26:45 +0100
 Subject: [PATCH 15/44] ethtool: provide link state in SETTINGS_GET request
@@ -151,7 +151,7 @@ index 504ab2f7009c..853b8c21a5e5 100644
  		return -EFAULT;
  	return 0;
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 2fc961297076..079d3776df71 100644
+index a0012b963154..edb3cce5079c 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -11,6 +11,7 @@ struct settings_data {

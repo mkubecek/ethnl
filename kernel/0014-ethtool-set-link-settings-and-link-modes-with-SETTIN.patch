@@ -1,4 +1,4 @@
-From f835c4fb4549daee2c147524346f451616e925fb Mon Sep 17 00:00:00 2001
+From 597f5427fbf42fffb4d27526085a43cd911fd6f0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
 Subject: [PATCH 14/44] ethtool: set link settings and link modes with
@@ -36,8 +36,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/ioctl.c                          |  18 +-
  net/ethtool/netlink.c                        |  11 +
  net/ethtool/netlink.h                        |   2 +
- net/ethtool/settings.c                       | 332 +++++++++++++++++++
- 6 files changed, 395 insertions(+), 4 deletions(-)
+ net/ethtool/settings.c                       | 327 +++++++++++++++++++
+ 6 files changed, 390 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 91b45381c17a..9589e5ebcc35 100644
@@ -181,10 +181,10 @@ index ed53e07d619e..504ab2f7009c 100644
  
  static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 0631f2935ab0..3291befa6a04 100644
+index e812183ba715..231f921a86c3 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -611,6 +611,11 @@ static int ethnl_get_done(struct netlink_callback *cb)
+@@ -614,6 +614,11 @@ static int ethnl_get_done(struct netlink_callback *cb)
  
  static const struct get_request_ops *ethnl_std_notify_to_ops(unsigned int cmd)
  {
@@ -196,7 +196,7 @@ index 0631f2935ab0..3291befa6a04 100644
  	WARN_ONCE(1, "unexpected notification type %u\n", cmd);
  	return NULL;
  }
-@@ -678,6 +683,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -681,6 +686,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  				       const void *data);
  
  static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
@@ -204,7 +204,7 @@ index 0631f2935ab0..3291befa6a04 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -713,6 +719,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -716,6 +722,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -217,10 +217,10 @@ index 0631f2935ab0..3291befa6a04 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index c856a37a5902..2d0388bc8d36 100644
+index f30eb8cad857..f3f6ac94fe73 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -297,4 +297,6 @@ struct get_request_ops {
+@@ -351,4 +351,6 @@ struct get_request_ops {
  extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops settings_request_ops;
  
@@ -228,7 +228,7 @@ index c856a37a5902..2d0388bc8d36 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 11ec30b9d48b..2fc961297076 100644
+index 11ec30b9d48b..a0012b963154 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,99 @@ struct settings_data {
@@ -331,7 +331,7 @@ index 11ec30b9d48b..2fc961297076 100644
  static const struct nla_policy
  settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]	= { .type = NLA_REJECT },
-@@ -257,3 +350,242 @@ const struct get_request_ops settings_request_ops = {
+@@ -257,3 +350,237 @@ const struct get_request_ops settings_request_ops = {
  	.reply_size		= settings_size,
  	.fill_reply		= settings_fill,
  };
@@ -427,6 +427,7 @@ index 11ec30b9d48b..2fc961297076 100644
 +				    struct ethtool_link_settings *lsettings)
 +{
 +	struct nlattr *tb[ETHTOOL_A_LINKINFO_MAX + 1];
++	bool mod = false;
 +	int ret;
 +
 +	if (!nest)
@@ -436,17 +437,13 @@ index 11ec30b9d48b..2fc961297076 100644
 +	if (ret < 0)
 +		return ret;
 +
-+	ret = 0;
-+	if (ethnl_update_u8(&lsettings->port, tb[ETHTOOL_A_LINKINFO_PORT]))
-+		ret = 1;
-+	if (ethnl_update_u8(&lsettings->phy_address,
-+			    tb[ETHTOOL_A_LINKINFO_PHYADDR]))
-+		ret = 1;
-+	if (ethnl_update_u8(&lsettings->eth_tp_mdix_ctrl,
-+			    tb[ETHTOOL_A_LINKINFO_TP_MDIX_CTRL]))
-+		ret = 1;
++	ethnl_update_u8(&lsettings->port, tb[ETHTOOL_A_LINKINFO_PORT], &mod);
++	ethnl_update_u8(&lsettings->phy_address, tb[ETHTOOL_A_LINKINFO_PHYADDR],
++			&mod);
++	ethnl_update_u8(&lsettings->eth_tp_mdix_ctrl,
++			tb[ETHTOOL_A_LINKINFO_TP_MDIX_CTRL], &mod);
 +
-+	return ret;
++	return !!mod;
 +}
 +
 +static int settings_update_linkmodes(struct genl_info *info,
@@ -468,20 +465,18 @@ index 11ec30b9d48b..2fc961297076 100644
 +	req_speed = tb[ETHTOOL_A_LINKMODES_SPEED];
 +	req_duplex = tb[ETHTOOL_A_LINKMODES_DUPLEX];
 +
-+	if (ethnl_update_u8(&lsettings->autoneg,
-+			    tb[ETHTOOL_A_LINKMODES_AUTONEG]))
-+		mod = true;
-+	if (ethnl_update_bitset(ksettings->link_modes.advertising, NULL,
-+				__ETHTOOL_LINK_MODE_MASK_NBITS,
-+				tb[ETHTOOL_A_LINKMODES_OURS],
-+				&ret, link_mode_names, false, info))
-+		mod = true;
++	ethnl_update_u8(&lsettings->autoneg, tb[ETHTOOL_A_LINKMODES_AUTONEG],
++			&mod);
++	ret = ethnl_update_bitset(ksettings->link_modes.advertising, NULL,
++				  __ETHTOOL_LINK_MODE_MASK_NBITS,
++				  tb[ETHTOOL_A_LINKMODES_OURS],
++				  link_mode_names, false, info, &mod);
 +	if (ret < 0)
 +		return ret;
-+	if (ethnl_update_u32(&lsettings->speed, tb[ETHTOOL_A_LINKMODES_SPEED]))
-+		mod = true;
-+	if (ethnl_update_u8(&lsettings->duplex, tb[ETHTOOL_A_LINKMODES_DUPLEX]))
-+		mod = true;
++	ethnl_update_u32(&lsettings->speed, tb[ETHTOOL_A_LINKMODES_SPEED],
++			 &mod);
++	ethnl_update_u8(&lsettings->duplex, tb[ETHTOOL_A_LINKMODES_DUPLEX],
++			&mod);
 +
 +	if (!tb[ETHTOOL_A_LINKMODES_OURS] && lsettings->autoneg &&
 +	    (req_speed || req_duplex) &&

@@ -1,4 +1,4 @@
-From 8d642de7acc52b39e8e2e0c3ec5537c3506e7d1a Mon Sep 17 00:00:00 2001
+From 8188ee483fb8c54cc264bc2a54072f6c9a04c6d0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 21:27:19 +0100
 Subject: [PATCH 28/44] ethtool: set coalescing parameters with PARAMS_SET
@@ -15,13 +15,13 @@ interface.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  37 +++-
+ Documentation/networking/ethtool-netlink.txt |  37 ++++-
  include/uapi/linux/ethtool_netlink.h         |   2 +
  net/ethtool/ioctl.c                          |   7 +-
  net/ethtool/netlink.c                        |   8 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/params.c                         | 187 +++++++++++++++++++
- 6 files changed, 240 insertions(+), 2 deletions(-)
+ net/ethtool/params.c                         | 165 +++++++++++++++++++
+ 6 files changed, 218 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 20c75926e07f..e6c88bc88529 100644
@@ -138,10 +138,10 @@ index ac779fd6e40e..d414d79a55cf 100644
  
  static int ethtool_get_ringparam(struct net_device *dev, void __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 90ca03adf1d4..839d28878a09 100644
+index 18d72fab00bc..250c9e8aea8b 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -616,6 +616,8 @@ static const struct get_request_ops *ethnl_std_notify_to_ops(unsigned int cmd)
+@@ -619,6 +619,8 @@ static const struct get_request_ops *ethnl_std_notify_to_ops(unsigned int cmd)
  	switch (cmd) {
  	case ETHTOOL_MSG_SETTINGS_NTF:
  		return &settings_request_ops;
@@ -150,7 +150,7 @@ index 90ca03adf1d4..839d28878a09 100644
  	};
  
  	WARN_ONCE(1, "unexpected notification type %u\n", cmd);
-@@ -686,6 +688,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
+@@ -689,6 +691,7 @@ typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
  
  static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
  	[ETHTOOL_MSG_SETTINGS_NTF]	= ethnl_std_notify,
@@ -158,7 +158,7 @@ index 90ca03adf1d4..839d28878a09 100644
  };
  
  void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
-@@ -764,6 +767,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -767,6 +770,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -171,10 +171,10 @@ index 90ca03adf1d4..839d28878a09 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 9e827ee045cf..29eb24a19a45 100644
+index 647d47715bde..c5722a95c662 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -309,5 +309,6 @@ extern const struct get_request_ops info_request_ops;
+@@ -363,5 +363,6 @@ extern const struct get_request_ops info_request_ops;
  extern const struct get_request_ops params_request_ops;
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
@@ -182,10 +182,10 @@ index 9e827ee045cf..29eb24a19a45 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 5082b7f97eb3..6f9434cfbf06 100644
+index 5082b7f97eb3..d152b8af6521 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -161,3 +161,190 @@ const struct get_request_ops params_request_ops = {
+@@ -161,3 +161,168 @@ const struct get_request_ops params_request_ops = {
  	.reply_size		= params_size,
  	.fill_reply		= params_fill,
  };
@@ -263,72 +263,50 @@ index 5082b7f97eb3..6f9434cfbf06 100644
 +	if (ret < 0)
 +		return ret;
 +
-+	if (ethnl_update_u32(&data.rx_coalesce_usecs,
-+			     tb[ETHTOOL_A_COALESCE_RX_USECS]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.rx_max_coalesced_frames,
-+			     tb[ETHTOOL_A_COALESCE_RX_MAXFRM]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.rx_coalesce_usecs_irq,
-+			     tb[ETHTOOL_A_COALESCE_RX_USECS_IRQ]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.rx_max_coalesced_frames_irq,
-+			     tb[ETHTOOL_A_COALESCE_RX_MAXFRM_IRQ]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.rx_coalesce_usecs_low,
-+			     tb[ETHTOOL_A_COALESCE_RX_USECS_LOW]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.rx_max_coalesced_frames_low,
-+			     tb[ETHTOOL_A_COALESCE_RX_MAXFRM_LOW]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.rx_coalesce_usecs_high,
-+			     tb[ETHTOOL_A_COALESCE_RX_USECS_HIGH]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.rx_max_coalesced_frames_high,
-+			     tb[ETHTOOL_A_COALESCE_RX_MAXFRM_HIGH]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.tx_coalesce_usecs,
-+			     tb[ETHTOOL_A_COALESCE_TX_USECS]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.tx_max_coalesced_frames,
-+			     tb[ETHTOOL_A_COALESCE_TX_MAXFRM]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.tx_coalesce_usecs_irq,
-+			     tb[ETHTOOL_A_COALESCE_TX_USECS_IRQ]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.tx_max_coalesced_frames_irq,
-+			     tb[ETHTOOL_A_COALESCE_TX_MAXFRM_IRQ]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.tx_coalesce_usecs_low,
-+			     tb[ETHTOOL_A_COALESCE_TX_USECS_LOW]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.tx_max_coalesced_frames_low,
-+			     tb[ETHTOOL_A_COALESCE_TX_MAXFRM_LOW]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.tx_coalesce_usecs_high,
-+			     tb[ETHTOOL_A_COALESCE_TX_USECS_HIGH]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.tx_max_coalesced_frames_high,
-+			     tb[ETHTOOL_A_COALESCE_TX_MAXFRM_HIGH]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.pkt_rate_low,
-+			     tb[ETHTOOL_A_COALESCE_PKT_RATE_LOW]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.pkt_rate_high,
-+			     tb[ETHTOOL_A_COALESCE_PKT_RATE_HIGH]))
-+		mod = true;
-+	if (ethnl_update_bool32(&data.use_adaptive_rx_coalesce,
-+				tb[ETHTOOL_A_COALESCE_RX_USE_ADAPTIVE]))
-+		mod = true;
-+	if (ethnl_update_bool32(&data.use_adaptive_tx_coalesce,
-+				tb[ETHTOOL_A_COALESCE_TX_USE_ADAPTIVE]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.rate_sample_interval,
-+			     tb[ETHTOOL_A_COALESCE_RATE_SAMPLE_INTERVAL]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.stats_block_coalesce_usecs,
-+			     tb[ETHTOOL_A_COALESCE_STATS_BLOCK_USECS]))
-+		mod = true;
++	ethnl_update_u32(&data.rx_coalesce_usecs,
++			 tb[ETHTOOL_A_COALESCE_RX_USECS], &mod);
++	ethnl_update_u32(&data.rx_max_coalesced_frames,
++			 tb[ETHTOOL_A_COALESCE_RX_MAXFRM], &mod);
++	ethnl_update_u32(&data.rx_coalesce_usecs_irq,
++			 tb[ETHTOOL_A_COALESCE_RX_USECS_IRQ], &mod);
++	ethnl_update_u32(&data.rx_max_coalesced_frames_irq,
++			 tb[ETHTOOL_A_COALESCE_RX_MAXFRM_IRQ], &mod);
++	ethnl_update_u32(&data.rx_coalesce_usecs_low,
++			 tb[ETHTOOL_A_COALESCE_RX_USECS_LOW], &mod);
++	ethnl_update_u32(&data.rx_max_coalesced_frames_low,
++			 tb[ETHTOOL_A_COALESCE_RX_MAXFRM_LOW], &mod);
++	ethnl_update_u32(&data.rx_coalesce_usecs_high,
++			 tb[ETHTOOL_A_COALESCE_RX_USECS_HIGH], &mod);
++	ethnl_update_u32(&data.rx_max_coalesced_frames_high,
++			 tb[ETHTOOL_A_COALESCE_RX_MAXFRM_HIGH], &mod);
++	ethnl_update_u32(&data.tx_coalesce_usecs,
++			 tb[ETHTOOL_A_COALESCE_TX_USECS], &mod);
++	ethnl_update_u32(&data.tx_max_coalesced_frames,
++			 tb[ETHTOOL_A_COALESCE_TX_MAXFRM], &mod);
++	ethnl_update_u32(&data.tx_coalesce_usecs_irq,
++			 tb[ETHTOOL_A_COALESCE_TX_USECS_IRQ], &mod);
++	ethnl_update_u32(&data.tx_max_coalesced_frames_irq,
++			 tb[ETHTOOL_A_COALESCE_TX_MAXFRM_IRQ], &mod);
++	ethnl_update_u32(&data.tx_coalesce_usecs_low,
++			 tb[ETHTOOL_A_COALESCE_TX_USECS_LOW], &mod);
++	ethnl_update_u32(&data.tx_max_coalesced_frames_low,
++			 tb[ETHTOOL_A_COALESCE_TX_MAXFRM_LOW], &mod);
++	ethnl_update_u32(&data.tx_coalesce_usecs_high,
++			 tb[ETHTOOL_A_COALESCE_TX_USECS_HIGH], &mod);
++	ethnl_update_u32(&data.tx_max_coalesced_frames_high,
++			 tb[ETHTOOL_A_COALESCE_TX_MAXFRM_HIGH], &mod);
++	ethnl_update_u32(&data.pkt_rate_low,
++			 tb[ETHTOOL_A_COALESCE_PKT_RATE_LOW], &mod);
++	ethnl_update_u32(&data.pkt_rate_high,
++			 tb[ETHTOOL_A_COALESCE_PKT_RATE_HIGH], &mod);
++	ethnl_update_bool32(&data.use_adaptive_rx_coalesce,
++			    tb[ETHTOOL_A_COALESCE_RX_USE_ADAPTIVE], &mod);
++	ethnl_update_bool32(&data.use_adaptive_tx_coalesce,
++			    tb[ETHTOOL_A_COALESCE_TX_USE_ADAPTIVE], &mod);
++	ethnl_update_u32(&data.rate_sample_interval,
++			 tb[ETHTOOL_A_COALESCE_RATE_SAMPLE_INTERVAL], &mod);
++	ethnl_update_u32(&data.stats_block_coalesce_usecs,
++			 tb[ETHTOOL_A_COALESCE_STATS_BLOCK_USECS], &mod);
 +
 +	if (!mod)
 +		return 0;

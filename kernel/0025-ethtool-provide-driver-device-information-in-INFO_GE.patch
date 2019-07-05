@@ -1,4 +1,4 @@
-From 7d778350c6be3209e812b7b1b1437e2087d99d88 Mon Sep 17 00:00:00 2001
+From 5a8303ee450ac0016ad3f18b12836bd274031aaa Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
 Subject: [PATCH 25/44] ethtool: provide driver/device information in INFO_GET
@@ -463,10 +463,10 @@ index 5c2e810bc886..edc4f60f7013 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index ec1cde8dc5a7..2b5b71cf0d49 100644
+index b6904ee7f24a..9f07e2f39d5b 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -293,6 +293,7 @@ struct ethnl_dump_ctx {
+@@ -296,6 +296,7 @@ struct ethnl_dump_ctx {
  static const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
  	[ETHTOOL_MSG_STRSET_GET]	= &strset_request_ops,
  	[ETHTOOL_MSG_SETTINGS_GET]	= &settings_request_ops,
@@ -474,7 +474,7 @@ index ec1cde8dc5a7..2b5b71cf0d49 100644
  };
  
  static struct ethnl_dump_ctx *ethnl_dump_context(struct netlink_callback *cb)
-@@ -748,6 +749,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -751,6 +752,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_UNS_ADMIN_PERM,
  		.doit	= ethnl_set_settings,
  	},
@@ -489,10 +489,10 @@ index ec1cde8dc5a7..2b5b71cf0d49 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 2d0388bc8d36..0fd69ef160b3 100644
+index f3f6ac94fe73..a53632408798 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -296,6 +296,7 @@ struct get_request_ops {
+@@ -350,6 +350,7 @@ struct get_request_ops {
  
  extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops settings_request_ops;

@@ -1,4 +1,4 @@
-From 64591f3e1cfd8861f73ba396c8aab740c2aa177a Mon Sep 17 00:00:00 2001
+From 8c42ea4215a6abe5663957505ff2e9a85e5f231b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:36:43 +0100
 Subject: [PATCH 34/44] ethtool: set channel counts with PARAMS_SET request
@@ -10,11 +10,11 @@ ETHTOOL_SCHANNELS ioctl command.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt | 16 ++--
- net/ethtool/common.c                         | 65 +++++++++++++++
+ net/ethtool/common.c                         | 65 ++++++++++++++++
  net/ethtool/common.h                         |  3 +
- net/ethtool/ioctl.c                          | 58 +------------
- net/ethtool/params.c                         | 86 +++++++++++++++++++-
- 5 files changed, 165 insertions(+), 63 deletions(-)
+ net/ethtool/ioctl.c                          | 58 +-------------
+ net/ethtool/params.c                         | 82 +++++++++++++++++++-
+ 5 files changed, 161 insertions(+), 63 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index baf476d3aa24..ab0a6f5157ed 100644
@@ -235,7 +235,7 @@ index e726c8eb5582..0ce138478786 100644
  		ethtool_notify(dev, NULL, ETHTOOL_MSG_PARAMS_NTF,
  			       ETHTOOL_IM_PARAMS_CHANNELS, NULL);
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index ed887013f0a7..d2668c7754ba 100644
+index b2ceccf7f7d1..fcdf338cba0a 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -1,6 +1,7 @@
@@ -255,7 +255,7 @@ index ed887013f0a7..d2668c7754ba 100644
  };
  
  static const struct nla_policy params_hdr_policy[ETHTOOL_A_HEADER_MAX + 1] = {
-@@ -594,6 +595,84 @@ static int params_update_pause(struct genl_info *info, struct net_device *dev,
+@@ -567,6 +568,80 @@ static int params_update_pause(struct genl_info *info, struct net_device *dev,
  	return (ret < 0) ? ret : 1;
  }
  
@@ -303,16 +303,12 @@ index ed887013f0a7..d2668c7754ba 100644
 +	if (ret < 0)
 +		return ret;
 +
-+	if (ethnl_update_u32(&new.rx_count, tb[ETHTOOL_A_CHANNELS_RX_COUNT]))
-+		mod = true;
-+	if (ethnl_update_u32(&new.tx_count, tb[ETHTOOL_A_CHANNELS_TX_COUNT]))
-+		mod = true;
-+	if (ethnl_update_u32(&new.other_count,
-+			     tb[ETHTOOL_A_CHANNELS_OTHER_COUNT]))
-+		mod = true;
-+	if (ethnl_update_u32(&new.combined_count,
-+			     tb[ETHTOOL_A_CHANNELS_COMBINED_COUNT]))
-+		mod = true;
++	ethnl_update_u32(&new.rx_count, tb[ETHTOOL_A_CHANNELS_RX_COUNT], &mod);
++	ethnl_update_u32(&new.tx_count, tb[ETHTOOL_A_CHANNELS_TX_COUNT], &mod);
++	ethnl_update_u32(&new.other_count, tb[ETHTOOL_A_CHANNELS_OTHER_COUNT],
++			 &mod);
++	ethnl_update_u32(&new.combined_count,
++			 tb[ETHTOOL_A_CHANNELS_COMBINED_COUNT], &mod);
 +	if (!mod)
 +		return 0;
 +
@@ -340,7 +336,7 @@ index ed887013f0a7..d2668c7754ba 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
-@@ -632,6 +711,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+@@ -605,6 +680,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
  		req_mask |= ETHTOOL_IM_PARAMS_PAUSE;

@@ -1,4 +1,4 @@
-From ca02528b94a1801b21509330be247e070ffa326b Mon Sep 17 00:00:00 2001
+From ec2f9f0d3dc5c860f6c8bc359a5b9113187a245b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 07:53:54 +0100
 Subject: [PATCH 30/44] ethtool: set ring sizes with PARAMS_SET request
@@ -10,8 +10,8 @@ ETHTOOL_SRINGPARAM ioctl command.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt | 13 +++-
- net/ethtool/params.c                         | 82 +++++++++++++++++++-
- 2 files changed, 91 insertions(+), 4 deletions(-)
+ net/ethtool/params.c                         | 80 +++++++++++++++++++-
+ 2 files changed, 89 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 413c7dede681..2a74a8abfbe5 100644
@@ -52,7 +52,7 @@ index 413c7dede681..2a74a8abfbe5 100644
  ETHTOOL_SPAUSEPARAM		n/a
  ETHTOOL_GRXCSUM			ETHTOOL_MSG_SETTINGS_GET
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 6744c03ded1b..17e3a8ff3e94 100644
+index 42311dfd3ca0..11ad2e357570 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -227,7 +227,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
@@ -64,7 +64,7 @@ index 6744c03ded1b..17e3a8ff3e94 100644
  };
  
  static const struct nla_policy params_hdr_policy[ETHTOOL_A_HEADER_MAX + 1] = {
-@@ -368,6 +368,81 @@ static int params_update_coalesce(struct genl_info *info,
+@@ -346,6 +346,79 @@ static int params_update_coalesce(struct genl_info *info,
  	return (ret < 0) ? ret : 1;
  }
  
@@ -109,16 +109,14 @@ index 6744c03ded1b..17e3a8ff3e94 100644
 +	if (ret < 0)
 +		return ret;
 +
-+	if (ethnl_update_u32(&data.rx_pending, tb[ETHTOOL_A_RING_RX_PENDING]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.rx_mini_pending,
-+			     tb[ETHTOOL_A_RING_RX_MINI_PENDING]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.rx_jumbo_pending,
-+			     tb[ETHTOOL_A_RING_RX_JUMBO_PENDING]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.tx_pending, tb[ETHTOOL_A_RING_TX_PENDING]))
-+		mod = true;
++	ethnl_update_u32(&data.rx_pending, tb[ETHTOOL_A_RING_RX_PENDING],
++			 &mod);
++	ethnl_update_u32(&data.rx_mini_pending,
++			 tb[ETHTOOL_A_RING_RX_MINI_PENDING], &mod);
++	ethnl_update_u32(&data.rx_jumbo_pending,
++			 tb[ETHTOOL_A_RING_RX_JUMBO_PENDING], &mod);
++	ethnl_update_u32(&data.tx_pending, tb[ETHTOOL_A_RING_TX_PENDING],
++			 &mod);
 +	if (!mod)
 +		return 0;
 +
@@ -146,7 +144,7 @@ index 6744c03ded1b..17e3a8ff3e94 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
-@@ -396,6 +471,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+@@ -374,6 +447,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
  		req_mask |= ETHTOOL_IM_PARAMS_COALESCE;

@@ -1,4 +1,4 @@
-From ba5137e1214b52db8c48a0e907691e08fe7752da Mon Sep 17 00:00:00 2001
+From 1861b8d063a51bac7f6b5fc43e0ef6401a17d212 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
 Subject: [PATCH 26/44] ethtool: provide timestamping information in INFO_GET
@@ -468,7 +468,7 @@ index edc4f60f7013..ac779fd6e40e 100644
  		err = -EFAULT;
  
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 0fd69ef160b3..0a2b1948c0a1 100644
+index a53632408798..b01c9ca6637f 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -7,9 +7,18 @@

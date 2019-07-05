@@ -1,4 +1,4 @@
-From bd67aee27efb08bd9481b0d44b3340d43c663f66 Mon Sep 17 00:00:00 2001
+From b1ddd9e27751a4a7a54816bea7c5f6be6e2087c0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 10/44] ethtool: provide string sets with STRSET_GET request
@@ -229,10 +229,10 @@ index 11782306593b..11ceb00821b3 100644
 -ethtool_nl-y	:= netlink.o bitset.o
 +ethtool_nl-y	:= netlink.o bitset.o strset.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 9b55a1a03180..a3237528cac7 100644
+index 660e346c4220..41a63054bdbc 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -198,6 +198,7 @@ struct ethnl_dump_ctx {
+@@ -201,6 +201,7 @@ struct ethnl_dump_ctx {
  };
  
  static const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
@@ -240,7 +240,7 @@ index 9b55a1a03180..a3237528cac7 100644
  };
  
  static struct ethnl_dump_ctx *ethnl_dump_context(struct netlink_callback *cb)
-@@ -543,6 +544,13 @@ EXPORT_SYMBOL(ethtool_notify);
+@@ -546,6 +547,13 @@ EXPORT_SYMBOL(ethtool_notify);
  /* genetlink setup */
  
  static const struct genl_ops ethtool_genl_ops[] = {
@@ -255,10 +255,10 @@ index 9b55a1a03180..a3237528cac7 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index d34558bb7e83..eec805b98670 100644
+index 3f00879f32f7..68aa67231bc5 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -289,4 +289,8 @@ struct get_request_ops {
+@@ -343,4 +343,8 @@ struct get_request_ops {
  	void (*cleanup)(struct ethnl_req_info *req_info);
  };
  

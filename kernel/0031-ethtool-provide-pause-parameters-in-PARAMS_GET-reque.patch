@@ -1,4 +1,4 @@
-From 67698e89ac8c915f57b3890ab668e572545de207 Mon Sep 17 00:00:00 2001
+From 254d144dd59537566a1741442257e19fed263512 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:02:27 +0100
 Subject: [PATCH 31/44] ethtool: provide pause parameters in PARAMS_GET request
@@ -132,7 +132,7 @@ index e57585e724f5..7727768929ac 100644
  
  static int ethtool_self_test(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 17e3a8ff3e94..63142d910aeb 100644
+index 11ad2e357570..5ccc460d232f 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -7,6 +7,7 @@ static const struct nla_policy params_get_policy[ETHTOOL_A_PARAMS_MAX + 1] = {

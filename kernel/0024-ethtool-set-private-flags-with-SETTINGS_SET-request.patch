@@ -1,4 +1,4 @@
-From 93103aa6880d210aa6cd07904529c9818e9bbdc7 Mon Sep 17 00:00:00 2001
+From 90cfcfa521d850e0b54baa6eedf8c039004c269c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 24/44] ethtool: set private flags with SETTINGS_SET request
@@ -11,8 +11,8 @@ state.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  3 +-
- net/ethtool/settings.c                       | 46 +++++++++++++++++++-
- 2 files changed, 47 insertions(+), 2 deletions(-)
+ net/ethtool/settings.c                       | 45 +++++++++++++++++++-
+ 2 files changed, 46 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index fd6595ede8f4..3e2e41d09479 100644
@@ -36,7 +36,7 @@ index fd6595ede8f4..3e2e41d09479 100644
  ETHTOOL_SRXFH			n/a
  ETHTOOL_GGRO			ETHTOOL_MSG_SETTINGS_GET
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 5a9d178d169e..6c746a30354b 100644
+index a6d9eb3b1f74..3e46646efa37 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -765,7 +765,7 @@ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
@@ -49,17 +49,17 @@ index 5a9d178d169e..6c746a30354b 100644
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
 @@ -1123,6 +1123,41 @@ static int settings_update_features(struct genl_info *info,
- 	return 0;
+ 	return !!mod;
  }
  
 +static int settings_update_priv_flags(struct genl_info *info,
 +				      struct net_device *dev,
-+				      const struct nlattr *bitset,
-+				      bool *changed)
++				      const struct nlattr *bitset)
 +{
 +	const struct ethtool_ops *ops = dev->ethtool_ops;
 +	unsigned int nflags;
 +	void *names = NULL;
++	bool mod = false;
 +	bool compact;
 +	u32 flags;
 +	int ret;
@@ -74,12 +74,12 @@ index 5a9d178d169e..6c746a30354b 100644
 +		return ret;
 +	flags = ops->get_priv_flags(dev);
 +
-+	*changed = ethnl_update_bitset32(&flags, NULL, nflags, bitset, &ret,
-+					 names, true, info);
-+	if (ret < 0)
++	ret = ethnl_update_bitset32(&flags, NULL, nflags, bitset, names,
++				    true, info, &mod);
++	if (ret < 0 || !mod)
 +		goto out_free;
-+	if (*changed)
-+		ret = ops->set_priv_flags(dev, flags);
++	ret = ops->set_priv_flags(dev, flags);
++	ret = ret ?: 1;
 +
 +out_free:
 +	if (!compact)
@@ -90,18 +90,17 @@ index 5a9d178d169e..6c746a30354b 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
-@@ -1182,6 +1217,15 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
- 		if (ret < 0)
- 			goto out_ops;
+@@ -1181,6 +1216,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+ 		if (ret)
+ 			req_mask |= ETHTOOL_IM_SETTINGS_FEATURES;
  	}
 +	if (tb[ETHTOOL_A_SETTINGS_PRIV_FLAGS]) {
 +		ret = settings_update_priv_flags(info, dev,
-+						 tb[ETHTOOL_A_SETTINGS_PRIV_FLAGS],
-+						 &mod);
-+		if (mod)
-+			req_mask |= ETHTOOL_IM_SETTINGS_PRIVFLAGS;
++						 tb[ETHTOOL_A_SETTINGS_PRIV_FLAGS]);
 +		if (ret < 0)
 +			goto out_ops;
++		if (ret)
++			req_mask |= ETHTOOL_IM_SETTINGS_PRIVFLAGS;
 +	}
  	ret = 0;
  

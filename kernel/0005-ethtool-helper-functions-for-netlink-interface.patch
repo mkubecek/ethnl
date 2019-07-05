@@ -1,4 +1,4 @@
-From f860dae65ee82ea1d09cae5db2bc07b3276ec361 Mon Sep 17 00:00:00 2001
+From 6114513345ed064125c0c451bc68730c8b63af18 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 05/44] ethtool: helper functions for netlink interface
@@ -10,9 +10,9 @@ structure members from request attributes (to be used for *_SET requests).
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  include/uapi/linux/ethtool_netlink.h |  23 ++++
- net/ethtool/netlink.c                | 172 +++++++++++++++++++++++++++
- net/ethtool/netlink.h                | 145 ++++++++++++++++++++++
- 3 files changed, 340 insertions(+)
+ net/ethtool/netlink.c                | 175 +++++++++++++++++++++++
+ net/ethtool/netlink.h                | 199 +++++++++++++++++++++++++++
+ 3 files changed, 397 insertions(+)
 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 index 9a0fbd4f85d9..ffd7db0848ef 100644
@@ -49,10 +49,10 @@ index 9a0fbd4f85d9..ffd7db0848ef 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 3c98b41f04e5..12a46e3b1043 100644
+index 3c98b41f04e5..6db9ec9fc4c7 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -1,8 +1,180 @@
+@@ -1,8 +1,183 @@
  // SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
  
 +#include <net/sock.h>
@@ -147,9 +147,12 @@ index 3c98b41f04e5..12a46e3b1043 100644
 +	}
 +
 +	req_info->dev = dev;
-+	ethnl_update_u32(&req_info->req_mask, tb[ETHTOOL_A_HEADER_INFOMASK]);
-+	ethnl_update_u32(&req_info->global_flags, tb[ETHTOOL_A_HEADER_GFLAGS]);
-+	ethnl_update_u32(&req_info->req_flags, tb[ETHTOOL_A_HEADER_RFLAGS]);
++	if (tb[ETHTOOL_A_HEADER_INFOMASK])
++		req_info->req_mask = nla_get_u32(tb[ETHTOOL_A_HEADER_INFOMASK]);
++	if (tb[ETHTOOL_A_HEADER_GFLAGS])
++		req_info->global_flags = nla_get_u32(tb[ETHTOOL_A_HEADER_GFLAGS]);
++	if (tb[ETHTOOL_A_HEADER_RFLAGS])
++		req_info->req_flags = nla_get_u32(tb[ETHTOOL_A_HEADER_RFLAGS]);
 +
 +	return 0;
 +}
@@ -234,10 +237,10 @@ index 3c98b41f04e5..12a46e3b1043 100644
  
  static const struct genl_ops ethtool_genl_ops[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 257ae55ccc82..71fca54f9c03 100644
+index 257ae55ccc82..7c0fed25181f 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -6,5 +6,150 @@
+@@ -6,5 +6,204 @@
  #include <linux/ethtool_netlink.h>
  #include <linux/netdevice.h>
  #include <net/genetlink.h>
@@ -260,81 +263,135 @@ index 257ae55ccc82..71fca54f9c03 100644
 +	return nla_total_size(strlen(s) + 1);
 +}
 +
-+/* The ethnl_update_* helpers set value pointed to by @dst to the value of
-+ * netlink attribute @attr (if attr is not null). They return true if *dst
-+ * value was changed, false if not.
++/**
++ * ethnl_update_u32() - update u32 value from NLA_U32 attribute
++ * @dst:  value to update
++ * @attr: netlink attribute with new value or null
++ * @mod:  pointer to bool for modification tracking
++ *
++ * Copy the u32 value from NLA_U32 netlink attribute @attr into variable
++ * pointed to by @dst; do nothing if @attr is null. Bool pointed to by @mod
++ * is set to true if this function changed the value of *dst, otherwise it
++ * is left as is.
 + */
-+static inline bool ethnl_update_u32(u32 *dst, struct nlattr *attr)
++static inline void ethnl_update_u32(u32 *dst, const struct nlattr *attr,
++				    bool *mod)
 +{
 +	u32 val;
 +
 +	if (!attr)
-+		return false;
++		return;
 +	val = nla_get_u32(attr);
 +	if (*dst == val)
-+		return false;
++		return;
 +
 +	*dst = val;
-+	return true;
++	*mod = true;
 +}
 +
-+static inline bool ethnl_update_u8(u8 *dst, struct nlattr *attr)
++/**
++ * ethnl_update_u8() - update u8 value from NLA_U8 attribute
++ * @dst:  value to update
++ * @attr: netlink attribute with new value or null
++ * @mod:  pointer to bool for modification tracking
++ *
++ * Copy the u8 value from NLA_U8 netlink attribute @attr into variable
++ * pointed to by @dst; do nothing if @attr is null. Bool pointed to by @mod
++ * is set to true if this function changed the value of *dst, otherwise it
++ * is left as is.
++ */
++static inline void ethnl_update_u8(u8 *dst, const struct nlattr *attr,
++				   bool *mod)
 +{
 +	u8 val;
 +
 +	if (!attr)
-+		return false;
-+	val = nla_get_u8(attr);
++		return;
++	val = nla_get_u32(attr);
 +	if (*dst == val)
-+		return false;
++		return;
 +
 +	*dst = val;
-+	return true;
++	*mod = true;
 +}
 +
-+/* update u32 value used as bool from NLA_U8 attribute */
-+static inline bool ethnl_update_bool32(u32 *dst, struct nlattr *attr)
++/**
++ * ethnl_update_bool32() - update u32 used as bool from NLA_U8 attribute
++ * @dst:  value to update
++ * @attr: netlink attribute with new value or null
++ * @mod:  pointer to bool for modification tracking
++ *
++ * Use the u8 value from NLA_U8 netlink attribute @attr to set u32 variable
++ * pointed to by @dst to 0 (if zero) or 1 (if not); do nothing if @attr is
++ * null. Bool pointed to by @mod is set to true if this function changed the
++ * logical value of *dst, otherwise it is left as is.
++ */
++static inline void ethnl_update_bool32(u32 *dst, const struct nlattr *attr,
++				       bool *mod)
 +{
 +	u8 val;
 +
 +	if (!attr)
-+		return false;
++		return;
 +	val = !!nla_get_u8(attr);
 +	if (!!*dst == val)
-+		return false;
++		return;
 +
 +	*dst = val;
-+	return true;
++	*mod = true;
 +}
 +
-+static inline bool ethnl_update_binary(void *dst, unsigned int len,
-+				       struct nlattr *attr)
++/**
++ * ethnl_update_binary() - update binary data from NLA_BINARY atribute
++ * @dst:  value to update
++ * @len:  destination buffer length
++ * @attr: netlink attribute with new value or null
++ * @mod:  pointer to bool for modification tracking
++ *
++ * Use the u8 value from NLA_U8 netlink attribute @attr to rewrite data block
++ * of length @len at @dst by attribute payload; do nothing if @attr is null.
++ * Bool pointed to by @mod is set to true if this function changed the logical
++ * value of *dst, otherwise it is left as is.
++ */
++static inline void ethnl_update_binary(void *dst, unsigned int len,
++				       const struct nlattr *attr, bool *mod)
 +{
 +	if (!attr)
-+		return false;
++		return;
 +	if (nla_len(attr) < len)
 +		len = nla_len(attr);
 +	if (!memcmp(dst, nla_data(attr), len))
-+		return false;
++		return;
 +
 +	memcpy(dst, nla_data(attr), len);
-+	return true;
++	*mod = true;
 +}
 +
-+static inline bool ethnl_update_bitfield32(u32 *dst, struct nlattr *attr)
++/**
++ * ethnl_update_bitfield32() - update u32 value from NLA_BITFIELD32 attribute
++ * @dst:  value to update
++ * @attr: netlink attribute with new value or null
++ * @mod:  pointer to bool for modification tracking
++ *
++ * Update bits in u32 value which are set in attribute's mask to values from
++ * attribute's value. Do nothing if @attr is null or the value wouldn't change;
++ * otherwise, set bool pointed to by @mod to true.
++ */
++static inline void ethnl_update_bitfield32(u32 *dst, const struct nlattr *attr,
++					   bool *mod)
 +{
 +	struct nla_bitfield32 change;
 +	u32 newval;
 +
 +	if (!attr)
-+		return false;
++		return;
 +	change = nla_get_bitfield32(attr);
 +	newval = (*dst & ~change.selector) | (change.value & change.selector);
 +	if (*dst == newval)
-+		return false;
++		return;
 +
 +	*dst = newval;
-+	return true;
++	*mod = true;
 +}
 +
 +/**

@@ -1,4 +1,4 @@
-From ad8c56302a2536e34b1f16680ea764d0c0729b6c Mon Sep 17 00:00:00 2001
+From 04ac22282a36df960ca3864c4f426ec0ade4942b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:50:30 +0100
 Subject: [PATCH 18/44] ethtool: set WoL settings with SETTINGS_SET request
@@ -12,8 +12,8 @@ modes and SecureOn(tm) password.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt | 12 +++-
- net/ethtool/settings.c                       | 60 +++++++++++++++++++-
- 2 files changed, 70 insertions(+), 2 deletions(-)
+ net/ethtool/settings.c                       | 67 +++++++++++++++++++-
+ 2 files changed, 77 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 455603bdc6fd..21430e08cbf4 100644
@@ -53,7 +53,7 @@ index 455603bdc6fd..21430e08cbf4 100644
  ETHTOOL_SMSGLVL			n/a
  ETHTOOL_NWAY_RST		n/a
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index fd29d843b2d9..20242b0d5afc 100644
+index 6396c25b68b4..8fa9ab332ca9 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -109,6 +109,12 @@ static const struct link_mode_info link_mode_params[] = {
@@ -93,15 +93,24 @@ index fd29d843b2d9..20242b0d5afc 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -641,6 +655,42 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
+@@ -636,6 +650,49 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
  	return 0;
  }
  
++/**
++ * settings_update_wol() - update wake on lan settings from nested attribute
++ * @info: genetlink info (for error reporting)
++ * @nest: nest attribute
++ * @dev:  network device to get settings for
++ *
++ * Return: negative error on failure, 1 if settings were modified, 0 if not
++ */
 +static int settings_update_wol(struct genl_info *info, struct nlattr *nest,
 +			       struct net_device *dev)
 +{
 +	struct nlattr *tb[ETHTOOL_A_WOL_MAX + 1];
 +	struct ethtool_wolinfo wolinfo = {};
++	bool mod = false;
 +	int ret;
 +
 +	if (!nest)
@@ -115,28 +124,26 @@ index fd29d843b2d9..20242b0d5afc 100644
 +	if (ret < 0)
 +		return ret;
 +
-+	ret = 0;
-+	if (ethnl_update_bitfield32(&wolinfo.wolopts, tb[ETHTOOL_A_WOL_MODES]))
-+		ret = 1;
-+	if (ethnl_update_binary(wolinfo.sopass, SOPASS_MAX,
-+				tb[ETHTOOL_A_WOL_SOPASS]))
-+		ret = 1;
-+	if (ret) {
-+		int ret2 = dev->ethtool_ops->set_wol(dev, &wolinfo);
++	ethnl_update_bitfield32(&wolinfo.wolopts, tb[ETHTOOL_A_WOL_MODES],
++				&mod);
++	ethnl_update_binary(wolinfo.sopass, SOPASS_MAX,
++			    tb[ETHTOOL_A_WOL_SOPASS], &mod);
++	if (!mod)
++		return 0;
 +
-+		if (ret2 < 0) {
-+			GENL_SET_ERR_MSG(info, "wol info update failed");
-+			return ret2;
-+		}
++	ret = dev->ethtool_ops->set_wol(dev, &wolinfo);
++	if (ret < 0) {
++		GENL_SET_ERR_MSG(info, "wol info update failed");
++		return ret;
 +	}
 +
-+	return ret;
++	return 1;
 +}
 +
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
-@@ -674,6 +724,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -669,6 +726,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret < 0)
  			goto out_ops;
  	}

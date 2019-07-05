@@ -1,4 +1,4 @@
-From 3f0f57f9ddbe727737e801fd7cb803b9dfe2f748 Mon Sep 17 00:00:00 2001
+From 1e1422a408259717cf170abf0269fcf782b61d2e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 22/44] ethtool: set device features with SETTINGS_SET
@@ -15,10 +15,10 @@ between old and new state of dev->features.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  35 ++--
+ Documentation/networking/ethtool-netlink.txt |  35 +++--
  include/uapi/linux/ethtool_netlink.h         |   1 +
- net/ethtool/settings.c                       | 158 ++++++++++++++++++-
- 3 files changed, 184 insertions(+), 10 deletions(-)
+ net/ethtool/settings.c                       | 155 ++++++++++++++++++-
+ 3 files changed, 181 insertions(+), 10 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 0ccec2961882..31d8d6a2bad3 100644
@@ -123,7 +123,7 @@ index 0875c5d88410..ce8e9d6a4718 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index f85451aba649..4b06f824540e 100644
+index af9e6b53a8a4..5f9924514149 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -648,6 +648,15 @@ static const struct nla_policy debug_set_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
@@ -151,8 +151,8 @@ index f85451aba649..4b06f824540e 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -878,12 +887,150 @@ static int settings_update_debug(struct genl_info *info, struct nlattr *nest,
- 	return ret;
+@@ -880,6 +889,141 @@ static int settings_update_debug(struct genl_info *info, struct nlattr *nest,
+ 	return 1;
  }
  
 +static void bitmap_from_features(unsigned long *bitmap, netdev_features_t val)
@@ -178,8 +178,7 @@ index f85451aba649..4b06f824540e 100644
 +
 +static int settings_update_features(struct genl_info *info,
 +				    struct net_device *dev,
-+				    const struct nlattr *nest, u32 req_gflags,
-+				    bool *changed)
++				    const struct nlattr *nest, u32 req_gflags)
 +{
 +	DECLARE_BITMAP(wanted_diff_mask, NETDEV_FEATURE_COUNT);
 +	DECLARE_BITMAP(active_diff_mask, NETDEV_FEATURE_COUNT);
@@ -201,7 +200,6 @@ index f85451aba649..4b06f824540e 100644
 +	bitset_flags = (compact ? ETHNL_BITSET_COMPACT : 0) |
 +		       ETHNL_BITSET_LEGACY_NAMES;
 +
-+	*changed = false;
 +	ret = nla_parse_nested(tb, ETHTOOL_A_FEATURES_MAX, nest,
 +			       features_set_policy, info->extack);
 +	if (ret < 0)
@@ -212,9 +210,9 @@ index f85451aba649..4b06f824540e 100644
 +	bitmap_from_features(old_active, dev->features);
 +	bitmap_copy(req_wanted, old_active, NETDEV_FEATURE_COUNT);
 +	bitmap_zero(req_mask, NETDEV_FEATURE_COUNT);
-+	mod = ethnl_update_bitset(req_wanted, req_mask, NETDEV_FEATURE_COUNT,
-+				  tb[ETHTOOL_A_FEATURES_WANTED], &ret,
-+				  netdev_features_strings, true, info);
++	ret = ethnl_update_bitset(req_wanted, req_mask, NETDEV_FEATURE_COUNT,
++				  tb[ETHTOOL_A_FEATURES_WANTED],
++				  netdev_features_strings, true, info, &mod);
 +	if (ret < 0)
 +		return ret;
 +	if (features_from_bitmap(req_mask) & ~NETIF_F_ETHTOOL_BITS) {
@@ -227,9 +225,9 @@ index f85451aba649..4b06f824540e 100644
 +	dev->wanted_features = features_from_bitmap(req_wanted);
 +	__netdev_update_features(dev);
 +	bitmap_from_features(new_active, dev->features);
-+	*changed = !bitmap_equal(old_active, new_active, NETDEV_FEATURE_COUNT);
++	mod = !bitmap_equal(old_active, new_active, NETDEV_FEATURE_COUNT);
 +	if (!(req_gflags & ETHTOOL_RF_REPLY))
-+		return 0;
++		return !!mod;
 +
 +	bitmap_xor(wanted_diff_mask, req_wanted, new_active,
 +		   NETDEV_FEATURE_COUNT);
@@ -289,31 +287,24 @@ index f85451aba649..4b06f824540e 100644
 +		  reply_len);
 +err:
 +	GENL_SET_ERR_MSG(info, "failed to send reply message");
-+	return 0;
++	return !!mod;
 +}
 +
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
- 	struct ethnl_req_info req_info = {};
- 	struct net_device *dev;
- 	u32 req_mask = 0;
-+	bool mod;
- 	int ret;
- 
- 	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb,
-@@ -927,6 +1074,15 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -929,6 +1073,15 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret)
  			req_mask |= ETHTOOL_IM_SETTINGS_DEBUG;
  	}
 +	if (tb[ETHTOOL_A_SETTINGS_FEATURES]) {
 +		ret = settings_update_features(info, dev,
 +					       tb[ETHTOOL_A_SETTINGS_FEATURES],
-+					       req_info.global_flags, &mod);
-+		if (mod)
-+			req_mask |= ETHTOOL_IM_SETTINGS_FEATURES;
++					       req_info.global_flags);
 +		if (ret < 0)
 +			goto out_ops;
++		if (ret)
++			req_mask |= ETHTOOL_IM_SETTINGS_FEATURES;
 +	}
  	ret = 0;
  

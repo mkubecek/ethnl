@@ -1,4 +1,4 @@
-From a6ed5592ca924875e0d2fd00637c9ed80857a7ef Mon Sep 17 00:00:00 2001
+From ffbfba0a31ca9263b7eef61ca3afc65e01d674b5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 44/44] ethtool: implement RXFLOW_SET request
@@ -21,8 +21,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool_netlink.h         |   2 +
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/rxflow.c                         | 649 +++++++++++++++++++
- 5 files changed, 701 insertions(+), 2 deletions(-)
+ net/ethtool/rxflow.c                         | 652 +++++++++++++++++++
+ 5 files changed, 704 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 82d5a99374b8..9b88200bc9f1 100644
@@ -130,10 +130,10 @@ index c9c5bd72411e..8b9aee940ca2 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 04f36f800cb7..7c63963f584c 100644
+index e4d6109c6399..ba116ee7de6f 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -799,6 +799,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -802,6 +802,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.dumpit	= ethnl_get_dumpit,
  		.done	= ethnl_get_done,
  	},
@@ -146,10 +146,10 @@ index 04f36f800cb7..7c63963f584c 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index ca1282746ed3..ae9e752ac2b7 100644
+index ca9ec0692649..417161d64aa0 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -314,6 +314,7 @@ extern const struct get_request_ops rxflow_request_ops;
+@@ -368,6 +368,7 @@ extern const struct get_request_ops rxflow_request_ops;
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
@@ -158,10 +158,10 @@ index ca1282746ed3..ae9e752ac2b7 100644
  int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_reset(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index e75008ef6614..1a195246bf1e 100644
+index e75008ef6614..bebd5e265320 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
-@@ -512,3 +512,652 @@ void ethnl_rxflow_notify(struct net_device *dev,
+@@ -512,3 +512,655 @@ void ethnl_rxflow_notify(struct net_device *dev,
  err_data:
  	rxflow_cleanup(req_info);
  }
@@ -293,6 +293,7 @@ index e75008ef6614..1a195246bf1e 100644
 +		} else {
 +			struct ethtool_rxnfc grxnfc = rxnfc;
 +			struct nla_bitdield32;
++			bool mod = false;
 +			u32 fields;
 +
 +			grxnfc.cmd = ETHTOOL_GRXFH;
@@ -300,8 +301,10 @@ index e75008ef6614..1a195246bf1e 100644
 +			if (ret < 0)
 +				return ret;
 +			fields = (grxnfc.data & RXH_DISCARD) ? 0 : grxnfc.data;
-+			if (!ethnl_update_bitfield32(&fields,
-+						     tb[ETHTOOL_A_RXHASHOPT_FIELDS]))
++			ethnl_update_bitfield32(&fields,
++						tb[ETHTOOL_A_RXHASHOPT_FIELDS],
++						&mod);
++			if (!mod)
 +				continue;
 +			rxnfc.data = fields;
 +		}
@@ -321,17 +324,17 @@ index e75008ef6614..1a195246bf1e 100644
 +				  const struct nlattr *attr, u8 *phashfn,
 +				  u32 *info_mask)
 +{
++	bool mod = false;
 +	u32 hash_fn = 0;
-+	bool mod;
 +	int ret;
 +
 +	if (!attr) {
 +		*phashfn = ETH_RSS_HASH_NO_CHANGE;
 +		return 0;
 +	}
-+	mod = ethnl_update_bitset32(&hash_fn, NULL, ETH_RSS_HASH_FUNCS_COUNT,
-+				    attr, &ret, rss_hash_func_strings, true,
-+				    info);
++	ret = ethnl_update_bitset32(&hash_fn, NULL, ETH_RSS_HASH_FUNCS_COUNT,
++				    attr, rss_hash_func_strings, true,
++				    info, &mod);
 +	if (ret < 0)
 +		return ret;
 +	if (hash_fn > U8_MAX) {

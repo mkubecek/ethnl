@@ -1,4 +1,4 @@
-From f68582ea7f9143c579ffd86ff4d59519f7e95621 Mon Sep 17 00:00:00 2001
+From 7e5467d360a9e57e1a3abd539ebecf59726d8e56 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 16:19:21 +0100
 Subject: [PATCH 23/44] ethtool: provide private flags in SETTINGS_GET request
@@ -103,7 +103,7 @@ index 16482a266eec..5c2e810bc886 100644
  	case ETHTOOL_GRXFH:
  	case ETHTOOL_GRXRINGS:
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 4b06f824540e..5a9d178d169e 100644
+index 5f9924514149..a6d9eb3b1f74 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -20,6 +20,9 @@ struct settings_data {

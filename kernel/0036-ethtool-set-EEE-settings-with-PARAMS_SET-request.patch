@@ -1,4 +1,4 @@
-From 2326e1fa33dd828be682fb79bd350094e4750760 Mon Sep 17 00:00:00 2001
+From 48ed91fc2b6650683a974a7d1b0316d3f695e0b6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:47:45 +0100
 Subject: [PATCH 36/44] ethtool: set EEE settings with PARAMS_SET request
@@ -10,8 +10,8 @@ ETHTOOL_SEEE ioctl command.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt | 18 ++++--
- net/ethtool/params.c                         | 68 +++++++++++++++++++-
- 2 files changed, 79 insertions(+), 7 deletions(-)
+ net/ethtool/params.c                         | 65 +++++++++++++++++++-
+ 2 files changed, 76 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index fbf4dbb15102..7a97ea5b5e07 100644
@@ -57,7 +57,7 @@ index fbf4dbb15102..7a97ea5b5e07 100644
  ETHTOOL_SRSSH			n/a
  ETHTOOL_GTUNABLE		n/a
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index ac6b5ad3e914..4e5c759b6756 100644
+index 2a6a977b9f61..8012961724d5 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -429,7 +429,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
@@ -69,7 +69,7 @@ index ac6b5ad3e914..4e5c759b6756 100644
  };
  
  static const struct nla_policy params_hdr_policy[ETHTOOL_A_HEADER_MAX + 1] = {
-@@ -771,6 +771,67 @@ static int params_update_channels(struct genl_info *info,
+@@ -740,6 +740,64 @@ static int params_update_channels(struct genl_info *info,
  	return (ret < 0) ? ret : 1;
  }
  
@@ -113,20 +113,17 @@ index ac6b5ad3e914..4e5c759b6756 100644
 +	if (ret < 0)
 +		return ret;
 +
-+	if (ethnl_update_bitset32(&data.advertised, NULL, 32,
-+				  tb[ETHTOOL_A_EEE_LINK_MODES], &ret,
-+				  link_mode_names, false, info))
-+		mod = true;
++	ret = ethnl_update_bitset32(&data.advertised, NULL, 32,
++				    tb[ETHTOOL_A_EEE_LINK_MODES],
++				    link_mode_names, false, info, &mod);
 +	if (ret < 0)
 +		return ret;
-+	if (ethnl_update_bool32(&data.eee_enabled, tb[ETHTOOL_A_EEE_ENABLED]))
-+		mod = true;
-+	if (ethnl_update_bool32(&data.tx_lpi_enabled,
-+				tb[ETHTOOL_A_EEE_TX_LPI_ENABLED]))
-+		mod = true;
-+	if (ethnl_update_u32(&data.tx_lpi_timer,
-+			     tb[ETHTOOL_A_EEE_TX_LPI_TIMER]))
-+		mod = true;
++	ethnl_update_bool32(&data.eee_enabled, tb[ETHTOOL_A_EEE_ENABLED],
++			    &mod);
++	ethnl_update_bool32(&data.tx_lpi_enabled,
++			    tb[ETHTOOL_A_EEE_TX_LPI_ENABLED], &mod);
++	ethnl_update_u32(&data.tx_lpi_timer, tb[ETHTOOL_A_EEE_TX_LPI_TIMER],
++			 &mod);
 +
 +	if (!mod)
 +		return 0;
@@ -137,7 +134,7 @@ index ac6b5ad3e914..4e5c759b6756 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
-@@ -814,6 +875,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+@@ -783,6 +841,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
  		req_mask |= ETHTOOL_IM_PARAMS_CHANNELS;

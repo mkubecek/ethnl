@@ -1,4 +1,4 @@
-From dac2eab953a388221ffd007a3aebbf0d6b812e25 Mon Sep 17 00:00:00 2001
+From 81e405e5432726e8ad2db3c386c52051d6bebc60 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Sep 2018 10:12:24 +0200
 Subject: [PATCH 42/44] ethtool: implement RXFLOW_GET request
@@ -336,10 +336,10 @@ index ca21edc7995f..632ab622e863 100644
 -		   actions.o
 +		   actions.o rxflow.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 9e517b1d515b..9cd2e07678c9 100644
+index 1092206e96f2..159f41c84db7 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
-@@ -295,6 +295,7 @@ static const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
+@@ -298,6 +298,7 @@ static const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
  	[ETHTOOL_MSG_SETTINGS_GET]	= &settings_request_ops,
  	[ETHTOOL_MSG_INFO_GET]		= &info_request_ops,
  	[ETHTOOL_MSG_PARAMS_GET]	= &params_request_ops,
@@ -347,7 +347,7 @@ index 9e517b1d515b..9cd2e07678c9 100644
  };
  
  static struct ethnl_dump_ctx *ethnl_dump_context(struct netlink_callback *cb)
-@@ -790,6 +791,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
+@@ -793,6 +794,13 @@ static const struct genl_ops ethtool_genl_ops[] = {
  		.flags	= GENL_ADMIN_PERM,
  		.doit	= ethnl_act_reset,
  	},
@@ -362,10 +362,10 @@ index 9e517b1d515b..9cd2e07678c9 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 31a66ed55f95..805255dd95a1 100644
+index a3f5dfa64193..4b7f88aeb8bf 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -310,6 +310,7 @@ extern const struct get_request_ops strset_request_ops;
+@@ -364,6 +364,7 @@ extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops settings_request_ops;
  extern const struct get_request_ops info_request_ops;
  extern const struct get_request_ops params_request_ops;

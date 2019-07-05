@@ -1,4 +1,4 @@
-From 7af50c79d7fb1a19e878c0852ee0b11339bf7dcb Mon Sep 17 00:00:00 2001
+From 7d20aed080f04050abcd05618ec11880173dfc87 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 06/44] ethtool: netlink bitset handling
@@ -33,10 +33,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  61 ++
  include/uapi/linux/ethtool_netlink.h         |  35 ++
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/bitset.c                         | 606 +++++++++++++++++++
- net/ethtool/bitset.h                         |  40 ++
+ net/ethtool/bitset.c                         | 603 +++++++++++++++++++
+ net/ethtool/bitset.h                         |  39 ++
  net/ethtool/netlink.h                        |   9 +
- 6 files changed, 752 insertions(+), 1 deletion(-)
+ 6 files changed, 748 insertions(+), 1 deletion(-)
  create mode 100644 net/ethtool/bitset.c
  create mode 100644 net/ethtool/bitset.h
 
@@ -170,10 +170,10 @@ index f30e0da88be5..482fdb9380fa 100644
 +ethtool_nl-y	:= netlink.o bitset.o
 diff --git a/net/ethtool/bitset.c b/net/ethtool/bitset.c
 new file mode 100644
-index 000000000000..80bb6fbb1268
+index 000000000000..5b5662a8a5b5
 --- /dev/null
 +++ b/net/ethtool/bitset.c
-@@ -0,0 +1,606 @@
+@@ -0,0 +1,603 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include <linux/ethtool_netlink.h>
@@ -635,12 +635,12 @@ index 000000000000..80bb6fbb1268
 + * @bitmask: if not, mask from the nest is copied here
 + * @nbits:   size of the updated bitmap in bits
 + * @attr:    nest attribute to parse and apply
-+ * @err:     pointer to variable to put error value (or 0 on success) to
 + * @names:   array of bit names; may be null for compact format
 + * @legacy:  true if @names is ioctl style array of char[32], false if it is
 + *           a simple array of (char *) strings
 + * @info:    genetlink info (also used for extack error reporting)
 + * @is_u32:  false: bitmaps are unsigned long based, true: u32 based bitmaps
++ * @mod:     set this to true if bitmap is modified, leave as it is if not
 + *
 + * This is the actual implementation of bitset nested attribute parser but
 + * callers are supposed to use ethnl_update_bitset() for unsigned long based
@@ -648,35 +648,33 @@ index 000000000000..80bb6fbb1268
 + *
 + * Return:   true if the bitmap contents was modified, false if not
 + */
-+static bool __ethnl_update_bitset(void *bitmap, void *bitmask,
-+				  unsigned int nbits, const struct nlattr *attr,
-+				  int *err, const void *names, bool legacy,
-+				  struct genl_info *info, bool is_u32)
++static int __ethnl_update_bitset(void *bitmap, void *bitmask,
++				 unsigned int nbits, const struct nlattr *attr,
++				 const void *names, bool legacy,
++				 struct genl_info *info, bool is_u32, bool *mod)
 +{
 +	struct nlattr *tb[ETHTOOL_A_BITSET_MAX + 1];
 +	unsigned int change_bits = 0;
 +	unsigned int max_bits = 0;
 +	unsigned long *val, *mask;
-+	bool mod = false;
 +	bool is_list;
++	int ret;
 +
-+	*err = 0;
 +	if (!attr)
-+		return mod;
-+	*err = nla_parse_nested(tb, ETHTOOL_A_BITSET_MAX, attr, bitset_policy,
-+				info->extack);
-+	if (*err < 0)
-+		return mod;
-+	*err = -EINVAL;
++		return 0;
++	ret = nla_parse_nested(tb, ETHTOOL_A_BITSET_MAX, attr, bitset_policy,
++			       info->extack);
++	if (ret < 0)
++		return ret;
 +	if (tb[ETHTOOL_A_BITSET_BITS] &&
 +	    (tb[ETHTOOL_A_BITSET_VALUE] || tb[ETHTOOL_A_BITSET_MASK]))
-+		return mod;
++		return -EINVAL;
 +	if (!tb[ETHTOOL_A_BITSET_BITS] &&
 +	    (!tb[ETHTOOL_A_BITSET_SIZE] || !tb[ETHTOOL_A_BITSET_VALUE]))
-+		return mod;
++		return -EINVAL;
 +	is_list = (tb[ETHTOOL_A_BITSET_LIST] != NULL);
 +	if (is_list && tb[ETHTOOL_A_BITSET_MASK])
-+		return mod;
++		return -EINVAL;
 +
 +	/* To let new userspace to work with old kernel, we allow bitmaps
 +	 * from userspace to be longer than kernel ones and only issue an
@@ -700,9 +698,9 @@ index 000000000000..80bb6fbb1268
 +		else
 +			bitmap_copy(val, bitmap, nbits);
 +		nla_for_each_nested(bit_attr, tb[ETHTOOL_A_BITSET_BITS], rem) {
-+			*err = ethnl_update_bit(val, mask, nbits, bit_attr,
-+						is_list, names, legacy, info);
-+			if (*err < 0)
++			ret = ethnl_update_bit(val, mask, nbits, bit_attr,
++					       is_list, names, legacy, info);
++			if (ret < 0)
 +				goto out;
 +		}
 +		if (bitmask)
@@ -710,10 +708,10 @@ index 000000000000..80bb6fbb1268
 +	} else {
 +		unsigned int change_words = DIV_ROUND_UP(change_bits, 32);
 +
-+		*err = 0;
++		ret = 0;
 +		if (change_bits == 0 && tb[ETHTOOL_A_BITSET_MASK])
 +			goto out;
-+		*err = -EINVAL;
++		ret = -EINVAL;
 +		if (nla_len(tb[ETHTOOL_A_BITSET_VALUE]) <
 +		    change_words * sizeof(u32))
 +			goto out;
@@ -734,7 +732,6 @@ index 000000000000..80bb6fbb1268
 +		if (nbits < change_bits) {
 +			unsigned int idx = find_next_bit(mask, max_bits, nbits);
 +
-+			*err = -EINVAL;
 +			if (idx < max_bits)
 +				goto out;
 +		}
@@ -752,40 +749,40 @@ index 000000000000..80bb6fbb1268
 +		}
 +	}
 +
-+	mod = !__bitmap_equal_any(val, bitmap, nbits, is_u32);
-+	if (mod)
++	if (!__bitmap_equal_any(val, bitmap, nbits, is_u32)) {
 +		__bitmap_to_any(bitmap, val, nbits, is_u32);
++		*mod = true;
++	}
 +
-+	*err = 0;
++	ret = 0;
 +out:
 +	bitmap_free(val);
 +	bitmap_free(mask);
-+	return mod;
++	return ret;
 +}
 +
-+bool ethnl_update_bitset(unsigned long *bitmap, unsigned long *bitmask,
-+			 unsigned int nbits, const struct nlattr *attr,
-+			 int *err, const void *names, bool legacy,
-+			 struct genl_info *info)
++int ethnl_update_bitset(unsigned long *bitmap, unsigned long *bitmask,
++			unsigned int nbits, const struct nlattr *attr,
++			const void *names, bool legacy, struct genl_info *info,
++			bool *mod)
 +{
-+	return __ethnl_update_bitset(bitmap, bitmask, nbits, attr, err, names,
-+				     legacy, info, false);
++	return __ethnl_update_bitset(bitmap, bitmask, nbits, attr, names,
++				     legacy, info, false, mod);
 +}
 +
-+bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
-+			   const struct nlattr *attr, int *err,
-+			   const void *names, bool legacy,
-+			   struct genl_info *info)
++int ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
++			  const struct nlattr *attr, const void *names,
++			  bool legacy, struct genl_info *info, bool *mod)
 +{
-+	return __ethnl_update_bitset(bitmap, bitmask, nbits, attr, err, names,
-+				     legacy, info, true);
++	return __ethnl_update_bitset(bitmap, bitmask, nbits, attr, names,
++				     legacy, info, true, mod);
 +}
 diff --git a/net/ethtool/bitset.h b/net/ethtool/bitset.h
 new file mode 100644
-index 000000000000..761d0c47fe23
+index 000000000000..77ed1c08b196
 --- /dev/null
 +++ b/net/ethtool/bitset.h
-@@ -0,0 +1,40 @@
+@@ -0,0 +1,39 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#ifndef _NET_ETHTOOL_BITSET_H
@@ -816,18 +813,17 @@ index 000000000000..761d0c47fe23
 +int ethnl_put_bitset32(struct sk_buff *skb, int attrtype, unsigned int size,
 +		       const u32 *val, const u32 *mask, const void *names,
 +		       unsigned int flags);
-+bool ethnl_update_bitset(unsigned long *bitmap, unsigned long *bitmask,
-+			 unsigned int nbits, const struct nlattr *attr,
-+			 int *err, const void *names, bool legacy,
-+			 struct genl_info *info);
-+bool ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
-+			   const struct nlattr *attr, int *err,
-+			   const void *names, bool legacy,
-+			   struct genl_info *info);
++int ethnl_update_bitset(unsigned long *bitmap, unsigned long *bitmask,
++			unsigned int nbits, const struct nlattr *attr,
++			const void *names, bool legacy, struct genl_info *info,
++			bool *mod);
++int ethnl_update_bitset32(u32 *bitmap, u32 *bitmask, unsigned int nbits,
++			  const struct nlattr *attr, const void *names,
++			  bool legacy, struct genl_info *info, bool *mod);
 +
 +#endif /* _NET_ETHTOOL_BITSET_H */
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 71fca54f9c03..979c1456e001 100644
+index 7c0fed25181f..2b07090bacc2 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -20,6 +20,15 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
