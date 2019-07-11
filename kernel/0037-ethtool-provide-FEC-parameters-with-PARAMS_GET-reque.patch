@@ -1,4 +1,4 @@
-From aa9de9769e50447a13ed43f7bb20c17c5e0e3435 Mon Sep 17 00:00:00 2001
+From 83e0bf9cc831bfdc0fdbcdf14fe4f7d6c5b7eaaf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:53:42 +0100
 Subject: [PATCH 37/44] ethtool: provide FEC parameters with PARAMS_GET request
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 74 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 7a97ea5b5e07..231046b69fd9 100644
+index a65f6886ee5f..eda6c4565d02 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -436,9 +436,10 @@ PARAMS_GET
+@@ -438,9 +438,10 @@ PARAMS_GET
  
  PARAMS_GET request retrieves information provided by ioctl comands
  ETHTOOL_GCOALESCE (coalescing parameters), ETHTOOL_GRINGPARAM (ring sizes),
@@ -36,7 +36,7 @@ index 7a97ea5b5e07..231046b69fd9 100644
  
  Request contents:
  
-@@ -451,6 +452,7 @@ Info mask bits:
+@@ -453,6 +454,7 @@ Info mask bits:
      ETHTOOL_IM_PARAMS_PAUSE		pause parameters
      ETHTOOL_IM_PARAMS_CHANNELS		channel counts
      ETHTOOL_IM_PARAMS_EEE		EEE settings
@@ -44,7 +44,7 @@ index 7a97ea5b5e07..231046b69fd9 100644
  
  Response contents: On top level, there is one attribute for each of the
  information categories, the information is nested in it.
-@@ -510,6 +512,9 @@ information categories, the information is nested in it.
+@@ -512,6 +514,9 @@ information categories, the information is nested in it.
          ETHTOOL_A_EEE_ENABLED		    (bool)
          ETHTOOL_A_EEE_TX_LPI_ENABLED	    (bool)
          ETHTOOL_A_EEE_TX_LPI_TIMER	    (u32)
@@ -54,7 +54,7 @@ index 7a97ea5b5e07..231046b69fd9 100644
  
  PARAMS_GET requests allow dumps and messages in the same format as response
  to them are broadcasted as notifications on change of these settings using
-@@ -659,5 +664,5 @@ ETHTOOL_GLINKSETTINGS		ETHTOOL_MSG_SETTINGS_GET
+@@ -661,5 +666,5 @@ ETHTOOL_GLINKSETTINGS		ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SLINKSETTINGS		ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_PHY_GTUNABLE		n/a
  ETHTOOL_PHY_STUNABLE		n/a
@@ -62,7 +62,7 @@ index 7a97ea5b5e07..231046b69fd9 100644
 +ETHTOOL_GFECPARAM		ETHTOOL_MSG_PARAMS_GET
  ETHTOOL_SFECPARAM		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index c815d6930e70..d9285fdfa82c 100644
+index 9c46a027a25d..76d03e613b21 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -315,6 +315,7 @@ enum {
@@ -87,7 +87,7 @@ index c815d6930e70..d9285fdfa82c 100644
 +			       ETHTOOL_IM_PARAMS_EEE | \
 +			       ETHTOOL_IM_PARAMS_FEC)
  
- #define ETHTOOL_RF_PARAMS_ALL 0
+ #define ETHTOOL_RFLAG_PARAMS_ALL 0
  
 @@ -422,6 +425,15 @@ enum {
  	ETHTOOL_A_EEE_MAX = (__ETHTOOL_A_EEE_CNT - 1)
@@ -131,7 +131,7 @@ index 9aa89e9e8988..d50cf13e4457 100644
  
  /* The main entry point in this file.  Called from net/core/dev_ioctl.c */
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 8012961724d5..5bd7308902cb 100644
+index ef32131bc714..d79d3910e4f1 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -12,6 +12,7 @@ static const struct nla_policy params_get_policy[ETHTOOL_A_PARAMS_MAX + 1] = {

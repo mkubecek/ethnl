@@ -1,4 +1,4 @@
-From 1861b8d063a51bac7f6b5fc43e0ef6401a17d212 Mon Sep 17 00:00:00 2001
+From d0fe32fca8b27570e63d0e8eff2878dcd17bcca5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
 Subject: [PATCH 26/44] ethtool: provide timestamping information in INFO_GET
@@ -27,10 +27,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  10 files changed, 245 insertions(+), 21 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 995500dec965..e5e91a051dcd 100644
+index 6d2b5c716e2d..ea6bb6daa71a 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -399,6 +399,7 @@ Request contents:
+@@ -401,6 +401,7 @@ Request contents:
  Info mask bits meaning:
  
      ETHTOOL_IM_INFO_DRVINFO		driver info (GDRVINFO)
@@ -38,7 +38,7 @@ index 995500dec965..e5e91a051dcd 100644
  
  Kernel response contents:
  
-@@ -408,6 +409,11 @@ Kernel response contents:
+@@ -410,6 +411,11 @@ Kernel response contents:
          ETHTOOL_A_DRVINFO_FWVERSION		(string)	firmware version
          ETHTOOL_A_DRVINFO_BUSINFO		(string)	bus address
          ETHTOOL_A_DRVINFO_EROM_VER		(string)	exp. ROM version
@@ -50,7 +50,7 @@ index 995500dec965..e5e91a051dcd 100644
  
  The meaning of DRVINFO attributes follows the corresponding fields of
  ETHTOOL_GDRVINFO response. Second part with various counts and sizes is
-@@ -415,6 +421,9 @@ omitted as these are not really needed (and if they are, they can be easily
+@@ -417,6 +423,9 @@ omitted as these are not really needed (and if they are, they can be easily
  found by different means). Driver version is also omitted as it is rather
  misleading in most cases.
  
@@ -60,7 +60,7 @@ index 995500dec965..e5e91a051dcd 100644
  INFO_GET requests allow dumps.
  
  
-@@ -490,7 +499,7 @@ ETHTOOL_SCHANNELS		n/a
+@@ -492,7 +501,7 @@ ETHTOOL_SCHANNELS		n/a
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
  ETHTOOL_GET_DUMP_DATA		n/a
@@ -94,7 +94,7 @@ index 6ad298224352..3ba1508742d4 100644
  	ETH_SS_COUNT
  };
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 328f2ba1385f..6cf9aba0e211 100644
+index b36ade73822d..4d952abbfab3 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -262,15 +262,18 @@ enum {
@@ -116,7 +116,7 @@ index 328f2ba1385f..6cf9aba0e211 100644
 +#define ETHTOOL_IM_INFO_ALL (ETHTOOL_IM_INFO_DRVINFO | \
 +			     ETHTOOL_IM_INFO_TSINFO)
  
- #define ETHTOOL_RF_INFO_ALL 0
+ #define ETHTOOL_RFLAG_INFO_ALL 0
  
 @@ -286,6 +289,18 @@ enum {
  	ETHTOOL_A_DRVINFO_MAX = (__ETHTOOL_A_DRVINFO_CNT - 1)
@@ -227,7 +227,7 @@ index fa878fff1564..937c5d21c72f 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
-index 63f64506f8a5..a9d96d3c9a8f 100644
+index 9f9405febf65..eb15627d92e7 100644
 --- a/net/ethtool/info.c
 +++ b/net/ethtool/info.c
 @@ -1,21 +1,68 @@
@@ -311,7 +311,7 @@ index 63f64506f8a5..a9d96d3c9a8f 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -70,6 +122,42 @@ static int info_drvinfo_size(const struct ethtool_drvinfo *drvinfo)
+@@ -70,17 +122,62 @@ static int info_drvinfo_size(const struct ethtool_drvinfo *drvinfo)
  	return nla_total_size(len);
  }
  
@@ -354,12 +354,16 @@ index 63f64506f8a5..a9d96d3c9a8f 100644
  /* reply_size() handler */
  static int info_size(const struct ethnl_req_info *req_info)
  {
-@@ -81,6 +169,15 @@ static int info_size(const struct ethnl_req_info *req_info)
+ 	const struct info_data *data =
+ 		container_of(req_info, struct info_data, reqinfo_base);
++	bool compact = req_info->global_flags & ETHTOOL_GFLAG_COMPACT_BITSETS;
+ 	u32 info_mask = data->repdata_base.info_mask;
+ 	int len = 0;
+ 
  	len += ethnl_reply_header_size();
  	if (info_mask & ETHTOOL_IM_INFO_DRVINFO)
  		len += info_drvinfo_size(&data->drvinfo);
 +	if (info_mask & ETHTOOL_IM_INFO_TSINFO) {
-+		bool compact = req_info->global_flags & ETHTOOL_RF_COMPACT;
 +		int ret;
 +
 +		ret = info_tsinfo_size(&data->tsinfo, compact);
@@ -370,7 +374,7 @@ index 63f64506f8a5..a9d96d3c9a8f 100644
  
  	return len;
  }
-@@ -115,6 +212,47 @@ static int info_fill_drvinfo(struct sk_buff *skb,
+@@ -115,12 +212,54 @@ static int info_fill_drvinfo(struct sk_buff *skb,
  	return -EMSGSIZE;
  }
  
@@ -418,12 +422,18 @@ index 63f64506f8a5..a9d96d3c9a8f 100644
  /* fill_reply() handler */
  static int info_fill(struct sk_buff *skb,
  		     const struct ethnl_req_info *req_info)
-@@ -129,6 +267,13 @@ static int info_fill(struct sk_buff *skb,
+ {
+ 	const struct info_data *data =
+ 		container_of(req_info, struct info_data, reqinfo_base);
++	bool compact = req_info->global_flags & ETHTOOL_GFLAG_COMPACT_BITSETS;
+ 	u32 info_mask = data->repdata_base.info_mask;
+ 	int ret;
+ 
+@@ -129,6 +268,12 @@ static int info_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
 +	if (info_mask & ETHTOOL_IM_INFO_TSINFO) {
-+		bool compact = req_info->global_flags & ETHTOOL_RF_COMPACT;
 +
 +		ret = info_fill_tsinfo(skb, &data->tsinfo, compact);
 +		if (ret < 0)
@@ -491,7 +501,7 @@ index a53632408798..b01c9ca6637f 100644
  
  int ethnl_parse_header(struct ethnl_req_info *req_info,
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index 514ef04709d3..52bab3301bac 100644
+index 9e6c2dc08cc1..b3ccceb2c017 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -73,6 +73,24 @@ static const struct strset_info info_template[] = {

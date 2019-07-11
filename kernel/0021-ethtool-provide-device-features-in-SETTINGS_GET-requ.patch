@@ -1,4 +1,4 @@
-From 6e04a7a107302e9df3c6af1dd9f111290557318f Mon Sep 17 00:00:00 2001
+From 03bf6b24f32b44ee8ff64ed475185ec252c3fed2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 21/44] ethtool: provide device features in SETTINGS_GET
@@ -27,10 +27,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 183 insertions(+), 14 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 0f8387a2fa03..0ccec2961882 100644
+index 44694e3c03f6..14bc8568c43a 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -253,6 +253,7 @@ Info mask bits meaning:
+@@ -254,6 +254,7 @@ Info mask bits meaning:
      ETHTOOL_IM_SETTINGS_LINKSTATE	link state
      ETHTOOL_IM_SETTINGS_WOL		struct ethtool_wolinfo
      ETHTOOL_IM_SETTINGS_DEBUG		debugging
@@ -38,7 +38,7 @@ index 0f8387a2fa03..0ccec2961882 100644
  
  Response contents:
  
-@@ -276,6 +277,11 @@ Response contents:
+@@ -277,6 +278,11 @@ Response contents:
          ETHTOOL_A_WOL_SOPASS		    (binary)	    SecureOn password
      ETHTOOL_A_SETTINGS_DEBUG		(nested)	debugging
          ETHTOOL_A_DEBUG_MSG_MASK	    (bitfield32)    debug message mask
@@ -50,7 +50,7 @@ index 0f8387a2fa03..0ccec2961882 100644
  
  Most of the attributes and their values have the same meaning as matching
  members of the corresponding ioctl structures. For ETHTOOL_A_LINKMODES_OURS,
-@@ -289,13 +295,23 @@ ETHTOOL_A_DEBUG_MSG_MASK corresponds to message level (which is actually
+@@ -290,13 +296,23 @@ ETHTOOL_A_DEBUG_MSG_MASK corresponds to message level (which is actually
  a bitfield) as reported by ETHTOOL_GMSGLVL. The selector reports all message
  types recognized by kernel and value types enabled for the device.
  
@@ -75,7 +75,7 @@ index 0f8387a2fa03..0ccec2961882 100644
  
  
  SETTINGS_SET
-@@ -367,30 +383,30 @@ ETHTOOL_GRINGPARAM		n/a
+@@ -368,30 +384,30 @@ ETHTOOL_GRINGPARAM		n/a
  ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
  ETHTOOL_SPAUSEPARAM		n/a
@@ -114,7 +114,7 @@ index 0f8387a2fa03..0ccec2961882 100644
  ETHTOOL_SGRO			n/a
  ETHTOOL_GRXRINGS		n/a
  ETHTOOL_GRXCLSRLCNT		n/a
-@@ -405,7 +421,7 @@ ETHTOOL_GRXNTUPLE		n/a
+@@ -406,7 +422,7 @@ ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHTOOL_MSG_STRSET_GET
  ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
@@ -124,7 +124,7 @@ index 0f8387a2fa03..0ccec2961882 100644
  ETHTOOL_GCHANNELS		n/a
  ETHTOOL_SCHANNELS		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 177f3d22eb98..0875c5d88410 100644
+index 69c791f51772..022c6956ff0f 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -161,6 +161,7 @@ enum {
@@ -149,7 +149,7 @@ index 177f3d22eb98..0875c5d88410 100644
 +				 ETHTOOL_IM_SETTINGS_DEBUG | \
 +				 ETHTOOL_IM_SETTINGS_FEATURES)
  
- #define ETHTOOL_RF_SETTINGS_ALL 0
+ #define ETHTOOL_RFLAG_SETTINGS_ALL 0
  
 @@ -235,6 +238,18 @@ enum {
  	ETHTOOL_A_DEBUG_MAX = (__ETHTOOL_A_DEBUG_CNT - 1)
@@ -197,7 +197,7 @@ index 2f345eb7b694..16482a266eec 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 231f921a86c3..b6904ee7f24a 100644
+index 64196ad60d1b..0e47692c9520 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -705,6 +705,30 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
@@ -243,7 +243,7 @@ index 231f921a86c3..b6904ee7f24a 100644
  
  subsys_initcall(ethnl_init);
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 78b0f2fcf5cd..af9e6b53a8a4 100644
+index 37548722e785..d340458f94b2 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,12 @@ struct settings_data {
@@ -310,7 +310,7 @@ index 78b0f2fcf5cd..af9e6b53a8a4 100644
 +	unsigned int flags = ETHNL_BITSET_LEGACY_NAMES;
 +	int len = 0, ret;
 +
-+	if (data->reqinfo_base.global_flags & ETHTOOL_RF_COMPACT)
++	if (data->reqinfo_base.global_flags & ETHTOOL_GFLAG_COMPACT_BITSETS)
 +		flags |= ETHNL_BITSET_COMPACT;
 +
 +	ret = ethnl_bitset32_size(NETDEV_FEATURE_COUNT, data->features.hw,
@@ -365,7 +365,7 @@ index 78b0f2fcf5cd..af9e6b53a8a4 100644
 +	struct nlattr *feat_attr;
 +	int ret;
 +
-+	if (data->reqinfo_base.global_flags & ETHTOOL_RF_COMPACT)
++	if (data->reqinfo_base.global_flags & ETHTOOL_GFLAG_COMPACT_BITSETS)
 +		flags |= ETHNL_BITSET_COMPACT;
 +
 +	feat_attr = nla_nest_start(skb, ETHTOOL_A_SETTINGS_FEATURES);

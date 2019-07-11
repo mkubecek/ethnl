@@ -1,4 +1,4 @@
-From c30fab9d783b3cf362cc8f94a9f707c64e810788 Mon Sep 17 00:00:00 2001
+From d80d845b21260ff6fe4877af31e298fafd088b52 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:30:12 +0100
 Subject: [PATCH 33/44] ethtool: provide channel counts in PARAMS_GET request
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 96 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 1171d7813e6e..baf476d3aa24 100644
+index 946c313f38c3..fdd674832282 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -435,9 +435,10 @@ PARAMS_GET
+@@ -437,9 +437,10 @@ PARAMS_GET
  ----------
  
  PARAMS_GET request retrieves information provided by ioctl comands
@@ -36,7 +36,7 @@ index 1171d7813e6e..baf476d3aa24 100644
  
  Request contents:
  
-@@ -448,6 +449,7 @@ Info mask bits:
+@@ -450,6 +451,7 @@ Info mask bits:
      ETHTOOL_IM_PARAMS_COALESCE		coalescing parameters
      ETHTOOL_IM_PARAMS_RING		ring sizes
      ETHTOOL_IM_PARAMS_PAUSE		pause parameters
@@ -44,7 +44,7 @@ index 1171d7813e6e..baf476d3aa24 100644
  
  Response contents: On top level, there is one attribute for each of the
  information categories, the information is nested in it.
-@@ -489,6 +491,15 @@ information categories, the information is nested in it.
+@@ -491,6 +493,15 @@ information categories, the information is nested in it.
          ETHTOOL_A_PAUSE_AUTONEG		    (bool)
          ETHTOOL_A_PAUSE_RX		    (bool)
          ETHTOOL_A_PAUSE_TX		    (bool)
@@ -60,7 +60,7 @@ index 1171d7813e6e..baf476d3aa24 100644
  
  PARAMS_GET requests allow dumps and messages in the same format as response
  to them are broadcasted as notifications on change of these settings using
-@@ -606,7 +617,7 @@ ETHTOOL_GRXFHINDIR		n/a
+@@ -608,7 +619,7 @@ ETHTOOL_GRXFHINDIR		n/a
  ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SFEATURES		ETHTOOL_MSG_SETTINGS_SET
@@ -70,7 +70,7 @@ index 1171d7813e6e..baf476d3aa24 100644
  ETHTOOL_SET_DUMP		n/a
  ETHTOOL_GET_DUMP_FLAG		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index a77f5d0fcb67..c58a4582c667 100644
+index beb605897386..240cea13b70d 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -313,6 +313,7 @@ enum {
@@ -93,7 +93,7 @@ index a77f5d0fcb67..c58a4582c667 100644
 +			       ETHTOOL_IM_PARAMS_PAUSE | \
 +			       ETHTOOL_IM_PARAMS_CHANNELS)
  
- #define ETHTOOL_RF_PARAMS_ALL 0
+ #define ETHTOOL_RFLAG_PARAMS_ALL 0
  
 @@ -386,6 +389,22 @@ enum {
  	ETHTOOL_A_PAUSE_MAX = (__ETHTOOL_A_PAUSE_CNT - 1)
@@ -144,7 +144,7 @@ index 7727768929ac..e726c8eb5582 100644
  
  static int ethtool_get_pauseparam(struct net_device *dev, void __user *useraddr)
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index ccf9b85e5413..b2ceccf7f7d1 100644
+index d1fb496a81b6..bdef3673c543 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -8,6 +8,7 @@ static const struct nla_policy params_get_policy[ETHTOOL_A_PARAMS_MAX + 1] = {

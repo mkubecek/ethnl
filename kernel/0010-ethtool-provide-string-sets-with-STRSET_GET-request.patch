@@ -1,4 +1,4 @@
-From b1ddd9e27751a4a7a54816bea7c5f6be6e2087c0 Mon Sep 17 00:00:00 2001
+From 8e2c0841ab3d4f93ca984cb2482fda7be3298ef0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 10/44] ethtool: provide string sets with STRSET_GET request
@@ -32,7 +32,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/strset.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index b02b6b5d3660..684cb532b71c 100644
+index 338ff9259cf0..b589692882bb 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -148,6 +148,14 @@ according to message purpose:
@@ -50,7 +50,7 @@ index b02b6b5d3660..684cb532b71c 100644
  "GET" requests are sent by userspace applications to retrieve device
  information. They usually do not contain any message specific attributes.
  Kernel replies with corresponding "GET_REPLY" message. For most types, "GET"
-@@ -178,6 +186,51 @@ action also triggers a notification ("NTF" message).
+@@ -179,6 +187,51 @@ message).
  Later sections describe the format and semantics of these messages.
  
  
@@ -72,7 +72,7 @@ index b02b6b5d3660..684cb532b71c 100644
 +
 +Request specific flag:
 +
-+    ETHTOOL_RF_STRSET_COUNTS		send only string counts in reply
++    ETHTOOL_RFLAG_STRSET_COUNTS_ONLY	send only string counts in reply
 +
 +Kernel response contents:
 +
@@ -102,7 +102,7 @@ index b02b6b5d3660..684cb532b71c 100644
  Request translation
  -------------------
  
-@@ -212,7 +265,7 @@ ETHTOOL_STXCSUM			n/a
+@@ -213,7 +266,7 @@ ETHTOOL_STXCSUM			n/a
  ETHTOOL_GSG			n/a
  ETHTOOL_SSG			n/a
  ETHTOOL_TEST			n/a
@@ -111,7 +111,7 @@ index b02b6b5d3660..684cb532b71c 100644
  ETHTOOL_PHYS_ID			n/a
  ETHTOOL_GSTATS			n/a
  ETHTOOL_GTSO			n/a
-@@ -240,7 +293,7 @@ ETHTOOL_FLASHDEV		n/a
+@@ -241,7 +294,7 @@ ETHTOOL_FLASHDEV		n/a
  ETHTOOL_RESET			n/a
  ETHTOOL_SRXNTUPLE		n/a
  ETHTOOL_GRXNTUPLE		n/a
@@ -134,7 +134,7 @@ index dd06302aa93e..4e4e28e77c7a 100644
  
  /**
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 8938a1f09057..11b8519d2c1d 100644
+index eb6dc04f4a88..c3981316878d 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -14,6 +14,7 @@
@@ -211,9 +211,9 @@ index 8938a1f09057..11b8519d2c1d 100644
 +};
 +
 +/* return only string counts, not the strings */
-+#define ETHTOOL_RF_STRSET_COUNTS		(1 << 0)
++#define ETHTOOL_RFLAG_STRSET_COUNTS_ONLY	(1 << 0)
 +
-+#define ETHTOOL_RF_STRSET_ALL (ETHTOOL_RF_STRSET_COUNTS)
++#define ETHTOOL_RFLAG_STRSET_ALL (ETHTOOL_RFLAG_STRSET_COUNTS_ONLY)
 +
  /* generic netlink info */
  #define ETHTOOL_GENL_NAME "ethtool"
@@ -269,7 +269,7 @@ index 3f00879f32f7..68aa67231bc5 100644
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
 new file mode 100644
-index 000000000000..fd7229379158
+index 000000000000..7403cb738879
 --- /dev/null
 +++ b/net/ethtool/strset.c
 @@ -0,0 +1,453 @@
@@ -717,7 +717,7 @@ index 000000000000..fd7229379158
 +	.max_attr		= ETHTOOL_A_STRSET_MAX,
 +	.data_size		= sizeof(struct strset_data),
 +	.repdata_offset		= offsetof(struct strset_data, repdata_base),
-+	.all_reqflags		= ETHTOOL_RF_STRSET_ALL,
++	.all_reqflags		= ETHTOOL_RFLAG_STRSET_ALL,
 +	.allow_nodev_do		= true,
 +
 +	.parse_request		= strset_parse,

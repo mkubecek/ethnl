@@ -1,4 +1,4 @@
-From aaf2059814a9728555a5d8fac54752b9ecff0463 Mon Sep 17 00:00:00 2001
+From 88551fad7a3a404faa4ad33864c2d2d9be094163 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:50:07 +0100
 Subject: [PATCH 11/44] ethtool: provide link mode names as a string set
@@ -173,7 +173,7 @@ index 68aa67231bc5..bab1c53b4249 100644
  		       const struct nlattr *nest, struct net *net,
  		       struct netlink_ext_ack *extack,
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index fd7229379158..514ef04709d3 100644
+index 7403cb738879..9e6c2dc08cc1 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -67,6 +67,12 @@ static const struct strset_info info_template[] = {

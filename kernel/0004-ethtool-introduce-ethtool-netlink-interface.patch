@@ -1,4 +1,4 @@
-From b64715e61404b0eba440fdd0203b95d256e59037 Mon Sep 17 00:00:00 2001
+From 6f114f2c70c55d4dc90d7dd5baf9e2065e650beb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
 Subject: [PATCH 04/44] ethtool: introduce ethtool netlink interface
@@ -11,14 +11,14 @@ detailed information.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt | 208 +++++++++++++++++++
+ Documentation/networking/ethtool-netlink.txt | 209 +++++++++++++++++++
  include/linux/ethtool_netlink.h              |   9 +
  include/uapi/linux/ethtool_netlink.h         |  36 ++++
  net/Kconfig                                  |   8 +
  net/ethtool/Makefile                         |   6 +-
  net/ethtool/netlink.c                        |  33 +++
  net/ethtool/netlink.h                        |  10 +
- 7 files changed, 309 insertions(+), 1 deletion(-)
+ 7 files changed, 310 insertions(+), 1 deletion(-)
  create mode 100644 Documentation/networking/ethtool-netlink.txt
  create mode 100644 include/linux/ethtool_netlink.h
  create mode 100644 include/uapi/linux/ethtool_netlink.h
@@ -27,10 +27,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 new file mode 100644
-index 000000000000..028c29eeed93
+index 000000000000..3ed6f0a33acf
 --- /dev/null
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -0,0 +1,208 @@
+@@ -0,0 +1,209 @@
 +                        Netlink interface for ethtool
 +                        =============================
 +
@@ -97,8 +97,8 @@ index 000000000000..028c29eeed93
 +common for all request types, flags recognized in ETHTOOL_A_HEADER_RFLAGS and
 +their interpretation are specific for each request type. Global flags are
 +
-+    ETHTOOL_RF_COMPACT		use compact format bitsets in reply
-+    ETHTOOL_RF_REPLY		send optional reply (SET and ACT requests)
++    ETHTOOL_GFLAG_COMPACT_BITSETS	use compact format bitsets in reply
++    ETHTOOL_GFLAG_OMIT_REPLY		omit optional reply (_SET and _ACT)
 +
 +Request specific flags are described with each request type. For both flag
 +attributes, new flags should follow the general idea that if the flag is not
@@ -131,8 +131,8 @@ index 000000000000..028c29eeed93
 +attributes where a change is requested are included in such request (also, not
 +all attributes may be changed). Replies to most "SET" request consist only of
 +error code and extack; if kernel provides additional data, it is sent in the
-+form of corresponding "SET_REPLY" message (if ETHTOOL_RF_REPLY flag was set in
-+request header).
++form of corresponding "SET_REPLY" message which can be suppressed by setting
++ETHTOOL_GFLAG_OMIT_REPLY flag in request header.
 +
 +Data modification also triggers sending a "NTF" message with a notification.
 +These usually bear only a subset of attributes which was affected by the
@@ -143,9 +143,10 @@ index 000000000000..028c29eeed93
 +change any data.
 +
 +"ACT" messages request kernel (driver) to perform a specific action. If some
-+information is reported by kernel (as requested by ETHTOOL_RF_REPLY flag in
-+request header), the reply takes form of an "ACT_REPLY" message. Performing an
-+action also triggers a notification ("NTF" message).
++information is reported by kernel (which can be suppressed by setting
++ETHTOOL_GFLAG_OMIT_REPLY flag in request header), the reply takes form of an
++"ACT_REPLY" message. Performing an action also triggers a notification ("NTF"
++message).
 +
 +Later sections describe the format and semantics of these messages.
 +

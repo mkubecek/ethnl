@@ -1,4 +1,4 @@
-From 9dbb41d9ae158d5ee7ebea6b2e4c34fa7a4d845b Mon Sep 17 00:00:00 2001
+From ecefccb5675f974bd231a3bbb3b3f97175ead892 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
 Subject: [PATCH 43/44] ethtool: implement RXFLOW notification
@@ -29,7 +29,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  7 files changed, 109 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 7d70c85207a1..82d5a99374b8 100644
+index e5b69dac3492..79270008c4ee 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -175,6 +175,7 @@ Kernel to userspace:
@@ -56,7 +56,7 @@ index e770e6e9acca..288e90f4dbb9 100644
 +
  #endif /* _LINUX_ETHTOOL_NETLINK_H_ */
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 45af68bcb71a..c9c5bd72411e 100644
+index 38b932dd6ce0..6be8f0d17ecd 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -45,6 +45,7 @@ enum {
@@ -165,7 +165,7 @@ index aa96aae96e34..fe9773c71358 100644
  	if (copy_to_user(useraddr + offsetof(struct ethtool_rxfh, rss_context),
  			 &rxfh.rss_context, sizeof(rxfh.rss_context)))
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 159f41c84db7..e4d6109c6399 100644
+index 3fbc1970c8d4..820c9bed8ba2 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -696,6 +696,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
@@ -189,10 +189,10 @@ index 4b7f88aeb8bf..ca9ec0692649 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index 489eaa46afbb..e75008ef6614 100644
+index b7ba357afed0..ab6b8c115080 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
-@@ -445,3 +445,70 @@ const struct get_request_ops rxflow_request_ops = {
+@@ -446,3 +446,70 @@ const struct get_request_ops rxflow_request_ops = {
  	.fill_reply		= rxflow_fill,
  	.cleanup		= rxflow_cleanup,
  };
@@ -213,7 +213,7 @@ index 489eaa46afbb..e75008ef6614 100644
 +	req_info->reply_data = &data.repdata_base;
 +	req_info->dev = dev;
 +	req_info->req_mask = req_mask;
-+	req_info->global_flags = ETHTOOL_RF_COMPACT;
++	req_info->global_flags = ETHTOOL_GFLAG_COMPACT_BITSETS;
 +	data.repdata_base.dev = dev;
 +	if (ninfo) {
 +		data.req_context = ninfo->context;

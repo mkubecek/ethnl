@@ -1,4 +1,4 @@
-From e1dad43ea62986b5e6c780d95e052ca5b6079613 Mon Sep 17 00:00:00 2001
+From ae4fd930288a1c2e9599719e3fd4eb8efc783670 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 18:01:46 +0100
 Subject: [PATCH 20/44] ethtool: set message level with SETTINGS_SET request
@@ -17,10 +17,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 50 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 3c64d98ac16a..0f8387a2fa03 100644
+index f21f417a4b71..44694e3c03f6 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -318,6 +318,8 @@ to be passed with SETTINGS_SET request:
+@@ -319,6 +319,8 @@ to be passed with SETTINGS_SET request:
      ETHTOOL_A_SETTINGS_WOL		(nested)	wake on LAN settings
          ETHTOOL_A_WOL_MODES		    (bitfield32)    wake on LAN modes
          ETHTOOL_A_WOL_SOPASS		    (binary)	    SecureOn password
@@ -29,7 +29,7 @@ index 3c64d98ac16a..0f8387a2fa03 100644
  
  ETHTOOL_A_LINKMODES_OURS bit set allows setting advertised link modes. If
  autonegotiation is on (either set now or kept from before), advertised modes
-@@ -333,7 +335,9 @@ the selector are set to 0 or 1 according to value. To allow the semantics of
+@@ -334,7 +336,9 @@ the selector are set to 0 or 1 according to value. To allow the semantics of
  the ioctl interface where the whole bitmap is set rather than only modified,
  selectors may have also bits not supported by device set and an error is only
  issued if any of them is also set in the value (i.e. if userspace tries to
@@ -40,7 +40,7 @@ index 3c64d98ac16a..0f8387a2fa03 100644
  
  
  Request translation
-@@ -352,7 +356,7 @@ ETHTOOL_GREGS			n/a
+@@ -353,7 +357,7 @@ ETHTOOL_GREGS			n/a
  ETHTOOL_GWOL			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SWOL			ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_GMSGLVL			ETHTOOL_MSG_SETTINGS_GET
@@ -50,7 +50,7 @@ index 3c64d98ac16a..0f8387a2fa03 100644
  ETHTOOL_GLINK			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_GEEPROM			n/a
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index a30fc108e7e2..78b0f2fcf5cd 100644
+index badbb3d5890c..37548722e785 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -531,6 +531,12 @@ static const struct nla_policy wol_set_policy[ETHTOOL_A_LINKINFO_MAX + 1] = {

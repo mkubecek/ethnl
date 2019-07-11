@@ -1,4 +1,4 @@
-From cc5c9ec2c25311aec6ffb8362bd9a73697b6e081 Mon Sep 17 00:00:00 2001
+From 1f4662a9b4605187f0851f5f686e61b3ed9d2f44 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 07:40:58 +0100
 Subject: [PATCH 29/44] ethtool: provide ring sizes in PARAMS_GET request
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 101 insertions(+), 5 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index e6c88bc88529..413c7dede681 100644
+index f7432b3cbd6b..91d611a7aff7 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -434,8 +434,10 @@ INFO_GET requests allow dumps.
+@@ -436,8 +436,10 @@ INFO_GET requests allow dumps.
  PARAMS_GET
  ----------
  
@@ -35,7 +35,7 @@ index e6c88bc88529..413c7dede681 100644
  
  Request contents:
  
-@@ -444,6 +446,7 @@ Request contents:
+@@ -446,6 +448,7 @@ Request contents:
  Info mask bits:
  
      ETHTOOL_IM_PARAMS_COALESCE		coalescing parameters
@@ -43,7 +43,7 @@ index e6c88bc88529..413c7dede681 100644
  
  Response contents: On top level, there is one attribute for each of the
  information categories, the information is nested in it.
-@@ -472,6 +475,15 @@ information categories, the information is nested in it.
+@@ -474,6 +477,15 @@ information categories, the information is nested in it.
          ETHTOOL_A_COALESCE_TX_USE_ADAPTIVE  (bool)
          ETHTOOL_A_COALESCE_RATE_SAMPLE_INTERVAL	(u32)
          ETHTOOL_A_COALESCE_STATS_BLOCK_USECS	(u32)
@@ -59,7 +59,7 @@ index e6c88bc88529..413c7dede681 100644
  
  PARAMS_GET requests allow dumps and messages in the same format as response
  to them are broadcasted as notifications on change of these settings using
-@@ -534,7 +546,7 @@ ETHTOOL_GEEPROM			n/a
+@@ -536,7 +548,7 @@ ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		ETHTOOL_MSG_PARAMS_GET
  ETHTOOL_SCOALESCE		ETHTOOL_MSG_PARAMS_SET
@@ -69,7 +69,7 @@ index e6c88bc88529..413c7dede681 100644
  ETHTOOL_GPAUSEPARAM		n/a
  ETHTOOL_SPAUSEPARAM		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 4084f7fc9275..4e101018a776 100644
+index 46950e6c644d..61e2fce69f00 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -311,6 +311,7 @@ enum {
@@ -90,7 +90,7 @@ index 4084f7fc9275..4e101018a776 100644
 +#define ETHTOOL_IM_PARAMS_ALL (ETHTOOL_IM_PARAMS_COALESCE | \
 +			       ETHTOOL_IM_PARAMS_RING)
  
- #define ETHTOOL_RF_PARAMS_ALL 0
+ #define ETHTOOL_RFLAG_PARAMS_ALL 0
  
 @@ -353,6 +356,22 @@ enum {
  	ETHTOOL_A_COALESCE_MAX = (__ETHTOOL_A_COALESCE_CNT - 1)
@@ -141,7 +141,7 @@ index d414d79a55cf..e57585e724f5 100644
  
  static noinline_for_stack int ethtool_get_channels(struct net_device *dev,
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index d152b8af6521..42311dfd3ca0 100644
+index 1dc06881eb68..9217e64c81bd 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -6,6 +6,7 @@ static const struct nla_policy params_get_policy[ETHTOOL_A_PARAMS_MAX + 1] = {

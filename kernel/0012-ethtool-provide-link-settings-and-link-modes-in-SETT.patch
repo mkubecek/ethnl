@@ -1,4 +1,4 @@
-From f4d60e9cc168d6842b3f645121a3173c892daea5 Mon Sep 17 00:00:00 2001
+From b2e1b6b94d703e045c3f8ca7986c3e69b597598b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 12/44] ethtool: provide link settings and link modes in
@@ -37,7 +37,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 684cb532b71c..91b45381c17a 100644
+index b589692882bb..abd44a2ec9a3 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -151,10 +151,12 @@ according to message purpose:
@@ -53,7 +53,7 @@ index 684cb532b71c..91b45381c17a 100644
  
  "GET" requests are sent by userspace applications to retrieve device
  information. They usually do not contain any message specific attributes.
-@@ -231,6 +233,48 @@ Flag ETHTOOL_A_STRSET_COUNTS tells kernel to only return string counts of the
+@@ -232,6 +234,48 @@ Flag ETHTOOL_A_STRSET_COUNTS tells kernel to only return string counts of the
  sets, not the actual strings.
  
  
@@ -102,7 +102,7 @@ index 684cb532b71c..91b45381c17a 100644
  Request translation
  -------------------
  
-@@ -240,7 +284,7 @@ have their netlink replacement yet.
+@@ -241,7 +285,7 @@ have their netlink replacement yet.
  
  ioctl command			netlink command
  ---------------------------------------------------------------------
@@ -111,7 +111,7 @@ index 684cb532b71c..91b45381c17a 100644
  ETHTOOL_SSET			n/a
  ETHTOOL_GDRVINFO		n/a
  ETHTOOL_GREGS			n/a
-@@ -314,7 +358,7 @@ ETHTOOL_GTUNABLE		n/a
+@@ -315,7 +359,7 @@ ETHTOOL_GTUNABLE		n/a
  ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
@@ -135,7 +135,7 @@ index 2a15e64a16f3..e770e6e9acca 100644
  	ETHNL_MCGRP_MONITOR,
  };
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 11b8519d2c1d..a046dd8da50e 100644
+index c3981316878d..fb7ab35a1359 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -15,6 +15,7 @@
@@ -156,7 +156,7 @@ index 11b8519d2c1d..a046dd8da50e 100644
  	__ETHTOOL_MSG_KERNEL_CNT,
 @@ -147,6 +149,53 @@ enum {
  
- #define ETHTOOL_RF_STRSET_ALL (ETHTOOL_RF_STRSET_COUNTS)
+ #define ETHTOOL_RFLAG_STRSET_ALL (ETHTOOL_RFLAG_STRSET_COUNTS_ONLY)
  
 +/* SETTINGS */
 +
@@ -177,7 +177,7 @@ index 11b8519d2c1d..a046dd8da50e 100644
 +#define ETHTOOL_IM_SETTINGS_ALL (ETHTOOL_IM_SETTINGS_LINKINFO | \
 +				 ETHTOOL_IM_SETTINGS_LINKMODES)
 +
-+#define ETHTOOL_RF_SETTINGS_ALL 0
++#define ETHTOOL_RFLAG_SETTINGS_ALL 0
 +
 +enum {
 +	ETHTOOL_A_LINKINFO_UNSPEC,
@@ -385,7 +385,7 @@ index bab1c53b4249..658ea8a32e81 100644
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
-index 000000000000..11ec30b9d48b
+index 000000000000..e3d8934d48c7
 --- /dev/null
 +++ b/net/ethtool/settings.c
 @@ -0,0 +1,259 @@
@@ -521,7 +521,7 @@ index 000000000000..11ec30b9d48b
 +	struct settings_data *data =
 +		container_of(req_info, struct settings_data, reqinfo_base);
 +	u32 info_mask = data->repdata_base.info_mask;
-+	bool compact = req_info->global_flags & ETHTOOL_RF_COMPACT;
++	bool compact = req_info->global_flags & ETHTOOL_GFLAG_COMPACT_BITSETS;
 +	int len = 0, ret;
 +
 +	len += ethnl_reply_header_size();
@@ -615,7 +615,7 @@ index 000000000000..11ec30b9d48b
 +	const struct settings_data *data =
 +		container_of(req_info, struct settings_data, reqinfo_base);
 +	u32 info_mask = data->repdata_base.info_mask;
-+	bool compact = req_info->global_flags & ETHTOOL_RF_COMPACT;
++	bool compact = req_info->global_flags & ETHTOOL_GFLAG_COMPACT_BITSETS;
 +	int ret;
 +
 +	if (info_mask & ETHTOOL_IM_SETTINGS_LINKINFO) {
@@ -642,7 +642,7 @@ index 000000000000..11ec30b9d48b
 +	.repdata_offset		= offsetof(struct settings_data, repdata_base),
 +	.request_policy		= settings_get_policy,
 +	.default_infomask	= ETHTOOL_IM_SETTINGS_ALL,
-+	.all_reqflags		= ETHTOOL_RF_SETTINGS_ALL,
++	.all_reqflags		= ETHTOOL_RFLAG_SETTINGS_ALL,
 +
 +	.prepare_data		= settings_prepare,
 +	.reply_size		= settings_size,

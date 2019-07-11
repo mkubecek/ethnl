@@ -1,4 +1,4 @@
-From 8188ee483fb8c54cc264bc2a54072f6c9a04c6d0 Mon Sep 17 00:00:00 2001
+From ad3f2261a9ae1b9ad89dca54e431e2733e382319 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 21:27:19 +0100
 Subject: [PATCH 28/44] ethtool: set coalescing parameters with PARAMS_SET
@@ -24,7 +24,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 218 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 20c75926e07f..e6c88bc88529 100644
+index 9c5eb8f7dd46..f7432b3cbd6b 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -155,6 +155,7 @@ Userspace to kernel:
@@ -43,7 +43,7 @@ index 20c75926e07f..e6c88bc88529 100644
  
  "GET" requests are sent by userspace applications to retrieve device
  information. They usually do not contain any message specific attributes.
-@@ -476,6 +478,39 @@ to them are broadcasted as notifications on change of these settings using
+@@ -478,6 +480,39 @@ to them are broadcasted as notifications on change of these settings using
  netlink or ioctl ethtool interface.
  
  
@@ -83,7 +83,7 @@ index 20c75926e07f..e6c88bc88529 100644
  Request translation
  -------------------
  
-@@ -498,7 +533,7 @@ ETHTOOL_GLINK			ETHTOOL_MSG_SETTINGS_GET
+@@ -500,7 +535,7 @@ ETHTOOL_GLINK			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		ETHTOOL_MSG_PARAMS_GET
@@ -93,7 +93,7 @@ index 20c75926e07f..e6c88bc88529 100644
  ETHTOOL_SRINGPARAM		n/a
  ETHTOOL_GPAUSEPARAM		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 602409e5f4a2..4084f7fc9275 100644
+index b04a77849ff5..46950e6c644d 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -19,6 +19,7 @@ enum {
@@ -138,7 +138,7 @@ index ac779fd6e40e..d414d79a55cf 100644
  
  static int ethtool_get_ringparam(struct net_device *dev, void __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 18d72fab00bc..250c9e8aea8b 100644
+index b3261087fd1b..28bdeb1a329b 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -619,6 +619,8 @@ static const struct get_request_ops *ethnl_std_notify_to_ops(unsigned int cmd)
@@ -182,7 +182,7 @@ index 647d47715bde..c5722a95c662 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 5082b7f97eb3..d152b8af6521 100644
+index 4e521a85b434..1dc06881eb68 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -161,3 +161,168 @@ const struct get_request_ops params_request_ops = {

@@ -1,4 +1,4 @@
-From ffbfba0a31ca9263b7eef61ca3afc65e01d674b5 Mon Sep 17 00:00:00 2001
+From 93f4032ed4e84fcfc45594e583115b57ebe58d5e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 44/44] ethtool: implement RXFLOW_SET request
@@ -17,15 +17,15 @@ for a device.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  46 +-
+ Documentation/networking/ethtool-netlink.txt |  47 +-
  include/uapi/linux/ethtool_netlink.h         |   2 +
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   1 +
  net/ethtool/rxflow.c                         | 652 +++++++++++++++++++
- 5 files changed, 704 insertions(+), 2 deletions(-)
+ 5 files changed, 705 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 82d5a99374b8..9b88200bc9f1 100644
+index 79270008c4ee..ef51bece8c4f 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -160,6 +160,7 @@ Userspace to kernel:
@@ -44,7 +44,7 @@ index 82d5a99374b8..9b88200bc9f1 100644
  
  "GET" requests are sent by userspace applications to retrieve device
  information. They usually do not contain any message specific attributes.
-@@ -761,6 +763,46 @@ values (ring numbers) these weights correspond to. If ETHTOOL_A_ITWGHT_VALUES
+@@ -763,6 +765,47 @@ values (ring numbers) these weights correspond to. If ETHTOOL_A_ITWGHT_VALUES
  is omitted, values from 0 to number of weights minus one are used.
  
  
@@ -76,10 +76,11 @@ index 82d5a99374b8..9b88200bc9f1 100644
 +
 +ETHTOOL_A_RXFLOW_CTXOP equal to ETHTOOL_RXFLOW_CTXOP_NEW works in the same way
 +except ETHTOOL_A_RXFLOW_CONTEXT must not be present and a new RSS context is
-+created (if supported by NIC driver). If ETHTOOL_RF_REPLY flag was set in
-+request header, an ETHTOOL_MSG_RXFLOW_SET_REPLY message is sent as a reply,
-+containing only ETHTOOL_A_RXFLOW_HEADER, ETHTOOL_A_RXFLOW_CTXOP (equal to
-+ETHTOOL_RXFLOW_CTXOP_NEW) and ETHTOOL_A_RXFLOW_CONTEXT (with new context id).
++created (if supported by NIC driver). Unless ETHTOOL_GFLAG_OMIT_REPLY flag was
++set in request header, an ETHTOOL_MSG_RXFLOW_SET_REPLY message is sent as
++a reply, containing only ETHTOOL_A_RXFLOW_HEADER, ETHTOOL_A_RXFLOW_CTXOP
++(equal to ETHTOOL_RXFLOW_CTXOP_NEW) and ETHTOOL_A_RXFLOW_CONTEXT (with new
++context id).
 +
 +ETHTOOL_A_RXFLOW_CTXOP equal to ETHTOOL_RXFLOW_CTXOP_DEL requests context
 +deletion (if supported by NIC driver). Request must have
@@ -91,7 +92,7 @@ index 82d5a99374b8..9b88200bc9f1 100644
  Request translation
  -------------------
  
-@@ -825,7 +867,7 @@ ETHTOOL_SRXNTUPLE		n/a
+@@ -827,7 +870,7 @@ ETHTOOL_SRXNTUPLE		n/a
  ETHTOOL_GRXNTUPLE		n/a
  ETHTOOL_GSSET_INFO		ETHTOOL_MSG_STRSET_GET
  ETHTOOL_GRXFHINDIR		ETHTOOL_MSG_RXFLOW_GET
@@ -100,7 +101,7 @@ index 82d5a99374b8..9b88200bc9f1 100644
  ETHTOOL_GFEATURES		ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SFEATURES		ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_GCHANNELS		ETHTOOL_MSG_PARAMS_GET
-@@ -839,7 +881,7 @@ ETHTOOL_GMODULEEEPROM		n/a
+@@ -841,7 +884,7 @@ ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			ETHTOOL_MSG_PARAMS_GET
  ETHTOOL_SEEE			ETHTOOL_MSG_PARAMS_SET
  ETHTOOL_GRSSH			ETHTOOL_MSG_RXFLOW_GET
@@ -110,7 +111,7 @@ index 82d5a99374b8..9b88200bc9f1 100644
  ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index c9c5bd72411e..8b9aee940ca2 100644
+index 6be8f0d17ecd..5983675105cd 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -24,6 +24,7 @@ enum {
@@ -130,7 +131,7 @@ index c9c5bd72411e..8b9aee940ca2 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index e4d6109c6399..ba116ee7de6f 100644
+index 820c9bed8ba2..1a6d47bb892e 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -802,6 +802,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
@@ -158,10 +159,10 @@ index ca9ec0692649..417161d64aa0 100644
  int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_reset(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index e75008ef6614..bebd5e265320 100644
+index ab6b8c115080..5bac116bbc9d 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
-@@ -512,3 +512,655 @@ void ethnl_rxflow_notify(struct net_device *dev,
+@@ -513,3 +513,655 @@ void ethnl_rxflow_notify(struct net_device *dev,
  err_data:
  	rxflow_cleanup(req_info);
  }
@@ -791,7 +792,7 @@ index e75008ef6614..bebd5e265320 100644
 +			dev->priv_flags &= ~IFF_RXFH_CONFIGURED;
 +	}
 +	if (ctxop == ETHTOOL_RXFLOW_CTXOP_NEW && ret == 0 &&
-+	    (req_info.global_flags & ETHTOOL_RF_REPLY)) {
++	    (!(req_info.global_flags & ETHTOOL_GFLAG_OMIT_REPLY))) {
 +		ret = rxflow_set_send_reply(dev, info, context);
 +		if (ret < 0) {
 +			GENL_SET_ERR_MSG(info, "failed to send reply message");

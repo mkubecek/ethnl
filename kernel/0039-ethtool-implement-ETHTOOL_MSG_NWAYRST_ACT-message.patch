@@ -1,4 +1,4 @@
-From 443f9ddb534a56c3973cc6945e572c48e0b21484 Mon Sep 17 00:00:00 2001
+From 73fd3c9cc2fd2dd4a897970f5274601852015d8c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 39/44] ethtool: implement ETHTOOL_MSG_NWAYRST_ACT message
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/actions.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index ce0bf53faf99..2df4875440a1 100644
+index 61648db2088a..1f25268552b3 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -156,6 +156,7 @@ Userspace to kernel:
@@ -39,7 +39,7 @@ index ce0bf53faf99..2df4875440a1 100644
  
  "GET" requests are sent by userspace applications to retrieve device
  information. They usually do not contain any message specific attributes.
-@@ -580,6 +582,18 @@ cannot be set by PARAMS_SET request.
+@@ -582,6 +584,18 @@ cannot be set by PARAMS_SET request.
  		- change configured FEC encodings
  
  
@@ -58,7 +58,7 @@ index ce0bf53faf99..2df4875440a1 100644
  Request translation
  -------------------
  
-@@ -597,7 +611,7 @@ ETHTOOL_GWOL			ETHTOOL_MSG_SETTINGS_GET
+@@ -599,7 +613,7 @@ ETHTOOL_GWOL			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SWOL			ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_GMSGLVL			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SMSGLVL			ETHTOOL_MSG_SETTINGS_SET
@@ -68,7 +68,7 @@ index ce0bf53faf99..2df4875440a1 100644
  ETHTOOL_GEEPROM			n/a
  ETHTOOL_SEEPROM			n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index d9285fdfa82c..d071bdb82803 100644
+index 76d03e613b21..6192d58b25ea 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -20,6 +20,7 @@ enum {
@@ -102,7 +102,7 @@ index d9285fdfa82c..d071bdb82803 100644
 +	ETHTOOL_A_NWAYRST_MAX = (__ETHTOOL_A_NWAYRST_CNT - 1)
 +};
 +
-+#define ETHTOOL_RF_NWAYRST_ALL 0
++#define ETHTOOL_RFLAG_NWAYRST_ALL 0
 +
  /* generic netlink info */
  #define ETHTOOL_GENL_NAME "ethtool"
@@ -232,7 +232,7 @@ index d50cf13e4457..0c2f854ad149 100644
  
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 250c9e8aea8b..9df4c8ed3048 100644
+index 28bdeb1a329b..3d68f2606600 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -261,13 +261,13 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,

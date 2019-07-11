@@ -1,4 +1,4 @@
-From 90cfcfa521d850e0b54baa6eedf8c039004c269c Mon Sep 17 00:00:00 2001
+From 138e39475bc14d2726a9e767501e283f1972670a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 24/44] ethtool: set private flags with SETTINGS_SET request
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 46 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index fd6595ede8f4..3e2e41d09479 100644
+index 856ebf919b2a..e9cb218877bd 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -346,6 +346,7 @@ to be passed with SETTINGS_SET request:
+@@ -347,6 +347,7 @@ to be passed with SETTINGS_SET request:
          ETHTOOL_A_DEBUG_MSG_MASK	    (bitfield32)    message mask
      ETHTOOL_A_SETTINGS_FEATURES		(nested)	device features
          ETHTOOL_A_FEATURES_WANTED	    (bitset)	    wanted features
@@ -26,7 +26,7 @@ index fd6595ede8f4..3e2e41d09479 100644
  
  ETHTOOL_A_LINKMODES_OURS bit set allows setting advertised link modes. If
  autonegotiation is on (either set now or kept from before), advertised modes
-@@ -427,7 +428,7 @@ ETHTOOL_SGSO			ETHTOOL_MSG_SETTINGS_SET
+@@ -429,7 +430,7 @@ ETHTOOL_SGSO			ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_GFLAGS			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SFLAGS			ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_GPFLAGS			ETHTOOL_MSG_SETTINGS_GET
@@ -36,7 +36,7 @@ index fd6595ede8f4..3e2e41d09479 100644
  ETHTOOL_SRXFH			n/a
  ETHTOOL_GGRO			ETHTOOL_MSG_SETTINGS_GET
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index a6d9eb3b1f74..3e46646efa37 100644
+index c01c1d8686ae..14c9fda2a842 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -765,7 +765,7 @@ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
@@ -48,7 +48,7 @@ index a6d9eb3b1f74..3e46646efa37 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -1123,6 +1123,41 @@ static int settings_update_features(struct genl_info *info,
+@@ -1124,6 +1124,41 @@ static int settings_update_features(struct genl_info *info,
  	return !!mod;
  }
  
@@ -90,7 +90,7 @@ index a6d9eb3b1f74..3e46646efa37 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
-@@ -1181,6 +1216,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -1182,6 +1217,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret)
  			req_mask |= ETHTOOL_IM_SETTINGS_FEATURES;
  	}

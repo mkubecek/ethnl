@@ -1,4 +1,4 @@
-From 8c42ea4215a6abe5663957505ff2e9a85e5f231b Mon Sep 17 00:00:00 2001
+From c137a61813517958288c358c1ac58fc01c13607a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:36:43 +0100
 Subject: [PATCH 34/44] ethtool: set channel counts with PARAMS_SET request
@@ -17,10 +17,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  5 files changed, 161 insertions(+), 63 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index baf476d3aa24..ab0a6f5157ed 100644
+index fdd674832282..84ba3eafc239 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -510,10 +510,11 @@ PARAMS_SET
+@@ -512,10 +512,11 @@ PARAMS_SET
  ----------
  
  PARAMS_SET request modifies the settings retrieved by PARAMS_GET, i.e. it
@@ -36,7 +36,7 @@ index baf476d3aa24..ab0a6f5157ed 100644
  
      ETHTOOL_A_PARAMS_HEADER		(nested)	request header
      ETHTOOL_A_PARAMS_COALESCE		(nested)	coalescing parameters
-@@ -548,6 +549,11 @@ PARAMS_GET are read only and cannot be set by PARAMS_SET request.
+@@ -550,6 +551,11 @@ PARAMS_GET are read only and cannot be set by PARAMS_SET request.
          ETHTOOL_A_PAUSE_AUTONEG		    (bool)
          ETHTOOL_A_PAUSE_RX		    (bool)
          ETHTOOL_A_PAUSE_TX		    (bool)
@@ -48,7 +48,7 @@ index baf476d3aa24..ab0a6f5157ed 100644
  
  
  Request translation
-@@ -618,7 +624,7 @@ ETHTOOL_SRXFHINDIR		n/a
+@@ -620,7 +626,7 @@ ETHTOOL_SRXFHINDIR		n/a
  ETHTOOL_GFEATURES		ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SFEATURES		ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_GCHANNELS		ETHTOOL_MSG_PARAMS_GET
@@ -235,7 +235,7 @@ index e726c8eb5582..0ce138478786 100644
  		ethtool_notify(dev, NULL, ETHTOOL_MSG_PARAMS_NTF,
  			       ETHTOOL_IM_PARAMS_CHANNELS, NULL);
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index b2ceccf7f7d1..fcdf338cba0a 100644
+index bdef3673c543..53b5609d9f10 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -1,6 +1,7 @@

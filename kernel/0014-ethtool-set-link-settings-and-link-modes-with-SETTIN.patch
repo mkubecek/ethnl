@@ -1,4 +1,4 @@
-From 597f5427fbf42fffb4d27526085a43cd911fd6f0 Mon Sep 17 00:00:00 2001
+From 0ae3b516ffc277e5eda181a79f616810b72cb2e3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
 Subject: [PATCH 14/44] ethtool: set link settings and link modes with
@@ -40,7 +40,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 390 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 91b45381c17a..9589e5ebcc35 100644
+index abd44a2ec9a3..b18a7cfc62b8 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -152,11 +152,13 @@ Userspace to kernel:
@@ -57,7 +57,7 @@ index 91b45381c17a..9589e5ebcc35 100644
  
  "GET" requests are sent by userspace applications to retrieve device
  information. They usually do not contain any message specific attributes.
-@@ -275,6 +277,34 @@ to them are broadcasted as notifications on change of these settings using
+@@ -276,6 +278,34 @@ to them are broadcasted as notifications on change of these settings using
  netlink or ioctl ethtool interface.
  
  
@@ -92,7 +92,7 @@ index 91b45381c17a..9589e5ebcc35 100644
  Request translation
  -------------------
  
-@@ -285,7 +315,7 @@ have their netlink replacement yet.
+@@ -286,7 +316,7 @@ have their netlink replacement yet.
  ioctl command			netlink command
  ---------------------------------------------------------------------
  ETHTOOL_GSET			ETHTOOL_MSG_SETTINGS_GET
@@ -101,7 +101,7 @@ index 91b45381c17a..9589e5ebcc35 100644
  ETHTOOL_GDRVINFO		n/a
  ETHTOOL_GREGS			n/a
  ETHTOOL_GWOL			n/a
-@@ -359,7 +389,7 @@ ETHTOOL_STUNABLE		n/a
+@@ -360,7 +390,7 @@ ETHTOOL_STUNABLE		n/a
  ETHTOOL_GPHYSTATS		n/a
  ETHTOOL_PERQUEUE		n/a
  ETHTOOL_GLINKSETTINGS		ETHTOOL_MSG_SETTINGS_GET
@@ -111,7 +111,7 @@ index 91b45381c17a..9589e5ebcc35 100644
  ETHTOOL_PHY_STUNABLE		n/a
  ETHTOOL_GFECPARAM		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index a046dd8da50e..8ccf66ed3f58 100644
+index fb7ab35a1359..aa952d02188f 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -16,6 +16,7 @@ enum {
@@ -181,7 +181,7 @@ index ed53e07d619e..504ab2f7009c 100644
  
  static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index e812183ba715..231f921a86c3 100644
+index 9dd338692303..64196ad60d1b 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -614,6 +614,11 @@ static int ethnl_get_done(struct netlink_callback *cb)
@@ -228,7 +228,7 @@ index f30eb8cad857..f3f6ac94fe73 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 11ec30b9d48b..a0012b963154 100644
+index e3d8934d48c7..0fd03df2df2c 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,99 @@ struct settings_data {

@@ -1,4 +1,4 @@
-From 6114513345ed064125c0c451bc68730c8b63af18 Mon Sep 17 00:00:00 2001
+From a3393ac37345c8ddcc0877de77cfdfe6c699e08c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 05/44] ethtool: helper functions for netlink interface
@@ -15,7 +15,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  3 files changed, 397 insertions(+)
 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 9a0fbd4f85d9..ffd7db0848ef 100644
+index 9a0fbd4f85d9..51bbcd3e780d 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -29,6 +29,29 @@ enum {
@@ -25,20 +25,20 @@ index 9a0fbd4f85d9..ffd7db0848ef 100644
 +/* request header */
 +
 +/* use compact bitsets in reply */
-+#define ETHTOOL_RF_COMPACT		(1 << 0)
++#define ETHTOOL_GFLAG_COMPACT_BITSETS	(1 << 0)
 +/* provide optional reply for SET or ACT requests */
-+#define ETHTOOL_RF_REPLY		(1 << 1)
++#define ETHTOOL_GFLAG_OMIT_REPLY	(1 << 1)
 +
-+#define ETHTOOL_RF_ALL (ETHTOOL_RF_COMPACT | \
-+			ETHTOOL_RF_REPLY)
++#define ETHTOOL_GFLAG_ALL (ETHTOOL_GFLAG_COMPACT_BITSETS | \
++			   ETHTOOL_GFLAG_OMIT_REPLY)
 +
 +enum {
 +	ETHTOOL_A_HEADER_UNSPEC,
 +	ETHTOOL_A_HEADER_DEV_INDEX,		/* u32 */
 +	ETHTOOL_A_HEADER_DEV_NAME,		/* string */
 +	ETHTOOL_A_HEADER_INFOMASK,		/* u32 */
-+	ETHTOOL_A_HEADER_GFLAGS,		/* u32 - ETHTOOL_RF_* */
-+	ETHTOOL_A_HEADER_RFLAGS,		/* u32 */
++	ETHTOOL_A_HEADER_GFLAGS,		/* u32 - ETHTOOL_GFLAG_* */
++	ETHTOOL_A_HEADER_RFLAGS,		/* u32 - ETHTOOL_RFLAG_*_* */
 +
 +	/* add new constants above here */
 +	__ETHTOOL_A_HEADER_CNT,

@@ -1,4 +1,4 @@
-From ec2f9f0d3dc5c860f6c8bc359a5b9113187a245b Mon Sep 17 00:00:00 2001
+From 3bb5865604211b37f548837dcd094b84cdb686ba Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 07:53:54 +0100
 Subject: [PATCH 30/44] ethtool: set ring sizes with PARAMS_SET request
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 89 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 413c7dede681..2a74a8abfbe5 100644
+index 91d611a7aff7..8a951f7db253 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -494,8 +494,10 @@ PARAMS_SET
+@@ -496,8 +496,10 @@ PARAMS_SET
  ----------
  
  PARAMS_SET request modifies the settings retrieved by PARAMS_GET, i.e. it
@@ -30,7 +30,7 @@ index 413c7dede681..2a74a8abfbe5 100644
  
      ETHTOOL_A_PARAMS_HEADER		(nested)	request header
      ETHTOOL_A_PARAMS_COALESCE		(nested)	coalescing parameters
-@@ -521,6 +523,11 @@ contained in nest attribute ETHTOOL_A_PARAMS_COALESCE.
+@@ -523,6 +525,11 @@ contained in nest attribute ETHTOOL_A_PARAMS_COALESCE.
          ETHTOOL_A_COALESCE_TX_USE_ADAPTIVE  (bool)
          ETHTOOL_A_COALESCE_RATE_SAMPLE_INTERVAL	(u32)
          ETHTOOL_A_COALESCE_STATS_BLOCK_USECS	(u32)
@@ -42,7 +42,7 @@ index 413c7dede681..2a74a8abfbe5 100644
  
  
  Request translation
-@@ -547,7 +554,7 @@ ETHTOOL_SEEPROM			n/a
+@@ -549,7 +556,7 @@ ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		ETHTOOL_MSG_PARAMS_GET
  ETHTOOL_SCOALESCE		ETHTOOL_MSG_PARAMS_SET
  ETHTOOL_GRINGPARAM		ETHTOOL_MSG_PARAMS_GET
@@ -52,7 +52,7 @@ index 413c7dede681..2a74a8abfbe5 100644
  ETHTOOL_SPAUSEPARAM		n/a
  ETHTOOL_GRXCSUM			ETHTOOL_MSG_SETTINGS_GET
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 42311dfd3ca0..11ad2e357570 100644
+index 9217e64c81bd..6088acac7a6f 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -227,7 +227,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {

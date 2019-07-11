@@ -1,4 +1,4 @@
-From 04ac22282a36df960ca3864c4f426ec0ade4942b Mon Sep 17 00:00:00 2001
+From 3c81cad6d926aea394246391f2128ce2791b8a08 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:50:30 +0100
 Subject: [PATCH 18/44] ethtool: set WoL settings with SETTINGS_SET request
@@ -16,10 +16,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 77 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 455603bdc6fd..21430e08cbf4 100644
+index e87580bab161..1ffad9c19f53 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -308,6 +308,9 @@ to be passed with SETTINGS_SET request:
+@@ -309,6 +309,9 @@ to be passed with SETTINGS_SET request:
          ETHTOOL_A_LINKMODES_OURS	    (bitset)	    advertised link modes
          ETHTOOL_A_LINKMODES_SPEED	    (u32)	    link speed (Mb/s)
          ETHTOOL_A_LINKMODES_DUPLEX	    (u8)	    duplex mode
@@ -29,7 +29,7 @@ index 455603bdc6fd..21430e08cbf4 100644
  
  ETHTOOL_A_LINKMODES_OURS bit set allows setting advertised link modes. If
  autonegotiation is on (either set now or kept from before), advertised modes
-@@ -318,6 +321,13 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
+@@ -319,6 +322,13 @@ autoselection is done on ethtool side with ioctl interface, netlink interface
  is supposed to allow requesting changes without knowing what exactly kernel
  supports.
  
@@ -43,7 +43,7 @@ index 455603bdc6fd..21430e08cbf4 100644
  
  Request translation
  -------------------
-@@ -333,7 +343,7 @@ ETHTOOL_SSET			ETHTOOL_MSG_SETTINGS_SET
+@@ -334,7 +344,7 @@ ETHTOOL_SSET			ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_GDRVINFO		n/a
  ETHTOOL_GREGS			n/a
  ETHTOOL_GWOL			ETHTOOL_MSG_SETTINGS_GET
@@ -53,7 +53,7 @@ index 455603bdc6fd..21430e08cbf4 100644
  ETHTOOL_SMSGLVL			n/a
  ETHTOOL_NWAY_RST		n/a
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 6396c25b68b4..8fa9ab332ca9 100644
+index 8ff4b518064a..ac137e76c6ec 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -109,6 +109,12 @@ static const struct link_mode_info link_mode_params[] = {

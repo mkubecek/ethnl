@@ -1,4 +1,4 @@
-From 7d20aed080f04050abcd05618ec11880173dfc87 Mon Sep 17 00:00:00 2001
+From b75a3680ce472398a8dc17267a959195fc9bc940 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 06/44] ethtool: netlink bitset handling
@@ -24,9 +24,9 @@ applications (ethtool in monitor mode or network management daemons)
 which can retrieve the names once and then pass only compact bitmaps to
 save space.
 
-Userspace requests can use either format and ETHTOOL_RF_COMPACT flag in
-request header tells kernel which format to use in reply. Notifications
-always use compact format.
+Userspace requests can use either format; ETHTOOL_GFLAG_COMPACT_BITSETS
+flag in request header tells kernel which format to use in reply.
+Notifications always use compact format.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -41,7 +41,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 net/ethtool/bitset.h
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 028c29eeed93..b02b6b5d3660 100644
+index 3ed6f0a33acf..338ff9259cf0 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -73,6 +73,67 @@ set, the behaviour is backward compatible, i.e. requests from old clients not
@@ -113,7 +113,7 @@ index 028c29eeed93..b02b6b5d3660 100644
  ---------------------
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index ffd7db0848ef..805f314f4454 100644
+index 51bbcd3e780d..dd892c42eab8 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -52,6 +52,41 @@ enum {

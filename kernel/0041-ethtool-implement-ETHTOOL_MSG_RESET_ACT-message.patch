@@ -1,4 +1,4 @@
-From d0ab86991e1db5d4bfc7cb5b6a3c962dc3cc776e Mon Sep 17 00:00:00 2001
+From bd9878b3f7ad3f90c895f74bae1c03907e9bc01d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 41/44] ethtool: implement ETHTOOL_MSG_RESET_ACT message
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 321 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 9100d9abf90a..52e1f5114cd9 100644
+index 583ed534ba79..46bfe80baa13 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -158,6 +158,7 @@ Userspace to kernel:
@@ -40,7 +40,7 @@ index 9100d9abf90a..52e1f5114cd9 100644
  
  "GET" requests are sent by userspace applications to retrieve device
  information. They usually do not contain any message specific attributes.
-@@ -618,6 +621,30 @@ other PHYSID_ACT requests for any device fail with EBUSY. The same holds for
+@@ -620,6 +623,30 @@ other PHYSID_ACT requests for any device fail with EBUSY. The same holds for
  requests using ETHTOOL_PHYS_ID ioctl command.
  
  
@@ -62,16 +62,16 @@ index 9100d9abf90a..52e1f5114cd9 100644
 +is present, it overrides both ETHTOOL_A_RESET_DEDICATED and
 +ETHTOOL_A_RESET_SHARED.
 +
-+If the request is successful and ETHTOOL_RF_REPLY flag was set in request
-+header, a message in the same format is returned, indicating which components
-+_were_ actually reset (this is different from ioctl interface). The same
-+message is also broadcasted as a notification.
++If the request is successful and ETHTOOL_GFLAG_OMIT_REPLY flag was not set in
++request header, a message in the same format is returned, indicating which
++components _were_ actually reset (this is different from ioctl interface). The
++same message is also broadcasted as a notification.
 +
 +
  Request translation
  -------------------
  
-@@ -677,7 +704,7 @@ ETHTOOL_GRXCLSRLALL		n/a
+@@ -679,7 +706,7 @@ ETHTOOL_GRXCLSRLALL		n/a
  ETHTOOL_SRXCLSRLDEL		n/a
  ETHTOOL_SRXCLSRLINS		n/a
  ETHTOOL_FLASHDEV		n/a
@@ -109,7 +109,7 @@ index 3ba1508742d4..b9a7861fffd1 100644
  
  
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index c6b3aee4dbb9..bc91f951a6b7 100644
+index 6daac600d02e..730a51406e7a 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -22,6 +22,7 @@ enum {
@@ -131,7 +131,7 @@ index c6b3aee4dbb9..bc91f951a6b7 100644
  	__ETHTOOL_MSG_KERNEL_CNT,
 @@ -465,6 +468,23 @@ enum {
  
- #define ETHTOOL_RF_PHYSID_ALL 0
+ #define ETHTOOL_RFLAG_PHYSID_ALL 0
  
 +/* RESET */
 +
@@ -148,13 +148,13 @@ index c6b3aee4dbb9..bc91f951a6b7 100644
 +	ETHTOOL_A_RESET_MAX = (__ETHTOOL_A_RESET_CNT - 1)
 +};
 +
-+#define ETHTOOL_RF_RESET_ALL 0
++#define ETHTOOL_RFLAG_RESET_ALL 0
 +
  /* generic netlink info */
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
-index 24c1d0d63ba2..da9e648244a8 100644
+index 24c1d0d63ba2..e11f95098595 100644
 --- a/net/ethtool/actions.c
 +++ b/net/ethtool/actions.c
 @@ -2,6 +2,7 @@
@@ -361,7 +361,7 @@ index 24c1d0d63ba2..da9e648244a8 100644
 +	if (ret < 0)
 +		return ret;
 +	dev = req_info.dev;
-+	compact = req_info.global_flags & ETHTOOL_RF_COMPACT;
++	compact = req_info.global_flags & ETHTOOL_GFLAG_COMPACT_BITSETS;
 +	ret = reset_parse(tb, &flags, info);
 +	if (ret < 0)
 +		goto out_dev;
@@ -379,7 +379,7 @@ index 24c1d0d63ba2..da9e648244a8 100644
 +	flags = orig_flags & ~flags;
 +	if (flags)
 +		ethnl_reset_notify(dev, NULL, ETHTOOL_MSG_RESET_NTF, 0, &flags);
-+	if (!(req_info.global_flags & ETHTOOL_RF_REPLY))
++	if (req_info.global_flags & ETHTOOL_GFLAG_OMIT_REPLY)
 +		goto out_rtnl;
 +
 +	/* compose reply message */
@@ -444,7 +444,7 @@ index 4c4682ef5e08..aa96aae96e34 100644
  	if (copy_to_user(useraddr, &reset, sizeof(reset)))
  		return -EFAULT;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 765e65882b05..1092206e96f2 100644
+index 5f4970d5712b..37aa20d34ccc 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -694,6 +694,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
@@ -496,7 +496,7 @@ index 4e680235297b..a3f5dfa64193 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index 52bab3301bac..3713bd309a66 100644
+index b3ccceb2c017..e13d9b5810fd 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
 @@ -91,6 +91,12 @@ static const struct strset_info info_template[] = {

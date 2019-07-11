@@ -1,4 +1,4 @@
-From 5fba4d015bd954dbe18d7dbfe069fec075bc8e86 Mon Sep 17 00:00:00 2001
+From 19eba82d323cdac14e361253fe8a80dd6b495e48 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 40/44] ethtool: implement ETHTOOL_MSG_PHYSID_ACT message
@@ -21,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  8 files changed, 204 insertions(+), 47 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 2df4875440a1..9100d9abf90a 100644
+index 1f25268552b3..583ed534ba79 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
 @@ -157,6 +157,7 @@ Userspace to kernel:
@@ -40,7 +40,7 @@ index 2df4875440a1..9100d9abf90a 100644
  
  "GET" requests are sent by userspace applications to retrieve device
  information. They usually do not contain any message specific attributes.
-@@ -594,6 +596,28 @@ Request contents:
+@@ -596,6 +598,28 @@ Request contents:
  If successful, a notification in the same format is sent.
  
  
@@ -69,7 +69,7 @@ index 2df4875440a1..9100d9abf90a 100644
  Request translation
  -------------------
  
-@@ -629,7 +653,7 @@ ETHTOOL_GSG			ETHTOOL_MSG_SETTINGS_GET
+@@ -631,7 +655,7 @@ ETHTOOL_GSG			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_SSG			ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_TEST			n/a
  ETHTOOL_GSTRINGS		ETHTOOL_MSG_STRSET_GET
@@ -79,7 +79,7 @@ index 2df4875440a1..9100d9abf90a 100644
  ETHTOOL_GTSO			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_STSO			ETHTOOL_MSG_SETTINGS_SET
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index d071bdb82803..c6b3aee4dbb9 100644
+index 6192d58b25ea..6daac600d02e 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -21,6 +21,7 @@ enum {
@@ -100,7 +100,7 @@ index d071bdb82803..c6b3aee4dbb9 100644
  	__ETHTOOL_MSG_KERNEL_CNT,
 @@ -449,6 +451,20 @@ enum {
  
- #define ETHTOOL_RF_NWAYRST_ALL 0
+ #define ETHTOOL_RFLAG_NWAYRST_ALL 0
  
 +/* PHYSID */
 +
@@ -114,7 +114,7 @@ index d071bdb82803..c6b3aee4dbb9 100644
 +	ETHTOOL_A_PHYSID_MAX = (__ETHTOOL_A_PHYSID_CNT - 1)
 +};
 +
-+#define ETHTOOL_RF_PHYSID_ALL 0
++#define ETHTOOL_RFLAG_PHYSID_ALL 0
 +
  /* generic netlink info */
  #define ETHTOOL_GENL_NAME "ethtool"
@@ -372,7 +372,7 @@ index 0c2f854ad149..4c4682ef5e08 100644
  }
  
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 9df4c8ed3048..765e65882b05 100644
+index 3d68f2606600..5f4970d5712b 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -693,6 +693,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {

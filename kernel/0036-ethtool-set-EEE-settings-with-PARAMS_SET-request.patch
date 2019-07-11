@@ -1,4 +1,4 @@
-From 48ed91fc2b6650683a974a7d1b0316d3f695e0b6 Mon Sep 17 00:00:00 2001
+From 54020c89e7095d3d08d61eed9f6271dcbb7213b4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:47:45 +0100
 Subject: [PATCH 36/44] ethtool: set EEE settings with PARAMS_SET request
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 76 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index fbf4dbb15102..7a97ea5b5e07 100644
+index 642b253fb1cb..a65f6886ee5f 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -520,11 +520,11 @@ PARAMS_SET
+@@ -522,11 +522,11 @@ PARAMS_SET
  ----------
  
  PARAMS_SET request modifies the settings retrieved by PARAMS_GET, i.e. it
@@ -34,7 +34,7 @@ index fbf4dbb15102..7a97ea5b5e07 100644
  
      ETHTOOL_A_PARAMS_HEADER		(nested)	request header
      ETHTOOL_A_PARAMS_COALESCE		(nested)	coalescing parameters
-@@ -564,6 +564,12 @@ request.
+@@ -566,6 +566,12 @@ request.
          ETHTOOL_A_CHANNELS_TX_COUNT	    (u32)
          ETHTOOL_A_CHANNELS_OTHER_COUNT	    (u32)
          ETHTOOL_A_CHANNELS_COMBINED_COUN    (u32)
@@ -47,7 +47,7 @@ index fbf4dbb15102..7a97ea5b5e07 100644
  
  
  Request translation
-@@ -642,7 +648,7 @@ ETHTOOL_GET_TS_INFO		ETHTOOL_MSG_INFO_GET
+@@ -644,7 +650,7 @@ ETHTOOL_GET_TS_INFO		ETHTOOL_MSG_INFO_GET
  ETHTOOL_GMODULEINFO		n/a
  ETHTOOL_GMODULEEEPROM		n/a
  ETHTOOL_GEEE			ETHTOOL_MSG_PARAMS_GET
@@ -57,7 +57,7 @@ index fbf4dbb15102..7a97ea5b5e07 100644
  ETHTOOL_SRSSH			n/a
  ETHTOOL_GTUNABLE		n/a
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 2a6a977b9f61..8012961724d5 100644
+index 6d00313326f0..ef32131bc714 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -429,7 +429,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {

@@ -1,4 +1,4 @@
-From 1a181851261cb2b0dd04ba4061fe5191331358d4 Mon Sep 17 00:00:00 2001
+From 6f45c80e4bb15cff0f08f3de39ed6d6abdfdd527 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:07:38 +0100
 Subject: [PATCH 32/44] ethtool: set pause parameters with PARAMS_SET request
@@ -14,10 +14,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 60 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 3319e030e51a..1171d7813e6e 100644
+index 4c578cf2eba1..946c313f38c3 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -499,10 +499,10 @@ PARAMS_SET
+@@ -501,10 +501,10 @@ PARAMS_SET
  ----------
  
  PARAMS_SET request modifies the settings retrieved by PARAMS_GET, i.e. it
@@ -32,7 +32,7 @@ index 3319e030e51a..1171d7813e6e 100644
  
      ETHTOOL_A_PARAMS_HEADER		(nested)	request header
      ETHTOOL_A_PARAMS_COALESCE		(nested)	coalescing parameters
-@@ -533,6 +533,10 @@ cannot be set by PARAMS_SET request.
+@@ -535,6 +535,10 @@ cannot be set by PARAMS_SET request.
          ETHTOOL_A_RING_RX_MINI_PENDING	    (u32)
          ETHTOOL_A_RING_RX_JUMBO_PENDING	    (u32)
          ETHTOOL_A_RING_TX_PENDING	    (u32)
@@ -43,7 +43,7 @@ index 3319e030e51a..1171d7813e6e 100644
  
  
  Request translation
-@@ -561,7 +565,7 @@ ETHTOOL_SCOALESCE		ETHTOOL_MSG_PARAMS_SET
+@@ -563,7 +567,7 @@ ETHTOOL_SCOALESCE		ETHTOOL_MSG_PARAMS_SET
  ETHTOOL_GRINGPARAM		ETHTOOL_MSG_PARAMS_GET
  ETHTOOL_SRINGPARAM		ETHTOOL_MSG_PARAMS_SET
  ETHTOOL_GPAUSEPARAM		ETHTOOL_MSG_PARAMS_GET
@@ -53,7 +53,7 @@ index 3319e030e51a..1171d7813e6e 100644
  ETHTOOL_SRXCSUM			ETHTOOL_MSG_SETTINGS_SET
  ETHTOOL_GTXCSUM			ETHTOOL_MSG_SETTINGS_GET
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 5ccc460d232f..ccf9b85e5413 100644
+index f294e616d006..d1fb496a81b6 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -275,7 +275,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {

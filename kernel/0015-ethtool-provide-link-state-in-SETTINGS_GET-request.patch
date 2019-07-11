@@ -1,4 +1,4 @@
-From 49cf35b6675437ef9e3724836189630b2de909be Mon Sep 17 00:00:00 2001
+From 8f1fb3a2a07ce4fc90474c50b959d913a727d4a4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:26:45 +0100
 Subject: [PATCH 15/44] ethtool: provide link state in SETTINGS_GET request
@@ -22,10 +22,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  6 files changed, 69 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
-index 9589e5ebcc35..8232e5baf9dc 100644
+index b18a7cfc62b8..084a6520ed54 100644
 --- a/Documentation/networking/ethtool-netlink.txt
 +++ b/Documentation/networking/ethtool-netlink.txt
-@@ -250,6 +250,7 @@ Info mask bits meaning:
+@@ -251,6 +251,7 @@ Info mask bits meaning:
  
      ETHTOOL_IM_SETTINGS_LINKINFO	link settings
      ETHTOOL_IM_SETTINGS_LINKMODES	link modes and related
@@ -33,7 +33,7 @@ index 9589e5ebcc35..8232e5baf9dc 100644
  
  Response contents:
  
-@@ -266,6 +267,8 @@ Response contents:
+@@ -267,6 +268,8 @@ Response contents:
          ETHTOOL_A_LINKMODES_PEER	    (bitset)	    partner link modes
          ETHTOOL_A_LINKMODES_SPEED	    (u32)	    link speed (Mb/s)
          ETHTOOL_A_LINKMODES_DUPLEX	    (u8)	    duplex mode
@@ -42,7 +42,7 @@ index 9589e5ebcc35..8232e5baf9dc 100644
  
  Most of the attributes and their values have the same meaning as matching
  members of the corresponding ioctl structures. For ETHTOOL_A_LINKMODES_OURS,
-@@ -323,7 +326,7 @@ ETHTOOL_SWOL			n/a
+@@ -324,7 +327,7 @@ ETHTOOL_SWOL			n/a
  ETHTOOL_GMSGLVL			n/a
  ETHTOOL_SMSGLVL			n/a
  ETHTOOL_NWAY_RST		n/a
@@ -52,7 +52,7 @@ index 9589e5ebcc35..8232e5baf9dc 100644
  ETHTOOL_SEEPROM			n/a
  ETHTOOL_GCOALESCE		n/a
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
-index 8ccf66ed3f58..46c13455246f 100644
+index aa952d02188f..ba64fa2a32d9 100644
 --- a/include/uapi/linux/ethtool_netlink.h
 +++ b/include/uapi/linux/ethtool_netlink.h
 @@ -158,6 +158,7 @@ enum {
@@ -74,7 +74,7 @@ index 8ccf66ed3f58..46c13455246f 100644
 +				 ETHTOOL_IM_SETTINGS_LINKMODES | \
 +				 ETHTOOL_IM_SETTINGS_LINKSTATE)
  
- #define ETHTOOL_RF_SETTINGS_ALL 0
+ #define ETHTOOL_RFLAG_SETTINGS_ALL 0
  
 @@ -198,6 +201,15 @@ enum {
  	ETHTOOL_A_LINKMODES_MAX = (__ETHTOOL_A_LINKMODES_CNT - 1)
@@ -151,7 +151,7 @@ index 504ab2f7009c..853b8c21a5e5 100644
  		return -EFAULT;
  	return 0;
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index a0012b963154..edb3cce5079c 100644
+index 0fd03df2df2c..337069aec779 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -11,6 +11,7 @@ struct settings_data {
