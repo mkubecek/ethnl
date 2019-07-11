@@ -1,4 +1,4 @@
-From 7d29896776b761a110a9928c30bb35497e8fd72b Mon Sep 17 00:00:00 2001
+From 5ce560209ab379e672d699b205889fce2e468cba Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Dec 2017 23:59:50 +0100
 Subject: [PATCH 17/34] netlink: add netlink handler for gring (-g)

@@ -1,4 +1,4 @@
-From 85a9d5f3513ea51e89f0b89112ab68bb8b60343c Mon Sep 17 00:00:00 2001
+From a48e2bdbaa17217f8371f4e4996c93c26d8b1e5c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 11/34] netlink: add netlink handler for sset (-s)
@@ -161,7 +161,7 @@ index c654d55d46f6..59f88145a61d 100644
  int nl_parser(struct nl_context *nlctx, const struct param_parser *params,
  	      void *dest);
 diff --git a/netlink/settings.c b/netlink/settings.c
-index f1b99bf797ee..ff3a4e8f8da8 100644
+index b75ac93fbec4..9dfa7f603b53 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -6,6 +6,7 @@
@@ -172,7 +172,7 @@ index f1b99bf797ee..ff3a4e8f8da8 100644
  
  /* GET_SETTINGS */
  
-@@ -389,3 +390,174 @@ int nl_gset(struct cmd_context *ctx)
+@@ -390,3 +391,174 @@ int nl_gset(struct cmd_context *ctx)
  				    ETHTOOL_IM_SETTINGS_WOL);
  	return (ret < 0) ? 75 : 0;
  }

@@ -1,4 +1,4 @@
-From 3cd6345bfda53b2a7042aa9d56b0077e030b9b15 Mon Sep 17 00:00:00 2001
+From 480936236dfe5c98806c0898b8f63d03832de44a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Dec 2017 08:32:39 +0100
 Subject: [PATCH 25/34] netlink: add netlink handler for schannels (-L)

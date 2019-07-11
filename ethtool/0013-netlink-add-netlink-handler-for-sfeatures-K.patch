@@ -1,4 +1,4 @@
-From 876e4e2b400851bed57f9f2b2e59940be7d60446 Mon Sep 17 00:00:00 2001
+From 005b0eaa4e731567a1184650cbad9672134bcc64 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 16:25:31 +0200
 Subject: [PATCH 13/34] netlink: add netlink handler for sfeatures (-K)
@@ -54,10 +54,10 @@ index f4bbb0b456ef..d0199cb440f8 100644
  
  void monitor_usage();
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 69f502b215b1..455d3f567c1b 100644
+index b8b60ccd1fc0..2ee2bf256dc6 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -791,3 +791,292 @@ int nl_sset(struct cmd_context *ctx)
+@@ -792,3 +792,292 @@ int nl_sset(struct cmd_context *ctx)
  		return 0;
  	return nlctx->exit_code ?: 75;
  }
@@ -331,7 +331,7 @@ index 69f502b215b1..455d3f567c1b 100644
 +	if (ret < 0)
 +		return 2;
 +	if (ethnla_fill_header(nlctx, ETHTOOL_A_SETTINGS_HEADER, ctx->devname,
-+			       0, ETHTOOL_RF_COMPACT | ETHTOOL_RF_REPLY, 0))
++			       0, ETHTOOL_GFLAG_COMPACT_BITSETS, 0))
 +		return -EMSGSIZE;
 +
 +	feat_attr = ethnla_nest_start(nlctx, ETHTOOL_A_SETTINGS_FEATURES);

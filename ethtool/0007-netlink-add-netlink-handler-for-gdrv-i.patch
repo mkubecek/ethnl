@@ -1,4 +1,4 @@
-From 291f61d27bd871630d2ae48ff57f5e3454257208 Mon Sep 17 00:00:00 2001
+From bff4af3055b1c871f6b9faa8bcb862f6368166a6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:10:58 +0100
 Subject: [PATCH 07/34] netlink: add netlink handler for gdrv (-i)
@@ -62,7 +62,7 @@ index c6a65e3222cd..2612f1752b56 100644
  void monitor_usage();
 diff --git a/netlink/info.c b/netlink/info.c
 new file mode 100644
-index 000000000000..5ca26df9f63d
+index 000000000000..b76878ff307c
 --- /dev/null
 +++ b/netlink/info.c
 @@ -0,0 +1,182 @@
@@ -144,7 +144,7 @@ index 000000000000..5ca26df9f63d
 +	if (ret < 0)
 +		return ret;
 +	if (ethnla_fill_header(nlctx, ETHTOOL_A_STRSET_HEADER, nlctx->devname,
-+			       0, 0, ETHTOOL_RF_STRSET_COUNTS))
++			       0, 0, ETHTOOL_RFLAG_STRSET_COUNTS_ONLY))
 +		return -EMSGSIZE;
 +
 +	nest = ethnla_nest_start(nlctx, ETHTOOL_A_STRSET_STRINGSETS);

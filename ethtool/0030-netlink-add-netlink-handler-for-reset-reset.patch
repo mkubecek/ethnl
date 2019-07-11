@@ -1,4 +1,4 @@
-From db5b543335dc61d132b114c3ea08d257974014e4 Mon Sep 17 00:00:00 2001
+From 33edd0a56de03c22ff3554105b76c2f139883df3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 08:43:44 +0200
 Subject: [PATCH 30/34] netlink: add netlink handler for reset (--reset)
@@ -36,7 +36,7 @@ index c057c444a91d..f2075a6d98b2 100644
  	  "		[ flags %x ]\n"
  	  "		[ mgmt ]\n"
 diff --git a/netlink/actions.c b/netlink/actions.c
-index 4fa5d27bc743..cf6ba5104e00 100644
+index 4fa5d27bc743..34b83d6cded7 100644
 --- a/netlink/actions.c
 +++ b/netlink/actions.c
 @@ -6,6 +6,7 @@
@@ -281,7 +281,7 @@ index 4fa5d27bc743..cf6ba5104e00 100644
 +	if (ret < 0)
 +		return -EFAULT;
 +	if (ethnla_fill_header(nlctx, ETHTOOL_A_RESET_HEADER, ctx->devname,
-+			       0, ETHTOOL_RF_COMPACT, 0))
++			       0, ETHTOOL_GFLAG_COMPACT_BITSETS, 0))
 +		return -EMSGSIZE;
 +	ret = parse_reset(nlctx);
 +	if (ret < 0)

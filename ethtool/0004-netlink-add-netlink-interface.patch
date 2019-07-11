@@ -1,4 +1,4 @@
-From 2ab1bdee2a8ab1a102f564528bbe2d0fd4b40a50 Mon Sep 17 00:00:00 2001
+From 0da726d467888f69cfe60d6156eb31e4ba57a90e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 19 Nov 2017 21:07:03 +0100
 Subject: [PATCH 04/34] netlink: add netlink interface
@@ -1463,7 +1463,7 @@ index 68a612570d4c..a1cb67270b3f 100644
  
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
 new file mode 100644
-index 000000000000..65372093764f
+index 000000000000..3b4af3fdae06
 --- /dev/null
 +++ b/uapi/linux/ethtool_netlink.h
 @@ -0,0 +1,605 @@
@@ -1526,20 +1526,20 @@ index 000000000000..65372093764f
 +/* request header */
 +
 +/* use compact bitsets in reply */
-+#define ETHTOOL_RF_COMPACT		(1 << 0)
++#define ETHTOOL_GFLAG_COMPACT_BITSETS	(1 << 0)
 +/* provide optional reply for SET or ACT requests */
-+#define ETHTOOL_RF_REPLY		(1 << 1)
++#define ETHTOOL_GFLAG_OMIT_REPLY	(1 << 1)
 +
-+#define ETHTOOL_RF_ALL (ETHTOOL_RF_COMPACT | \
-+			ETHTOOL_RF_REPLY)
++#define ETHTOOL_GFLAG_ALL (ETHTOOL_GFLAG_COMPACT_BITSETS | \
++			   ETHTOOL_GFLAG_OMIT_REPLY)
 +
 +enum {
 +	ETHTOOL_A_HEADER_UNSPEC,
 +	ETHTOOL_A_HEADER_DEV_INDEX,		/* u32 */
 +	ETHTOOL_A_HEADER_DEV_NAME,		/* string */
 +	ETHTOOL_A_HEADER_INFOMASK,		/* u32 */
-+	ETHTOOL_A_HEADER_GFLAGS,		/* u32 - ETHTOOL_RF_* */
-+	ETHTOOL_A_HEADER_RFLAGS,		/* u32 */
++	ETHTOOL_A_HEADER_GFLAGS,		/* u32 - ETHTOOL_GFLAG_* */
++	ETHTOOL_A_HEADER_RFLAGS,		/* u32 - ETHTOOL_RFLAG_*_* */
 +
 +	/* add new constants above here */
 +	__ETHTOOL_A_HEADER_CNT,
@@ -1635,9 +1635,9 @@ index 000000000000..65372093764f
 +};
 +
 +/* return only string counts, not the strings */
-+#define ETHTOOL_RF_STRSET_COUNTS		(1 << 0)
++#define ETHTOOL_RFLAG_STRSET_COUNTS_ONLY	(1 << 0)
 +
-+#define ETHTOOL_RF_STRSET_ALL (ETHTOOL_RF_STRSET_COUNTS)
++#define ETHTOOL_RFLAG_STRSET_ALL (ETHTOOL_RFLAG_STRSET_COUNTS_ONLY)
 +
 +/* SETTINGS */
 +
@@ -1673,7 +1673,7 @@ index 000000000000..65372093764f
 +				 ETHTOOL_IM_SETTINGS_FEATURES | \
 +				 ETHTOOL_IM_SETTINGS_PRIVFLAGS)
 +
-+#define ETHTOOL_RF_SETTINGS_ALL 0
++#define ETHTOOL_RFLAG_SETTINGS_ALL 0
 +
 +enum {
 +	ETHTOOL_A_LINKINFO_UNSPEC,
@@ -1760,7 +1760,7 @@ index 000000000000..65372093764f
 +#define ETHTOOL_IM_INFO_ALL (ETHTOOL_IM_INFO_DRVINFO | \
 +			     ETHTOOL_IM_INFO_TSINFO)
 +
-+#define ETHTOOL_RF_INFO_ALL 0
++#define ETHTOOL_RFLAG_INFO_ALL 0
 +
 +enum {
 +	ETHTOOL_A_DRVINFO_UNSPEC,
@@ -1817,7 +1817,7 @@ index 000000000000..65372093764f
 +			       ETHTOOL_IM_PARAMS_EEE | \
 +			       ETHTOOL_IM_PARAMS_FEC)
 +
-+#define ETHTOOL_RF_PARAMS_ALL 0
++#define ETHTOOL_RFLAG_PARAMS_ALL 0
 +
 +enum {
 +	ETHTOOL_A_COALESCE_UNSPEC,
@@ -1926,7 +1926,7 @@ index 000000000000..65372093764f
 +	ETHTOOL_A_NWAYRST_MAX = (__ETHTOOL_A_NWAYRST_CNT - 1)
 +};
 +
-+#define ETHTOOL_RF_NWAYRST_ALL 0
++#define ETHTOOL_RFLAG_NWAYRST_ALL 0
 +
 +/* PHYSID */
 +
@@ -1940,7 +1940,7 @@ index 000000000000..65372093764f
 +	ETHTOOL_A_PHYSID_MAX = (__ETHTOOL_A_PHYSID_CNT - 1)
 +};
 +
-+#define ETHTOOL_RF_PHYSID_ALL 0
++#define ETHTOOL_RFLAG_PHYSID_ALL 0
 +
 +/* RESET */
 +
@@ -1957,7 +1957,7 @@ index 000000000000..65372093764f
 +	ETHTOOL_A_RESET_MAX = (__ETHTOOL_A_RESET_CNT - 1)
 +};
 +
-+#define ETHTOOL_RF_RESET_ALL 0
++#define ETHTOOL_RFLAG_RESET_ALL 0
 +
 +/* RXFLOW */
 +
@@ -1990,7 +1990,7 @@ index 000000000000..65372093764f
 +			       ETHTOOL_IM_RXFLOW_HASHOPTS | \
 +			       ETHTOOL_IM_RXFLOW_INDTBL)
 +
-+#define ETHTOOL_RF_RXFLOW_ALL 0
++#define ETHTOOL_RFLAG_RXFLOW_ALL 0
 +
 +enum {
 +	ETHTOOL_RXFLOW_CTXOP_SET,		/* set context data */
