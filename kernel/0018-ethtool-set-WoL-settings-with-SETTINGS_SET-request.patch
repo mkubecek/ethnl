@@ -1,7 +1,7 @@
-From 3c81cad6d926aea394246391f2128ce2791b8a08 Mon Sep 17 00:00:00 2001
+From 50fcdbabd0ae5f16d8f79cb451bdd1759c4e6719 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:50:30 +0100
-Subject: [PATCH 18/44] ethtool: set WoL settings with SETTINGS_SET request
+Subject: [PATCH 18/45] ethtool: set WoL settings with SETTINGS_SET request
 
 Allow enabling and disabling wake on LAN modes using SETTINGS_SET
 request.
@@ -53,7 +53,7 @@ index e87580bab161..1ffad9c19f53 100644
  ETHTOOL_SMSGLVL			n/a
  ETHTOOL_NWAY_RST		n/a
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 8ff4b518064a..ac137e76c6ec 100644
+index 3857911b1fa7..0c792bff8292 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -109,6 +109,12 @@ static const struct link_mode_info link_mode_params[] = {

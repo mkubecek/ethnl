@@ -1,7 +1,7 @@
-From 54020c89e7095d3d08d61eed9f6271dcbb7213b4 Mon Sep 17 00:00:00 2001
+From c9e453436bf28f4cae0aa59a7be9f0e74accd23b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:47:45 +0100
-Subject: [PATCH 36/44] ethtool: set EEE settings with PARAMS_SET request
+Subject: [PATCH 37/45] ethtool: set EEE settings with PARAMS_SET request
 
 Add support for setting EEE settings using PARAMS_SET request with
 ETHTOOL_A_PARAMS_EEE nested attribute. This is a replacement for
@@ -57,7 +57,7 @@ index 642b253fb1cb..a65f6886ee5f 100644
  ETHTOOL_SRSSH			n/a
  ETHTOOL_GTUNABLE		n/a
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 6d00313326f0..ef32131bc714 100644
+index c4f0573f9521..61600629ccf7 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -429,7 +429,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
@@ -113,9 +113,9 @@ index 6d00313326f0..ef32131bc714 100644
 +	if (ret < 0)
 +		return ret;
 +
-+	ret = ethnl_update_bitset32(&data.advertised, NULL, 32,
++	ret = ethnl_update_bitset32(&data.advertised, 32,
 +				    tb[ETHTOOL_A_EEE_LINK_MODES],
-+				    link_mode_names, false, info, &mod);
++				    link_mode_names, false, info->extack, &mod);
 +	if (ret < 0)
 +		return ret;
 +	ethnl_update_bool32(&data.eee_enabled, tb[ETHTOOL_A_EEE_ENABLED],

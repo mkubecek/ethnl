@@ -1,7 +1,7 @@
-From bd9878b3f7ad3f90c895f74bae1c03907e9bc01d Mon Sep 17 00:00:00 2001
+From e53b3cacad265d021a68729efd3907fef3e7f415 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
-Subject: [PATCH 41/44] ethtool: implement ETHTOOL_MSG_RESET_ACT message
+Subject: [PATCH 42/45] ethtool: implement ETHTOOL_MSG_RESET_ACT message
 
 Request reset of a NIC or its part(s), equivalent of ETHTOOL_RESET.
 
@@ -12,12 +12,12 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  29 ++-
  include/uapi/linux/ethtool.h                 |   3 +
  include/uapi/linux/ethtool_netlink.h         |  20 ++
- net/ethtool/actions.c                        | 248 +++++++++++++++++++
+ net/ethtool/actions.c                        | 249 +++++++++++++++++++
  net/ethtool/ioctl.c                          |   6 +
  net/ethtool/netlink.c                        |   6 +
  net/ethtool/netlink.h                        |   4 +
  net/ethtool/strset.c                         |   6 +
- 8 files changed, 321 insertions(+), 1 deletion(-)
+ 8 files changed, 322 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 583ed534ba79..46bfe80baa13 100644
@@ -154,7 +154,7 @@ index 6daac600d02e..730a51406e7a 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
-index 24c1d0d63ba2..e11f95098595 100644
+index 24c1d0d63ba2..2ff48d574c7b 100644
 --- a/net/ethtool/actions.c
 +++ b/net/ethtool/actions.c
 @@ -2,6 +2,7 @@
@@ -165,7 +165,7 @@ index 24c1d0d63ba2..e11f95098595 100644
  
  /* ACT_NWAY_RST */
  
-@@ -171,3 +172,250 @@ int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info)
+@@ -171,3 +172,251 @@ int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info)
  	dev_put(dev);
  	return ret;
  }
@@ -216,7 +216,7 @@ index 24c1d0d63ba2..e11f95098595 100644
 +		return len + nla_total_size(0);
 +	bitmap = flags >> 16;
 +	bitmask = orig_flags >> 16;
-+	ret = ethnl_bitset32_size(ETH_RESET_NFLAGS, &bitmap, &bitmask,
++	ret = ethnl_bitset32_size(&bitmap, &bitmask, ETH_RESET_NFLAGS,
 +				  reset_flag_names, bitset_flags);
 +	if (ret < 0)
 +		return ret;
@@ -227,7 +227,7 @@ index 24c1d0d63ba2..e11f95098595 100644
 +	} else {
 +		bitmap = flags & ETH_RESET_DEDICATED;
 +		bitmask = orig_flags & ETH_RESET_DEDICATED;
-+		ret = ethnl_bitset32_size(ETH_RESET_NFLAGS, &bitmap, &bitmask,
++		ret = ethnl_bitset32_size(&bitmap, &bitmask, ETH_RESET_NFLAGS,
 +					  reset_flag_names, bitset_flags);
 +		if (ret < 0)
 +			return ret;
@@ -254,7 +254,7 @@ index 24c1d0d63ba2..e11f95098595 100644
 +		bitmap = flags & ETH_RESET_DEDICATED;
 +		bitmask = orig_flags & ETH_RESET_DEDICATED;
 +		ret = ethnl_put_bitset32(skb, ETHTOOL_A_RESET_DEDICATED,
-+					 ETH_RESET_NFLAGS, &bitmap, &bitmask,
++					 &bitmap, &bitmask, ETH_RESET_NFLAGS,
 +					 reset_flag_names, bitset_flags);
 +		if (ret < 0)
 +			return ret;
@@ -262,9 +262,9 @@ index 24c1d0d63ba2..e11f95098595 100644
 +
 +	bitmap = flags >> ETH_RESET_SHARED_SHIFT;
 +	bitmask = orig_flags >> ETH_RESET_SHARED_SHIFT;
-+	return ethnl_put_bitset32(skb, ETHTOOL_A_RESET_SHARED, ETH_RESET_NFLAGS,
-+				  &bitmap, &bitmask, reset_flag_names,
-+				  bitset_flags);
++	return ethnl_put_bitset32(skb, ETHTOOL_A_RESET_SHARED, &bitmap,
++				  &bitmask, ETH_RESET_NFLAGS,
++				  reset_flag_names, bitset_flags);
 +}
 +
 +void ethnl_reset_notify(struct net_device *dev,
@@ -315,9 +315,10 @@ index 24c1d0d63ba2..e11f95098595 100644
 +
 +	*val = 0;
 +	flags = 0;
-+	ret = ethnl_update_bitset32(&flags, NULL, ETH_RESET_NFLAGS,
++	ret = ethnl_update_bitset32(&flags, ETH_RESET_NFLAGS,
 +				    tb[ETHTOOL_A_RESET_SHARED],
-+				    reset_flag_names, false, info, &mod);
++				    reset_flag_names, false, info->extack,
++				    &mod);
 +	if (ret < 0)
 +		return ret;
 +	*val |= (flags << ETH_RESET_SHARED_SHIFT);
@@ -326,10 +327,10 @@ index 24c1d0d63ba2..e11f95098595 100644
 +		*val |= ETH_RESET_DEDICATED;
 +	else {
 +		flags = 0;
-+		ret = ethnl_update_bitset32(&flags, NULL, ETH_RESET_NFLAGS,
++		ret = ethnl_update_bitset32(&flags, ETH_RESET_NFLAGS,
 +					    tb[ETHTOOL_A_RESET_DEDICATED],
-+					    reset_flag_names, false, info,
-+					    &mod);
++					    reset_flag_names, false,
++					    info->extack, &mod);
 +		if (ret < 0)
 +			return ret;
 +		*val |= flags;

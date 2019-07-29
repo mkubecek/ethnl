@@ -1,7 +1,7 @@
-From 93f4032ed4e84fcfc45594e583115b57ebe58d5e Mon Sep 17 00:00:00 2001
+From f16aa7eaf237ad20f454962a05501186f0cff82a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
-Subject: [PATCH 44/44] ethtool: implement RXFLOW_SET request
+Subject: [PATCH 45/45] ethtool: implement RXFLOW_SET request
 
 Request to set data updated by ETHTOOL_SRSSH, ETHTOOL_SRXFH and
 ETHTOOL_SRXFHINDIR ioctl commands. This allows to set
@@ -159,10 +159,10 @@ index ca9ec0692649..417161d64aa0 100644
  int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_reset(struct sk_buff *skb, struct genl_info *info);
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index ab6b8c115080..5bac116bbc9d 100644
+index bb4b97305f26..7ff450eba727 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
-@@ -513,3 +513,655 @@ void ethnl_rxflow_notify(struct net_device *dev,
+@@ -514,3 +514,655 @@ void ethnl_rxflow_notify(struct net_device *dev,
  err_data:
  	rxflow_cleanup(req_info);
  }
@@ -333,9 +333,9 @@ index ab6b8c115080..5bac116bbc9d 100644
 +		*phashfn = ETH_RSS_HASH_NO_CHANGE;
 +		return 0;
 +	}
-+	ret = ethnl_update_bitset32(&hash_fn, NULL, ETH_RSS_HASH_FUNCS_COUNT,
++	ret = ethnl_update_bitset32(&hash_fn, ETH_RSS_HASH_FUNCS_COUNT,
 +				    attr, rss_hash_func_strings, true,
-+				    info, &mod);
++				    info->extack, &mod);
 +	if (ret < 0)
 +		return ret;
 +	if (hash_fn > U8_MAX) {

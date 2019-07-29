@@ -1,7 +1,7 @@
-From 223b85ccd2bdf216cf896f1b308d8201a06d43d8 Mon Sep 17 00:00:00 2001
+From 1e7d091db3a3aaf7ac206ff85ed3defae90c369d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 27 Jun 2019 08:24:23 +0200
-Subject: [PATCH 02/44] netlink: rename nl80211_validate_nested() to
+Subject: [PATCH 02/45] netlink: rename nl80211_validate_nested() to
  nla_validate_nested()
 
 Function nl80211_validate_nested() is not specific to nl80211, it's

@@ -1,7 +1,7 @@
-From 0ae3b516ffc277e5eda181a79f616810b72cb2e3 Mon Sep 17 00:00:00 2001
+From bbc728c0a0ab2276d62686957d8d299879292a64 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
-Subject: [PATCH 14/44] ethtool: set link settings and link modes with
+Subject: [PATCH 14/45] ethtool: set link settings and link modes with
  SETTINGS_SET request
 
 Implement SETTINGS_SET netlink request allowing to set link settings and
@@ -228,7 +228,7 @@ index f30eb8cad857..f3f6ac94fe73 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index e3d8934d48c7..0fd03df2df2c 100644
+index 403ae168836c..d7568984546c 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,99 @@ struct settings_data {
@@ -467,10 +467,10 @@ index e3d8934d48c7..0fd03df2df2c 100644
 +
 +	ethnl_update_u8(&lsettings->autoneg, tb[ETHTOOL_A_LINKMODES_AUTONEG],
 +			&mod);
-+	ret = ethnl_update_bitset(ksettings->link_modes.advertising, NULL,
++	ret = ethnl_update_bitset(ksettings->link_modes.advertising,
 +				  __ETHTOOL_LINK_MODE_MASK_NBITS,
 +				  tb[ETHTOOL_A_LINKMODES_OURS],
-+				  link_mode_names, false, info, &mod);
++				  link_mode_names, false, info->extack, &mod);
 +	if (ret < 0)
 +		return ret;
 +	ethnl_update_u32(&lsettings->speed, tb[ETHTOOL_A_LINKMODES_SPEED],

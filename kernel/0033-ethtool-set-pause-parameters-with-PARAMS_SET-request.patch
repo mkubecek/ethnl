@@ -1,7 +1,7 @@
-From 6f45c80e4bb15cff0f08f3de39ed6d6abdfdd527 Mon Sep 17 00:00:00 2001
+From 28f1e5291d80e8faf1f9f628d3aaaf27a03b6cde Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:07:38 +0100
-Subject: [PATCH 32/44] ethtool: set pause parameters with PARAMS_SET request
+Subject: [PATCH 33/45] ethtool: set pause parameters with PARAMS_SET request
 
 Add support for setting device pause parameters using SET_SETTINGS request
 with ETHTOOL_A_PARAMS_PAUSE nested attribute. This is a replacement of

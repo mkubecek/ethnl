@@ -1,7 +1,7 @@
-From 83e0bf9cc831bfdc0fdbcdf14fe4f7d6c5b7eaaf Mon Sep 17 00:00:00 2001
+From 213419b61e4825522f82dd6552068f6e07d6c054 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:53:42 +0100
-Subject: [PATCH 37/44] ethtool: provide FEC parameters with PARAMS_GET request
+Subject: [PATCH 38/45] ethtool: provide FEC parameters with PARAMS_GET request
 
 Add information about FEC settings (as provided by ETHTOOL_GFECPARAM ioctl
 command) in PARAMS_GET reply when ETHTOOL_IM_PARAMS_FEC flag is set in the
@@ -131,7 +131,7 @@ index 9aa89e9e8988..d50cf13e4457 100644
  
  /* The main entry point in this file.  Called from net/core/dev_ioctl.c */
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index ef32131bc714..d79d3910e4f1 100644
+index 61600629ccf7..e67e0aeaf48c 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -12,6 +12,7 @@ static const struct nla_policy params_get_policy[ETHTOOL_A_PARAMS_MAX + 1] = {

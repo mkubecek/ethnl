@@ -1,7 +1,7 @@
-From 46f864889585762a8d52aa41caaa52024d65e786 Mon Sep 17 00:00:00 2001
+From ca94babc13a97b91090f159c7f5f8e61c45f7ae1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 29 Jun 2019 19:54:07 +0200
-Subject: [PATCH 13/44] ethtool: add standard notification handler
+Subject: [PATCH 13/45] ethtool: add standard notification handler
 
 The ethtool netlink notifications have the same format as related GET
 replies so that if generic GET handling framework is used to process GET

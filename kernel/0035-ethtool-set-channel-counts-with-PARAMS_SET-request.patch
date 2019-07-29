@@ -1,7 +1,7 @@
-From c137a61813517958288c358c1ac58fc01c13607a Mon Sep 17 00:00:00 2001
+From 85061b99afebb96c30ac72f548c79b990e020638 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:36:43 +0100
-Subject: [PATCH 34/44] ethtool: set channel counts with PARAMS_SET request
+Subject: [PATCH 35/45] ethtool: set channel counts with PARAMS_SET request
 
 Add support for setting channel counts using PARAMS_SET request with
 ETHTOOL_A_PARAMS_CHANNELS nested attribute. This is a replacement for

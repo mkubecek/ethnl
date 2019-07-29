@@ -1,7 +1,7 @@
-From d80d845b21260ff6fe4877af31e298fafd088b52 Mon Sep 17 00:00:00 2001
+From a98f21b3f6502bbb6f1b78f1c2f34a6a077e9f62 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:30:12 +0100
-Subject: [PATCH 33/44] ethtool: provide channel counts in PARAMS_GET request
+Subject: [PATCH 34/45] ethtool: provide channel counts in PARAMS_GET request
 
 Add information about channel counts (as provided by ETHTOOL_GCHANNELS
 ioctl command) in PARAMS_GET reply when ETHTOOL_IM_PARAMS_CHANNELS flag is

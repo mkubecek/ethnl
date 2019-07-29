@@ -1,7 +1,7 @@
-From 1b4e08de10e44f4e71881234b4402d21fa2350b1 Mon Sep 17 00:00:00 2001
+From 5e5a6916146107fd335f7e5a4b30a6ead6f046cd Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:02:27 +0100
-Subject: [PATCH 31/44] ethtool: provide pause parameters in PARAMS_GET request
+Subject: [PATCH 32/45] ethtool: provide pause parameters in PARAMS_GET request
 
 Add information about pause parameters (as provided by ETHTOOL_GPAUSEPARAM
 ioctl command) in PARAMS_GET reply when ETHTOOL_IM_PARAMS_PAUSE flag is set

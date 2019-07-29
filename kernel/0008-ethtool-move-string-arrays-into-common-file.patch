@@ -1,7 +1,7 @@
-From 20f5f3be04850dd4cc504c44efbddae23e0c94ae Mon Sep 17 00:00:00 2001
+From 7a6114d674eef13f9013cad610a9cc4c362702d0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 15 Feb 2019 11:50:56 +0100
-Subject: [PATCH 08/44] ethtool: move string arrays into common file
+Subject: [PATCH 08/45] ethtool: move string arrays into common file
 
 Introduce file net/ethtool/common.c for code shared by ioctl and netlink
 ethtool interface. Move name tables of features, RSS hash functions,

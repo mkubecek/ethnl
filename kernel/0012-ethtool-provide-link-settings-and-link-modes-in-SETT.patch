@@ -1,7 +1,7 @@
-From b2e1b6b94d703e045c3f8ca7986c3e69b597598b Mon Sep 17 00:00:00 2001
+From 9ca23d5a34236695938971a339bea47e7556aa1a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
-Subject: [PATCH 12/44] ethtool: provide link settings and link modes in
+Subject: [PATCH 12/45] ethtool: provide link settings and link modes in
  SETTINGS_GET request
 
 Implement SETTINGS_GET netlink request to get link settings and link mode
@@ -385,7 +385,7 @@ index bab1c53b4249..658ea8a32e81 100644
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
-index 000000000000..e3d8934d48c7
+index 000000000000..403ae168836c
 --- /dev/null
 +++ b/net/ethtool/settings.c
 @@ -0,0 +1,259 @@
@@ -494,14 +494,15 @@ index 000000000000..e3d8934d48c7
 +
 +	/* speed, duplex, autoneg */
 +	len += nla_total_size(sizeof(u32)) + 2 * nla_total_size(sizeof(u8));
-+	ret = ethnl_bitset32_size(__ETHTOOL_LINK_MODE_MASK_NBITS, advertising,
-+				  supported, link_mode_names, flags);
++	ret = ethnl_bitset32_size(advertising, supported,
++				  __ETHTOOL_LINK_MODE_MASK_NBITS,
++				  link_mode_names, flags);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
-+	ret = ethnl_bitset32_size(__ETHTOOL_LINK_MODE_MASK_NBITS,
-+				  lp_advertising, NULL, link_mode_names,
-+				  flags & ETHNL_BITSET_LIST);
++	ret = ethnl_bitset32_size(lp_advertising, NULL,
++				  __ETHTOOL_LINK_MODE_MASK_NBITS,
++				  link_mode_names, flags);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
@@ -582,16 +583,15 @@ index 000000000000..e3d8934d48c7
 +	if (nla_put_u8(skb, ETHTOOL_A_LINKMODES_AUTONEG, lsettings->autoneg))
 +		goto nla_put_failure;
 +
-+	ret = ethnl_put_bitset32(skb, ETHTOOL_A_LINKMODES_OURS,
-+				 __ETHTOOL_LINK_MODE_MASK_NBITS, advertising,
-+				 supported, link_mode_names, flags);
++	ret = ethnl_put_bitset32(skb, ETHTOOL_A_LINKMODES_OURS, advertising,
++				 supported, __ETHTOOL_LINK_MODE_MASK_NBITS,
++				 link_mode_names, flags);
 +	if (ret < 0)
 +		goto nla_put_failure;
 +	if (!lpm_empty) {
-+		ret = ethnl_put_bitset32(skb, ETHTOOL_A_LINKMODES_PEER,
-+					 __ETHTOOL_LINK_MODE_MASK_NBITS,
-+					 lp_adv, NULL, link_mode_names,
-+					 flags | ETHNL_BITSET_LIST);
++		ret = ethnl_put_bitset32(skb, ETHTOOL_A_LINKMODES_PEER, lp_adv,
++					 NULL, __ETHTOOL_LINK_MODE_MASK_NBITS,
++					 link_mode_names, flags);
 +		if (ret < 0)
 +			goto nla_put_failure;
 +	}

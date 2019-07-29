@@ -1,7 +1,7 @@
-From 6f114f2c70c55d4dc90d7dd5baf9e2065e650beb Mon Sep 17 00:00:00 2001
+From 938a4a845f888ef15d73d5541320fdabddf3ddd1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:12:24 +0100
-Subject: [PATCH 04/44] ethtool: introduce ethtool netlink interface
+Subject: [PATCH 04/45] ethtool: introduce ethtool netlink interface
 
 Basic genetlink and init infrastructure for the netlink interface, register
 genetlink family "ethtool". Add CONFIG_ETHTOOL_NETLINK Kconfig option to

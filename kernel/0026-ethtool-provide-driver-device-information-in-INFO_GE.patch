@@ -1,7 +1,7 @@
-From d63d02ce1c9e128564a6f2128ca64ecd1cc27172 Mon Sep 17 00:00:00 2001
+From ee868c408cde15c7b6d021c3186b3aa677bb19f4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 10:51:08 +0100
-Subject: [PATCH 25/44] ethtool: provide driver/device information in INFO_GET
+Subject: [PATCH 26/45] ethtool: provide driver/device information in INFO_GET
  request
 
 Implement INFO_GET request to get basic driver and device information as

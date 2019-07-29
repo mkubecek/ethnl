@@ -1,7 +1,7 @@
-From 1f4662a9b4605187f0851f5f686e61b3ed9d2f44 Mon Sep 17 00:00:00 2001
+From d76cdc7bba378dfee33ce5a27ef0760dd86f50d8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 07:40:58 +0100
-Subject: [PATCH 29/44] ethtool: provide ring sizes in PARAMS_GET request
+Subject: [PATCH 30/45] ethtool: provide ring sizes in PARAMS_GET request
 
 Add information about ring sizes (as provided by ETHTOOL_GRINGPARAM ioctl
 command) in PARAMS_GET reply when ETHTOOL_IM_PARAMS_RING flag is set in the

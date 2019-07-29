@@ -1,7 +1,7 @@
-From 02491e177cdb00fe033bfd1c486088bd1426ef38 Mon Sep 17 00:00:00 2001
+From 2ec730f69bcd99fd142dc6dcaf77e070f247d428 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 11 Jul 2018 14:19:52 -0400
-Subject: [PATCH 07/44] ethtool: support for netlink notifications
+Subject: [PATCH 07/45] ethtool: support for netlink notifications
 
 Add infrastructure for ethtool netlink notifications. There is only one
 multicast group "monitor" which is used to notify userspace about changes

@@ -1,7 +1,7 @@
-From ae4fd930288a1c2e9599719e3fd4eb8efc783670 Mon Sep 17 00:00:00 2001
+From a762dd99e49e33ce941d3d06683c703ef19fb893 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 18:01:46 +0100
-Subject: [PATCH 20/44] ethtool: set message level with SETTINGS_SET request
+Subject: [PATCH 20/45] ethtool: set message level with SETTINGS_SET request
 
 Allow setting device message level using ETHTOOL_A_SETTINGS_DEBUG nested
 attribute.
@@ -50,7 +50,7 @@ index f21f417a4b71..44694e3c03f6 100644
  ETHTOOL_GLINK			ETHTOOL_MSG_SETTINGS_GET
  ETHTOOL_GEEPROM			n/a
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index badbb3d5890c..37548722e785 100644
+index efe02475d472..95fbd9a94471 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -531,6 +531,12 @@ static const struct nla_policy wol_set_policy[ETHTOOL_A_LINKINFO_MAX + 1] = {

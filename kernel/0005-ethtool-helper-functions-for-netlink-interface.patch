@@ -1,7 +1,7 @@
-From a3393ac37345c8ddcc0877de77cfdfe6c699e08c Mon Sep 17 00:00:00 2001
+From 8c6beac5445b3660f46d26cb8d6b76f1ce65afce Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
-Subject: [PATCH 05/44] ethtool: helper functions for netlink interface
+Subject: [PATCH 05/45] ethtool: helper functions for netlink interface
 
 Add common request/reply header definition and helpers to parse request
 header and fill reply header. Provide ethnl_update_* helpers to update

@@ -1,7 +1,7 @@
-From b2599f01653df19bf99c3d8cf3bcbb9abb98f42f Mon Sep 17 00:00:00 2001
+From 5f2c1001283e06176e74a7b455b5294514cdf1da Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:56:10 +0100
-Subject: [PATCH 38/44] ethtool: set FEC parameters with PARAMS_SET request
+Subject: [PATCH 39/45] ethtool: set FEC parameters with PARAMS_SET request
 
 Add support for setting FEC parameters using PARAMS_SET request with
 ETHTOOL_A_PARAMS_FEC nested attribute. This is a replacement for
@@ -49,7 +49,7 @@ index eda6c4565d02..61648db2088a 100644
 -ETHTOOL_SFECPARAM		n/a
 +ETHTOOL_SFECPARAM		ETHTOOL_MSG_PARAMS_SET
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index d79d3910e4f1..7c50c158165c 100644
+index e67e0aeaf48c..038d3846efed 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -475,7 +475,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {

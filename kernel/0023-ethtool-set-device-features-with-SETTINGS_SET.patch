@@ -1,7 +1,7 @@
-From 111e495c76f03f3252c1df1f95f4eb5bb8c8ebca Mon Sep 17 00:00:00 2001
+From d910a08ee89f626c8fe99529dd3f247896d51b70 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
-Subject: [PATCH 22/44] ethtool: set device features with SETTINGS_SET
+Subject: [PATCH 23/45] ethtool: set device features with SETTINGS_SET
 
 Allow setting network device features using SETTINGS_SET request with
 ETHTOOL_A_SETTINGS_FEATURES nested attribute.
@@ -19,8 +19,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  36 +++--
  include/uapi/linux/ethtool_netlink.h         |   1 +
- net/ethtool/settings.c                       | 156 ++++++++++++++++++-
- 3 files changed, 183 insertions(+), 10 deletions(-)
+ net/ethtool/settings.c                       | 161 ++++++++++++++++++-
+ 3 files changed, 188 insertions(+), 10 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 14bc8568c43a..b0c3fd67ce45 100644
@@ -126,10 +126,10 @@ index 022c6956ff0f..36a8ed329255 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index d340458f94b2..8485ce026e41 100644
+index efa0690a9aa9..3b7dea3fa732 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -648,6 +648,15 @@ static const struct nla_policy debug_set_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
+@@ -659,6 +659,15 @@ static const struct nla_policy debug_set_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
  					    .validation_data = &all_bits },
  };
  
@@ -145,7 +145,7 @@ index d340458f94b2..8485ce026e41 100644
  static const struct nla_policy
  settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
-@@ -657,7 +666,7 @@ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
+@@ -668,7 +677,7 @@ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
@@ -154,7 +154,7 @@ index d340458f94b2..8485ce026e41 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -880,6 +889,142 @@ static int settings_update_debug(struct genl_info *info, struct nlattr *nest,
+@@ -891,6 +900,147 @@ static int settings_update_debug(struct genl_info *info, struct nlattr *nest,
  	return 1;
  }
  
@@ -186,8 +186,8 @@ index d340458f94b2..8485ce026e41 100644
 +	DECLARE_BITMAP(wanted_diff_mask, NETDEV_FEATURE_COUNT);
 +	DECLARE_BITMAP(active_diff_mask, NETDEV_FEATURE_COUNT);
 +	DECLARE_BITMAP(old_active, NETDEV_FEATURE_COUNT);
-+	DECLARE_BITMAP(req_wanted, NETDEV_FEATURE_COUNT);
 +	DECLARE_BITMAP(new_active, NETDEV_FEATURE_COUNT);
++	DECLARE_BITMAP(req_wanted, NETDEV_FEATURE_COUNT);
 +	DECLARE_BITMAP(req_mask, NETDEV_FEATURE_COUNT);
 +	struct nlattr *tb[ETHTOOL_A_FEATURES_MAX + 1];
 +	unsigned int bitset_flags;
@@ -211,18 +211,21 @@ index d340458f94b2..8485ce026e41 100644
 +		return -EINVAL;
 +
 +	bitmap_from_features(old_active, dev->features);
-+	bitmap_copy(req_wanted, old_active, NETDEV_FEATURE_COUNT);
-+	bitmap_zero(req_mask, NETDEV_FEATURE_COUNT);
-+	ret = ethnl_update_bitset(req_wanted, req_mask, NETDEV_FEATURE_COUNT,
-+				  tb[ETHTOOL_A_FEATURES_WANTED],
-+				  netdev_features_strings, true, info, &mod);
++	ret = ethnl_parse_bitset(req_wanted, req_mask, NETDEV_FEATURE_COUNT,
++				 tb[ETHTOOL_A_FEATURES_WANTED],
++				 netdev_features_strings, true, info->extack);
 +	if (ret < 0)
 +		return ret;
 +	if (features_from_bitmap(req_mask) & ~NETIF_F_ETHTOOL_BITS) {
 +		GENL_SET_ERR_MSG(info, "attempt to change non-ethtool features");
 +		return -EINVAL;
 +	}
-+	if (!mod)
++
++	/* set req_wanted bits not in req_mask from old_active */
++	bitmap_and(req_wanted, req_wanted, req_mask, NETDEV_FEATURE_COUNT);
++	bitmap_andnot(new_active, old_active, req_mask, NETDEV_FEATURE_COUNT);
++	bitmap_or(req_wanted, new_active, req_wanted, NETDEV_FEATURE_COUNT);
++	if (bitmap_equal(req_wanted, old_active, NETDEV_FEATURE_COUNT))
 +		return 0;
 +
 +	dev->wanted_features = features_from_bitmap(req_wanted);
@@ -244,14 +247,15 @@ index d340458f94b2..8485ce026e41 100644
 +		   NETDEV_FEATURE_COUNT);
 +
 +	reply_len = 0;
-+	ret = ethnl_bitset_size(NETDEV_FEATURE_COUNT, req_wanted,
-+				wanted_diff_mask, netdev_features_strings,
++	ret = ethnl_bitset_size(req_wanted, wanted_diff_mask,
++				NETDEV_FEATURE_COUNT, netdev_features_strings,
 +				bitset_flags);
 +	if (ret < 0)
 +		goto err;
 +	reply_len += ret;
-+	ret = ethnl_bitset_size(NETDEV_FEATURE_COUNT, new_active,
-+				active_diff_mask, netdev_features_strings,
++	ret = ethnl_bitset_size(new_active, active_diff_mask,
++				NETDEV_FEATURE_COUNT,
++				netdev_features_strings,
 +				bitset_flags);
 +	if (ret < 0)
 +		goto err;
@@ -268,14 +272,15 @@ index d340458f94b2..8485ce026e41 100644
 +	if (!feat_attr)
 +		goto nla_put_failure;
 +	ret = ethnl_put_bitset(rskb, ETHTOOL_A_FEATURES_WANTED,
-+			       NETDEV_FEATURE_COUNT, req_wanted,
-+			       wanted_diff_mask, netdev_features_strings,
++			       req_wanted, wanted_diff_mask,
++			       NETDEV_FEATURE_COUNT, netdev_features_strings,
 +			       bitset_flags);
 +	if (ret < 0)
 +		goto nla_put_failure;
 +	ret = ethnl_put_bitset(rskb, ETHTOOL_A_FEATURES_ACTIVE,
-+			       NETDEV_FEATURE_COUNT, new_active,
-+			       active_diff_mask, netdev_features_strings,
++			       new_active, active_diff_mask,
++			       NETDEV_FEATURE_COUNT,
++			       netdev_features_strings,
 +			       bitset_flags);
 +	if (ret < 0)
 +		goto nla_put_failure;
@@ -297,7 +302,7 @@ index d340458f94b2..8485ce026e41 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
-@@ -929,6 +1074,15 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -940,6 +1090,15 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret)
  			req_mask |= ETHTOOL_IM_SETTINGS_DEBUG;
  	}

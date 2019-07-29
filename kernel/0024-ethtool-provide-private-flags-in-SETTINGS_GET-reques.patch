@@ -1,7 +1,7 @@
-From 5dbc5c726554ef8de60080c929f0bc1b02997593 Mon Sep 17 00:00:00 2001
+From c61615ba6706014536d93efd90eb3b6f28413325 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 16:19:21 +0100
-Subject: [PATCH 23/44] ethtool: provide private flags in SETTINGS_GET request
+Subject: [PATCH 24/45] ethtool: provide private flags in SETTINGS_GET request
 
 Add information about device private flags (as provided by
 ETHTOOL_GPFLAGS ioctl command) in SETTINGS_GET reply when
@@ -12,11 +12,11 @@ are modified using ioctl interface (ETHTOOL_SPFLAGS command).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.txt |  9 +-
- include/uapi/linux/ethtool_netlink.h         |  5 +-
- net/ethtool/ioctl.c                          |  3 +
- net/ethtool/settings.c                       | 99 ++++++++++++++++++++
- 4 files changed, 114 insertions(+), 2 deletions(-)
+ Documentation/networking/ethtool-netlink.txt |   9 +-
+ include/uapi/linux/ethtool_netlink.h         |   5 +-
+ net/ethtool/ioctl.c                          |   3 +
+ net/ethtool/settings.c                       | 103 +++++++++++++++++++
+ 4 files changed, 118 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index b0c3fd67ce45..856ebf919b2a 100644
@@ -103,10 +103,10 @@ index 16482a266eec..5c2e810bc886 100644
  	case ETHTOOL_GRXFH:
  	case ETHTOOL_GRXRINGS:
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 8485ce026e41..c01c1d8686ae 100644
+index 3b7dea3fa732..a5a0ba0ce7cf 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -20,6 +20,9 @@ struct settings_data {
+@@ -21,6 +21,9 @@ struct settings_data {
  		u32	active[ETHTOOL_DEV_FEATURE_WORDS];
  		u32	nochange[ETHTOOL_DEV_FEATURE_WORDS];
  	} features;
@@ -116,7 +116,7 @@ index 8485ce026e41..c01c1d8686ae 100644
  	bool				lpm_empty;
  };
  
-@@ -132,6 +135,7 @@ settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
+@@ -133,6 +136,7 @@ settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_WOL]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_DEBUG]	= { .type = NLA_REJECT },
  	[ETHTOOL_A_SETTINGS_FEATURES]	= { .type = NLA_REJECT },
@@ -124,7 +124,7 @@ index 8485ce026e41..c01c1d8686ae 100644
  };
  
  static int ethnl_get_link_ksettings(struct genl_info *info,
-@@ -175,6 +179,58 @@ static int ethnl_get_features(struct net_device *dev,
+@@ -181,6 +185,58 @@ static int ethnl_get_features(struct net_device *dev,
  	return 0;
  }
  
@@ -183,7 +183,7 @@ index 8485ce026e41..c01c1d8686ae 100644
  /* prepare_data() handler */
  static int settings_prepare(struct ethnl_req_info *req_info,
  			    struct genl_info *info)
-@@ -226,6 +282,11 @@ static int settings_prepare(struct ethnl_req_info *req_info,
+@@ -232,6 +288,11 @@ static int settings_prepare(struct ethnl_req_info *req_info,
  	}
  	if (req_mask & ETHTOOL_IM_SETTINGS_FEATURES)
  		ethnl_get_features(dev, data);
@@ -195,7 +195,7 @@ index 8485ce026e41..c01c1d8686ae 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -362,6 +423,17 @@ static int settings_size(const struct ethnl_req_info *req_info)
+@@ -372,6 +433,19 @@ static int settings_size(const struct ethnl_req_info *req_info)
  			return ret;
  		len += ret;
  	}
@@ -203,9 +203,11 @@ index 8485ce026e41..c01c1d8686ae 100644
 +		const unsigned int flags =
 +			(compact ? ETHNL_BITSET_COMPACT : 0) |
 +			ETHNL_BITSET_LEGACY_NAMES;
++		u32 all_flags = ~(u32)0 >> (32 - data->n_priv_flags);
 +
-+		ret = ethnl_bitset32_size(data->n_priv_flags, &data->priv_flags,
-+					  NULL, data->priv_flag_names, flags);
++		ret = ethnl_bitset32_size(&data->priv_flags, &all_flags,
++					  data->n_priv_flags,
++					  data->priv_flag_names, flags);
 +		if (ret < 0)
 +			return ret;
 +		len += ret;
@@ -213,7 +215,7 @@ index 8485ce026e41..c01c1d8686ae 100644
  
  	return len;
  }
-@@ -540,6 +612,18 @@ static int settings_fill_features(struct sk_buff *skb,
+@@ -551,6 +625,20 @@ static int settings_fill_features(struct sk_buff *skb,
  	return 0;
  }
  
@@ -221,18 +223,20 @@ index 8485ce026e41..c01c1d8686ae 100644
 +				    const struct settings_data *data)
 +{
 +	unsigned int bitset_flags = ETHNL_BITSET_LEGACY_NAMES;
++	u32 all_flags = ~(u32)0 >> (32 - data->n_priv_flags);
 +
 +	if (data->reqinfo_base.global_flags & ETHTOOL_GFLAG_COMPACT_BITSETS)
 +		bitset_flags |= ETHNL_BITSET_COMPACT;
 +	return ethnl_put_bitset32(skb, ETHTOOL_A_SETTINGS_PRIV_FLAGS,
-+				  data->n_priv_flags, &data->priv_flags, NULL,
-+				  data->priv_flag_names, bitset_flags);
++				  &data->priv_flags, &all_flags,
++				  data->n_priv_flags, data->priv_flag_names,
++				  bitset_flags);
 +}
 +
  /* fill_reply() handler */
  static int settings_fill(struct sk_buff *skb,
  			 const struct ethnl_req_info *req_info)
-@@ -582,10 +666,23 @@ static int settings_fill(struct sk_buff *skb,
+@@ -593,10 +681,23 @@ static int settings_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -256,7 +260,7 @@ index 8485ce026e41..c01c1d8686ae 100644
  const struct get_request_ops settings_request_ops = {
  	.request_cmd		= ETHTOOL_MSG_SETTINGS_GET,
  	.reply_cmd		= ETHTOOL_MSG_SETTINGS_GET_REPLY,
-@@ -600,6 +697,7 @@ const struct get_request_ops settings_request_ops = {
+@@ -611,6 +712,7 @@ const struct get_request_ops settings_request_ops = {
  	.prepare_data		= settings_prepare,
  	.reply_size		= settings_size,
  	.fill_reply		= settings_fill,
@@ -264,7 +268,7 @@ index 8485ce026e41..c01c1d8686ae 100644
  };
  
  /* SET_SETTINGS */
-@@ -667,6 +765,7 @@ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
+@@ -678,6 +780,7 @@ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_FEATURES]		= { .type = NLA_NESTED },

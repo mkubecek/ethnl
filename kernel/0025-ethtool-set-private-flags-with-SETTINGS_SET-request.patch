@@ -1,7 +1,7 @@
-From 138e39475bc14d2726a9e767501e283f1972670a Mon Sep 17 00:00:00 2001
+From 1a1b0498a974450aaa29b4fd8fd5908a87b63306 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
-Subject: [PATCH 24/44] ethtool: set private flags with SETTINGS_SET request
+Subject: [PATCH 25/45] ethtool: set private flags with SETTINGS_SET request
 
 Add support for setting device private flags using ETHTOOL_MSG_SETTINGS_SET
 message. ETHTOOL_A_SETTINGS_PRIV_FLAGS nested attribute is a bit set used
@@ -36,10 +36,10 @@ index 856ebf919b2a..e9cb218877bd 100644
  ETHTOOL_SRXFH			n/a
  ETHTOOL_GGRO			ETHTOOL_MSG_SETTINGS_GET
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index c01c1d8686ae..14c9fda2a842 100644
+index a5a0ba0ce7cf..f8d57b54203f 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -765,7 +765,7 @@ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
+@@ -780,7 +780,7 @@ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_FEATURES]		= { .type = NLA_NESTED },
@@ -48,7 +48,7 @@ index c01c1d8686ae..14c9fda2a842 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -1124,6 +1124,41 @@ static int settings_update_features(struct genl_info *info,
+@@ -1144,6 +1144,41 @@ static int settings_update_features(struct genl_info *info,
  	return !!mod;
  }
  
@@ -74,8 +74,8 @@ index c01c1d8686ae..14c9fda2a842 100644
 +		return ret;
 +	flags = ops->get_priv_flags(dev);
 +
-+	ret = ethnl_update_bitset32(&flags, NULL, nflags, bitset, names,
-+				    true, info, &mod);
++	ret = ethnl_update_bitset32(&flags, nflags, bitset, names, true,
++				    info->extack, &mod);
 +	if (ret < 0 || !mod)
 +		goto out_free;
 +	ret = ops->set_priv_flags(dev, flags);
@@ -90,7 +90,7 @@ index c01c1d8686ae..14c9fda2a842 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
-@@ -1182,6 +1217,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -1202,6 +1237,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret)
  			req_mask |= ETHTOOL_IM_SETTINGS_FEATURES;
  	}

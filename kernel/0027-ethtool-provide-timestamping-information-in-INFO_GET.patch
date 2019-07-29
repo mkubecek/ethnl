@@ -1,7 +1,7 @@
-From d0fe32fca8b27570e63d0e8eff2878dcd17bcca5 Mon Sep 17 00:00:00 2001
+From bdb2462db36501b7385e0bf92021167c196b8c5c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
-Subject: [PATCH 26/44] ethtool: provide timestamping information in INFO_GET
+Subject: [PATCH 27/45] ethtool: provide timestamping information in INFO_GET
  request
 
 Add timestamping information as provided by ETHTOOL_GET_TS_INFO ioctl
@@ -20,11 +20,11 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/net_tstamp.h              |  13 ++
  net/ethtool/common.c                         |  24 +++
  net/ethtool/common.h                         |   1 +
- net/ethtool/info.c                           | 145 +++++++++++++++++++
+ net/ethtool/info.c                           | 158 +++++++++++++++++++
  net/ethtool/ioctl.c                          |  20 +--
  net/ethtool/netlink.h                        |   9 ++
  net/ethtool/strset.c                         |  18 +++
- 10 files changed, 245 insertions(+), 21 deletions(-)
+ 10 files changed, 258 insertions(+), 21 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 6d2b5c716e2d..ea6bb6daa71a 100644
@@ -227,7 +227,7 @@ index fa878fff1564..937c5d21c72f 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
-index 9f9405febf65..eb15627d92e7 100644
+index 9f9405febf65..deeca25b701f 100644
 --- a/net/ethtool/info.c
 +++ b/net/ethtool/info.c
 @@ -1,21 +1,68 @@
@@ -311,13 +311,14 @@ index 9f9405febf65..eb15627d92e7 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -70,17 +122,62 @@ static int info_drvinfo_size(const struct ethtool_drvinfo *drvinfo)
+@@ -70,17 +122,68 @@ static int info_drvinfo_size(const struct ethtool_drvinfo *drvinfo)
  	return nla_total_size(len);
  }
  
 +static int info_tsinfo_size(const struct ethtool_ts_info *tsinfo, bool compact)
 +{
 +	const unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
++	u32 supported;
 +	int len = 0;
 +	int ret;
 +
@@ -328,26 +329,31 @@ index 9f9405febf65..eb15627d92e7 100644
 +	BUILD_BUG_ON(__HWTSTAMP_TX_COUNT > 32);
 +	BUILD_BUG_ON(__HWTSTAMP_FILTER_COUNT > 32);
 +
-+	ret = ethnl_bitset32_size(__SOF_TIMESTAMPING_COUNT,
-+				  &tsinfo->so_timestamping, NULL,
++	supported = ~(u32)0 >> (32 - __SOF_TIMESTAMPING_COUNT);
++	ret = ethnl_bitset32_size(&tsinfo->so_timestamping, &supported,
++				  __SOF_TIMESTAMPING_COUNT,
 +				  so_timestamping_labels, flags);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
-+	ret = ethnl_bitset32_size(__HWTSTAMP_TX_COUNT,
-+				  &tsinfo->tx_types, NULL,
++
++	supported = ~(u32)0 >> (32 - __HWTSTAMP_TX_COUNT);
++	ret = ethnl_bitset32_size(&tsinfo->tx_types, &supported,
++				  __HWTSTAMP_TX_COUNT,
 +				  tstamp_tx_type_labels, flags);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
-+	ret = ethnl_bitset32_size(__HWTSTAMP_FILTER_COUNT,
-+				  &tsinfo->rx_filters, NULL,
++
++	supported = ~(u32)0 >> (32 - __HWTSTAMP_FILTER_COUNT);
++	ret = ethnl_bitset32_size(&tsinfo->rx_filters, &supported,
++				  __HWTSTAMP_FILTER_COUNT,
 +				  tstamp_rx_filter_labels, flags);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
-+	len += nla_total_size(sizeof(u32));
 +
++	len += nla_total_size(sizeof(u32));
 +	return nla_total_size(len);
 +}
 +
@@ -374,7 +380,7 @@ index 9f9405febf65..eb15627d92e7 100644
  
  	return len;
  }
-@@ -115,12 +212,54 @@ static int info_fill_drvinfo(struct sk_buff *skb,
+@@ -115,12 +218,61 @@ static int info_fill_drvinfo(struct sk_buff *skb,
  	return -EMSGSIZE;
  }
  
@@ -383,14 +389,17 @@ index 9f9405febf65..eb15627d92e7 100644
 +{
 +	const unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
 +	struct nlattr *nest;
++	u32 supported;
 +	int ret;
 +
 +	nest = nla_nest_start(skb, ETHTOOL_A_INFO_TSINFO);
 +	if (!nest)
 +		return -EMSGSIZE;
++
++	supported = ~(u32)0 >> (32 - __SOF_TIMESTAMPING_COUNT);
 +	ret = ethnl_put_bitset32(skb, ETHTOOL_A_TSINFO_TIMESTAMPING,
++				 &tsinfo->so_timestamping, &supported,
 +				 __SOF_TIMESTAMPING_COUNT,
-+				 &tsinfo->so_timestamping, NULL,
 +				 so_timestamping_labels, flags);
 +	if (ret < 0)
 +		goto nla_put_failure;
@@ -399,15 +408,19 @@ index 9f9405febf65..eb15627d92e7 100644
 +	if (tsinfo->phc_index >= 0 &&
 +	    nla_put_u32(skb, ETHTOOL_A_TSINFO_PHC_INDEX, tsinfo->phc_index))
 +		goto nla_put_failure;
-+
++	supported = ~(u32)0 >> (32 - __HWTSTAMP_TX_COUNT);
 +	ret = ethnl_put_bitset32(skb, ETHTOOL_A_TSINFO_TX_TYPES,
-+				 __HWTSTAMP_TX_COUNT, &tsinfo->tx_types, NULL,
++				 &tsinfo->tx_types, &supported,
++				 __HWTSTAMP_TX_COUNT, 
 +				 tstamp_tx_type_labels, flags);
 +	if (ret < 0)
 +		goto nla_put_failure;
++
++	supported = ~(u32)0 >> (32 - __HWTSTAMP_FILTER_COUNT);
 +	ret = ethnl_put_bitset32(skb, ETHTOOL_A_TSINFO_RX_FILTERS,
-+				 __HWTSTAMP_FILTER_COUNT, &tsinfo->rx_filters,
-+				 NULL, tstamp_rx_filter_labels, flags);
++				 &tsinfo->rx_filters, &supported,
++				 __HWTSTAMP_FILTER_COUNT,
++				 tstamp_rx_filter_labels, flags);
 +	if (ret < 0)
 +		goto nla_put_failure;
 +
@@ -429,7 +442,7 @@ index 9f9405febf65..eb15627d92e7 100644
  	u32 info_mask = data->repdata_base.info_mask;
  	int ret;
  
-@@ -129,6 +268,12 @@ static int info_fill(struct sk_buff *skb,
+@@ -129,6 +281,12 @@ static int info_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}

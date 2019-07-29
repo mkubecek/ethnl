@@ -1,7 +1,7 @@
-From 5c28f1acb4bb630a32c4d8a756b99542f1383d33 Mon Sep 17 00:00:00 2001
+From a7d9c9008f646e322ab20f7888f7d1d4912790a5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:43:01 +0100
-Subject: [PATCH 35/44] ethtool: provide EEE settings in PARAMS_GET request
+Subject: [PATCH 36/45] ethtool: provide EEE settings in PARAMS_GET request
 
 Add information about EEE settings (as proviced by ETHTOOL_GEEE ioctl
 command) in PARAMS_GET reply when ETHTOOL_IM_PARAMS_EEE flag is set in the
@@ -142,7 +142,7 @@ index 0ce138478786..9aa89e9e8988 100644
  
  static int ethtool_nway_reset(struct net_device *dev)
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 53b5609d9f10..6d00313326f0 100644
+index 53b5609d9f10..c4f0573f9521 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -2,6 +2,7 @@
@@ -206,16 +206,16 @@ index 53b5609d9f10..6d00313326f0 100644
 +	int ret;
 +
 +	/* link_modes */
-+	ret = ethnl_bitset32_size(sizeof(eee->advertised) * BITS_PER_BYTE,
-+				  &eee->advertised, &eee->supported,
++	ret = ethnl_bitset32_size(&eee->advertised, &eee->supported,
++				  sizeof(eee->advertised) * BITS_PER_BYTE,
 +				  link_mode_names, flags);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
 +	/* peer_modes */
-+	ret = ethnl_bitset32_size(sizeof(eee->lp_advertised) * BITS_PER_BYTE,
-+				  &eee->lp_advertised, NULL, link_mode_names,
-+				  flags | ETHNL_BITSET_LIST);
++	ret = ethnl_bitset32_size(&eee->lp_advertised, NULL,
++				  sizeof(eee->lp_advertised) * BITS_PER_BYTE,
++				  link_mode_names, flags);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
@@ -267,15 +267,15 @@ index 53b5609d9f10..6d00313326f0 100644
 +	if (!nest)
 +		return -EMSGSIZE;
 +	ret = ethnl_put_bitset32(skb, ETHTOOL_A_EEE_LINK_MODES,
-+				 sizeof(data->advertised) * BITS_PER_BYTE,
 +				 &data->advertised, &data->supported,
++				 sizeof(data->advertised) * BITS_PER_BYTE,
 +				 link_mode_names, flags);
 +	if (ret < 0)
 +		goto nla_put_failure;
 +	ret = ethnl_put_bitset32(skb, ETHTOOL_A_EEE_PEER_MODES,
++				 &data->lp_advertised, NULL,
 +				 sizeof(data->lp_advertised) * BITS_PER_BYTE,
-+				 &data->lp_advertised, &data->lp_advertised,
-+				 link_mode_names, flags | ETHNL_BITSET_LIST);
++				 link_mode_names, flags);
 +	if (ret < 0)
 +		goto nla_put_failure;
 +

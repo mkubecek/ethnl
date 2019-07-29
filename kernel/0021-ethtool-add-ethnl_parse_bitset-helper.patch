@@ -1,0 +1,144 @@
+From fc21278bb21e6fc2795e60d158abfdb44b6db2de Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Sun, 28 Jul 2019 19:12:37 +0200
+Subject: [PATCH 21/45] ethtool: add ethnl_parse_bitset() helper
+
+Unlike other SET type commands, modifying netdev features is required to
+provide a reply telling userspace what was actually changed, compared to
+what was requested. For that purpose, the "modified" flag provided by
+ethnl_update_bitset() is not sufficient, we need full information which
+bits were requested to change.
+
+Therefore provide ethnl_parse_bitset() returning effective value and mask
+bitmaps equivalent to the contents of a bitset nested attribute.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ net/ethtool/bitset.c | 96 ++++++++++++++++++++++++++++++++++++++++++++
+ net/ethtool/bitset.h |  4 ++
+ 2 files changed, 100 insertions(+)
+
+diff --git a/net/ethtool/bitset.c b/net/ethtool/bitset.c
+index 60c882a5e17c..238aec400ad2 100644
+--- a/net/ethtool/bitset.c
++++ b/net/ethtool/bitset.c
+@@ -594,6 +594,102 @@ int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
+ 	return 0;
+ }
+ 
++/**
++ * ethnl_parse_bitset() - Compute effective value and mask from bitset nest
++ * @val:     unsigned long based bitmap to put value into
++ * @mask:    unsigned long based bitmap to put mask into
++ * @nbits:   size of @val and @mask bitmaps
++ * @attr:    nest attribute to parse and apply
++ * @names:   array of bit names; may be null for compact format
++ * @legacy:  true if @names is ioctl style array of char[32], false if it is
++ *           a simple array of (char *) strings
++ * @extack:  extack for error reporting
++ *
++ * Provide @nbits size long bitmaps for value and mask so that
++ * x = (val & mask) | (x & ~mask) would modify any @nbits sized bitmap x
++ * the same way ethnl_update_bitset() with the same bitset attribute would.
++ *
++ * Return:   negative error code on failure, 0 on success
++ */
++int ethnl_parse_bitset(unsigned long *val, unsigned long *mask,
++		       unsigned int nbits, const struct nlattr *attr,
++		       const void *names, bool legacy,
++		       struct netlink_ext_ack *extack)
++{
++	struct nlattr *tb[ETHTOOL_A_BITSET_MAX + 1];
++	const struct nlattr *bit_attr;
++	bool is_list;
++	int rem;
++	int ret;
++
++	if (!attr)
++		return 0;
++	ret = nla_parse_nested(tb, ETHTOOL_A_BITSET_MAX, attr, bitset_policy,
++			       extack);
++	if (ret < 0)
++		return ret;
++	is_list = (tb[ETHTOOL_A_BITSET_LIST] != NULL);
++
++	if (!tb[ETHTOOL_A_BITSET_BITS]) {
++		unsigned int change_bits;
++
++		ret = ethnl_compact_sanity_checks(nbits, attr, tb, extack);
++		if (ret < 0)
++			return ret;
++
++		change_bits = nla_get_u32(tb[ETHTOOL_A_BITSET_SIZE]);
++		bitmap_from_arr32(val, nla_data(tb[ETHTOOL_A_BITSET_VALUE]),
++				  change_bits);
++		if (change_bits < nbits)
++			bitmap_clear(val, change_bits, nbits - change_bits);
++		if (is_list) {
++			bitmap_fill(mask, nbits);
++		} else {
++			bitmap_from_arr32(mask,
++					  nla_data(tb[ETHTOOL_A_BITSET_MASK]),
++					  change_bits);
++			if (change_bits < nbits)
++				bitmap_clear(mask, change_bits,
++					     nbits - change_bits);
++		}
++
++		return 0;
++	}
++
++	if (tb[ETHTOOL_A_BITSET_VALUE]) {
++		NL_SET_ERR_MSG_ATTR(extack, tb[ETHTOOL_A_BITSET_VALUE],
++				    "value only allowed in compact bitset");
++		return -EINVAL;
++	}
++	if (tb[ETHTOOL_A_BITSET_MASK]) {
++		NL_SET_ERR_MSG_ATTR(extack, tb[ETHTOOL_A_BITSET_MASK],
++				    "mask only allowed in compact bitset");
++		return -EINVAL;
++	}
++
++	bitmap_zero(val, nbits);
++	if (is_list)
++		bitmap_fill(mask, nbits);
++	else
++		bitmap_zero(val, nbits);
++
++	nla_for_each_nested(bit_attr, tb[ETHTOOL_A_BITSET_BITS], rem) {
++		unsigned int idx;
++		bool bit_val;
++
++		ret = ethnl_parse_bit(&idx, &bit_val, nbits, bit_attr, is_list,
++				      names, legacy, extack);
++		if (ret < 0)
++			return ret;
++		if (bit_val)
++			bitmap_set(val, idx, nbits);
++		if (!is_list)
++			bitmap_set(mask, idx, nbits);
++	}
++
++	return 0;
++}
++
+ /* 64-bit long endian architecture is the only case when u32 based bitmaps
+  * and unsigned long based bitmaps have different memory layout so that we
+  * cannot simply cast the latter to the former.
+diff --git a/net/ethtool/bitset.h b/net/ethtool/bitset.h
+index d6929306baa9..811531a0589a 100644
+--- a/net/ethtool/bitset.h
++++ b/net/ethtool/bitset.h
+@@ -27,5 +27,9 @@ int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
+ 			  const struct nlattr *attr, const void *names,
+ 			  bool legacy, struct netlink_ext_ack *extack,
+ 			  bool *mod);
++int ethnl_parse_bitset(unsigned long *val, unsigned long *mask,
++		       unsigned int nbits, const struct nlattr *attr,
++		       const void *names, bool legacy,
++		       struct netlink_ext_ack *extack);
+ 
+ #endif /* _NET_ETHTOOL_BITSET_H */
+-- 
+2.22.0
+

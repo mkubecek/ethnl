@@ -1,7 +1,7 @@
-From ecefccb5675f974bd231a3bbb3b3f97175ead892 Mon Sep 17 00:00:00 2001
+From bc9bebcd44f2d0bf66c7348ab09522c665606370 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
-Subject: [PATCH 43/44] ethtool: implement RXFLOW notification
+Subject: [PATCH 44/45] ethtool: implement RXFLOW notification
 
 SET_RXFLOW notification message uses the same format as response to
 GET_RXFLOW request except for ETHTOOL_A_RXFLOW_CTXOP attribute which may be
@@ -189,10 +189,10 @@ index 4b7f88aeb8bf..ca9ec0692649 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index b7ba357afed0..ab6b8c115080 100644
+index e712a7490b7d..bb4b97305f26 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
-@@ -446,3 +446,70 @@ const struct get_request_ops rxflow_request_ops = {
+@@ -447,3 +447,70 @@ const struct get_request_ops rxflow_request_ops = {
  	.fill_reply		= rxflow_fill,
  	.cleanup		= rxflow_cleanup,
  };
