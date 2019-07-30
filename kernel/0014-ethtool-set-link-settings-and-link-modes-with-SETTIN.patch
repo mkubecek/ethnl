@@ -1,4 +1,4 @@
-From 287b79ccb61a4c66ded5651f0d9296e44f20899c Mon Sep 17 00:00:00 2001
+From 1ce765fedcf7316eda4537012b1196df4a5eff3e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
 Subject: [PATCH 14/45] ethtool: set link settings and link modes with
@@ -228,7 +228,7 @@ index ffbe4470f9a9..4d426695ab4c 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 306f283ee4ed..aa50eb552cc2 100644
+index 9d106c5e7bf4..0894f86f36d9 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,99 @@ struct settings_data {
@@ -331,7 +331,7 @@ index 306f283ee4ed..aa50eb552cc2 100644
  static const struct nla_policy
  settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]	= { .type = NLA_REJECT },
-@@ -257,3 +350,237 @@ const struct get_request_ops settings_request_ops = {
+@@ -256,3 +349,237 @@ const struct get_request_ops settings_request_ops = {
  	.reply_size		= settings_size,
  	.fill_reply		= settings_fill,
  };

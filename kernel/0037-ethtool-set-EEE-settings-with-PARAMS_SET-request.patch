@@ -1,4 +1,4 @@
-From e3e5580532734560040a02ed36dab1af3078a834 Mon Sep 17 00:00:00 2001
+From ef9f945fc2ec4d8a0954d34ac271c9ef25dcf250 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:47:45 +0100
 Subject: [PATCH 37/45] ethtool: set EEE settings with PARAMS_SET request
@@ -57,10 +57,10 @@ index 642b253fb1cb..a65f6886ee5f 100644
  ETHTOOL_SRSSH			n/a
  ETHTOOL_GTUNABLE		n/a
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index c4f0573f9521..754471603bd4 100644
+index 14891a6b1967..c58df7b90855 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
-@@ -429,7 +429,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+@@ -427,7 +427,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_CHANNELS]		= { .type = NLA_NESTED },
@@ -69,7 +69,7 @@ index c4f0573f9521..754471603bd4 100644
  };
  
  static const struct nla_policy params_hdr_policy[ETHTOOL_A_HEADER_MAX + 1] = {
-@@ -740,6 +740,64 @@ static int params_update_channels(struct genl_info *info,
+@@ -738,6 +738,64 @@ static int params_update_channels(struct genl_info *info,
  	return (ret < 0) ? ret : 1;
  }
  
@@ -134,7 +134,7 @@ index c4f0573f9521..754471603bd4 100644
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_PARAMS_MAX + 1];
-@@ -783,6 +841,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
+@@ -781,6 +839,11 @@ int ethnl_set_params(struct sk_buff *skb, struct genl_info *info)
  		goto out_ops;
  	if (ret)
  		req_mask |= ETHTOOL_IM_PARAMS_CHANNELS;

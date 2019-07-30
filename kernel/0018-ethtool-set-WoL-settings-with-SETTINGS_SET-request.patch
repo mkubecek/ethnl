@@ -1,4 +1,4 @@
-From b96cf3cce3d8426b5b1c5ffffe97accf7e48440d Mon Sep 17 00:00:00 2001
+From dca47604b57a09bc739e34073b70e7c04e2cb0f6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:50:30 +0100
 Subject: [PATCH 18/45] ethtool: set WoL settings with SETTINGS_SET request
@@ -53,7 +53,7 @@ index e87580bab161..1ffad9c19f53 100644
  ETHTOOL_SMSGLVL			n/a
  ETHTOOL_NWAY_RST		n/a
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 4b304a21d4d6..2d597e47ab4d 100644
+index 54cf099f794d..1d709789c9b7 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -109,6 +109,12 @@ static const struct link_mode_info link_mode_params[] = {
@@ -69,7 +69,7 @@ index 4b304a21d4d6..2d597e47ab4d 100644
  static const struct nla_policy
  settings_get_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]	= { .type = NLA_REJECT },
-@@ -478,6 +484,14 @@ linkmodes_set_policy[ETHTOOL_A_LINKMODES_MAX + 1] = {
+@@ -477,6 +483,14 @@ linkmodes_set_policy[ETHTOOL_A_LINKMODES_MAX + 1] = {
  	[ETHTOOL_A_LINKMODES_DUPLEX]		= { .type = NLA_U8 },
  };
  
@@ -84,7 +84,7 @@ index 4b304a21d4d6..2d597e47ab4d 100644
  static const struct nla_policy
  settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_UNSPEC]		= { .type = NLA_REJECT },
-@@ -485,7 +499,7 @@ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
+@@ -484,7 +498,7 @@ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_LINK_INFO]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_MODES]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },
@@ -93,7 +93,7 @@ index 4b304a21d4d6..2d597e47ab4d 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -636,6 +650,49 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
+@@ -635,6 +649,49 @@ static int ethnl_update_ksettings(struct genl_info *info, struct nlattr **tb,
  	return 0;
  }
  
@@ -143,7 +143,7 @@ index 4b304a21d4d6..2d597e47ab4d 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
-@@ -669,6 +726,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -668,6 +725,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret < 0)
  			goto out_ops;
  	}

@@ -1,4 +1,4 @@
-From f40b36800119fd8d76d90afc702f354864913bf1 Mon Sep 17 00:00:00 2001
+From 5d0989e39444a4d35a03b9471c67b70905e9353c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 06/45] ethtool: netlink bitset handling
@@ -33,10 +33,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  61 ++
  include/uapi/linux/ethtool_netlink.h         |  35 +
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/bitset.c                         | 726 +++++++++++++++++++
- net/ethtool/bitset.h                         |  35 +
+ net/ethtool/bitset.c                         | 724 +++++++++++++++++++
+ net/ethtool/bitset.h                         |  30 +
  net/ethtool/netlink.h                        |   9 +
- 6 files changed, 867 insertions(+), 1 deletion(-)
+ 6 files changed, 860 insertions(+), 1 deletion(-)
  create mode 100644 net/ethtool/bitset.c
  create mode 100644 net/ethtool/bitset.h
 
@@ -170,10 +170,10 @@ index f30e0da88be5..482fdb9380fa 100644
 +ethtool_nl-y	:= netlink.o bitset.o
 diff --git a/net/ethtool/bitset.c b/net/ethtool/bitset.c
 new file mode 100644
-index 000000000000..9e5c05452058
+index 000000000000..c7f7ced89bf0
 --- /dev/null
 +++ b/net/ethtool/bitset.c
-@@ -0,0 +1,726 @@
+@@ -0,0 +1,724 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include <linux/ethtool_netlink.h>
@@ -332,11 +332,11 @@ index 000000000000..9e5c05452058
 +
 +/**
 + * ethnl_bitset32_size() - Calculate size of bitset nested attribute
-+ * @val:   value bitmap (u32 based)
-+ * @mask:  mask bitmap (u32 based, optional)
-+ * @nbits: bit length of the bitset
-+ * @names: array of bit names (optional)
-+ * @flags: combination of ETHNL_BITSET_* flags
++ * @val:     value bitmap (u32 based)
++ * @mask:    mask bitmap (u32 based, optional)
++ * @nbits:   bit length of the bitset
++ * @names:   array of bit names (optional)
++ * @compact: assume compact format for output
 + *
 + * Estimate length of netlink attribute composed by a later call to
 + * ethnl_put_bitset32() call with the same arguments.
@@ -345,9 +345,8 @@ index 000000000000..9e5c05452058
 + */
 +int ethnl_bitset32_size(const u32 *val, const u32 *mask, unsigned int nbits,
 +			const char (*const names)[ETH_GSTRING_LEN],
-+			unsigned int flags)
++			bool compact)
 +{
-+	const bool compact = flags & ETHNL_BITSET_COMPACT;
 +	unsigned int len = 0;
 +
 +	/* list flag */
@@ -398,7 +397,7 @@ index 000000000000..9e5c05452058
 + * @mask:     mask bitmap (u32 based, optional)
 + * @nbits:    bit length of the bitset
 + * @names:    array of bit names (optional)
-+ * @flags:    combination of ETHNL_BITSET_* flags
++ * @compact:  use compact format for the output
 + *
 + * Compose a nested attribute representing a bitset. If @mask is null, simple
 + * bitmap (bit list) is created, if @mask is provided, represent a value/mask
@@ -409,9 +408,8 @@ index 000000000000..9e5c05452058
 +int ethnl_put_bitset32(struct sk_buff *skb, int attrtype, const u32 *val,
 +		       const u32 *mask, unsigned int nbits,
 +		       const char (*const names)[ETH_GSTRING_LEN],
-+		       unsigned int flags)
++		       bool compact)
 +{
-+	const bool compact = flags & ETHNL_BITSET_COMPACT;
 +	struct nlattr *nest;
 +	struct nlattr *attr;
 +
@@ -766,7 +764,7 @@ index 000000000000..9e5c05452058
 +int ethnl_bitset_size(const unsigned long *val, const unsigned long *mask,
 +		      unsigned int nbits,
 +		      const char (*const names)[ETH_GSTRING_LEN],
-+		      unsigned int flags)
++		      bool compact)
 +{
 +	u32 small_mask32[__SMALL_BITMAP_WORDS];
 +	u32 small_val32[__SMALL_BITMAP_WORDS];
@@ -791,7 +789,7 @@ index 000000000000..9e5c05452058
 +		bitmap_to_arr32(mask32, mask, nbits);
 +	else
 +		mask32 = NULL;
-+	ret = ethnl_bitset32_size(val32, mask32, nbits, names, flags);
++	ret = ethnl_bitset32_size(val32, mask32, nbits, names, compact);
 +
 +	if (nbits > __SMALL_BITMAP_BITS)
 +		kfree(val32);
@@ -803,7 +801,7 @@ index 000000000000..9e5c05452058
 +		     const unsigned long *val, const unsigned long *mask,
 +		     unsigned int nbits,
 +		     const char (*const names)[ETH_GSTRING_LEN],
-+		     unsigned int flags)
++		     bool compact)
 +{
 +	u32 small_mask32[__SMALL_BITMAP_WORDS];
 +	u32 small_val32[__SMALL_BITMAP_WORDS];
@@ -829,7 +827,7 @@ index 000000000000..9e5c05452058
 +	else
 +		mask32 = NULL;
 +	ret = ethnl_put_bitset32(skb, attrtype, val32, mask32, nbits, names,
-+				 flags);
++				 compact);
 +
 +	if (nbits > __SMALL_BITMAP_BITS)
 +		kfree(val32);
@@ -874,20 +872,20 @@ index 000000000000..9e5c05452058
 +int ethnl_bitset_size(const unsigned long *val, const unsigned long *mask,
 +		      unsigned int nbits,
 +		      const char (*const names)[ETH_GSTRING_LEN],
-+		      unsigned int flags)
++		      bool compact)
 +{
 +	return ethnl_bitset32_size((const u32 *)val, (const u32 *)mask, nbits,
-+				   names, flags);
++				   names, compact);
 +}
 +
 +int ethnl_put_bitset(struct sk_buff *skb, int attrtype,
 +		     const unsigned long *val, const unsigned long *mask,
 +		     unsigned int nbits,
 +		     const char (*const names)[ETH_GSTRING_LEN],
-+		     unsigned int flags)
++		     bool compact)
 +{
 +	return ethnl_put_bitset32(skb, attrtype, (const u32 *)val,
-+				  (const u32 *)mask, nbits, names, flags);
++				  (const u32 *)mask, nbits, names, compact);
 +}
 +
 +int ethnl_update_bitset(unsigned long *bitmap, unsigned int nbits,
@@ -902,35 +900,30 @@ index 000000000000..9e5c05452058
 +#endif /* BITS_PER_LONG == 64 && defined(__BIG_ENDIAN) */
 diff --git a/net/ethtool/bitset.h b/net/ethtool/bitset.h
 new file mode 100644
-index 000000000000..6dba5f7473a7
+index 000000000000..5ec12a6802c8
 --- /dev/null
 +++ b/net/ethtool/bitset.h
-@@ -0,0 +1,35 @@
+@@ -0,0 +1,30 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#ifndef _NET_ETHTOOL_BITSET_H
 +#define _NET_ETHTOOL_BITSET_H
 +
-+/* generate a compact format bitset */
-+#define ETHNL_BITSET_COMPACT		BIT(0)
-+
 +int ethnl_bitset_is_compact(const struct nlattr *bitset, bool *compact);
 +int ethnl_bitset_size(const unsigned long *val, const unsigned long *mask,
 +		      unsigned int nbits,
-+		      const char (*const names)[ETH_GSTRING_LEN],
-+		      unsigned int flags);
++		      const char (*const names)[ETH_GSTRING_LEN], bool compact);
 +int ethnl_bitset32_size(const u32 *val, const u32 *mask, unsigned int nbits,
 +			const char (*const names)[ETH_GSTRING_LEN],
-+			unsigned int flags);
++			bool compact);
 +int ethnl_put_bitset(struct sk_buff *skb, int attrtype,
 +		     const unsigned long *val, const unsigned long *mask,
 +		     unsigned int nbits,
-+		     const char (*const names)[ETH_GSTRING_LEN],
-+		     unsigned int flags);
++		     const char (*const names)[ETH_GSTRING_LEN], bool compact);
 +int ethnl_put_bitset32(struct sk_buff *skb, int attrtype, const u32 *val,
 +		       const u32 *mask, unsigned int nbits,
 +		       const char (*const names)[ETH_GSTRING_LEN],
-+		       unsigned int flags);
++		       bool compact);
 +int ethnl_update_bitset(unsigned long *bitmap, unsigned int nbits,
 +			const struct nlattr *attr,
 +			const char (*const names)[ETH_GSTRING_LEN],

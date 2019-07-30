@@ -1,4 +1,4 @@
-From d714664dc1c97190151fe35ff4adb2f709af35a7 Mon Sep 17 00:00:00 2001
+From ce4c0863657a91294a106df874b32e6cb999e040 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 29 Jun 2019 19:54:07 +0200
 Subject: [PATCH 13/45] ethtool: add standard notification handler

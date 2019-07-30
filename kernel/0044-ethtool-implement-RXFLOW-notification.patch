@@ -1,4 +1,4 @@
-From c094668b4a67e0efab9a8941dd7561eefae16607 Mon Sep 17 00:00:00 2001
+From edd2069e55690f86da85cf820e05e3ed1a4257f4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 22:05:29 +0200
 Subject: [PATCH 44/45] ethtool: implement RXFLOW notification
@@ -189,10 +189,10 @@ index bbcff29085b5..8933daeb3319 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/rxflow.c b/net/ethtool/rxflow.c
-index 052d0681ce25..70989a2e5412 100644
+index 25ec18cf3273..ebebc3387417 100644
 --- a/net/ethtool/rxflow.c
 +++ b/net/ethtool/rxflow.c
-@@ -447,3 +447,70 @@ const struct get_request_ops rxflow_request_ops = {
+@@ -446,3 +446,70 @@ const struct get_request_ops rxflow_request_ops = {
  	.fill_reply		= rxflow_fill,
  	.cleanup		= rxflow_cleanup,
  };

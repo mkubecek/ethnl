@@ -1,4 +1,4 @@
-From 0b81a26daa41a0c55efd8222a8ee832801e94cdc Mon Sep 17 00:00:00 2001
+From df02b7070cc11e53efe0a72e3e666f8d9c41e210 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 20:41:44 +0100
 Subject: [PATCH 28/45] ethtool: provide coalescing information in PARAMS_GET

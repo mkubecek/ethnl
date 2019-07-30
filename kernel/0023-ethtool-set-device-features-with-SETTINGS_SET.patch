@@ -1,4 +1,4 @@
-From 67a7d159b2148edc85db22a82991f0603ec3626d Mon Sep 17 00:00:00 2001
+From 3a311dd452c5a994357776aac48cde74ffe1ad6b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 29 Jul 2018 14:58:36 +0200
 Subject: [PATCH 23/45] ethtool: set device features with SETTINGS_SET
@@ -19,8 +19,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.txt |  36 +++--
  include/uapi/linux/ethtool_netlink.h         |   1 +
- net/ethtool/settings.c                       | 160 ++++++++++++++++++-
- 3 files changed, 187 insertions(+), 10 deletions(-)
+ net/ethtool/settings.c                       | 154 ++++++++++++++++++-
+ 3 files changed, 181 insertions(+), 10 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 14bc8568c43a..b0c3fd67ce45 100644
@@ -126,7 +126,7 @@ index 022c6956ff0f..36a8ed329255 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 361ce9553f8d..4cdc540310b2 100644
+index e6657486cdaa..87e1406ee3cb 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -659,6 +659,15 @@ static const struct nla_policy debug_set_policy[ETHTOOL_A_DEBUG_MAX + 1] = {
@@ -154,7 +154,7 @@ index 361ce9553f8d..4cdc540310b2 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -891,6 +900,146 @@ static int settings_update_debug(struct genl_info *info, struct nlattr *nest,
+@@ -891,6 +900,140 @@ static int settings_update_debug(struct genl_info *info, struct nlattr *nest,
  	return 1;
  }
  
@@ -190,7 +190,6 @@ index 361ce9553f8d..4cdc540310b2 100644
 +	DECLARE_BITMAP(req_wanted, NETDEV_FEATURE_COUNT);
 +	DECLARE_BITMAP(req_mask, NETDEV_FEATURE_COUNT);
 +	struct nlattr *tb[ETHTOOL_A_FEATURES_MAX + 1];
-+	unsigned int bitset_flags;
 +	struct nlattr *feat_attr;
 +	struct sk_buff *rskb;
 +	void *reply_payload;
@@ -200,7 +199,6 @@ index 361ce9553f8d..4cdc540310b2 100644
 +	int ret;
 +
 +	compact = req_gflags & ETHTOOL_GFLAG_COMPACT_BITSETS;
-+	bitset_flags = compact ? ETHNL_BITSET_COMPACT : 0;
 +
 +	ret = nla_parse_nested(tb, ETHTOOL_A_FEATURES_MAX, nest,
 +			       features_set_policy, info->extack);
@@ -248,14 +246,13 @@ index 361ce9553f8d..4cdc540310b2 100644
 +	reply_len = 0;
 +	ret = ethnl_bitset_size(req_wanted, wanted_diff_mask,
 +				NETDEV_FEATURE_COUNT, netdev_features_strings,
-+				bitset_flags);
++				compact);
 +	if (ret < 0)
 +		goto err;
 +	reply_len += ret;
 +	ret = ethnl_bitset_size(new_active, active_diff_mask,
-+				NETDEV_FEATURE_COUNT,
-+				netdev_features_strings,
-+				bitset_flags);
++				NETDEV_FEATURE_COUNT, netdev_features_strings,
++				compact);
 +	if (ret < 0)
 +		goto err;
 +	reply_len += ret;
@@ -270,17 +267,14 @@ index 361ce9553f8d..4cdc540310b2 100644
 +	feat_attr = nla_nest_start(rskb, ETHTOOL_A_SETTINGS_FEATURES);
 +	if (!feat_attr)
 +		goto nla_put_failure;
-+	ret = ethnl_put_bitset(rskb, ETHTOOL_A_FEATURES_WANTED,
-+			       req_wanted, wanted_diff_mask,
-+			       NETDEV_FEATURE_COUNT, netdev_features_strings,
-+			       bitset_flags);
++	ret = ethnl_put_bitset(rskb, ETHTOOL_A_FEATURES_WANTED, req_wanted,
++			       wanted_diff_mask, NETDEV_FEATURE_COUNT,
++			       netdev_features_strings, compact);
 +	if (ret < 0)
 +		goto nla_put_failure;
-+	ret = ethnl_put_bitset(rskb, ETHTOOL_A_FEATURES_ACTIVE,
-+			       new_active, active_diff_mask,
-+			       NETDEV_FEATURE_COUNT,
-+			       netdev_features_strings,
-+			       bitset_flags);
++	ret = ethnl_put_bitset(rskb, ETHTOOL_A_FEATURES_ACTIVE, new_active,
++			       active_diff_mask, NETDEV_FEATURE_COUNT,
++			       netdev_features_strings, compact);
 +	if (ret < 0)
 +		goto nla_put_failure;
 +	nla_nest_end(rskb, feat_attr);
@@ -301,7 +295,7 @@ index 361ce9553f8d..4cdc540310b2 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
-@@ -940,6 +1089,15 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -940,6 +1083,15 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret)
  			req_mask |= ETHTOOL_IM_SETTINGS_DEBUG;
  	}

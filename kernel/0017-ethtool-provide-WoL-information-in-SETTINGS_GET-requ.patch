@@ -1,4 +1,4 @@
-From e04fe5189a2a583d71ac42bbb5363822e3c33ba7 Mon Sep 17 00:00:00 2001
+From 1622a9529cc791d0a21d265fcb6ff480f3492b2a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:08:55 +0100
 Subject: [PATCH 17/45] ethtool: provide WoL information in SETTINGS_GET
@@ -176,7 +176,7 @@ index 853b8c21a5e5..d95fffff3bfe 100644
  	return 0;
  }
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index e6374e7a492d..4b304a21d4d6 100644
+index 29702045ce80..54cf099f794d 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -10,6 +10,7 @@ struct settings_data {
@@ -224,7 +224,7 @@ index e6374e7a492d..4b304a21d4d6 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -225,6 +242,12 @@ static int settings_linkstate_size(int link)
+@@ -224,6 +241,12 @@ static int settings_linkstate_size(int link)
  	return nla_total_size(nla_total_size(sizeof(u8)));
  }
  
@@ -237,7 +237,7 @@ index e6374e7a492d..4b304a21d4d6 100644
  /* reply_size() handler
   *
   * To keep things simple, reserve space for some attributes which may not
-@@ -250,6 +273,8 @@ static int settings_size(const struct ethnl_req_info *req_info)
+@@ -249,6 +272,8 @@ static int settings_size(const struct ethnl_req_info *req_info)
  	}
  	if (info_mask & ETHTOOL_IM_SETTINGS_LINKSTATE)
  		len += settings_linkstate_size(data->link);
@@ -246,7 +246,7 @@ index e6374e7a492d..4b304a21d4d6 100644
  
  	return len;
  }
-@@ -341,6 +366,34 @@ static int settings_fill_linkstate(struct sk_buff *skb, int link)
+@@ -340,6 +365,34 @@ static int settings_fill_linkstate(struct sk_buff *skb, int link)
  	return -EMSGSIZE;
  }
  
@@ -281,7 +281,7 @@ index e6374e7a492d..4b304a21d4d6 100644
  /* fill_reply() handler */
  static int settings_fill(struct sk_buff *skb,
  			 const struct ethnl_req_info *req_info)
-@@ -367,6 +420,12 @@ static int settings_fill(struct sk_buff *skb,
+@@ -366,6 +419,12 @@ static int settings_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -294,7 +294,7 @@ index e6374e7a492d..4b304a21d4d6 100644
  
  	return 0;
  }
-@@ -426,6 +485,7 @@ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
+@@ -425,6 +484,7 @@ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_LINK_INFO]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_MODES]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_LINK_STATE]		= { .type = NLA_REJECT },

@@ -1,4 +1,4 @@
-From a9bf0108dd062a925290f9c0461524310fa2c738 Mon Sep 17 00:00:00 2001
+From 55784200ac107a9eb01e77dfa0f10d916f7e8732 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:43:01 +0100
 Subject: [PATCH 36/45] ethtool: provide EEE settings in PARAMS_GET request
@@ -15,8 +15,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt | 18 +++-
  include/uapi/linux/ethtool_netlink.h         | 19 +++-
  net/ethtool/ioctl.c                          |  7 +-
- net/ethtool/params.c                         | 98 ++++++++++++++++++++
- 4 files changed, 136 insertions(+), 6 deletions(-)
+ net/ethtool/params.c                         | 96 ++++++++++++++++++++
+ 4 files changed, 134 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 84ba3eafc239..642b253fb1cb 100644
@@ -142,7 +142,7 @@ index 0ce138478786..9aa89e9e8988 100644
  
  static int ethtool_nway_reset(struct net_device *dev)
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 53b5609d9f10..c4f0573f9521 100644
+index 53b5609d9f10..14891a6b1967 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -2,6 +2,7 @@
@@ -195,27 +195,26 @@ index 53b5609d9f10..c4f0573f9521 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -119,12 +134,43 @@ static int params_channels_size(void)
+@@ -119,12 +134,42 @@ static int params_channels_size(void)
  	return nla_total_size(8 * nla_total_size(sizeof(u32)));
  }
  
 +static int params_eee_size(const struct ethtool_eee *eee, bool compact)
 +{
-+	const unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
 +	int len = 0;
 +	int ret;
 +
 +	/* link_modes */
 +	ret = ethnl_bitset32_size(&eee->advertised, &eee->supported,
 +				  sizeof(eee->advertised) * BITS_PER_BYTE,
-+				  link_mode_names, flags);
++				  link_mode_names, compact);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
 +	/* peer_modes */
 +	ret = ethnl_bitset32_size(&eee->lp_advertised, NULL,
 +				  sizeof(eee->lp_advertised) * BITS_PER_BYTE,
-+				  link_mode_names, flags);
++				  link_mode_names, compact);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
@@ -239,7 +238,7 @@ index 53b5609d9f10..c4f0573f9521 100644
  
  	len += ethnl_reply_header_size();
  	if (info_mask & ETHTOOL_IM_PARAMS_COALESCE)
-@@ -135,6 +181,12 @@ static int params_size(const struct ethnl_req_info *req_info)
+@@ -135,6 +180,12 @@ static int params_size(const struct ethnl_req_info *req_info)
  		len += params_pause_size();
  	if (info_mask & ETHTOOL_IM_PARAMS_CHANNELS)
  		len += params_channels_size();
@@ -252,14 +251,13 @@ index 53b5609d9f10..c4f0573f9521 100644
  
  	return len;
  }
-@@ -275,11 +327,51 @@ static int params_fill_channels(struct sk_buff *skb,
+@@ -275,11 +326,50 @@ static int params_fill_channels(struct sk_buff *skb,
  	return 0;
  }
  
 +static int params_fill_eee(struct sk_buff *skb, struct ethtool_eee *data,
 +			   bool compact)
 +{
-+	const unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
 +	struct nlattr *nest;
 +	int ret;
 +
@@ -269,13 +267,13 @@ index 53b5609d9f10..c4f0573f9521 100644
 +	ret = ethnl_put_bitset32(skb, ETHTOOL_A_EEE_LINK_MODES,
 +				 &data->advertised, &data->supported,
 +				 sizeof(data->advertised) * BITS_PER_BYTE,
-+				 link_mode_names, flags);
++				 link_mode_names, compact);
 +	if (ret < 0)
 +		goto nla_put_failure;
 +	ret = ethnl_put_bitset32(skb, ETHTOOL_A_EEE_PEER_MODES,
 +				 &data->lp_advertised, NULL,
 +				 sizeof(data->lp_advertised) * BITS_PER_BYTE,
-+				 link_mode_names, flags);
++				 link_mode_names, compact);
 +	if (ret < 0)
 +		goto nla_put_failure;
 +
@@ -304,7 +302,7 @@ index 53b5609d9f10..c4f0573f9521 100644
  	u32 info_mask = data->repdata_base.info_mask;
  	int ret;
  
-@@ -303,6 +395,11 @@ static int params_fill(struct sk_buff *skb,
+@@ -303,6 +393,11 @@ static int params_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -316,7 +314,7 @@ index 53b5609d9f10..c4f0573f9521 100644
  
  	return 0;
  }
-@@ -332,6 +429,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+@@ -332,6 +427,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_RING]			= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_CHANNELS]		= { .type = NLA_NESTED },

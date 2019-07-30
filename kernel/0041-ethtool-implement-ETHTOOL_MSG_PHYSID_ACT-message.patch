@@ -1,4 +1,4 @@
-From b4a0dff65d64a357e6bb1995c894366bcf6b8684 Mon Sep 17 00:00:00 2001
+From 1e26c5f88837765fa344491677bf0802270623fe Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 2 Sep 2018 15:50:03 +0200
 Subject: [PATCH 41/45] ethtool: implement ETHTOOL_MSG_PHYSID_ACT message

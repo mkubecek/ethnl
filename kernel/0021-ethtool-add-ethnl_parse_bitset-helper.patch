@@ -1,4 +1,4 @@
-From 01d41e6c9006fb0eb9b14049a50721432d020642 Mon Sep 17 00:00:00 2001
+From 730bddef4eabdd0fd8fac38fe24d81f87b76b51f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 28 Jul 2019 19:12:37 +0200
 Subject: [PATCH 21/45] ethtool: add ethnl_parse_bitset() helper
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 98 insertions(+)
 
 diff --git a/net/ethtool/bitset.c b/net/ethtool/bitset.c
-index 9e5c05452058..44e738a8856b 100644
+index c7f7ced89bf0..8f161b79984d 100644
 --- a/net/ethtool/bitset.c
 +++ b/net/ethtool/bitset.c
-@@ -581,6 +581,100 @@ int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
+@@ -579,6 +579,100 @@ int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
  	return 0;
  }
  
@@ -124,10 +124,10 @@ index 9e5c05452058..44e738a8856b 100644
   * and unsigned long based bitmaps have different memory layout so that we
   * cannot simply cast the latter to the former.
 diff --git a/net/ethtool/bitset.h b/net/ethtool/bitset.h
-index 6dba5f7473a7..d7d3dc9d4019 100644
+index 5ec12a6802c8..0f962ae8780c 100644
 --- a/net/ethtool/bitset.h
 +++ b/net/ethtool/bitset.h
-@@ -31,5 +31,9 @@ int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
+@@ -26,5 +26,9 @@ int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
  			  const struct nlattr *attr,
  			  const char (*const names)[ETH_GSTRING_LEN],
  			  struct netlink_ext_ack *extack, bool *mod);

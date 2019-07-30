@@ -1,4 +1,4 @@
-From dc8dfd855dd02bcf1cc5b5151cb64617488cc99e Mon Sep 17 00:00:00 2001
+From 430db298c65570e43ed8f8f3bf4da75ed9c20bc9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 25/45] ethtool: set private flags with SETTINGS_SET request
@@ -36,10 +36,10 @@ index 856ebf919b2a..e9cb218877bd 100644
  ETHTOOL_SRXFH			n/a
  ETHTOOL_GGRO			ETHTOOL_MSG_SETTINGS_GET
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 71e285cf1dc7..ac3f0b2c9573 100644
+index 373ad2f97224..92e76d9b7ed8 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -778,7 +778,7 @@ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
+@@ -777,7 +777,7 @@ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_FEATURES]		= { .type = NLA_NESTED },
@@ -48,7 +48,7 @@ index 71e285cf1dc7..ac3f0b2c9573 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -1141,6 +1141,41 @@ static int settings_update_features(struct genl_info *info,
+@@ -1134,6 +1134,41 @@ static int settings_update_features(struct genl_info *info,
  	return !!mod;
  }
  
@@ -90,7 +90,7 @@ index 71e285cf1dc7..ac3f0b2c9573 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
-@@ -1199,6 +1234,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -1192,6 +1227,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret)
  			req_mask |= ETHTOOL_IM_SETTINGS_FEATURES;
  	}

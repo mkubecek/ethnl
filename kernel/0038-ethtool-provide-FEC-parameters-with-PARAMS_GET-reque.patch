@@ -1,4 +1,4 @@
-From 5c197b6ecbb367b172435ff3218d8494347a6d1d Mon Sep 17 00:00:00 2001
+From a95f4e9f64a7431680da36682710976fc2fe5a3d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:53:42 +0100
 Subject: [PATCH 38/45] ethtool: provide FEC parameters with PARAMS_GET request
@@ -131,7 +131,7 @@ index 9aa89e9e8988..d50cf13e4457 100644
  
  /* The main entry point in this file.  Called from net/core/dev_ioctl.c */
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index 754471603bd4..56f5037ac074 100644
+index c58df7b90855..d20dd5d9a146 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -12,6 +12,7 @@ static const struct nla_policy params_get_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
@@ -176,7 +176,7 @@ index 754471603bd4..56f5037ac074 100644
  	ethnl_after_ops(dev);
  
  	data->repdata_base.info_mask = req_mask;
-@@ -163,6 +177,13 @@ static int params_eee_size(const struct ethtool_eee *eee, bool compact)
+@@ -162,6 +176,13 @@ static int params_eee_size(const struct ethtool_eee *eee, bool compact)
  	return nla_total_size(len);
  }
  
@@ -190,7 +190,7 @@ index 754471603bd4..56f5037ac074 100644
  static int params_size(const struct ethnl_req_info *req_info)
  {
  	struct params_data *data =
-@@ -187,6 +208,8 @@ static int params_size(const struct ethnl_req_info *req_info)
+@@ -186,6 +207,8 @@ static int params_size(const struct ethnl_req_info *req_info)
  			return ret;
  		len += ret;
  	}
@@ -199,7 +199,7 @@ index 754471603bd4..56f5037ac074 100644
  
  	return len;
  }
-@@ -366,6 +389,23 @@ static int params_fill_eee(struct sk_buff *skb, struct ethtool_eee *data,
+@@ -364,6 +387,23 @@ static int params_fill_eee(struct sk_buff *skb, struct ethtool_eee *data,
  	return ret;
  }
  
@@ -223,7 +223,7 @@ index 754471603bd4..56f5037ac074 100644
  static int params_fill(struct sk_buff *skb,
  		       const struct ethnl_req_info *req_info)
  {
-@@ -400,6 +440,11 @@ static int params_fill(struct sk_buff *skb,
+@@ -398,6 +438,11 @@ static int params_fill(struct sk_buff *skb,
  		if (ret < 0)
  			return ret;
  	}
@@ -235,7 +235,7 @@ index 754471603bd4..56f5037ac074 100644
  
  	return 0;
  }
-@@ -430,6 +475,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
+@@ -428,6 +473,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
  	[ETHTOOL_A_PARAMS_PAUSE]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_CHANNELS]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_PARAMS_EEE]			= { .type = NLA_NESTED },

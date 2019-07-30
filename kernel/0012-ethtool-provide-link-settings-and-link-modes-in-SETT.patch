@@ -1,4 +1,4 @@
-From 77126733487c52a6cc3d2e1b5e622d4c93309f75 Mon Sep 17 00:00:00 2001
+From 8b99362a4da478d880d2a7cf3c9fb80e51b52402 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 12/45] ethtool: provide link settings and link modes in
@@ -32,8 +32,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/ioctl.c                          |  48 ----
  net/ethtool/netlink.c                        |   8 +
  net/ethtool/netlink.h                        |   1 +
- net/ethtool/settings.c                       | 259 +++++++++++++++++++
- 10 files changed, 419 insertions(+), 51 deletions(-)
+ net/ethtool/settings.c                       | 258 +++++++++++++++++++
+ 10 files changed, 418 insertions(+), 51 deletions(-)
  create mode 100644 net/ethtool/settings.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -385,10 +385,10 @@ index dda518608f9c..ca3434d2068b 100644
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
-index 000000000000..306f283ee4ed
+index 000000000000..9d106c5e7bf4
 --- /dev/null
 +++ b/net/ethtool/settings.c
-@@ -0,0 +1,259 @@
+@@ -0,0 +1,258 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include "netlink.h"
@@ -486,7 +486,6 @@ index 000000000000..306f283ee4ed
 +settings_linkmodes_size(const struct ethtool_link_ksettings *ksettings,
 +			bool compact)
 +{
-+	unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
 +	u32 *supported = (u32 *)ksettings->link_modes.supported;
 +	u32 *advertising = (u32 *)ksettings->link_modes.advertising;
 +	u32 *lp_advertising = (u32 *)ksettings->link_modes.lp_advertising;
@@ -496,13 +495,13 @@ index 000000000000..306f283ee4ed
 +	len += nla_total_size(sizeof(u32)) + 2 * nla_total_size(sizeof(u8));
 +	ret = ethnl_bitset32_size(advertising, supported,
 +				  __ETHTOOL_LINK_MODE_MASK_NBITS,
-+				  link_mode_names, flags);
++				  link_mode_names, compact);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
 +	ret = ethnl_bitset32_size(lp_advertising, NULL,
 +				  __ETHTOOL_LINK_MODE_MASK_NBITS,
-+				  link_mode_names, flags);
++				  link_mode_names, compact);
 +	if (ret < 0)
 +		return ret;
 +	len += ret;
@@ -573,7 +572,6 @@ index 000000000000..306f283ee4ed
 +	const u32 *advertising = (const u32 *)ksettings->link_modes.advertising;
 +	const u32 *lp_adv = (const u32 *)ksettings->link_modes.lp_advertising;
 +	const struct ethtool_link_settings *lsettings = &ksettings->base;
-+	unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
 +	struct nlattr *nest;
 +	int ret;
 +
@@ -585,13 +583,14 @@ index 000000000000..306f283ee4ed
 +
 +	ret = ethnl_put_bitset32(skb, ETHTOOL_A_LINKMODES_OURS, advertising,
 +				 supported, __ETHTOOL_LINK_MODE_MASK_NBITS,
-+				 link_mode_names, flags);
++				 link_mode_names, compact);
 +	if (ret < 0)
 +		goto nla_put_failure;
 +	if (!lpm_empty) {
-+		ret = ethnl_put_bitset32(skb, ETHTOOL_A_LINKMODES_PEER, lp_adv,
-+					 NULL, __ETHTOOL_LINK_MODE_MASK_NBITS,
-+					 link_mode_names, flags);
++		ret = ethnl_put_bitset32(skb, ETHTOOL_A_LINKMODES_PEER,
++					 lp_adv, NULL,
++					 __ETHTOOL_LINK_MODE_MASK_NBITS,
++					 link_mode_names, compact);
 +		if (ret < 0)
 +			goto nla_put_failure;
 +	}
@@ -614,8 +613,8 @@ index 000000000000..306f283ee4ed
 +{
 +	const struct settings_data *data =
 +		container_of(req_info, struct settings_data, reqinfo_base);
-+	u32 info_mask = data->repdata_base.info_mask;
 +	bool compact = req_info->global_flags & ETHTOOL_GFLAG_COMPACT_BITSETS;
++	u32 info_mask = data->repdata_base.info_mask;
 +	int ret;
 +
 +	if (info_mask & ETHTOOL_IM_SETTINGS_LINKINFO) {
