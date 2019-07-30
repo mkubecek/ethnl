@@ -1,4 +1,4 @@
-From 1a1b0498a974450aaa29b4fd8fd5908a87b63306 Mon Sep 17 00:00:00 2001
+From dc8dfd855dd02bcf1cc5b5151cb64617488cc99e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 7 Sep 2018 13:23:31 +0200
 Subject: [PATCH 25/45] ethtool: set private flags with SETTINGS_SET request
@@ -36,10 +36,10 @@ index 856ebf919b2a..e9cb218877bd 100644
  ETHTOOL_SRXFH			n/a
  ETHTOOL_GGRO			ETHTOOL_MSG_SETTINGS_GET
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index a5a0ba0ce7cf..f8d57b54203f 100644
+index 71e285cf1dc7..ac3f0b2c9573 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
-@@ -780,7 +780,7 @@ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
+@@ -778,7 +778,7 @@ settings_set_policy[ETHTOOL_A_SETTINGS_MAX + 1] = {
  	[ETHTOOL_A_SETTINGS_WOL]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_DEBUG]		= { .type = NLA_NESTED },
  	[ETHTOOL_A_SETTINGS_FEATURES]		= { .type = NLA_NESTED },
@@ -48,7 +48,7 @@ index a5a0ba0ce7cf..f8d57b54203f 100644
  };
  
  static int ethnl_set_link_ksettings(struct genl_info *info,
-@@ -1144,6 +1144,41 @@ static int settings_update_features(struct genl_info *info,
+@@ -1141,6 +1141,41 @@ static int settings_update_features(struct genl_info *info,
  	return !!mod;
  }
  
@@ -74,8 +74,8 @@ index a5a0ba0ce7cf..f8d57b54203f 100644
 +		return ret;
 +	flags = ops->get_priv_flags(dev);
 +
-+	ret = ethnl_update_bitset32(&flags, nflags, bitset, names, true,
-+				    info->extack, &mod);
++	ret = ethnl_update_bitset32(&flags, nflags, bitset, names, info->extack,
++				    &mod);
 +	if (ret < 0 || !mod)
 +		goto out_free;
 +	ret = ops->set_priv_flags(dev, flags);
@@ -90,7 +90,7 @@ index a5a0ba0ce7cf..f8d57b54203f 100644
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  {
  	struct nlattr *tb[ETHTOOL_A_SETTINGS_MAX + 1];
-@@ -1202,6 +1237,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
+@@ -1199,6 +1234,14 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info)
  		if (ret)
  			req_mask |= ETHTOOL_IM_SETTINGS_FEATURES;
  	}

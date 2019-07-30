@@ -1,4 +1,4 @@
-From 5ac63cd016074e670fb41272fe432f7383c83138 Mon Sep 17 00:00:00 2001
+From 66d4d814bde5a0e9d8bf3ac6d5364c22f43527b1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 12:32:56 +0200
 Subject: [PATCH 10/45] ethtool: provide string sets with STRSET_GET request
@@ -27,8 +27,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/Makefile                         |   2 +-
  net/ethtool/netlink.c                        |   8 +
  net/ethtool/netlink.h                        |   4 +
- net/ethtool/strset.c                         | 453 +++++++++++++++++++
- 7 files changed, 583 insertions(+), 3 deletions(-)
+ net/ethtool/strset.c                         | 422 +++++++++++++++++++
+ 7 files changed, 552 insertions(+), 3 deletions(-)
  create mode 100644 net/ethtool/strset.c
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
@@ -255,10 +255,10 @@ index 660e346c4220..41a63054bdbc 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 3f00879f32f7..68aa67231bc5 100644
+index f45865678b8a..bc4fbee5738d 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -343,4 +343,8 @@ struct get_request_ops {
+@@ -374,4 +374,8 @@ struct get_request_ops {
  	void (*cleanup)(struct ethnl_req_info *req_info);
  };
  
@@ -269,10 +269,10 @@ index 3f00879f32f7..68aa67231bc5 100644
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
 new file mode 100644
-index 000000000000..7403cb738879
+index 000000000000..aafedb16ae29
 --- /dev/null
 +++ b/net/ethtool/strset.c
-@@ -0,0 +1,453 @@
+@@ -0,0 +1,422 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include <linux/ethtool.h>
@@ -280,67 +280,45 @@ index 000000000000..7403cb738879
 +#include "netlink.h"
 +#include "common.h"
 +
-+enum strset_type {
-+	ETH_SS_TYPE_NONE,
-+	ETH_SS_TYPE_LEGACY,
-+	ETH_SS_TYPE_SIMPLE,
-+};
-+
 +struct strset_info {
-+	enum strset_type type;
 +	bool per_dev;
-+	bool free_data;
++	bool free_strings;
 +	unsigned int count;
-+	union {
-+		const char (*legacy)[ETH_GSTRING_LEN];
-+		const char * const *simple;
-+		void *ptr;
-+	} data;
++	const char (*strings)[ETH_GSTRING_LEN];
 +};
 +
 +static const struct strset_info info_template[] = {
 +	[ETH_SS_TEST] = {
-+		.type		= ETH_SS_TYPE_LEGACY,
 +		.per_dev	= true,
 +	},
 +	[ETH_SS_STATS] = {
-+		.type		= ETH_SS_TYPE_LEGACY,
 +		.per_dev	= true,
 +	},
 +	[ETH_SS_PRIV_FLAGS] = {
-+		.type		= ETH_SS_TYPE_LEGACY,
 +		.per_dev	= true,
 +	},
-+	[ETH_SS_NTUPLE_FILTERS] = {
-+		.type		= ETH_SS_TYPE_NONE,
-+	},
 +	[ETH_SS_FEATURES] = {
-+		.type		= ETH_SS_TYPE_LEGACY,
 +		.per_dev	= false,
 +		.count		= ARRAY_SIZE(netdev_features_strings),
-+		.data		= { .legacy = netdev_features_strings },
++		.strings	= netdev_features_strings,
 +	},
 +	[ETH_SS_RSS_HASH_FUNCS] = {
-+		.type		= ETH_SS_TYPE_LEGACY,
 +		.per_dev	= false,
 +		.count		= ARRAY_SIZE(rss_hash_func_strings),
-+		.data		= { .legacy = rss_hash_func_strings },
++		.strings	= rss_hash_func_strings,
 +	},
 +	[ETH_SS_TUNABLES] = {
-+		.type		= ETH_SS_TYPE_LEGACY,
 +		.per_dev	= false,
 +		.count		= ARRAY_SIZE(tunable_strings),
-+		.data		= { .legacy = tunable_strings },
++		.strings	= tunable_strings,
 +	},
 +	[ETH_SS_PHY_STATS] = {
-+		.type		= ETH_SS_TYPE_LEGACY,
 +		.per_dev	= true,
 +	},
 +	[ETH_SS_PHY_TUNABLES] = {
-+		.type		= ETH_SS_TYPE_LEGACY,
 +		.per_dev	= false,
 +		.count		= ARRAY_SIZE(phy_tunable_strings),
-+		.data		= { .legacy = phy_tunable_strings },
++		.strings	= phy_tunable_strings,
 +	},
 +};
 +
@@ -382,7 +360,7 @@ index 000000000000..7403cb738879
 +	if (data->req_ids)
 +		return data->req_ids & (1U << id);
 +	per_dev = data->info[id].per_dev;
-+	if (data->info[id].type == ETH_SS_TYPE_NONE)
++	if (!per_dev && !data->info[id].strings)
 +		return false;
 +
 +	return data->repdata_base.dev ? per_dev : !per_dev;
@@ -469,10 +447,10 @@ index 000000000000..7403cb738879
 +	unsigned int i;
 +
 +	for (i = 0; i < ETH_SS_COUNT; i++)
-+		if (data->info[i].free_data) {
-+			kfree(data->info[i].data.ptr);
-+			data->info[i].data.ptr = NULL;
-+			data->info[i].free_data = false;
++		if (data->info[i].free_strings) {
++			kfree(data->info[i].strings);
++			data->info[i].strings = NULL;
++			data->info[i].free_strings = false;
 +		}
 +}
 +
@@ -505,8 +483,8 @@ index 000000000000..7403cb738879
 +			phy_ethtool_get_strings(dev->phydev, strings);
 +		else
 +			ops->get_strings(dev, id, strings);
-+		info->data.legacy = strings;
-+		info->free_data = true;
++		info->strings = strings;
++		info->free_strings = true;
 +	}
 +	info->count = count;
 +
@@ -543,10 +521,6 @@ index 000000000000..7403cb738879
 +	for (i = 0; i < ETH_SS_COUNT; i++) {
 +		if (!strset_include(data, i) || !data->info[i].per_dev)
 +			continue;
-+		if (WARN_ONCE(data->info[i].type != ETH_SS_TYPE_LEGACY,
-+			      "unexpected string set type %u",
-+			      data->info[i].type))
-+			goto err_ops;
 +
 +		ret = strset_prepare_set(&data->info[i], dev, i,
 +					 data->counts_only);
@@ -575,16 +549,11 @@ index 000000000000..7403cb738879
 +		return nla_total_size(2 * nla_total_size(sizeof(u32)));
 +
 +	for (i = 0; i < info->count; i++) {
-+		const char *str;
-+
-+		if (info->type == ETH_SS_TYPE_LEGACY)
-+			str = info->data.legacy[i];
-+		else
-+			str = info->data.simple[i];
++		const char *str = info->strings[i];
 +
 +		/* ETHTOOL_A_STRING_INDEX, ETHTOOL_A_STRING_VALUE, nest */
 +		len += nla_total_size(nla_total_size(sizeof(u32)) +
-+				      ethnl_str_size(str));
++				      ethnl_strz_size(str));
 +	}
 +	/* ETHTOOL_A_STRINGSET_ID, ETHTOOL_A_STRINGSET_COUNT */
 +	len = 2 * nla_total_size(sizeof(u32)) + nla_total_size(len);
@@ -605,7 +574,7 @@ index 000000000000..7403cb738879
 +	for (i = 0; i < ETH_SS_COUNT; i++) {
 +		const struct strset_info *info = &data->info[i];
 +
-+		if (!strset_include(data, i) || info->type == ETH_SS_TYPE_NONE)
++		if (!strset_include(data, i))
 +			continue;
 +
 +		ret = strset_set_size(info, data->counts_only);
@@ -621,23 +590,23 @@ index 000000000000..7403cb738879
 +static int strset_fill_string(struct sk_buff *skb,
 +			      const struct strset_info *info, u32 idx)
 +{
-+	struct nlattr *string;
++	struct nlattr *string_attr;
 +	const char *value;
 +
-+	if (info->type == ETH_SS_TYPE_LEGACY)
-+		value = info->data.legacy[idx];
-+	else
-+		value = info->data.simple[idx];
++	value = info->strings[idx];
 +
-+	string = nla_nest_start(skb, ETHTOOL_A_STRINGS_STRING);
-+	if (!string)
++	string_attr = nla_nest_start(skb, ETHTOOL_A_STRINGS_STRING);
++	if (!string_attr)
 +		return -EMSGSIZE;
 +	if (nla_put_u32(skb, ETHTOOL_A_STRING_INDEX, idx) ||
-+	    nla_put_string(skb, ETHTOOL_A_STRING_VALUE, value))
-+		return -EMSGSIZE;
-+	nla_nest_end(skb, string);
++	    ethnl_put_strz(skb, ETHTOOL_A_STRING_VALUE, value))
++		goto nla_put_failure;
++	nla_nest_end(skb, string_attr);
 +
 +	return 0;
++nla_put_failure:
++	nla_nest_cancel(skb, string_attr);
++	return -EMSGSIZE;
 +}
 +
 +/* fill one string set into reply */
@@ -645,16 +614,16 @@ index 000000000000..7403cb738879
 +			   u32 id)
 +{
 +	const struct strset_info *info = &data->info[id];
-+	struct nlattr *strings;
-+	struct nlattr *nest;
++	struct nlattr *strings_attr;
++	struct nlattr *stringset_attr;
 +	unsigned int i = (unsigned int)(-1);
 +
-+	if (info->type == ETH_SS_TYPE_NONE)
++	if (!info->per_dev && !info->strings)
 +		return -EOPNOTSUPP;
 +	if (info->count == 0)
 +		return 0;
-+	nest = nla_nest_start(skb, ETHTOOL_A_STRINGSETS_STRINGSET);
-+	if (!nest)
++	stringset_attr = nla_nest_start(skb, ETHTOOL_A_STRINGSETS_STRINGSET);
++	if (!stringset_attr)
 +		return -EMSGSIZE;
 +
 +	if (nla_put_u32(skb, ETHTOOL_A_STRINGSET_ID, id) ||
@@ -662,21 +631,21 @@ index 000000000000..7403cb738879
 +		goto nla_put_failure;
 +
 +	if (!data->counts_only) {
-+		strings = nla_nest_start(skb, ETHTOOL_A_STRINGSET_STRINGS);
-+		if (!strings)
++		strings_attr = nla_nest_start(skb, ETHTOOL_A_STRINGSET_STRINGS);
++		if (!strings_attr)
 +			goto nla_put_failure;
 +		for (i = 0; i < info->count; i++) {
 +			if (strset_fill_string(skb, info, i) < 0)
 +				goto nla_put_failure;
 +		}
-+		nla_nest_end(skb, strings);
++		nla_nest_end(skb, strings_attr);
 +	}
 +
-+	nla_nest_end(skb, nest);
++	nla_nest_end(skb, stringset_attr);
 +	return 0;
 +
 +nla_put_failure:
-+	nla_nest_cancel(skb, nest);
++	nla_nest_cancel(skb, stringset_attr);
 +	return -EMSGSIZE;
 +}
 +

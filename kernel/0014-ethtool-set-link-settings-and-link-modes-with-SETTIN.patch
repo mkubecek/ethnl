@@ -1,4 +1,4 @@
-From bbc728c0a0ab2276d62686957d8d299879292a64 Mon Sep 17 00:00:00 2001
+From 287b79ccb61a4c66ded5651f0d9296e44f20899c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 8 Mar 2019 17:24:23 +0100
 Subject: [PATCH 14/45] ethtool: set link settings and link modes with
@@ -181,7 +181,7 @@ index ed53e07d619e..504ab2f7009c 100644
  
  static noinline_for_stack int ethtool_get_drvinfo(struct net_device *dev,
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 9dd338692303..64196ad60d1b 100644
+index 760cf523bd2c..37cd95273cc6 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -614,6 +614,11 @@ static int ethnl_get_done(struct netlink_callback *cb)
@@ -217,10 +217,10 @@ index 9dd338692303..64196ad60d1b 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index f30eb8cad857..f3f6ac94fe73 100644
+index ffbe4470f9a9..4d426695ab4c 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -351,4 +351,6 @@ struct get_request_ops {
+@@ -382,4 +382,6 @@ struct get_request_ops {
  extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops settings_request_ops;
  
@@ -228,7 +228,7 @@ index f30eb8cad857..f3f6ac94fe73 100644
 +
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 403ae168836c..d7568984546c 100644
+index 306f283ee4ed..aa50eb552cc2 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,99 @@ struct settings_data {
@@ -469,8 +469,8 @@ index 403ae168836c..d7568984546c 100644
 +			&mod);
 +	ret = ethnl_update_bitset(ksettings->link_modes.advertising,
 +				  __ETHTOOL_LINK_MODE_MASK_NBITS,
-+				  tb[ETHTOOL_A_LINKMODES_OURS],
-+				  link_mode_names, false, info->extack, &mod);
++				  tb[ETHTOOL_A_LINKMODES_OURS], link_mode_names,
++				  info->extack, &mod);
 +	if (ret < 0)
 +		return ret;
 +	ethnl_update_u32(&lsettings->speed, tb[ETHTOOL_A_LINKMODES_SPEED],

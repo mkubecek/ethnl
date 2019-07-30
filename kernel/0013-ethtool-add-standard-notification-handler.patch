@@ -1,4 +1,4 @@
-From ca94babc13a97b91090f159c7f5f8e61c45f7ae1 Mon Sep 17 00:00:00 2001
+From d714664dc1c97190151fe35ff4adb2f709af35a7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 29 Jun 2019 19:54:07 +0200
 Subject: [PATCH 13/45] ethtool: add standard notification handler
@@ -18,7 +18,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 76 insertions(+), 1 deletion(-)
 
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 4322a53f00fc..9dd338692303 100644
+index 679f9ba55804..760cf523bd2c 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -7,6 +7,7 @@
@@ -117,10 +117,10 @@ index 4322a53f00fc..9dd338692303 100644
  
  typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 658ea8a32e81..f30eb8cad857 100644
+index ca3434d2068b..ffbe4470f9a9 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -319,7 +319,8 @@ static inline void ethnl_after_ops(struct net_device *dev)
+@@ -350,7 +350,8 @@ static inline void ethnl_after_ops(struct net_device *dev)
   * infrastructure. When used, a pointer to an instance of this structure is to
   * be added to &get_requests array and generic handlers ethnl_get_doit(),
   * ethnl_get_dumpit(), ethnl_get_start() and ethnl_get_done() used in

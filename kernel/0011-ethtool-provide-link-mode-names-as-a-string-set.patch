@@ -1,4 +1,4 @@
-From eab6d8541c6c6d9d7ec2affc7bd90dae0ab22bbf Mon Sep 17 00:00:00 2001
+From 119d6eaa86a1c478bf0d79f36f401d7bffefdac6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:50:07 +0100
 Subject: [PATCH 11/45] ethtool: provide link mode names as a string set
@@ -20,8 +20,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  include/uapi/linux/ethtool.h |  2 +
  net/ethtool/netlink.c        | 83 ++++++++++++++++++++++++++++++++++++
  net/ethtool/netlink.h        |  2 +
- net/ethtool/strset.c         |  6 +++
- 5 files changed, 97 insertions(+)
+ net/ethtool/strset.c         |  5 +++
+ 5 files changed, 96 insertions(+)
 
 diff --git a/include/linux/ethtool.h b/include/linux/ethtool.h
 index 95991e4300bf..5caef65d93d6 100644
@@ -59,7 +59,7 @@ index 4e4e28e77c7a..6ad298224352 100644
  	ETH_SS_COUNT
  };
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 41a63054bdbc..dbb942058ebb 100644
+index 41a63054bdbc..1f09b7bac2db 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -8,6 +8,86 @@ static struct genl_family ethtool_genl_family;
@@ -74,7 +74,7 @@ index 41a63054bdbc..dbb942058ebb 100644
 +#define __DEFINE_SPECIAL_MODE_NAME(_mode, _name) \
 +	[ETHTOOL_LINK_MODE_ ## _mode ## _BIT] = _name
 +
-+const char *const link_mode_names[] = {
++const char link_mode_names[][ETH_GSTRING_LEN] = {
 +	__DEFINE_LINK_MODE_NAME(10, T, Half),
 +	__DEFINE_LINK_MODE_NAME(10, T, Full),
 +	__DEFINE_LINK_MODE_NAME(100, T, Half),
@@ -160,31 +160,30 @@ index 41a63054bdbc..dbb942058ebb 100644
  	if (WARN(ret < 0, "ethtool: genetlink family registration failed"))
  		return ret;
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 68aa67231bc5..bab1c53b4249 100644
+index bc4fbee5738d..dda518608f9c 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -10,6 +10,8 @@
  
  struct ethnl_req_info;
  
-+extern const char *const link_mode_names[];
++extern const char link_mode_names[][ETH_GSTRING_LEN];
 +
  int ethnl_parse_header(struct ethnl_req_info *req_info,
  		       const struct nlattr *nest, struct net *net,
  		       struct netlink_ext_ack *extack,
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index 7403cb738879..9e6c2dc08cc1 100644
+index aafedb16ae29..72ba67ec4f07 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
-@@ -67,6 +67,12 @@ static const struct strset_info info_template[] = {
+@@ -45,6 +45,11 @@ static const struct strset_info info_template[] = {
  		.count		= ARRAY_SIZE(phy_tunable_strings),
- 		.data		= { .legacy = phy_tunable_strings },
+ 		.strings	= phy_tunable_strings,
  	},
 +	[ETH_SS_LINK_MODES] = {
-+		.type		= ETH_SS_TYPE_SIMPLE,
 +		.per_dev	= false,
 +		.count		= __ETHTOOL_LINK_MODE_MASK_NBITS,
-+		.data		= { .simple = link_mode_names },
++		.strings	= link_mode_names,
 +	},
  };
  

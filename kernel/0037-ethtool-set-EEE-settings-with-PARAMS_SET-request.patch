@@ -1,4 +1,4 @@
-From c9e453436bf28f4cae0aa59a7be9f0e74accd23b Mon Sep 17 00:00:00 2001
+From e3e5580532734560040a02ed36dab1af3078a834 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:47:45 +0100
 Subject: [PATCH 37/45] ethtool: set EEE settings with PARAMS_SET request
@@ -57,7 +57,7 @@ index 642b253fb1cb..a65f6886ee5f 100644
  ETHTOOL_SRSSH			n/a
  ETHTOOL_GTUNABLE		n/a
 diff --git a/net/ethtool/params.c b/net/ethtool/params.c
-index c4f0573f9521..61600629ccf7 100644
+index c4f0573f9521..754471603bd4 100644
 --- a/net/ethtool/params.c
 +++ b/net/ethtool/params.c
 @@ -429,7 +429,7 @@ static const struct nla_policy params_set_policy[ETHTOOL_A_PARAMS_MAX + 1] = {
@@ -115,7 +115,7 @@ index c4f0573f9521..61600629ccf7 100644
 +
 +	ret = ethnl_update_bitset32(&data.advertised, 32,
 +				    tb[ETHTOOL_A_EEE_LINK_MODES],
-+				    link_mode_names, false, info->extack, &mod);
++				    link_mode_names, info->extack, &mod);
 +	if (ret < 0)
 +		return ret;
 +	ethnl_update_bool32(&data.eee_enabled, tb[ETHTOOL_A_EEE_ENABLED],

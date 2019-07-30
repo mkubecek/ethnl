@@ -1,4 +1,4 @@
-From 10cd7bd1916c96f7eb35e9ae033e2d13bd6f92a1 Mon Sep 17 00:00:00 2001
+From 95540f66430522016f31ce3d6be33e7740d7183e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 07:53:54 +0100
 Subject: [PATCH 31/45] ethtool: set ring sizes with PARAMS_SET request

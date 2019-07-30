@@ -1,4 +1,4 @@
-From 9405b186664ff2c8bc833dbcda48b22b700e50b7 Mon Sep 17 00:00:00 2001
+From 994463ddb6fc032b05319b811e8ae19bf32985e0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 40/45] ethtool: implement ETHTOOL_MSG_NWAYRST_ACT message
@@ -232,7 +232,7 @@ index d50cf13e4457..0c2f854ad149 100644
  
  static int ethtool_get_link(struct net_device *dev, char __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 28bdeb1a329b..3d68f2606600 100644
+index 2c4fbfdba5cc..66b69dde94bf 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -261,13 +261,13 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
@@ -272,10 +272,10 @@ index 28bdeb1a329b..3d68f2606600 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index c5722a95c662..21921f26f26f 100644
+index be02daf704d7..f1df51779011 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -30,6 +30,8 @@ int ethnl_fill_reply_header(struct sk_buff *skb, struct net_device *dev,
+@@ -29,6 +29,8 @@ int ethnl_fill_reply_header(struct sk_buff *skb, struct net_device *dev,
  struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
  				 u16 hdr_attrtype, struct genl_info *info,
  				 void **ehdrp);
@@ -284,7 +284,7 @@ index c5722a95c662..21921f26f26f 100644
  
  #if BITS_PER_LONG == 64 && defined(__BIG_ENDIAN)
  void ethnl_bitmap_to_u32(unsigned long *bitmap, unsigned int nwords);
-@@ -364,5 +366,12 @@ extern const struct get_request_ops params_request_ops;
+@@ -394,5 +396,12 @@ extern const struct get_request_ops params_request_ops;
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);

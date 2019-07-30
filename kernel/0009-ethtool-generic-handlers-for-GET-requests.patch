@@ -1,4 +1,4 @@
-From 325f8616003982c0996ee13e00709276e0cb2e44 Mon Sep 17 00:00:00 2001
+From babd132f1c5ce45ddf666e8b6e4887c2926fc720 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 24 Jul 2018 21:22:00 +0200
 Subject: [PATCH 09/45] ethtool: generic handlers for GET requests
@@ -381,10 +381,10 @@ index 196854de828f..660e346c4220 100644
  
  typedef void (*ethnl_notify_handler_t)(struct net_device *dev,
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 2b07090bacc2..3f00879f32f7 100644
+index 22bd22b3910e..f45865678b8a 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -197,8 +197,32 @@ static inline unsigned int ethnl_reply_header_size(void)
+@@ -228,8 +228,32 @@ static inline unsigned int ethnl_reply_header_size(void)
  			      nla_total_size(IFNAMSIZ));
  }
  
@@ -417,7 +417,7 @@ index 2b07090bacc2..3f00879f32f7 100644
   * @dev:          network device the request is for (may be null)
   * @req_mask:     request mask, bitmap of requested information
   * @global_flags: request flags common for all request types
-@@ -208,6 +232,7 @@ static inline unsigned int ethnl_reply_header_size(void)
+@@ -239,6 +263,7 @@ static inline unsigned int ethnl_reply_header_size(void)
   * This is a common base, additional members may follow after this structure.
   */
  struct ethnl_req_info {
@@ -425,7 +425,7 @@ index 2b07090bacc2..3f00879f32f7 100644
  	struct net_device		*dev;
  	u32				req_mask;
  	u32				global_flags;
-@@ -215,4 +240,107 @@ struct ethnl_req_info {
+@@ -246,4 +271,107 @@ struct ethnl_req_info {
  	bool				privileged;
  };
  

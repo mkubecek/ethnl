@@ -1,4 +1,4 @@
-From 9ca23d5a34236695938971a339bea47e7556aa1a Mon Sep 17 00:00:00 2001
+From 77126733487c52a6cc3d2e1b5e622d4c93309f75 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 12/45] ethtool: provide link settings and link modes in
@@ -347,7 +347,7 @@ index b35366dd9997..ed53e07d619e 100644
   * set. legacy_settings always updated (best effort)
   */
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index dbb942058ebb..4322a53f00fc 100644
+index 1f09b7bac2db..679f9ba55804 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -282,6 +282,7 @@ struct ethnl_dump_ctx {
@@ -373,10 +373,10 @@ index dbb942058ebb..4322a53f00fc 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index bab1c53b4249..658ea8a32e81 100644
+index dda518608f9c..ca3434d2068b 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -348,5 +348,6 @@ struct get_request_ops {
+@@ -379,5 +379,6 @@ struct get_request_ops {
  /* request handlers */
  
  extern const struct get_request_ops strset_request_ops;
@@ -385,7 +385,7 @@ index bab1c53b4249..658ea8a32e81 100644
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
 new file mode 100644
-index 000000000000..403ae168836c
+index 000000000000..306f283ee4ed
 --- /dev/null
 +++ b/net/ethtool/settings.c
 @@ -0,0 +1,259 @@
@@ -572,8 +572,8 @@ index 000000000000..403ae168836c
 +	const u32 *supported = (const u32 *)ksettings->link_modes.supported;
 +	const u32 *advertising = (const u32 *)ksettings->link_modes.advertising;
 +	const u32 *lp_adv = (const u32 *)ksettings->link_modes.lp_advertising;
-+	const unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
 +	const struct ethtool_link_settings *lsettings = &ksettings->base;
++	unsigned int flags = compact ? ETHNL_BITSET_COMPACT : 0;
 +	struct nlattr *nest;
 +	int ret;
 +

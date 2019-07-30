@@ -1,4 +1,4 @@
-From e53b3cacad265d021a68729efd3907fef3e7f415 Mon Sep 17 00:00:00 2001
+From 57c21aa39f529a352e19c95368dacfd184db6b9c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 4 Sep 2018 07:36:33 +0200
 Subject: [PATCH 42/45] ethtool: implement ETHTOOL_MSG_RESET_ACT message
@@ -12,12 +12,12 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  29 ++-
  include/uapi/linux/ethtool.h                 |   3 +
  include/uapi/linux/ethtool_netlink.h         |  20 ++
- net/ethtool/actions.c                        | 249 +++++++++++++++++++
+ net/ethtool/actions.c                        | 248 +++++++++++++++++++
  net/ethtool/ioctl.c                          |   6 +
  net/ethtool/netlink.c                        |   6 +
  net/ethtool/netlink.h                        |   4 +
- net/ethtool/strset.c                         |   6 +
- 8 files changed, 322 insertions(+), 1 deletion(-)
+ net/ethtool/strset.c                         |   5 +
+ 8 files changed, 320 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 583ed534ba79..46bfe80baa13 100644
@@ -154,7 +154,7 @@ index 6daac600d02e..730a51406e7a 100644
  #define ETHTOOL_GENL_NAME "ethtool"
  #define ETHTOOL_GENL_VERSION 1
 diff --git a/net/ethtool/actions.c b/net/ethtool/actions.c
-index 24c1d0d63ba2..2ff48d574c7b 100644
+index 24c1d0d63ba2..35dc46ef74a3 100644
 --- a/net/ethtool/actions.c
 +++ b/net/ethtool/actions.c
 @@ -2,6 +2,7 @@
@@ -165,14 +165,14 @@ index 24c1d0d63ba2..2ff48d574c7b 100644
  
  /* ACT_NWAY_RST */
  
-@@ -171,3 +172,251 @@ int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info)
+@@ -171,3 +172,250 @@ int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info)
  	dev_put(dev);
  	return ret;
  }
 +
 +/* ACT_RESET */
 +
-+const char *const reset_flag_names[] = {
++const char reset_flag_names[][ETH_GSTRING_LEN] = {
 +	"mgmt",
 +	"irq",
 +	"dma",
@@ -317,8 +317,7 @@ index 24c1d0d63ba2..2ff48d574c7b 100644
 +	flags = 0;
 +	ret = ethnl_update_bitset32(&flags, ETH_RESET_NFLAGS,
 +				    tb[ETHTOOL_A_RESET_SHARED],
-+				    reset_flag_names, false, info->extack,
-+				    &mod);
++				    reset_flag_names, info->extack, &mod);
 +	if (ret < 0)
 +		return ret;
 +	*val |= (flags << ETH_RESET_SHARED_SHIFT);
@@ -329,8 +328,8 @@ index 24c1d0d63ba2..2ff48d574c7b 100644
 +		flags = 0;
 +		ret = ethnl_update_bitset32(&flags, ETH_RESET_NFLAGS,
 +					    tb[ETHTOOL_A_RESET_DEDICATED],
-+					    reset_flag_names, false,
-+					    info->extack, &mod);
++					    reset_flag_names, info->extack,
++					    &mod);
 +		if (ret < 0)
 +			return ret;
 +		*val |= flags;
@@ -445,7 +444,7 @@ index 4c4682ef5e08..aa96aae96e34 100644
  	if (copy_to_user(useraddr, &reset, sizeof(reset)))
  		return -EFAULT;
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 5f4970d5712b..37aa20d34ccc 100644
+index 53c232495101..9da40b3a37d7 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -694,6 +694,7 @@ static const ethnl_notify_handler_t ethnl_notify_handlers[] = {
@@ -469,18 +468,18 @@ index 5f4970d5712b..37aa20d34ccc 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 4e680235297b..a3f5dfa64193 100644
+index 543286156df7..0c99ab291d80 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -20,6 +20,7 @@ extern const char *const tstamp_tx_type_labels[];
- extern const char *const tstamp_rx_filter_labels[];
- 
- extern const char *const link_mode_names[];
-+extern const char *const reset_flag_names[];
+@@ -19,6 +19,7 @@ extern const char link_mode_names[][ETH_GSTRING_LEN];
+ extern const char so_timestamping_labels[][ETH_GSTRING_LEN];
+ extern const char tstamp_tx_type_labels[][ETH_GSTRING_LEN];
+ extern const char tstamp_rx_filter_labels[][ETH_GSTRING_LEN];
++extern const char reset_flag_names[][ETH_GSTRING_LEN];
  
  int ethnl_parse_header(struct ethnl_req_info *req_info,
  		       const struct nlattr *nest, struct net *net,
-@@ -368,6 +369,7 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
+@@ -398,6 +399,7 @@ int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_params(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_nway_rst(struct sk_buff *skb, struct genl_info *info);
  int ethnl_act_phys_id(struct sk_buff *skb, struct genl_info *info);
@@ -488,7 +487,7 @@ index 4e680235297b..a3f5dfa64193 100644
  
  /* notify handlers */
  
-@@ -376,5 +378,7 @@ void ethnl_nwayrst_notify(struct net_device *dev,
+@@ -406,5 +408,7 @@ void ethnl_nwayrst_notify(struct net_device *dev,
  			  u32 req_mask, const void *data);
  void ethnl_physid_notify(struct net_device *dev, struct netlink_ext_ack *extack,
  			 unsigned int cmd, u32 req_mask, const void *data);
@@ -497,18 +496,17 @@ index 4e680235297b..a3f5dfa64193 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index b3ccceb2c017..e13d9b5810fd 100644
+index c9480b1e8c65..fbda4057dc88 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
-@@ -91,6 +91,12 @@ static const struct strset_info info_template[] = {
+@@ -65,6 +65,11 @@ static const struct strset_info info_template[] = {
  		.count		= __HWTSTAMP_FILTER_COUNT,
- 		.data		= { .simple = tstamp_rx_filter_labels },
+ 		.strings	= tstamp_rx_filter_labels,
  	},
 +	[ETH_SS_RESET_FLAGS] = {
-+		.type		= ETH_SS_TYPE_SIMPLE,
 +		.per_dev	= false,
 +		.count		= ETH_RESET_NFLAGS,
-+		.data		= { .simple = reset_flag_names },
++		.strings	= reset_flag_names,
 +	},
  };
  

@@ -1,4 +1,4 @@
-From 8c6beac5445b3660f46d26cb8d6b76f1ce65afce Mon Sep 17 00:00:00 2001
+From 90be09cd7778a6d405584118b3a1c216fd147ba3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 10 Nov 2017 15:34:56 +0100
 Subject: [PATCH 05/45] ethtool: helper functions for netlink interface
@@ -9,10 +9,10 @@ structure members from request attributes (to be used for *_SET requests).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- include/uapi/linux/ethtool_netlink.h |  23 ++++
- net/ethtool/netlink.c                | 175 +++++++++++++++++++++++
- net/ethtool/netlink.h                | 199 +++++++++++++++++++++++++++
- 3 files changed, 397 insertions(+)
+ include/uapi/linux/ethtool_netlink.h |  23 +++
+ net/ethtool/netlink.c                | 175 ++++++++++++++++++++
+ net/ethtool/netlink.h                | 230 +++++++++++++++++++++++++++
+ 3 files changed, 428 insertions(+)
 
 diff --git a/include/uapi/linux/ethtool_netlink.h b/include/uapi/linux/ethtool_netlink.h
 index 9a0fbd4f85d9..51bbcd3e780d 100644
@@ -237,10 +237,10 @@ index 3c98b41f04e5..6db9ec9fc4c7 100644
  
  static const struct genl_ops ethtool_genl_ops[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 257ae55ccc82..7c0fed25181f 100644
+index 257ae55ccc82..b85acc9d09cd 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -6,5 +6,204 @@
+@@ -6,5 +6,235 @@
  #include <linux/ethtool_netlink.h>
  #include <linux/netdevice.h>
  #include <net/genetlink.h>
@@ -258,9 +258,40 @@ index 257ae55ccc82..7c0fed25181f 100644
 +				 u16 hdr_attrtype, struct genl_info *info,
 +				 void **ehdrp);
 +
-+static inline int ethnl_str_size(const char *s)
++/**
++ * ethnl_strz_size() - calculate attribute length for fixed size string
++ * @s: ETH_GSTRING_LEN sized string (may not be null terminated)
++ *
++ * Return: total length of an attribute with null terminated string from @s
++ */
++static inline int ethnl_strz_size(const char *s)
 +{
-+	return nla_total_size(strlen(s) + 1);
++	return nla_total_size(strnlen(s, ETH_GSTRING_LEN) + 1);
++}
++
++/**
++ * ethnl_put_strz() - put string attribute with fixed size string
++ * @skb:     skb with the message
++ * @attrype: attribute type
++ * @s:       ETH_GSTRING_LEN sized string (may not be null terminated)
++ *
++ * Puts an attribute with null terminated string from @s into the message.
++ *
++ * Return: 0 on success, negative error code on failure
++ */
++static inline int ethnl_put_strz(struct sk_buff *skb, u16 attrtype,
++				 const char *s)
++{
++	unsigned int len = strnlen(s, ETH_GSTRING_LEN);
++	struct nlattr *attr;
++
++	attr = nla_reserve(skb, attrtype, len + 1);
++	if (!attr)
++		return -EMSGSIZE;
++
++	memcpy(nla_data(attr), s, len);
++	((char *)nla_data(attr))[len] = '\0';
++	return 0;
 +}
 +
 +/**

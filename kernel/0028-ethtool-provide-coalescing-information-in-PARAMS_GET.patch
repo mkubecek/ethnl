@@ -1,4 +1,4 @@
-From f57a4b69a0a3801b848638003fa1ef6f979f6b8d Mon Sep 17 00:00:00 2001
+From 0b81a26daa41a0c55efd8222a8ee832801e94cdc Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 20:41:44 +0100
 Subject: [PATCH 28/45] ethtool: provide coalescing information in PARAMS_GET
@@ -188,7 +188,7 @@ index 07e824c5eafa..c886f3d2c184 100644
 -ethtool_nl-y	:= netlink.o bitset.o strset.o settings.o info.o
 +ethtool_nl-y	:= netlink.o bitset.o strset.o settings.o info.o params.o
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 090cebe8e3ab..b3261087fd1b 100644
+index aa30ceba41b6..5510d9a8afcb 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -297,6 +297,7 @@ static const struct get_request_ops *get_requests[__ETHTOOL_MSG_USER_CNT] = {
@@ -214,10 +214,10 @@ index 090cebe8e3ab..b3261087fd1b 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index b01c9ca6637f..647d47715bde 100644
+index f4b45807a724..14f09002d2a0 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -360,6 +360,7 @@ struct get_request_ops {
+@@ -390,6 +390,7 @@ struct get_request_ops {
  extern const struct get_request_ops strset_request_ops;
  extern const struct get_request_ops settings_request_ops;
  extern const struct get_request_ops info_request_ops;

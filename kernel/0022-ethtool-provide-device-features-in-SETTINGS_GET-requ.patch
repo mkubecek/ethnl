@@ -1,4 +1,4 @@
-From ad886714e68f69c092cf7a453edcb21d285454de Mon Sep 17 00:00:00 2001
+From 438ed9bf013e69ff2b67ca208d3af532b2d4858f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 27 Jul 2018 15:42:51 +0200
 Subject: [PATCH 22/45] ethtool: provide device features in SETTINGS_GET
@@ -197,7 +197,7 @@ index 2f345eb7b694..16482a266eec 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 64196ad60d1b..0e47692c9520 100644
+index 37cd95273cc6..020fe8fe0842 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -705,6 +705,30 @@ void ethtool_notify(struct net_device *dev, struct netlink_ext_ack *extack,
@@ -243,7 +243,7 @@ index 64196ad60d1b..0e47692c9520 100644
  
  subsys_initcall(ethnl_init);
 diff --git a/net/ethtool/settings.c b/net/ethtool/settings.c
-index 95fbd9a94471..efa0690a9aa9 100644
+index 97e1ad72db51..361ce9553f8d 100644
 --- a/net/ethtool/settings.c
 +++ b/net/ethtool/settings.c
 @@ -14,6 +14,13 @@ struct settings_data {
@@ -313,7 +313,7 @@ index 95fbd9a94471..efa0690a9aa9 100644
  
 +static int settings_features_size(const struct settings_data *data)
 +{
-+	unsigned int flags = ETHNL_BITSET_LEGACY_NAMES;
++	unsigned int flags = 0;
 +	int len = 0, ret;
 +
 +	if (data->reqinfo_base.global_flags & ETHTOOL_GFLAG_COMPACT_BITSETS)
@@ -370,7 +370,7 @@ index 95fbd9a94471..efa0690a9aa9 100644
 +static int settings_fill_features(struct sk_buff *skb,
 +				  const struct settings_data *data)
 +{
-+	unsigned int flags = ETHNL_BITSET_LEGACY_NAMES;
++	unsigned int flags = 0;
 +	struct nlattr *feat_attr;
 +	int ret;
 +

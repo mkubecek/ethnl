@@ -1,4 +1,4 @@
-From a17a16a06f4e8abaca1f046825ba4ae35c8d818d Mon Sep 17 00:00:00 2001
+From f40b36800119fd8d76d90afc702f354864913bf1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 13 Nov 2017 12:58:03 +0100
 Subject: [PATCH 06/45] ethtool: netlink bitset handling
@@ -33,10 +33,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Documentation/networking/ethtool-netlink.txt |  61 ++
  include/uapi/linux/ethtool_netlink.h         |  35 +
  net/ethtool/Makefile                         |   2 +-
- net/ethtool/bitset.c                         | 729 +++++++++++++++++++
- net/ethtool/bitset.h                         |  31 +
+ net/ethtool/bitset.c                         | 726 +++++++++++++++++++
+ net/ethtool/bitset.h                         |  35 +
  net/ethtool/netlink.h                        |   9 +
- 6 files changed, 866 insertions(+), 1 deletion(-)
+ 6 files changed, 867 insertions(+), 1 deletion(-)
  create mode 100644 net/ethtool/bitset.c
  create mode 100644 net/ethtool/bitset.h
 
@@ -170,10 +170,10 @@ index f30e0da88be5..482fdb9380fa 100644
 +ethtool_nl-y	:= netlink.o bitset.o
 diff --git a/net/ethtool/bitset.c b/net/ethtool/bitset.c
 new file mode 100644
-index 000000000000..60c882a5e17c
+index 000000000000..9e5c05452058
 --- /dev/null
 +++ b/net/ethtool/bitset.c
-@@ -0,0 +1,729 @@
+@@ -0,0 +1,726 @@
 +// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 +
 +#include <linux/ethtool_netlink.h>
@@ -330,24 +330,12 @@ index 000000000000..60c882a5e17c
 +	return map[index / 32] & (1U << (index % 32));
 +}
 +
-+static const char *ethnl_bit_name(const void *const names, bool legacy,
-+				  unsigned int idx)
-+{
-+	const char (*const legacy_names)[ETH_GSTRING_LEN] =
-+	       (const char (*const)[ETH_GSTRING_LEN])names;
-+	const char *const *simple_names = names;
-+
-+	if (!names)
-+		return NULL;
-+	return legacy ? legacy_names[idx] : simple_names[idx];
-+}
-+
 +/**
 + * ethnl_bitset32_size() - Calculate size of bitset nested attribute
 + * @val:   value bitmap (u32 based)
 + * @mask:  mask bitmap (u32 based, optional)
 + * @nbits: bit length of the bitset
-+ * @names: array of bit names (legacy or simple const char *, optional)
++ * @names: array of bit names (optional)
 + * @flags: combination of ETHNL_BITSET_* flags
 + *
 + * Estimate length of netlink attribute composed by a later call to
@@ -356,9 +344,9 @@ index 000000000000..60c882a5e17c
 + * Return: negative error code or attribute length estimate
 + */
 +int ethnl_bitset32_size(const u32 *val, const u32 *mask, unsigned int nbits,
-+			const void *names, unsigned int flags)
++			const char (*const names)[ETH_GSTRING_LEN],
++			unsigned int flags)
 +{
-+	const bool legacy = flags & ETHNL_BITSET_LEGACY_NAMES;
 +	const bool compact = flags & ETHNL_BITSET_COMPACT;
 +	unsigned int len = 0;
 +
@@ -378,7 +366,7 @@ index 000000000000..60c882a5e17c
 +		unsigned int bit_len, i;
 +
 +		for (i = 0; i < nbits; i++) {
-+			const char *name = ethnl_bit_name(names, legacy, i);
++			const char *name = names ? names[i] : NULL;
 +
 +			if (!__bitmap32_test_bit(mask ?: val, i))
 +				continue;
@@ -386,7 +374,7 @@ index 000000000000..60c882a5e17c
 +			bit_len = nla_total_size(sizeof(u32));
 +			/* name */
 +			if (name)
-+				bit_len += ethnl_str_size(name);
++				bit_len += ethnl_strz_size(name);
 +			/* value */
 +			if (mask && __bitmap32_test_bit(val, i))
 +				bit_len += nla_total_size(0);
@@ -409,7 +397,7 @@ index 000000000000..60c882a5e17c
 + * @val:      value bitmap (u32 based)
 + * @mask:     mask bitmap (u32 based, optional)
 + * @nbits:    bit length of the bitset
-+ * @names:    array of bit names (legacy or simple const char *, optional)
++ * @names:    array of bit names (optional)
 + * @flags:    combination of ETHNL_BITSET_* flags
 + *
 + * Compose a nested attribute representing a bitset. If @mask is null, simple
@@ -419,10 +407,10 @@ index 000000000000..60c882a5e17c
 + * Return:    0 on success, negative error value on error
 + */
 +int ethnl_put_bitset32(struct sk_buff *skb, int attrtype, const u32 *val,
-+		       const u32 *mask, unsigned int nbits, const void *names,
++		       const u32 *mask, unsigned int nbits,
++		       const char (*const names)[ETH_GSTRING_LEN],
 +		       unsigned int flags)
 +{
-+	const bool legacy = flags & ETHNL_BITSET_LEGACY_NAMES;
 +	const bool compact = flags & ETHNL_BITSET_COMPACT;
 +	struct nlattr *nest;
 +	struct nlattr *attr;
@@ -453,7 +441,7 @@ index 000000000000..60c882a5e17c
 +			if (!attr)
 +				goto nla_put_failure;
 +			dst = nla_data(attr);
-+			memcpy(dst, val, nbytes);
++			memcpy(dst, mask, nbytes);
 +			if (nbits % 32)
 +				dst[nwords - 1] &= __lower_bits(nbits);
 +		}
@@ -465,7 +453,7 @@ index 000000000000..60c882a5e17c
 +		if (!bits)
 +			goto nla_put_failure;
 +		for (i = 0; i < nbits; i++) {
-+			const char *name = ethnl_bit_name(names, legacy, i);
++			const char *name = names ? names[i] : NULL;
 +
 +			if (!__bitmap32_test_bit(mask ?: val, i))
 +				continue;
@@ -474,7 +462,7 @@ index 000000000000..60c882a5e17c
 +			    nla_put_u32(skb, ETHTOOL_A_BIT_INDEX, i))
 +				goto nla_put_failure;
 +			if (name &&
-+			    nla_put_string(skb, ETHTOOL_A_BIT_NAME, name))
++			    ethnl_put_strz(skb, ETHTOOL_A_BIT_NAME, name))
 +				goto nla_put_failure;
 +			if (mask && __bitmap32_test_bit(val, i) &&
 +			    nla_put_flag(skb, ETHTOOL_A_BIT_VALUE))
@@ -539,16 +527,19 @@ index 000000000000..60c882a5e17c
 +	return 0;
 +}
 +
-+static int ethnl_name_to_idx(const void *names, bool legacy,
++static int ethnl_name_to_idx(const char (*const names)[ETH_GSTRING_LEN],
 +			     unsigned int n_names, const char *name,
 +			     unsigned int name_len)
 +{
 +	unsigned int i;
 +
-+	for (i = 0; i < n_names; i++) {
-+		const char *bname = ethnl_bit_name(names, legacy, i);
++	if (!names)
++		return n_names;
 +
-+		if (bname && !strncmp(bname, name, name_len) &&
++	for (i = 0; i < n_names; i++) {
++		const char *bname = names[i];
++
++		if (!strncmp(bname, name, name_len) &&
 +		    strlen(bname) <= name_len)
 +			return i;
 +	}
@@ -558,7 +549,7 @@ index 000000000000..60c882a5e17c
 +
 +static int ethnl_parse_bit(unsigned int *index, bool *val, unsigned int nbits,
 +			   const struct nlattr *bit_attr, bool is_list,
-+			   const void *names, bool legacy,
++			   const char (*const names)[ETH_GSTRING_LEN],
 +			   struct netlink_ext_ack *extack)
 +{
 +	struct nlattr *tb[ETHTOOL_A_BIT_MAX + 1];
@@ -584,7 +575,7 @@ index 000000000000..60c882a5e17c
 +					    "bit index too high");
 +			return -EOPNOTSUPP;
 +		}
-+		name = ethnl_bit_name(names, legacy, idx);
++		name = names ? names[idx] : NULL; 
 +		if (tb[ETHTOOL_A_BIT_NAME] && name &&
 +		    strncmp(nla_data(tb[ETHTOOL_A_BIT_NAME]), name,
 +			    nla_len(tb[ETHTOOL_A_BIT_NAME]))) {
@@ -593,7 +584,7 @@ index 000000000000..60c882a5e17c
 +			return -EINVAL;
 +		}
 +	} else if (tb[ETHTOOL_A_BIT_NAME]) {
-+		idx = ethnl_name_to_idx(names, legacy, nbits,
++		idx = ethnl_name_to_idx(names, nbits,
 +					nla_data(tb[ETHTOOL_A_BIT_NAME]),
 +					nla_len(tb[ETHTOOL_A_BIT_NAME]));
 +		if (idx >= nbits) {
@@ -613,12 +604,11 @@ index 000000000000..60c882a5e17c
 +	return 0;
 +}
 +
-+static int ethnl_update_bitset32_verbose(u32 *bitmap, unsigned int nbits,
-+					 const struct nlattr *attr,
-+					 struct nlattr **tb, const void *names,
-+					 bool legacy,
-+					 struct netlink_ext_ack *extack,
-+					 bool *mod)
++static int
++ethnl_update_bitset32_verbose(u32 *bitmap, unsigned int nbits,
++			      const struct nlattr *attr, struct nlattr **tb,
++			      const char (*const names)[ETH_GSTRING_LEN],
++			      struct netlink_ext_ack *extack, bool *mod)
 +{
 +	struct nlattr *bit_attr;
 +	bool is_list;
@@ -642,7 +632,7 @@ index 000000000000..60c882a5e17c
 +		unsigned int idx;
 +
 +		ret = ethnl_parse_bit(&idx, &new_val, nbits, bit_attr, is_list,
-+				      names, legacy, extack);
++				      names, extack);
 +		if (ret < 0)
 +			return ret;
 +		old_val = bitmap[idx / 32] & ((u32)1 << (idx % 32));
@@ -720,8 +710,6 @@ index 000000000000..60c882a5e17c
 + * @nbits:   size of the updated bitmap in bits
 + * @attr:    nest attribute to parse and apply
 + * @names:   array of bit names; may be null for compact format
-+ * @legacy:  true if @names is ioctl style array of char[32], false if it is
-+ *           a simple array of (char *) strings
 + * @extack:  extack for error reporting
 + * @mod:     set this to true if bitmap is modified, leave as it is if not
 + *
@@ -733,9 +721,9 @@ index 000000000000..60c882a5e17c
 + * Return:   negative error code on failure, 0 on success
 + */
 +int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
-+			  const struct nlattr *attr, const void *names,
-+			  bool legacy, struct netlink_ext_ack *extack,
-+			  bool *mod)
++			  const struct nlattr *attr,
++			  const char (*const names)[ETH_GSTRING_LEN],
++			  struct netlink_ext_ack *extack, bool *mod)
 +{
 +	struct nlattr *tb[ETHTOOL_A_BITSET_MAX + 1];
 +	unsigned int change_bits;
@@ -751,8 +739,7 @@ index 000000000000..60c882a5e17c
 +
 +	if (tb[ETHTOOL_A_BITSET_BITS])
 +		return ethnl_update_bitset32_verbose(bitmap, nbits, attr, tb,
-+						     names, legacy, extack,
-+						     mod);
++						     names, extack, mod);
 +	ret = ethnl_compact_sanity_checks(nbits, attr, tb, extack);
 +	if (ret < 0)
 +		return ret;
@@ -777,7 +764,9 @@ index 000000000000..60c882a5e17c
 +#if BITS_PER_LONG == 64 && defined(__BIG_ENDIAN)
 +
 +int ethnl_bitset_size(const unsigned long *val, const unsigned long *mask,
-+		      unsigned int nbits, const void *names, unsigned int flags)
++		      unsigned int nbits,
++		      const char (*const names)[ETH_GSTRING_LEN],
++		      unsigned int flags)
 +{
 +	u32 small_mask32[__SMALL_BITMAP_WORDS];
 +	u32 small_val32[__SMALL_BITMAP_WORDS];
@@ -812,7 +801,9 @@ index 000000000000..60c882a5e17c
 +
 +int ethnl_put_bitset(struct sk_buff *skb, int attrtype,
 +		     const unsigned long *val, const unsigned long *mask,
-+		     unsigned int nbits, const void *names, unsigned int flags)
++		     unsigned int nbits,
++		     const char (*const names)[ETH_GSTRING_LEN],
++		     unsigned int flags)
 +{
 +	u32 small_mask32[__SMALL_BITMAP_WORDS];
 +	u32 small_val32[__SMALL_BITMAP_WORDS];
@@ -847,8 +838,9 @@ index 000000000000..60c882a5e17c
 +}
 +
 +int ethnl_update_bitset(unsigned long *bitmap, unsigned int nbits,
-+			const struct nlattr *attr, const void *names,
-+			bool legacy, struct netlink_ext_ack *extack, bool *mod)
++			const struct nlattr *attr,
++			const char (*const names)[ETH_GSTRING_LEN],
++			struct netlink_ext_ack *extack, bool *mod)
 +{
 +	u32 small_bitmap32[__SMALL_BITMAP_WORDS];
 +	u32 *bitmap32 = small_bitmap32;
@@ -864,8 +856,8 @@ index 000000000000..60c882a5e17c
 +	}
 +
 +	bitmap_to_arr32(bitmap32, bitmap, nbits);
-+	ret = ethnl_update_bitset32(bitmap32, nbits, attr, names, legacy,
-+				    extack, &u32_mod);
++	ret = ethnl_update_bitset32(bitmap32, nbits, attr, names, extack,
++				    &u32_mod);
 +	if (ulong_mod) {
 +		bitmap_from_arr32(bitmap, bitmap32, nbits);
 +		*mod = true;
@@ -880,7 +872,9 @@ index 000000000000..60c882a5e17c
 +#else
 +
 +int ethnl_bitset_size(const unsigned long *val, const unsigned long *mask,
-+		      unsigned int nbits, const void *names, unsigned int flags)
++		      unsigned int nbits,
++		      const char (*const names)[ETH_GSTRING_LEN],
++		      unsigned int flags)
 +{
 +	return ethnl_bitset32_size((const u32 *)val, (const u32 *)mask, nbits,
 +				   names, flags);
@@ -888,27 +882,30 @@ index 000000000000..60c882a5e17c
 +
 +int ethnl_put_bitset(struct sk_buff *skb, int attrtype,
 +		     const unsigned long *val, const unsigned long *mask,
-+		     unsigned int nbits, const void *names, unsigned int flags)
++		     unsigned int nbits,
++		     const char (*const names)[ETH_GSTRING_LEN],
++		     unsigned int flags)
 +{
 +	return ethnl_put_bitset32(skb, attrtype, (const u32 *)val,
 +				  (const u32 *)mask, nbits, names, flags);
 +}
 +
 +int ethnl_update_bitset(unsigned long *bitmap, unsigned int nbits,
-+			const struct nlattr *attr, const void *names,
-+			bool legacy, struct netlink_ext_ack *extack, bool *mod)
++			const struct nlattr *attr,
++			const char (*const names)[ETH_GSTRING_LEN],
++			struct netlink_ext_ack *extack, bool *mod)
 +{
-+	return ethnl_update_bitset32((u32 *)bitmap, nbits, attr, names, legacy,
-+				     extack, mod);
++	return ethnl_update_bitset32((u32 *)bitmap, nbits, attr, names, extack,
++				     mod);
 +}
 +
 +#endif /* BITS_PER_LONG == 64 && defined(__BIG_ENDIAN) */
 diff --git a/net/ethtool/bitset.h b/net/ethtool/bitset.h
 new file mode 100644
-index 000000000000..d6929306baa9
+index 000000000000..6dba5f7473a7
 --- /dev/null
 +++ b/net/ethtool/bitset.h
-@@ -0,0 +1,31 @@
+@@ -0,0 +1,35 @@
 +/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 +
 +#ifndef _NET_ETHTOOL_BITSET_H
@@ -916,32 +913,36 @@ index 000000000000..d6929306baa9
 +
 +/* generate a compact format bitset */
 +#define ETHNL_BITSET_COMPACT		BIT(0)
-+/* generate a bit list */
-+#define ETHNL_BITSET_LEGACY_NAMES	BIT(1)
 +
 +int ethnl_bitset_is_compact(const struct nlattr *bitset, bool *compact);
 +int ethnl_bitset_size(const unsigned long *val, const unsigned long *mask,
-+		      unsigned int nbits, const void *names,
++		      unsigned int nbits,
++		      const char (*const names)[ETH_GSTRING_LEN],
 +		      unsigned int flags);
 +int ethnl_bitset32_size(const u32 *val, const u32 *mask, unsigned int nbits,
-+			const void *names, unsigned int flags);
++			const char (*const names)[ETH_GSTRING_LEN],
++			unsigned int flags);
 +int ethnl_put_bitset(struct sk_buff *skb, int attrtype,
 +		     const unsigned long *val, const unsigned long *mask,
-+		     unsigned int nbits, const void *names, unsigned int flags);
++		     unsigned int nbits,
++		     const char (*const names)[ETH_GSTRING_LEN],
++		     unsigned int flags);
 +int ethnl_put_bitset32(struct sk_buff *skb, int attrtype, const u32 *val,
-+		       const u32 *mask, unsigned int nbits, const void *names,
++		       const u32 *mask, unsigned int nbits,
++		       const char (*const names)[ETH_GSTRING_LEN],
 +		       unsigned int flags);
 +int ethnl_update_bitset(unsigned long *bitmap, unsigned int nbits,
-+			const struct nlattr *attr, const void *names,
-+			bool legacy, struct netlink_ext_ack *extack, bool *mod);
++			const struct nlattr *attr,
++			const char (*const names)[ETH_GSTRING_LEN],
++			struct netlink_ext_ack *extack, bool *mod);
 +int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
-+			  const struct nlattr *attr, const void *names,
-+			  bool legacy, struct netlink_ext_ack *extack,
-+			  bool *mod);
++			  const struct nlattr *attr,
++			  const char (*const names)[ETH_GSTRING_LEN],
++			  struct netlink_ext_ack *extack, bool *mod);
 +
 +#endif /* _NET_ETHTOOL_BITSET_H */
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 7c0fed25181f..2b07090bacc2 100644
+index b85acc9d09cd..22bd22b3910e 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
 @@ -20,6 +20,15 @@ struct sk_buff *ethnl_reply_init(size_t payload, struct net_device *dev, u8 cmd,
@@ -957,9 +958,9 @@ index 7c0fed25181f..2b07090bacc2 100644
 +}
 +#endif
 +
- static inline int ethnl_str_size(const char *s)
- {
- 	return nla_total_size(strlen(s) + 1);
+ /**
+  * ethnl_strz_size() - calculate attribute length for fixed size string
+  * @s: ETH_GSTRING_LEN sized string (may not be null terminated)
 -- 
 2.22.0
 

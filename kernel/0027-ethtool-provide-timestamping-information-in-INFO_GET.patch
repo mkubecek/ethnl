@@ -1,4 +1,4 @@
-From bdb2462db36501b7385e0bf92021167c196b8c5c Mon Sep 17 00:00:00 2001
+From 27ad2d067ae509f0660683d2228548e8af889e65 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 11:22:58 +0100
 Subject: [PATCH 27/45] ethtool: provide timestamping information in INFO_GET
@@ -22,9 +22,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  net/ethtool/common.h                         |   1 +
  net/ethtool/info.c                           | 158 +++++++++++++++++++
  net/ethtool/ioctl.c                          |  20 +--
- net/ethtool/netlink.h                        |   9 ++
- net/ethtool/strset.c                         |  18 +++
- 10 files changed, 258 insertions(+), 21 deletions(-)
+ net/ethtool/netlink.h                        |   8 +
+ net/ethtool/strset.c                         |  15 ++
+ 10 files changed, 254 insertions(+), 21 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.txt b/Documentation/networking/ethtool-netlink.txt
 index 6d2b5c716e2d..ea6bb6daa71a 100644
@@ -227,7 +227,7 @@ index fa878fff1564..937c5d21c72f 100644
  bool convert_legacy_settings_to_link_ksettings(
  	struct ethtool_link_ksettings *link_ksettings,
 diff --git a/net/ethtool/info.c b/net/ethtool/info.c
-index 9f9405febf65..deeca25b701f 100644
+index cc7b34c584bc..20299ca197a6 100644
 --- a/net/ethtool/info.c
 +++ b/net/ethtool/info.c
 @@ -1,21 +1,68 @@
@@ -239,7 +239,7 @@ index 9f9405febf65..deeca25b701f 100644
  #include "common.h"
  #include "bitset.h"
  
-+const char *const so_timestamping_labels[] = {
++const char so_timestamping_labels[][ETH_GSTRING_LEN] = {
 +	"hardware-transmit",		/* SOF_TIMESTAMPING_TX_HARDWARE */
 +	"software-transmit",		/* SOF_TIMESTAMPING_TX_SOFTWARE */
 +	"hardware-receive",		/* SOF_TIMESTAMPING_RX_HARDWARE */
@@ -257,13 +257,13 @@ index 9f9405febf65..deeca25b701f 100644
 +	"option-tx-swhw",		/* SOF_TIMESTAMPING_OPT_TX_SWHW */
 +};
 +
-+const char *const tstamp_tx_type_labels[] = {
++const char tstamp_tx_type_labels[][ETH_GSTRING_LEN] = {
 +	[HWTSTAMP_TX_OFF]		= "off",
 +	[HWTSTAMP_TX_ON]		= "on",
 +	[HWTSTAMP_TX_ONESTEP_SYNC]	= "one-step-sync",
 +};
 +
-+const char *const tstamp_rx_filter_labels[] = {
++const char tstamp_rx_filter_labels[][ETH_GSTRING_LEN] = {
 +	[HWTSTAMP_FILTER_NONE]			= "none",
 +	[HWTSTAMP_FILTER_ALL]			= "all",
 +	[HWTSTAMP_FILTER_SOME]			= "some",
@@ -491,10 +491,10 @@ index edc4f60f7013..ac779fd6e40e 100644
  		err = -EFAULT;
  
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index a53632408798..b01c9ca6637f 100644
+index 4351d300fe64..f4b45807a724 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -7,9 +7,18 @@
+@@ -7,10 +7,18 @@
  #include <linux/netdevice.h>
  #include <net/genetlink.h>
  #include <net/sock.h>
@@ -506,38 +506,35 @@ index a53632408798..b01c9ca6637f 100644
  
  struct ethnl_req_info;
  
-+extern const char *const so_timestamping_labels[];
-+extern const char *const tstamp_tx_type_labels[];
-+extern const char *const tstamp_rx_filter_labels[];
-+
- extern const char *const link_mode_names[];
+ extern const char link_mode_names[][ETH_GSTRING_LEN];
++extern const char so_timestamping_labels[][ETH_GSTRING_LEN];
++extern const char tstamp_tx_type_labels[][ETH_GSTRING_LEN];
++extern const char tstamp_rx_filter_labels[][ETH_GSTRING_LEN];
  
  int ethnl_parse_header(struct ethnl_req_info *req_info,
+ 		       const struct nlattr *nest, struct net *net,
 diff --git a/net/ethtool/strset.c b/net/ethtool/strset.c
-index 9e6c2dc08cc1..b3ccceb2c017 100644
+index 72ba67ec4f07..c9480b1e8c65 100644
 --- a/net/ethtool/strset.c
 +++ b/net/ethtool/strset.c
-@@ -73,6 +73,24 @@ static const struct strset_info info_template[] = {
+@@ -50,6 +50,21 @@ static const struct strset_info info_template[] = {
  		.count		= __ETHTOOL_LINK_MODE_MASK_NBITS,
- 		.data		= { .simple = link_mode_names },
+ 		.strings	= link_mode_names,
  	},
 +	[ETH_SS_TSTAMP_SOF] = {
-+		.type		= ETH_SS_TYPE_SIMPLE,
 +		.per_dev	= false,
 +		.count		= __SOF_TIMESTAMPING_COUNT,
-+		.data		= { .simple = so_timestamping_labels },
++		.strings	= so_timestamping_labels,
 +	},
 +	[ETH_SS_TSTAMP_TX_TYPE] = {
-+		.type		= ETH_SS_TYPE_SIMPLE,
 +		.per_dev	= false,
 +		.count		= __HWTSTAMP_TX_COUNT,
-+		.data		= { .simple = tstamp_tx_type_labels },
++		.strings	= tstamp_tx_type_labels,
 +	},
 +	[ETH_SS_TSTAMP_RX_FILTER] = {
-+		.type		= ETH_SS_TYPE_SIMPLE,
 +		.per_dev	= false,
 +		.count		= __HWTSTAMP_FILTER_COUNT,
-+		.data		= { .simple = tstamp_rx_filter_labels },
++		.strings	= tstamp_rx_filter_labels,
 +	},
  };
  

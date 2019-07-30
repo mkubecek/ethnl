@@ -1,4 +1,4 @@
-From f4d80e42b1b9daa193e65903f46dc15ad85019c5 Mon Sep 17 00:00:00 2001
+From 0851319a9a85ed12e572590b114d7c169ef034c2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 10 Mar 2019 21:27:19 +0100
 Subject: [PATCH 29/45] ethtool: set coalescing parameters with PARAMS_SET
@@ -138,7 +138,7 @@ index ac779fd6e40e..d414d79a55cf 100644
  
  static int ethtool_get_ringparam(struct net_device *dev, void __user *useraddr)
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index b3261087fd1b..28bdeb1a329b 100644
+index 5510d9a8afcb..2c4fbfdba5cc 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -619,6 +619,8 @@ static const struct get_request_ops *ethnl_std_notify_to_ops(unsigned int cmd)
@@ -171,10 +171,10 @@ index b3261087fd1b..28bdeb1a329b 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 647d47715bde..c5722a95c662 100644
+index 14f09002d2a0..be02daf704d7 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -363,5 +363,6 @@ extern const struct get_request_ops info_request_ops;
+@@ -393,5 +393,6 @@ extern const struct get_request_ops info_request_ops;
  extern const struct get_request_ops params_request_ops;
  
  int ethnl_set_settings(struct sk_buff *skb, struct genl_info *info);
