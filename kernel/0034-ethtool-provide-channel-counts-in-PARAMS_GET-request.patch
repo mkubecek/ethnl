@@ -1,4 +1,4 @@
-From acd4d69f9f47ca05679dc91faf7c73cf3263a6f0 Mon Sep 17 00:00:00 2001
+From e350dd0769410fd98ff617152fc9b7adb3871d09 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:30:12 +0100
 Subject: [PATCH 34/45] ethtool: provide channel counts in PARAMS_GET request

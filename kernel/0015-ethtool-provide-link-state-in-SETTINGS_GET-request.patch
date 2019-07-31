@@ -1,4 +1,4 @@
-From c7300e5f76cccbe43ce83bae79ac023dd69ea756 Mon Sep 17 00:00:00 2001
+From 74405e5dfebb08cb7fd0837c957ffc4cd2ba3007 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 15:26:45 +0100
 Subject: [PATCH 15/45] ethtool: provide link state in SETTINGS_GET request

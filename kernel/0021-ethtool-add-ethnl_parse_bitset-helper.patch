@@ -1,4 +1,4 @@
-From 730bddef4eabdd0fd8fac38fe24d81f87b76b51f Mon Sep 17 00:00:00 2001
+From 7775a24888a484efbfdfe7ebccc8df29b173a613 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 28 Jul 2019 19:12:37 +0200
 Subject: [PATCH 21/45] ethtool: add ethnl_parse_bitset() helper
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 98 insertions(+)
 
 diff --git a/net/ethtool/bitset.c b/net/ethtool/bitset.c
-index c7f7ced89bf0..8f161b79984d 100644
+index 930f09c27481..0c6ebf95bd9b 100644
 --- a/net/ethtool/bitset.c
 +++ b/net/ethtool/bitset.c
-@@ -579,6 +579,100 @@ int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
+@@ -575,6 +575,100 @@ int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
  	return 0;
  }
  
@@ -43,7 +43,7 @@ index c7f7ced89bf0..8f161b79984d 100644
 + */
 +int ethnl_parse_bitset(unsigned long *val, unsigned long *mask,
 +		       unsigned int nbits, const struct nlattr *attr,
-+		       const char (*const names)[ETH_GSTRING_LEN],
++		       ethnl_string_array_t names,
 +		       struct netlink_ext_ack *extack)
 +{
 +	struct nlattr *tb[ETHTOOL_A_BITSET_MAX + 1];
@@ -124,16 +124,16 @@ index c7f7ced89bf0..8f161b79984d 100644
   * and unsigned long based bitmaps have different memory layout so that we
   * cannot simply cast the latter to the former.
 diff --git a/net/ethtool/bitset.h b/net/ethtool/bitset.h
-index 5ec12a6802c8..0f962ae8780c 100644
+index cd3d681b4524..835d2da2ac17 100644
 --- a/net/ethtool/bitset.h
 +++ b/net/ethtool/bitset.h
-@@ -26,5 +26,9 @@ int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
- 			  const struct nlattr *attr,
- 			  const char (*const names)[ETH_GSTRING_LEN],
+@@ -24,5 +24,9 @@ int ethnl_update_bitset(unsigned long *bitmap, unsigned int nbits,
+ int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
+ 			  const struct nlattr *attr, ethnl_string_array_t names,
  			  struct netlink_ext_ack *extack, bool *mod);
 +int ethnl_parse_bitset(unsigned long *val, unsigned long *mask,
 +		       unsigned int nbits, const struct nlattr *attr,
-+		       const char (*const names)[ETH_GSTRING_LEN],
++		       ethnl_string_array_t names,
 +		       struct netlink_ext_ack *extack);
  
  #endif /* _NET_ETHTOOL_BITSET_H */

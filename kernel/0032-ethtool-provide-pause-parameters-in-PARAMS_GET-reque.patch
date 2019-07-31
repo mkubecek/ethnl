@@ -1,4 +1,4 @@
-From c5f64e62652fde1d6b46ca760df969cf11e2e8be Mon Sep 17 00:00:00 2001
+From 9f63517cbc270f4ddf8f5b89aecd4ddf2716066f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 11 Mar 2019 08:02:27 +0100
 Subject: [PATCH 32/45] ethtool: provide pause parameters in PARAMS_GET request

@@ -1,4 +1,4 @@
-From 8b99362a4da478d880d2a7cf3c9fb80e51b52402 Mon Sep 17 00:00:00 2001
+From d12d39845ded71929f6c3f6783b00bf3429ed96b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 16 Feb 2019 14:49:09 +0100
 Subject: [PATCH 12/45] ethtool: provide link settings and link modes in

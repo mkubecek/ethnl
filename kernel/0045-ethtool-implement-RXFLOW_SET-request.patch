@@ -1,4 +1,4 @@
-From 45ed5bbbeb3051acb3ff09bf14e5e2e3826def8d Mon Sep 17 00:00:00 2001
+From 2fe3e78ff4c0c414fa25168875e40e90cf4f92ed Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 15 Sep 2018 16:02:04 +0200
 Subject: [PATCH 45/45] ethtool: implement RXFLOW_SET request

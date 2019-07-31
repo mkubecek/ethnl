@@ -1,4 +1,4 @@
-From c311e992238eb39e1cb1d147ac2d4990bc4763b3 Mon Sep 17 00:00:00 2001
+From cf5f2107798dcd41f528cdc1c82bdbc815024fb4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 31 Aug 2018 14:02:17 +0200
 Subject: [PATCH 40/45] ethtool: implement ETHTOOL_MSG_NWAYRST_ACT message
