@@ -1,7 +1,7 @@
-From a48e2bdbaa17217f8371f4e4996c93c26d8b1e5c Mon Sep 17 00:00:00 2001
+From e80c5ae98778023187d9aeef89f1831068667375 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
-Subject: [PATCH 11/34] netlink: add netlink handler for sset (-s)
+Subject: [PATCH 16/16] netlink: add netlink handler for sset (-s)
 
 Implement "ethtool -s <dev>" subcommand using netlink interface command
 ETHTOOL_MSG_SETTINGS_SET.
@@ -11,106 +11,98 @@ password here).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- ethtool.c          |   9 +--
- netlink/extapi.h   |   1 +
- netlink/netlink.c  |   9 +++
- netlink/netlink.h  |   1 +
+ ethtool.8.in       |  11 +++-
+ ethtool.c          |   7 +-
+ netlink/extapi.h   |   2 +
  netlink/parser.c   |  36 ++++++++++
- netlink/parser.h   |   2 +
- netlink/settings.c | 172 +++++++++++++++++++++++++++++++++++++++++++++
- 7 files changed, 226 insertions(+), 4 deletions(-)
+ netlink/parser.h   |   3 +
+ netlink/settings.c | 161 +++++++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 214 insertions(+), 6 deletions(-)
 
+diff --git a/ethtool.8.in b/ethtool.8.in
+index 1c930a3146cc..1813a0195729 100644
+--- a/ethtool.8.in
++++ b/ethtool.8.in
+@@ -245,13 +245,18 @@ ethtool \- query or control network driver and hardware settings
+ .B4 port tp aui bnc mii fibre
+ .B3 mdix auto on off
+ .B2 autoneg on off
+-.BN advertise
++.RB [ advertise \ \fIN\fP[\fB/\fP\fIM\fP]
++|
++.BI advertise \ mode
++.A1 on off
++.RB ...]
+ .BN phyad
+ .B2 xcvr internal external
+-.RB [ wol \ \*(WO]
++.RB [ wol \ \fIN\fP[\fB/\fP\fIM\fP]
++.RB | \ wol \ \*(WO]
+ .RB [ sopass \ \*(MA]
+ .RB [ msglvl
+-.IR N \ |
++.IR N\fP[/\fIM\fP] \ |
+ .BI msglvl \ type
+ .A1 on off
+ .RB ...]
 diff --git a/ethtool.c b/ethtool.c
-index 7709448985ae..cda051423e41 100644
+index 3545b7f34560..41b3613608e1 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -5025,6 +5025,7 @@ static int show_usage(struct cmd_context *ctx);
- #define nl_gdrv		NULL
- #define nl_tsinfo	NULL
- #define nl_gset		NULL
-+#define nl_sset		NULL
- #endif
- 
- static const struct option {
-@@ -5035,19 +5036,19 @@ static const struct option {
- 	char *help;
- 	char *opthelp;
- } args[] = {
--	{ "-s|--change", 1, do_sset, NULL,
-+	{ "-s|--change", 1, do_sset, nl_sset,
- 	  "Change generic options",
- 	  "		[ speed %d ]\n"
- 	  "		[ duplex half|full ]\n"
- 	  "		[ port tp|aui|bnc|mii|fibre ]\n"
- 	  "		[ mdix auto|on|off ]\n"
- 	  "		[ autoneg on|off ]\n"
--	  "		[ advertise %x ]\n"
-+	  "		[ advertise %x[/%x] | mode on|off ... [--] ]\n"
- 	  "		[ phyad %d ]\n"
- 	  "		[ xcvr internal|external ]\n"
--	  "		[ wol p|u|m|b|a|g|s|f|d... ]\n"
-+	  "		[ wol %d[/%d] |  p|u|m|b|a|g|s|f|d...[/p|u|m|b|a|g|s|f|d...] ]\n"
- 	  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
--	  "		[ msglvl %d | msglvl type on|off ... ]\n" },
-+	  "		[ msglvl %d[/%d] | type on|off ... [--] ]\n" },
- 	{ "-a|--show-pause", 1, do_gpause, NULL,
- 	  "Show pause options" },
- 	{ "-A|--pause", 1, do_spause, NULL,
+@@ -5166,18 +5166,19 @@ static const struct option args[] = {
+ 	{
+ 		.opts	= "-s|--change",
+ 		.func	= do_sset,
++		.nlfunc	= nl_sset,
+ 		.help	= "Change generic options",
+ 		.xhelp	= "		[ speed %d ]\n"
+ 			  "		[ duplex half|full ]\n"
+ 			  "		[ port tp|aui|bnc|mii|fibre ]\n"
+ 			  "		[ mdix auto|on|off ]\n"
+ 			  "		[ autoneg on|off ]\n"
+-			  "		[ advertise %x ]\n"
++			  "		[ advertise %x[/%x] | mode on|off ... [--] ]\n"
+ 			  "		[ phyad %d ]\n"
+ 			  "		[ xcvr internal|external ]\n"
+-			  "		[ wol p|u|m|b|a|g|s|f|d... ]\n"
++			  "		[ wol %d[/%d] | p|u|m|b|a|g|s|f|d... ]\n"
+ 			  "		[ sopass %x:%x:%x:%x:%x:%x ]\n"
+-			  "		[ msglvl %d | msglvl type on|off ... ]\n"
++			  "		[ msglvl %d[/%d] | type on|off ... [--] ]\n"
+ 	},
+ 	{
+ 		.opts	= "-a|--show-pause",
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 5500835372b3..4f9e60c2fca8 100644
+index 782963c4987c..40ac333c989e 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
-@@ -16,6 +16,7 @@ void netlink_done(struct cmd_context *ctx);
- int nl_gdrv(struct cmd_context *ctx);
- int nl_tsinfo(struct cmd_context *ctx);
+@@ -16,6 +16,7 @@ int netlink_init(struct cmd_context *ctx);
+ void netlink_done(struct cmd_context *ctx);
+ 
  int nl_gset(struct cmd_context *ctx);
 +int nl_sset(struct cmd_context *ctx);
  int nl_monitor(struct cmd_context *ctx);
  
- void monitor_usage();
-diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 33ba4f46c2bf..d399fb326125 100644
---- a/netlink/netlink.c
-+++ b/netlink/netlink.c
-@@ -814,6 +814,15 @@ static int get_ethnl_family(struct nl_context *nlctx)
- 	return 0;
+ void nl_monitor_usage(void);
+@@ -36,6 +37,7 @@ static inline void nl_monitor_usage(void)
  }
  
-+int nomsg_reply_cb(const struct nlmsghdr *nlhdr, void *data)
-+{
-+	const struct genlmsghdr *ghdr = (const struct genlmsghdr *)(nlhdr + 1);
-+
-+	fprintf(stderr, "received unexpected message: len=%u type=%u cmd=%u\n",
-+	       nlhdr->nlmsg_len, nlhdr->nlmsg_type, ghdr->cmd);
-+	return MNL_CB_OK;
-+}
-+
- /* initialization */
+ #define nl_gset			NULL
++#define nl_sset			NULL
  
- static int nlctx_init(struct nl_context *nlctx, unsigned long debug)
-diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 72a3c429fffe..3549a7794643 100644
---- a/netlink/netlink.h
-+++ b/netlink/netlink.h
-@@ -82,6 +82,7 @@ int ethnl_prep_get_request(struct cmd_context *ctx, unsigned int nlcmd,
- 			   uint16_t hdr_attrtype, u32 infomask, u32 gflags,
- 			   u32 rflags);
- int ethnl_send_get_request(struct nl_context *nlctx, mnl_cb_t cb);
-+int nomsg_reply_cb(const struct nlmsghdr *nlhdr, void *data);
- int __init_aux_nlctx(struct nl_context *nlctx);
+ #endif /* ETHTOOL_ENABLE_NETLINK */
  
- /* put data wrappers */
 diff --git a/netlink/parser.c b/netlink/parser.c
-index ae0ddf8a2161..9811b029268a 100644
+index 4e9e0cbf6623..3235f3c389a2 100644
 --- a/netlink/parser.c
 +++ b/netlink/parser.c
-@@ -832,6 +832,42 @@ err:
+@@ -874,6 +874,42 @@ err:
  	return -EINVAL;
  }
  
 +/* parser handler for (6-byte) MAC address in the usual format */
 +int nl_parse_mac_addr(struct nl_context *nlctx, uint16_t type, const void *data,
-+		      void *dest)
++		      struct nl_msg_buff *msgbuff, void *dest)
 +{
 +	const char *arg = *nlctx->argp;
 +	uint8_t val[ETH_ALEN];
@@ -136,7 +128,7 @@ index ae0ddf8a2161..9811b029268a 100644
 +
 +	if (dest)
 +		memcpy(dest, val, ETH_ALEN);
-+	return type ? ethnla_put(nlctx, type, ETH_ALEN, val) : 0;
++	return type ? ethnla_put(msgbuff, type, ETH_ALEN, val) : 0;
 +
 +err:
 +	fprintf(stderr, "ethtool (%s): invalid value '%s' of parameter '%s'\n",
@@ -148,33 +140,34 @@ index ae0ddf8a2161..9811b029268a 100644
  				       const char *arg)
  {
 diff --git a/netlink/parser.h b/netlink/parser.h
-index c654d55d46f6..59f88145a61d 100644
+index 9d17c8bd332d..5369ae8902dc 100644
 --- a/netlink/parser.h
 +++ b/netlink/parser.h
-@@ -81,6 +81,8 @@ int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data,
- 		     void *dest);
+@@ -97,6 +97,9 @@ int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data,
  int nl_parse_byte_str(struct nl_context *nlctx, uint16_t type,
- 		      const void *data, void *dest);
+ 		      const void *data, struct nl_msg_buff *msgbuff,
+ 		      void *dest);
 +int nl_parse_mac_addr(struct nl_context *nlctx, uint16_t type,
-+		      const void *data, void *dest);
++		      const void *data, struct nl_msg_buff *msgbuff,
++		      void *dest);
  
  int nl_parser(struct nl_context *nlctx, const struct param_parser *params,
- 	      void *dest);
+ 	      void *dest, enum parser_group_style group_style);
 diff --git a/netlink/settings.c b/netlink/settings.c
-index b75ac93fbec4..9dfa7f603b53 100644
+index 6687e1e575e0..1b89954f77c6 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -6,6 +6,7 @@
- #include "../common.h"
+@@ -7,6 +7,7 @@
  #include "netlink.h"
  #include "strset.h"
+ #include "bitset.h"
 +#include "parser.h"
  
  /* GET_SETTINGS */
  
-@@ -390,3 +391,174 @@ int nl_gset(struct cmd_context *ctx)
- 				    ETHTOOL_IM_SETTINGS_WOL);
- 	return (ret < 0) ? 75 : 0;
+@@ -530,3 +531,163 @@ int nl_gset(struct cmd_context *ctx)
+ err:
+ 	return 75;
  }
 +
 +/* SET_SETTINGS */
@@ -242,7 +235,7 @@ index b75ac93fbec4..9dfa7f603b53 100644
 +static const struct param_parser sset_params[] = {
 +	{
 +		.arg		= "port",
-+		.nest		= ETHTOOL_A_SETTINGS_LINK_INFO,
++		.group		= ETHTOOL_MSG_LINKINFO_SET,
 +		.type		= ETHTOOL_A_LINKINFO_PORT,
 +		.handler	= nl_parse_lookup_u8,
 +		.handler_data	= port_values,
@@ -250,7 +243,7 @@ index b75ac93fbec4..9dfa7f603b53 100644
 +	},
 +	{
 +		.arg		= "mdix",
-+		.nest		= ETHTOOL_A_SETTINGS_LINK_INFO,
++		.group		= ETHTOOL_MSG_LINKINFO_SET,
 +		.type		= ETHTOOL_A_LINKINFO_TP_MDIX_CTRL,
 +		.handler	= nl_parse_lookup_u8,
 +		.handler_data	= mdix_values,
@@ -258,14 +251,14 @@ index b75ac93fbec4..9dfa7f603b53 100644
 +	},
 +	{
 +		.arg		= "phyad",
-+		.nest		= ETHTOOL_A_SETTINGS_LINK_INFO,
++		.group		= ETHTOOL_MSG_LINKINFO_SET,
 +		.type		= ETHTOOL_A_LINKINFO_PHYADDR,
 +		.handler	= nl_parse_direct_u8,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "autoneg",
-+		.nest		= ETHTOOL_A_SETTINGS_LINK_MODES,
++		.group		= ETHTOOL_MSG_LINKMODES_SET,
 +		.type		= ETHTOOL_A_LINKMODES_AUTONEG,
 +		.handler	= nl_parse_lookup_u8,
 +		.handler_data	= autoneg_values,
@@ -273,21 +266,21 @@ index b75ac93fbec4..9dfa7f603b53 100644
 +	},
 +	{
 +		.arg		= "advertise",
-+		.nest		= ETHTOOL_A_SETTINGS_LINK_MODES,
++		.group		= ETHTOOL_MSG_LINKMODES_SET,
 +		.type		= ETHTOOL_A_LINKMODES_OURS,
 +		.handler	= nl_parse_bitset,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "speed",
-+		.nest		= ETHTOOL_A_SETTINGS_LINK_MODES,
++		.group		= ETHTOOL_MSG_LINKMODES_SET,
 +		.type		= ETHTOOL_A_LINKMODES_SPEED,
 +		.handler	= nl_parse_direct_u32,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "duplex",
-+		.nest		= ETHTOOL_A_SETTINGS_LINK_MODES,
++		.group		= ETHTOOL_MSG_LINKMODES_SET,
 +		.type		= ETHTOOL_A_LINKMODES_DUPLEX,
 +		.handler	= nl_parse_lookup_u8,
 +		.handler_data	= duplex_values,
@@ -295,25 +288,24 @@ index b75ac93fbec4..9dfa7f603b53 100644
 +	},
 +	{
 +		.arg		= "wol",
-+		.nest		= ETHTOOL_A_SETTINGS_WOL,
++		.group		= ETHTOOL_MSG_WOL_SET,
 +		.type		= ETHTOOL_A_WOL_MODES,
-+		.handler	= nl_parse_char_bitfield32,
++		.handler	= nl_parse_char_bitset,
 +		.handler_data	= &wol_parser_data,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "sopass",
-+		.nest		= ETHTOOL_A_SETTINGS_WOL,
++		.group		= ETHTOOL_MSG_WOL_SET,
 +		.type		= ETHTOOL_A_WOL_SOPASS,
 +		.handler	= nl_parse_mac_addr,
 +		.min_argc	= 1,
 +	},
 +	{
 +		.arg		= "msglvl",
-+		.nest		= ETHTOOL_A_SETTINGS_DEBUG,
-+		.type		= ETHTOOL_A_DEBUG_MSG_MASK,
-+		.handler	= nl_parse_bitfield32,
-+		.handler_data	= flags_msglvl,
++		.group		= ETHTOOL_MSG_DEBUG_SET,
++		.type		= ETHTOOL_A_DEBUG_MSGMASK,
++		.handler	= nl_parse_bitset,
 +		.min_argc	= 1,
 +	},
 +	{}
@@ -327,26 +319,16 @@ index b75ac93fbec4..9dfa7f603b53 100644
 +	nlctx->cmd = "-s";
 +	nlctx->argp = ctx->argp;
 +	nlctx->argc = ctx->argc;
-+	ret = msg_init(nlctx, ETHTOOL_MSG_SETTINGS_SET,
-+		       NLM_F_REQUEST | NLM_F_ACK);
-+	if (ret < 0)
-+		return 2;
-+	if (ethnla_fill_header(nlctx, ETHTOOL_A_SETTINGS_HEADER, ctx->devname,
-+			       0, 0, 0))
-+		return -EMSGSIZE;
++	nlctx->devname = ctx->devname;
 +
-+	ret = nl_parser(nlctx, sset_params, NULL);
++	ret = nl_parser(nlctx, sset_params, NULL, PARSER_GROUP_MSG);
 +	if (ret < 0)
 +		return 2;
 +
-+	ret = ethnl_sendmsg(nlctx);
-+	if (ret < 0)
-+		return 75;
-+	ret = ethnl_process_reply(nlctx, nomsg_reply_cb);
 +	if (ret == 0)
 +		return 0;
 +	return nlctx->exit_code ?: 75;
 +}
 -- 
-2.22.0
+2.25.0
 

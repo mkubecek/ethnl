@@ -1,7 +1,7 @@
-From 9ecf07e18b1372c7633adeb07751dad63e1def91 Mon Sep 17 00:00:00 2001
+From 17570da333476bb911b0d0d39b0c0c40dd583f09 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Aug 2018 18:06:30 +0200
-Subject: [PATCH 03/34] ethtool: add --debug option to control debugging
+Subject: [PATCH 03/16] ethtool: add --debug option to control debugging
  messages
 
 Introduce --debug option to control which debugging messages will be shown.
@@ -10,15 +10,46 @@ zero (i.e. no debug messages).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- ethtool.c  | 18 ++++++++++++++++--
- internal.h |  6 ++++++
- 2 files changed, 22 insertions(+), 2 deletions(-)
+ ethtool.8.in | 12 ++++++++++++
+ ethtool.c    | 18 ++++++++++++++++--
+ internal.h   |  6 ++++++
+ 3 files changed, 34 insertions(+), 2 deletions(-)
 
+diff --git a/ethtool.8.in b/ethtool.8.in
+index 94364c626330..680cad9fbb8f 100644
+--- a/ethtool.8.in
++++ b/ethtool.8.in
+@@ -129,6 +129,10 @@ ethtool \- query or control network driver and hardware settings
+ .HP
+ .B ethtool \-\-version
+ .HP
++.B ethtool
++.BN --debug
++.I args
++.HP
+ .B ethtool \-a|\-\-show\-pause
+ .I devname
+ .HP
+@@ -437,6 +441,14 @@ Shows a short help message.
+ .B \-\-version
+ Shows the ethtool version number.
+ .TP
++.BI \-\-debug \ N
++Turns on debugging messages. Argument is interpreted as a mask:
++.TS
++nokeep;
++lB	l.
++0x01  Parser information
++.TE
++.TP
+ .B \-a \-\-show\-pause
+ Queries the specified Ethernet device for pause parameter information.
+ .TP
 diff --git a/ethtool.c b/ethtool.c
-index 05fe05a080cd..c6b6d78b8109 100644
+index acf183dc5586..dd0242b27a2f 100644
 --- a/ethtool.c
 +++ b/ethtool.c
-@@ -5397,10 +5397,10 @@ static int show_usage(struct cmd_context *ctx)
+@@ -5493,10 +5493,10 @@ static int show_usage(struct cmd_context *ctx maybe_unused)
  	fprintf(stdout, PACKAGE " version " VERSION "\n");
  	fprintf(stdout,
  		"Usage:\n"
@@ -31,7 +62,7 @@ index 05fe05a080cd..c6b6d78b8109 100644
  		fprintf(stdout, "%s %s\t%s\n",
  			args[i].opts,
  			args[i].want_device ? "DEVNAME" : "\t",
-@@ -5617,6 +5617,20 @@ int main(int argc, char **argp)
+@@ -5712,6 +5712,20 @@ int main(int argc, char **argp)
  	argp++;
  	argc--;
  
@@ -53,10 +84,10 @@ index 05fe05a080cd..c6b6d78b8109 100644
  	 * name to get settings for (which we don't expect to begin
  	 * with '-').
 diff --git a/internal.h b/internal.h
-index 060c5994360e..f9e8df28fa50 100644
+index 527245633338..9ec145f55dcb 100644
 --- a/internal.h
 +++ b/internal.h
-@@ -105,6 +105,11 @@ static inline int test_bit(unsigned int nr, const unsigned long *addr)
+@@ -107,6 +107,11 @@ static inline int test_bit(unsigned int nr, const unsigned long *addr)
  #define SIOCETHTOOL     0x8946
  #endif
  
@@ -68,7 +99,7 @@ index 060c5994360e..f9e8df28fa50 100644
  /* Internal values for old-style offload flags.  Values and names
   * must not clash with the flags defined for ETHTOOL_{G,S}FLAGS.
   */
-@@ -195,6 +200,7 @@ struct cmd_context {
+@@ -197,6 +202,7 @@ struct cmd_context {
  	struct ifreq ifr;	/* ifreq suitable for ethtool ioctl */
  	int argc;		/* number of arguments to the sub-command */
  	char **argp;		/* arguments to the sub-command */
@@ -77,5 +108,5 @@ index 060c5994360e..f9e8df28fa50 100644
  
  #ifdef TEST_ETHTOOL
 -- 
-2.22.0
+2.25.0
 

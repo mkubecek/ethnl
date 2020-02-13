@@ -1,7 +1,7 @@
-From f60d1124aafa9705da98d02f3e74f9e0fc13995c Mon Sep 17 00:00:00 2001
+From 23ae41de7dd8663380d522e0fa2a75bf6b8724af Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 09:02:44 +0100
-Subject: [PATCH 01/34] move UAPI header copies to a separate directory
+Subject: [PATCH 01/16] move UAPI header copies to a separate directory
 
 The upcoming netlink series is going to add more local copies of kernel
 UAPI header files and some of them are going to include others. Keeping
@@ -54,10 +54,10 @@ index 3af4d4c2b5da..05beb22be669 100644
  dist-hook:
  	cp $(top_srcdir)/ethtool.spec $(distdir)
 diff --git a/internal.h b/internal.h
-index aecf1ce60923..060c5994360e 100644
+index ff52c6e7660c..527245633338 100644
 --- a/internal.h
 +++ b/internal.h
-@@ -42,8 +42,8 @@ typedef int32_t s32;
+@@ -44,8 +44,8 @@ typedef int32_t s32;
  #define __KERNEL_DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
  #endif
  
@@ -76,6 +76,8 @@ diff --git a/net_tstamp-copy.h b/uapi/linux/net_tstamp.h
 similarity index 100%
 rename from net_tstamp-copy.h
 rename to uapi/linux/net_tstamp.h
+
+base-commit: 7dc0af7e386e3f7dbb20c4c0004ace450a09cf7e
 -- 
-2.22.0
+2.25.0
 

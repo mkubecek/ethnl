@@ -1,44 +1,74 @@
-From 0762d4f1f520c5b6400b50abcd019e4512de0551 Mon Sep 17 00:00:00 2001
+From a0ad19a363ee0be54663a62867d1c1178d07a7f1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 24 Nov 2017 01:02:29 +0100
-Subject: [PATCH 02/34] update UAPI header copies
+Subject: [PATCH 02/16] update UAPI header copies
 
-Update to current net-next (commit 1d9978757d38).
+Update to v5.6-rc1.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- uapi/linux/ethtool.h    |  8 ++++----
- uapi/linux/net_tstamp.h | 19 +++++++++++++++++++
- 2 files changed, 23 insertions(+), 4 deletions(-)
+ uapi/linux/ethtool.h    | 17 +++++++++++++++++
+ uapi/linux/net_tstamp.h | 27 +++++++++++++++++++++++++++
+ 2 files changed, 44 insertions(+)
 
 diff --git a/uapi/linux/ethtool.h b/uapi/linux/ethtool.h
-index ad16e8f9c290..68a612570d4c 100644
+index 9afd2e6c5eea..16198061d723 100644
 --- a/uapi/linux/ethtool.h
 +++ b/uapi/linux/ethtool.h
-@@ -1481,8 +1481,8 @@ enum ethtool_link_mode_bit_indices {
- 	ETHTOOL_LINK_MODE_200000baseLR4_ER4_FR4_Full_BIT = 64,
- 	ETHTOOL_LINK_MODE_200000baseDR4_Full_BIT	 = 65,
+@@ -591,6 +591,9 @@ struct ethtool_pauseparam {
+  * @ETH_SS_RSS_HASH_FUNCS: RSS hush function names
+  * @ETH_SS_PHY_STATS: Statistic names, for use with %ETHTOOL_GPHYSTATS
+  * @ETH_SS_PHY_TUNABLES: PHY tunable names
++ * @ETH_SS_LINK_MODES: link mode names
++ * @ETH_SS_MSG_CLASSES: debug message class names
++ * @ETH_SS_WOL_MODES: wake-on-lan modes
+  */
+ enum ethtool_stringset {
+ 	ETH_SS_TEST		= 0,
+@@ -602,6 +605,12 @@ enum ethtool_stringset {
+ 	ETH_SS_TUNABLES,
+ 	ETH_SS_PHY_STATS,
+ 	ETH_SS_PHY_TUNABLES,
++	ETH_SS_LINK_MODES,
++	ETH_SS_MSG_CLASSES,
++	ETH_SS_WOL_MODES,
++
++	/* add new constants above here */
++	ETH_SS_COUNT
+ };
+ 
+ /**
+@@ -1505,6 +1514,11 @@ enum ethtool_link_mode_bit_indices {
  	ETHTOOL_LINK_MODE_200000baseCR4_Full_BIT	 = 66,
--	ETHTOOL_LINK_MODE_100baseT1_Full_BIT             = 67,
--	ETHTOOL_LINK_MODE_1000baseT1_Full_BIT            = 68,
-+	ETHTOOL_LINK_MODE_100baseT1_Full_BIT		 = 67,
-+	ETHTOOL_LINK_MODE_1000baseT1_Full_BIT		 = 68,
+ 	ETHTOOL_LINK_MODE_100baseT1_Full_BIT		 = 67,
+ 	ETHTOOL_LINK_MODE_1000baseT1_Full_BIT		 = 68,
++	ETHTOOL_LINK_MODE_400000baseKR8_Full_BIT	 = 69,
++	ETHTOOL_LINK_MODE_400000baseSR8_Full_BIT	 = 70,
++	ETHTOOL_LINK_MODE_400000baseLR8_ER8_FR8_Full_BIT = 71,
++	ETHTOOL_LINK_MODE_400000baseDR8_Full_BIT	 = 72,
++	ETHTOOL_LINK_MODE_400000baseCR8_Full_BIT	 = 73,
  
  	/* must be last entry */
  	__ETHTOOL_LINK_MODE_MASK_NBITS
-@@ -1712,8 +1712,8 @@ static __inline__ int ethtool_validate_duplex(__u8 duplex)
- #define ETH_MODULE_SFF_8436		0x4
- #define ETH_MODULE_SFF_8436_LEN		256
+@@ -1616,6 +1630,7 @@ enum ethtool_link_mode_bit_indices {
+ #define SPEED_56000		56000
+ #define SPEED_100000		100000
+ #define SPEED_200000		200000
++#define SPEED_400000		400000
  
--#define ETH_MODULE_SFF_8636_MAX_LEN	640
--#define ETH_MODULE_SFF_8436_MAX_LEN	640
-+#define ETH_MODULE_SFF_8636_MAX_LEN     640
-+#define ETH_MODULE_SFF_8436_MAX_LEN     640
+ #define SPEED_UNKNOWN		-1
  
- /* Reset flags */
- /* The reset() operation must clear the flags for the components which
+@@ -1680,6 +1695,8 @@ static __inline__ int ethtool_validate_duplex(__u8 duplex)
+ #define WAKE_MAGICSECURE	(1 << 6) /* only meaningful if WAKE_MAGIC */
+ #define WAKE_FILTER		(1 << 7)
+ 
++#define WOL_MODE_COUNT		8
++
+ /* L2-L4 network traffic flow types */
+ #define	TCP_V4_FLOW	0x01	/* hash or spec (tcp_ip4_spec) */
+ #define	UDP_V4_FLOW	0x02	/* hash or spec (udp_ip4_spec) */
 diff --git a/uapi/linux/net_tstamp.h b/uapi/linux/net_tstamp.h
-index 3d421d912193..e5b39721c6e4 100644
+index 3d421d912193..f96e650d0af9 100644
 --- a/uapi/linux/net_tstamp.h
 +++ b/uapi/linux/net_tstamp.h
 @@ -1,3 +1,4 @@
@@ -46,7 +76,22 @@ index 3d421d912193..e5b39721c6e4 100644
  /*
   * Userspace API for hardware time stamping of network packets
   *
-@@ -140,4 +141,22 @@ struct scm_ts_pktinfo {
+@@ -89,6 +90,14 @@ enum hwtstamp_tx_types {
+ 	 * queue.
+ 	 */
+ 	HWTSTAMP_TX_ONESTEP_SYNC,
++
++	/*
++	 * Same as HWTSTAMP_TX_ONESTEP_SYNC, but also enables time
++	 * stamp insertion directly into PDelay_Resp packets. In this
++	 * case, neither transmitted Sync nor PDelay_Resp packets will
++	 * receive a time stamp via the socket error queue.
++	 */
++	HWTSTAMP_TX_ONESTEP_P2P,
+ };
+ 
+ /* possible values for hwtstamp_config->rx_filter */
+@@ -140,4 +149,22 @@ struct scm_ts_pktinfo {
  	__u32 reserved[2];
  };
  
@@ -70,5 +115,5 @@ index 3d421d912193..e5b39721c6e4 100644
 +
  #endif /* _NET_TIMESTAMPING_H */
 -- 
-2.22.0
+2.25.0
 
