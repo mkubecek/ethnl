@@ -1,7 +1,7 @@
-From 7775a24888a484efbfdfe7ebccc8df29b173a613 Mon Sep 17 00:00:00 2001
+From d25c9ac15fdb1eff58641a8d0c0c8fc929bf9651 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 28 Jul 2019 19:12:37 +0200
-Subject: [PATCH 21/45] ethtool: add ethnl_parse_bitset() helper
+Subject: [PATCH 2/4] ethtool: add ethnl_parse_bitset() helper
 
 Unlike other SET type commands, modifying netdev features is required to
 provide a reply telling userspace what was actually changed, compared to
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 98 insertions(+)
 
 diff --git a/net/ethtool/bitset.c b/net/ethtool/bitset.c
-index 930f09c27481..0c6ebf95bd9b 100644
+index fce45dac4205..f9360d92b3f9 100644
 --- a/net/ethtool/bitset.c
 +++ b/net/ethtool/bitset.c
-@@ -575,6 +575,100 @@ int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
+@@ -584,6 +584,100 @@ int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
  	return 0;
  }
  
@@ -48,7 +48,7 @@ index 930f09c27481..0c6ebf95bd9b 100644
 +{
 +	struct nlattr *tb[ETHTOOL_A_BITSET_MAX + 1];
 +	const struct nlattr *bit_attr;
-+	bool is_list;
++	bool no_mask;
 +	int rem;
 +	int ret;
 +
@@ -58,7 +58,7 @@ index 930f09c27481..0c6ebf95bd9b 100644
 +			       extack);
 +	if (ret < 0)
 +		return ret;
-+	is_list = (tb[ETHTOOL_A_BITSET_LIST] != NULL);
++	no_mask = tb[ETHTOOL_A_BITSET_NOMASK];
 +
 +	if (!tb[ETHTOOL_A_BITSET_BITS]) {
 +		unsigned int change_bits;
@@ -72,7 +72,7 @@ index 930f09c27481..0c6ebf95bd9b 100644
 +				  change_bits);
 +		if (change_bits < nbits)
 +			bitmap_clear(val, change_bits, nbits - change_bits);
-+		if (is_list) {
++		if (no_mask) {
 +			bitmap_fill(mask, nbits);
 +		} else {
 +			bitmap_from_arr32(mask,
@@ -98,7 +98,7 @@ index 930f09c27481..0c6ebf95bd9b 100644
 +	}
 +
 +	bitmap_zero(val, nbits);
-+	if (is_list)
++	if (no_mask)
 +		bitmap_fill(mask, nbits);
 +	else
 +		bitmap_zero(val, nbits);
@@ -107,24 +107,24 @@ index 930f09c27481..0c6ebf95bd9b 100644
 +		unsigned int idx;
 +		bool bit_val;
 +
-+		ret = ethnl_parse_bit(&idx, &bit_val, nbits, bit_attr, is_list,
++		ret = ethnl_parse_bit(&idx, &bit_val, nbits, bit_attr, no_mask,
 +				      names, extack);
 +		if (ret < 0)
 +			return ret;
 +		if (bit_val)
 +			bitmap_set(val, idx, nbits);
-+		if (!is_list)
++		if (!no_mask)
 +			bitmap_set(mask, idx, nbits);
 +	}
 +
 +	return 0;
 +}
 +
- /* 64-bit long endian architecture is the only case when u32 based bitmaps
-  * and unsigned long based bitmaps have different memory layout so that we
-  * cannot simply cast the latter to the former.
+ #if BITS_PER_LONG == 64 && defined(__BIG_ENDIAN)
+ 
+ /* 64-bit big endian architectures are the only case when u32 based bitmaps
 diff --git a/net/ethtool/bitset.h b/net/ethtool/bitset.h
-index cd3d681b4524..835d2da2ac17 100644
+index b8247e34109d..3cd07b113979 100644
 --- a/net/ethtool/bitset.h
 +++ b/net/ethtool/bitset.h
 @@ -24,5 +24,9 @@ int ethnl_update_bitset(unsigned long *bitmap, unsigned int nbits,
@@ -138,5 +138,5 @@ index cd3d681b4524..835d2da2ac17 100644
  
  #endif /* _NET_ETHTOOL_BITSET_H */
 -- 
-2.22.0
+2.25.0
 
