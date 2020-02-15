@@ -1,7 +1,7 @@
-From e80c5ae98778023187d9aeef89f1831068667375 Mon Sep 17 00:00:00 2001
+From f74b81ceab5cdc3acf7fa8dbea760588486fa977 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
-Subject: [PATCH 16/16] netlink: add netlink handler for sset (-s)
+Subject: [PATCH 18/18] netlink: add netlink handler for sset (-s)
 
 Implement "ethtool -s <dev>" subcommand using netlink interface command
 ETHTOOL_MSG_SETTINGS_SET.
@@ -11,13 +11,11 @@ password here).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- ethtool.8.in       |  11 +++-
+ ethtool.8.in       |  11 ++-
  ethtool.c          |   7 +-
  netlink/extapi.h   |   2 +
- netlink/parser.c   |  36 ++++++++++
- netlink/parser.h   |   3 +
- netlink/settings.c | 161 +++++++++++++++++++++++++++++++++++++++++++++
- 6 files changed, 214 insertions(+), 6 deletions(-)
+ netlink/settings.c | 178 +++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 192 insertions(+), 6 deletions(-)
 
 diff --git a/ethtool.8.in b/ethtool.8.in
 index 1c930a3146cc..1813a0195729 100644
@@ -92,69 +90,8 @@ index 782963c4987c..40ac333c989e 100644
  
  #endif /* ETHTOOL_ENABLE_NETLINK */
  
-diff --git a/netlink/parser.c b/netlink/parser.c
-index 4e9e0cbf6623..3235f3c389a2 100644
---- a/netlink/parser.c
-+++ b/netlink/parser.c
-@@ -874,6 +874,42 @@ err:
- 	return -EINVAL;
- }
- 
-+/* parser handler for (6-byte) MAC address in the usual format */
-+int nl_parse_mac_addr(struct nl_context *nlctx, uint16_t type, const void *data,
-+		      struct nl_msg_buff *msgbuff, void *dest)
-+{
-+	const char *arg = *nlctx->argp;
-+	uint8_t val[ETH_ALEN];
-+	unsigned int i;
-+	const char *p;
-+
-+	nlctx->argp++;
-+	nlctx->argc--;
-+
-+	p = arg;
-+	i = 0;
-+	while (i < ETH_ALEN && *p) {
-+		char *endp;
-+		unsigned long byte = strtoul(p, &endp, 16);
-+
-+		if ((endp - p > 2) || (*endp && *endp != ':'))
-+			goto err;
-+		val[i++] = (uint8_t) byte;
-+		p = endp + (*endp ? 1 : 0);
-+	}
-+	if (i < ETH_ALEN)
-+		goto err;
-+
-+	if (dest)
-+		memcpy(dest, val, ETH_ALEN);
-+	return type ? ethnla_put(msgbuff, type, ETH_ALEN, val) : 0;
-+
-+err:
-+	fprintf(stderr, "ethtool (%s): invalid value '%s' of parameter '%s'\n",
-+		nlctx->cmd, arg, nlctx->param);
-+	return -EINVAL;
-+}
-+
- static const struct param_parser *find_parser(const struct param_parser *params,
- 				       const char *arg)
- {
-diff --git a/netlink/parser.h b/netlink/parser.h
-index 9d17c8bd332d..5369ae8902dc 100644
---- a/netlink/parser.h
-+++ b/netlink/parser.h
-@@ -97,6 +97,9 @@ int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data,
- int nl_parse_byte_str(struct nl_context *nlctx, uint16_t type,
- 		      const void *data, struct nl_msg_buff *msgbuff,
- 		      void *dest);
-+int nl_parse_mac_addr(struct nl_context *nlctx, uint16_t type,
-+		      const void *data, struct nl_msg_buff *msgbuff,
-+		      void *dest);
- 
- int nl_parser(struct nl_context *nlctx, const struct param_parser *params,
- 	      void *dest, enum parser_group_style group_style);
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 6687e1e575e0..1b89954f77c6 100644
+index 921aafb22595..4eaa0a8ae65f 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -7,6 +7,7 @@
@@ -165,7 +102,7 @@ index 6687e1e575e0..1b89954f77c6 100644
  
  /* GET_SETTINGS */
  
-@@ -530,3 +531,163 @@ int nl_gset(struct cmd_context *ctx)
+@@ -700,3 +701,180 @@ int nl_gset(struct cmd_context *ctx)
  err:
  	return 75;
  }
@@ -185,30 +122,6 @@ index 6687e1e575e0..1b89954f77c6 100644
 +
 +#define WAKE_ALL (WAKE_PHY | WAKE_UCAST | WAKE_MCAST | WAKE_BCAST | WAKE_ARP | \
 +		  WAKE_MAGIC | WAKE_MAGICSECURE)
-+
-+const struct bitfield32_parser_special wol_parser_specials[] = {
-+	{ 'd', 0U },
-+	{}
-+};
-+const struct bitfield32_parser_data wol_parser_data = {
-+	.bits = {
-+		[WAKE_PHY_BIT]		= 'p',
-+		[WAKE_UCAST_BIT]	= 'u',
-+		[WAKE_MCAST_BIT]	= 'm',
-+		[WAKE_BCAST_BIT]	= 'b',
-+		[WAKE_ARP_BIT]		= 'a',
-+		[WAKE_MAGIC_BIT]	= 'g',
-+		[WAKE_MAGICSECURE_BIT]	= 's',
-+		[WAKE_FILTER_BIT]	= 'f',
-+	},
-+	.specials = wol_parser_specials,
-+};
-+
-+static const struct lookup_entry_u32 duplex_values[] = {
-+	{ .arg = "half",	.val = DUPLEX_HALF },
-+	{ .arg = "full",	.val = DUPLEX_FULL },
-+	{}
-+};
 +
 +static const struct lookup_entry_u8 port_values[] = {
 +	{ .arg = "tp",		.val = PORT_TP },
@@ -230,6 +143,44 @@ index 6687e1e575e0..1b89954f77c6 100644
 +	{ .arg = "off",		.val = AUTONEG_DISABLE },
 +	{ .arg = "on",		.val = AUTONEG_ENABLE },
 +	{}
++};
++
++static const struct bitset_parser_data advertise_parser_data = {
++	.no_mask	= false,
++	.force_hex	= true,
++};
++
++static const struct lookup_entry_u32 duplex_values[] = {
++	{ .arg = "half",	.val = DUPLEX_HALF },
++	{ .arg = "full",	.val = DUPLEX_FULL },
++	{}
++};
++
++char wol_bit_chars[WOL_MODE_COUNT] = {
++	[WAKE_PHY_BIT]		= 'p',
++	[WAKE_UCAST_BIT]	= 'u',
++	[WAKE_MCAST_BIT]	= 'm',
++	[WAKE_BCAST_BIT]	= 'b',
++	[WAKE_ARP_BIT]		= 'a',
++	[WAKE_MAGIC_BIT]	= 'g',
++	[WAKE_MAGICSECURE_BIT]	= 's',
++	[WAKE_FILTER_BIT]	= 'f',
++};
++
++const struct char_bitset_parser_data wol_parser_data = {
++	.bit_chars	= wol_bit_chars,
++	.nbits		= WOL_MODE_COUNT,
++	.reset_char	= 'd',
++};
++
++const struct byte_str_params sopass_parser_data = {
++	.max_len	= 6,
++	.delim		= '/',
++};
++
++static const struct bitset_parser_data msglvl_parser_data = {
++	.no_mask	= false,
++	.force_hex	= false,
 +};
 +
 +static const struct param_parser sset_params[] = {
@@ -269,6 +220,7 @@ index 6687e1e575e0..1b89954f77c6 100644
 +		.group		= ETHTOOL_MSG_LINKMODES_SET,
 +		.type		= ETHTOOL_A_LINKMODES_OURS,
 +		.handler	= nl_parse_bitset,
++		.handler_data	= &advertise_parser_data,
 +		.min_argc	= 1,
 +	},
 +	{
@@ -298,7 +250,8 @@ index 6687e1e575e0..1b89954f77c6 100644
 +		.arg		= "sopass",
 +		.group		= ETHTOOL_MSG_WOL_SET,
 +		.type		= ETHTOOL_A_WOL_SOPASS,
-+		.handler	= nl_parse_mac_addr,
++		.handler	= nl_parse_byte_str,
++		.handler_data	= &sopass_parser_data,
 +		.min_argc	= 1,
 +	},
 +	{
@@ -306,6 +259,7 @@ index 6687e1e575e0..1b89954f77c6 100644
 +		.group		= ETHTOOL_MSG_DEBUG_SET,
 +		.type		= ETHTOOL_A_DEBUG_MSGMASK,
 +		.handler	= nl_parse_bitset,
++		.handler_data	= &msglvl_parser_data,
 +		.min_argc	= 1,
 +	},
 +	{}

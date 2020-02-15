@@ -1,7 +1,7 @@
-From 6675a305cba4131a4d84ce714b74301458ef904d Mon Sep 17 00:00:00 2001
+From 3145b98385d1bd173af3b83170134bb41e00dd0a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 11 Feb 2020 18:31:42 +0100
-Subject: [PATCH 07/16] netlink: message buffer and composition helpers
+Subject: [PATCH 07/18] netlink: message buffer and composition helpers
 
 Add data structure for flexible message buffer and helpers for safe message
 composition.
@@ -14,10 +14,10 @@ MAX_MSG_SIZE (4 MB), an error is issued.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |   1 +
- netlink/msgbuff.c | 148 ++++++++++++++++++++++++++++++++++++++++++++++
- netlink/msgbuff.h |  97 ++++++++++++++++++++++++++++++
+ netlink/msgbuff.c | 163 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/msgbuff.h | 104 +++++++++++++++++++++++++++++
  netlink/netlink.h |   1 +
- 4 files changed, 247 insertions(+)
+ 4 files changed, 269 insertions(+)
  create mode 100644 netlink/msgbuff.c
  create mode 100644 netlink/msgbuff.h
 
@@ -35,10 +35,10 @@ index 3748d0df5608..12412b433445 100644
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/netlink/msgbuff.c b/netlink/msgbuff.c
 new file mode 100644
-index 000000000000..93278479744f
+index 000000000000..5aad77b8167d
 --- /dev/null
 +++ b/netlink/msgbuff.c
-@@ -0,0 +1,148 @@
+@@ -0,0 +1,163 @@
 +#include <string.h>
 +#include <errno.h>
 +#include <stdlib.h>
@@ -83,6 +83,21 @@ index 000000000000..93278479744f
 +	}
 +	msgbuff->size = new_size;
 +	msgbuff->left += (new_size - old_size);
++
++	return 0;
++}
++
++int msgbuff_append(struct nl_msg_buff *dest, struct nl_msg_buff *src)
++{
++	unsigned int src_len = mnl_nlmsg_get_payload_len(src->nlhdr);
++	unsigned int dest_len = MNL_ALIGN(msgbuff_len(dest));
++	int ret;
++
++	ret = msgbuff_realloc(dest, dest_len + src_len);
++	if (ret < 0)
++		return ret;
++	memcpy(mnl_nlmsg_get_payload_tail(dest->nlhdr), src->payload, src_len);
++	msgbuff_reset(dest, dest_len + src_len);
 +
 +	return 0;
 +}
@@ -189,10 +204,10 @@ index 000000000000..93278479744f
 +}
 diff --git a/netlink/msgbuff.h b/netlink/msgbuff.h
 new file mode 100644
-index 000000000000..30e94e0dbc40
+index 000000000000..358f7a0e3a2c
 --- /dev/null
 +++ b/netlink/msgbuff.h
-@@ -0,0 +1,97 @@
+@@ -0,0 +1,104 @@
 +/*
 + * msgbuff.h - netlink message buffer
 + *
@@ -221,6 +236,7 @@ index 000000000000..30e94e0dbc40
 +void msgbuff_init(struct nl_msg_buff *msgbuff);
 +void msgbuff_done(struct nl_msg_buff *msgbuff);
 +int msgbuff_realloc(struct nl_msg_buff *msgbuff, unsigned int new_size);
++int msgbuff_append(struct nl_msg_buff *dest, struct nl_msg_buff *src);
 +
 +int __msg_init(struct nl_msg_buff *msgbuff, int family, int cmd,
 +	       unsigned int flags, int version);
@@ -233,9 +249,15 @@ index 000000000000..30e94e0dbc40
 +bool ethnla_fill_header(struct nl_msg_buff *msgbuff, uint16_t type,
 +			const char *devname, uint32_t flags);
 +
-+static inline unsigned int msgbuff_payload_len(const struct nl_msg_buff *msgbuff)
++static inline unsigned int msgbuff_len(const struct nl_msg_buff *msgbuff)
 +{
-+	return msgbuff->nlhdr->nlmsg_len - NLMSG_HDRLEN - GENL_HDRLEN;
++	return msgbuff->nlhdr->nlmsg_len;
++}
++
++static inline void msgbuff_reset(const struct nl_msg_buff *msgbuff,
++				 unsigned int len)
++{
++	msgbuff->nlhdr->nlmsg_len = len;
 +}
 +
 +/* put data wrappers */

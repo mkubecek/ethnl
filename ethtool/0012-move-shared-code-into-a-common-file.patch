@@ -1,7 +1,7 @@
-From 93384e2ca2fdd17ef499e7cf31ba2310c8ad1c61 Mon Sep 17 00:00:00 2001
+From a41ae34550991a6029b64f7ad961d35b6f40dc5a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 19:15:24 +0100
-Subject: [PATCH 12/16] move shared code into a common file
+Subject: [PATCH 12/18] move shared code into a common file
 
 Move code which is going to be shared between ioctl and netlink
 implementation into a common file common.c and declarations into header
@@ -10,10 +10,10 @@ file common.h.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am |   2 +-
- common.c    | 287 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- common.h    |  64 ++++++++++++
- ethtool.c   | 151 ++-------------------------
- 4 files changed, 359 insertions(+), 145 deletions(-)
+ common.c    | 138 +++++++++++++++++++++++++++++++++++++++++++++++
+ common.h    |  20 +++++++
+ ethtool.c   | 151 +++-------------------------------------------------
+ 4 files changed, 166 insertions(+), 145 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
 
@@ -32,10 +32,10 @@ index 92aefb9843bc..77b13da1442c 100644
  if ETHTOOL_ENABLE_PRETTY_DUMP
 diff --git a/common.c b/common.c
 new file mode 100644
-index 000000000000..c8f2cf349add
+index 000000000000..8b661abe2e79
 --- /dev/null
 +++ b/common.c
-@@ -0,0 +1,287 @@
+@@ -0,0 +1,138 @@
 +#include "internal.h"
 +#include "common.h"
 +
@@ -79,143 +79,6 @@ index 000000000000..c8f2cf349add
 +};
 +const unsigned int n_flags_msglvl = ARRAY_SIZE(flags_msglvl) - 1;
 +
-+const char *names_duplex[] = {
-+	[DUPLEX_HALF]		= "Half",
-+	[DUPLEX_FULL]		= "Full",
-+};
-+DEFINE_ENUM_COUNT(duplex);
-+
-+const char *names_port[] = {
-+	[PORT_TP]		= "Twisted Pair",
-+	[PORT_AUI]		= "AUI",
-+	[PORT_BNC]		= "BNC",
-+	[PORT_MII]		= "MII",
-+	[PORT_FIBRE]		= "FIBRE",
-+	[PORT_DA]		= "Direct Attach Copper",
-+	[PORT_NONE]		= "None",
-+	[PORT_OTHER]		= "Other",
-+};
-+DEFINE_ENUM_COUNT(port);
-+
-+const char *names_transceiver[] = {
-+	[XCVR_INTERNAL]		= "internal",
-+	[XCVR_EXTERNAL]		= "external",
-+};
-+DEFINE_ENUM_COUNT(transceiver);
-+
-+/* the practice of putting completely unrelated flags into link mode bitmaps
-+ * is rather unfortunate but as even ethtool_link_ksettings preserved that,
-+ * there is little chance of getting them separated any time soon so let's
-+ * sort them out ourselves
-+ */
-+const struct link_mode_info link_modes[] = {
-+        [ETHTOOL_LINK_MODE_10baseT_Half_BIT] =
-+		{ LM_CLASS_REAL,	10,	DUPLEX_HALF },
-+        [ETHTOOL_LINK_MODE_10baseT_Full_BIT] =
-+		{ LM_CLASS_REAL,	10,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_100baseT_Half_BIT] =
-+		{ LM_CLASS_REAL,	100,	DUPLEX_HALF },
-+        [ETHTOOL_LINK_MODE_100baseT_Full_BIT] =
-+		{ LM_CLASS_REAL,	100,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_1000baseT_Half_BIT] =
-+		{ LM_CLASS_REAL,	1000,	DUPLEX_HALF },
-+        [ETHTOOL_LINK_MODE_1000baseT_Full_BIT] =
-+		{ LM_CLASS_REAL,	1000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_Autoneg_BIT] =
-+		{ LM_CLASS_AUTONEG },
-+        [ETHTOOL_LINK_MODE_TP_BIT] =
-+		{ LM_CLASS_PORT },
-+        [ETHTOOL_LINK_MODE_AUI_BIT] =
-+		{ LM_CLASS_PORT },
-+        [ETHTOOL_LINK_MODE_MII_BIT] =
-+		{ LM_CLASS_PORT },
-+        [ETHTOOL_LINK_MODE_FIBRE_BIT] =
-+		{ LM_CLASS_PORT },
-+        [ETHTOOL_LINK_MODE_BNC_BIT] =
-+		{ LM_CLASS_PORT },
-+        [ETHTOOL_LINK_MODE_10000baseT_Full_BIT] =
-+		{ LM_CLASS_REAL,	10000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_Pause_BIT] =
-+		{ LM_CLASS_PAUSE },
-+        [ETHTOOL_LINK_MODE_Asym_Pause_BIT] =
-+		{ LM_CLASS_PAUSE },
-+        [ETHTOOL_LINK_MODE_2500baseX_Full_BIT] =
-+		{ LM_CLASS_REAL,	2500,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_Backplane_BIT] =
-+		{ LM_CLASS_PORT },
-+        [ETHTOOL_LINK_MODE_1000baseKX_Full_BIT] =
-+		{ LM_CLASS_REAL,	1000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_10000baseKX4_Full_BIT] =
-+		{ LM_CLASS_REAL,	10000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_10000baseKR_Full_BIT] =
-+		{ LM_CLASS_REAL,	10000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_10000baseR_FEC_BIT] =
-+		{ LM_CLASS_REAL,	10000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_20000baseMLD2_Full_BIT] =
-+		{ LM_CLASS_REAL,	20000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_20000baseKR2_Full_BIT] =
-+		{ LM_CLASS_REAL,	20000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_40000baseKR4_Full_BIT] =
-+		{ LM_CLASS_REAL,	40000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_40000baseCR4_Full_BIT] =
-+		{ LM_CLASS_REAL,	40000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_40000baseSR4_Full_BIT] =
-+		{ LM_CLASS_REAL,	40000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_40000baseLR4_Full_BIT] =
-+		{ LM_CLASS_REAL,	40000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_56000baseKR4_Full_BIT] =
-+		{ LM_CLASS_REAL,	56000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_56000baseCR4_Full_BIT] =
-+		{ LM_CLASS_REAL,	56000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_56000baseSR4_Full_BIT] =
-+		{ LM_CLASS_REAL,	56000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_56000baseLR4_Full_BIT] =
-+		{ LM_CLASS_REAL,	56000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_25000baseCR_Full_BIT] =
-+		{ LM_CLASS_REAL,	25000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_25000baseKR_Full_BIT] =
-+		{ LM_CLASS_REAL,	25000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_25000baseSR_Full_BIT] =
-+		{ LM_CLASS_REAL,	25000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_50000baseCR2_Full_BIT] =
-+		{ LM_CLASS_REAL,	50000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_50000baseKR2_Full_BIT] =
-+		{ LM_CLASS_REAL,	50000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT] =
-+		{ LM_CLASS_REAL,	100000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_100000baseSR4_Full_BIT] =
-+		{ LM_CLASS_REAL,	100000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT] =
-+		{ LM_CLASS_REAL,	100000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT] =
-+		{ LM_CLASS_REAL,	100000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_50000baseSR2_Full_BIT] =
-+		{ LM_CLASS_REAL,	50000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_1000baseX_Full_BIT] =
-+		{ LM_CLASS_REAL,	1000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_10000baseCR_Full_BIT] =
-+		{ LM_CLASS_REAL,	10000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_10000baseSR_Full_BIT] =
-+		{ LM_CLASS_REAL,	10000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_10000baseLR_Full_BIT] =
-+		{ LM_CLASS_REAL,	10000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_10000baseLRM_Full_BIT] =
-+		{ LM_CLASS_REAL,	10000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_10000baseER_Full_BIT] =
-+		{ LM_CLASS_REAL,	10000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_2500baseT_Full_BIT] =
-+		{ LM_CLASS_REAL,	2500,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_5000baseT_Full_BIT] =
-+		{ LM_CLASS_REAL,	5000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_FEC_NONE_BIT] =
-+		{ LM_CLASS_FEC },
-+        [ETHTOOL_LINK_MODE_FEC_RS_BIT] =
-+		{ LM_CLASS_FEC },
-+        [ETHTOOL_LINK_MODE_FEC_BASER_BIT] =
-+		{ LM_CLASS_FEC },
-+};
-+const unsigned int link_modes_count = ARRAY_SIZE(link_modes);
-+
 +void print_flags(const struct flag_info *info, unsigned int n_info, u32 value)
 +{
 +	const char *sep = "";
@@ -233,18 +96,6 @@ index 000000000000..c8f2cf349add
 +	/* Print any unrecognised flags in hex */
 +	if (value)
 +		printf("%s%#x", sep, value);
-+}
-+
-+void __print_enum(const char *const *info, unsigned int n_info, unsigned int val,
-+		const char *label, const char *unknown)
-+{
-+	if (val >= n_info || !info[val]) {
-+		printf("%s", label);
-+		printf(unknown, val);
-+		fputc('\n', stdout);
-+	} else {
-+		printf("%s%s\n", label, info[val]);
-+	}
 +}
 +
 +static char *unparse_wolopts(int wolopts)
@@ -325,10 +176,10 @@ index 000000000000..c8f2cf349add
 +}
 diff --git a/common.h b/common.h
 new file mode 100644
-index 000000000000..59f52f41125a
+index 000000000000..f6f256780498
 --- /dev/null
 +++ b/common.h
-@@ -0,0 +1,64 @@
+@@ -0,0 +1,20 @@
 +#ifndef ETHTOOL_COMMON_H__
 +#define ETHTOOL_COMMON_H__
 +
@@ -344,51 +195,7 @@ index 000000000000..59f52f41125a
 +extern const struct flag_info flags_msglvl[];
 +extern const unsigned int n_flags_msglvl;
 +
-+
-+enum link_mode_class {
-+	LM_CLASS_UNKNOWN,
-+	LM_CLASS_REAL,
-+	LM_CLASS_AUTONEG,
-+	LM_CLASS_PORT,
-+	LM_CLASS_PAUSE,
-+	LM_CLASS_FEC,
-+};
-+
-+struct link_mode_info {
-+	enum link_mode_class	class;
-+	u32			speed;
-+	u8			duplex;
-+};
-+
-+extern const struct link_mode_info link_modes[];
-+extern const unsigned int link_modes_count;
-+
-+static inline bool lm_class_match(unsigned int mode, enum link_mode_class class)
-+{
-+	unsigned int mode_class = (mode < link_modes_count) ?
-+				   link_modes[mode].class : LM_CLASS_UNKNOWN;
-+
-+	if (mode_class == class)
-+		return true;
-+	return (mode_class == class) ||
-+	       ((class == LM_CLASS_REAL) && (mode_class = LM_CLASS_UNKNOWN));
-+}
-+
-+#define DECLARE_ENUM_NAMES(obj) \
-+	extern const char *names_ ## obj[]; \
-+	extern const unsigned int names_ ## obj ## _count
-+#define DEFINE_ENUM_COUNT(obj) \
-+	const unsigned int names_ ## obj ## _count = ARRAY_SIZE(names_ ## obj)
-+#define print_enum(array, val, label, unknown) \
-+	__print_enum(array, array ## _count, val, label, unknown)
-+
-+DECLARE_ENUM_NAMES(duplex);
-+DECLARE_ENUM_NAMES(port);
-+DECLARE_ENUM_NAMES(transceiver);
-+
 +void print_flags(const struct flag_info *info, unsigned int n_info, u32 value);
-+void __print_enum(const char *const *info, unsigned int n_info,
-+		  unsigned int val, const char *label, const char *unknown);
 +int dump_wol(struct ethtool_wolinfo *wol);
 +void dump_mdix(u8 mdix, u8 mdix_ctrl);
 +

@@ -1,7 +1,7 @@
 From 5b9ab9c5c3a20b671b94178c4658664f22e7e13a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 12 Feb 2020 13:03:30 +0100
-Subject: [PATCH 06/16] netlink: introduce the netlink interface
+Subject: [PATCH 06/18] netlink: introduce the netlink interface
 
 Initial part of netlink interface based on genetlink and libmnl. The
 netlink interface is available in kernel since 5.6-rc1. This commit only

@@ -1,7 +1,7 @@
 From 6369534b5d0e806908f4ea65458f6a1b9cb2867d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Feb 2020 19:35:20 +0100
-Subject: [PATCH 04/16] use named initializers in command line option list
+Subject: [PATCH 04/18] use named initializers in command line option list
 
 The command line option list initialization does not look very nice and
 adding another struct member would not make it look any better.

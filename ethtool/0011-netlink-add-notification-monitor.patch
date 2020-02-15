@@ -1,7 +1,7 @@
-From 6be0c28bf7b063979492436b339c1ff6f89d5ec0 Mon Sep 17 00:00:00 2001
+From 96325f1f55137514e379d9a5b4ae55d84ec59eae Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
-Subject: [PATCH 11/16] netlink: add notification monitor
+Subject: [PATCH 11/18] netlink: add notification monitor
 
 With 'ethtool --monitor [ --all | opt ] [dev]', let ethtool listen to
 netlink notification and display them in a format similar to output of
@@ -14,13 +14,13 @@ name or "*" is passed, show notifications for all devices.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |   1 +
- ethtool.8.in      |  21 ++++++
+ ethtool.8.in      |  21 +++++
  ethtool.c         |  14 ++++
  netlink/extapi.h  |   8 ++
- netlink/monitor.c | 189 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/monitor.c | 191 ++++++++++++++++++++++++++++++++++++++++++++++
  netlink/netlink.h |  11 +++
  netlink/strset.c  |   2 +
- 7 files changed, 246 insertions(+)
+ 7 files changed, 248 insertions(+)
  create mode 100644 netlink/monitor.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -134,10 +134,10 @@ index 074e0c553a50..b4910401ae11 100644
  #endif /* ETHTOOL_EXTAPI_H__ */
 diff --git a/netlink/monitor.c b/netlink/monitor.c
 new file mode 100644
-index 000000000000..b81d38e38368
+index 000000000000..b1f0f48cd13c
 --- /dev/null
 +++ b/netlink/monitor.c
-@@ -0,0 +1,189 @@
+@@ -0,0 +1,191 @@
 +#include <errno.h>
 +
 +#include "../internal.h"
@@ -298,6 +298,8 @@ index 000000000000..b81d38e38368
 +
 +	nlctx->filter_devname = ctx->devname;
 +	nlctx->is_monitor = true;
++	nlsk->port = 0;
++	nlsk->seq = 0;
 +
 +	fputs("listening...\n", stdout);
 +	fflush(stdout);
