@@ -1,7 +1,7 @@
-From fdfa4d33f0a4816a1d11b656c99fe78cf5e293e8 Mon Sep 17 00:00:00 2001
+From eb5fe4ce59fde6b3a1b907f0ce524be46179d147 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Jan 2020 17:41:05 +0100
-Subject: [PATCH 4/4] ethtool: add FEATURES_NTF notification
+Subject: [PATCH 5/5] ethtool: add FEATURES_NTF notification
 
 Send ETHTOOL_MSG_FEATURES_NTF notification whenever network device features
 are modified using ETHTOOL_MSG_FEATURES_SET netlink message, ethtool ioctl

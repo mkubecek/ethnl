@@ -1,7 +1,7 @@
-From 75c84fabacbfc66d9cb1dcd4de71ca059c9058aa Mon Sep 17 00:00:00 2001
+From 3c82d075437e6055c21de672377efeee73b0a459 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 25 Jan 2020 22:22:52 +0100
-Subject: [PATCH 1/4] ethtool: provide netdev features with FEATURES_GET
+Subject: [PATCH 2/5] ethtool: provide netdev features with FEATURES_GET
  request
 
 Implement FEATURES_GET request to get network device features,
@@ -382,8 +382,6 @@ index 60efd87686ad..e9005dae0e4e 100644
  
  int ethnl_set_linkinfo(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_linkmodes(struct sk_buff *skb, struct genl_info *info);
-
-base-commit: fdfa3a6778b194974df77b384cc71eb2e503639a
 -- 
 2.25.0
 

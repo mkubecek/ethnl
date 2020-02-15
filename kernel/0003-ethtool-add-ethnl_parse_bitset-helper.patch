@@ -1,7 +1,7 @@
-From d25c9ac15fdb1eff58641a8d0c0c8fc929bf9651 Mon Sep 17 00:00:00 2001
+From 03d91616eee5eb83ab48a8c9d17b89fab72b3655 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 28 Jul 2019 19:12:37 +0200
-Subject: [PATCH 2/4] ethtool: add ethnl_parse_bitset() helper
+Subject: [PATCH 3/5] ethtool: add ethnl_parse_bitset() helper
 
 Unlike other SET type commands, modifying netdev features is required to
 provide a reply telling userspace what was actually changed, compared to
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 98 insertions(+)
 
 diff --git a/net/ethtool/bitset.c b/net/ethtool/bitset.c
-index fce45dac4205..f9360d92b3f9 100644
+index 8977fe1f3946..7b04312a62ba 100644
 --- a/net/ethtool/bitset.c
 +++ b/net/ethtool/bitset.c
-@@ -584,6 +584,100 @@ int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
+@@ -587,6 +587,100 @@ int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
  	return 0;
  }
  
