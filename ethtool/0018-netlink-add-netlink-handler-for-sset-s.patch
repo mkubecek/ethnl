@@ -1,7 +1,7 @@
-From f74b81ceab5cdc3acf7fa8dbea760588486fa977 Mon Sep 17 00:00:00 2001
+From 47dd9e35a8f7f8bfbea5527219833365df63c5a5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
-Subject: [PATCH 18/18] netlink: add netlink handler for sset (-s)
+Subject: [PATCH 18/19] netlink: add netlink handler for sset (-s)
 
 Implement "ethtool -s <dev>" subcommand using netlink interface command
 ETHTOOL_MSG_SETTINGS_SET.
@@ -14,8 +14,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.8.in       |  11 ++-
  ethtool.c          |   7 +-
  netlink/extapi.h   |   2 +
- netlink/settings.c | 178 +++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 192 insertions(+), 6 deletions(-)
+ netlink/settings.c | 192 +++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 206 insertions(+), 6 deletions(-)
 
 diff --git a/ethtool.8.in b/ethtool.8.in
 index 1c930a3146cc..1813a0195729 100644
@@ -91,7 +91,7 @@ index 782963c4987c..40ac333c989e 100644
  #endif /* ETHTOOL_ENABLE_NETLINK */
  
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 921aafb22595..4eaa0a8ae65f 100644
+index 921aafb22595..609a34d3c1f0 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -7,6 +7,7 @@
@@ -102,7 +102,7 @@ index 921aafb22595..4eaa0a8ae65f 100644
  
  /* GET_SETTINGS */
  
-@@ -700,3 +701,180 @@ int nl_gset(struct cmd_context *ctx)
+@@ -700,3 +701,194 @@ int nl_gset(struct cmd_context *ctx)
  err:
  	return 75;
  }
@@ -139,6 +139,12 @@ index 921aafb22595..4eaa0a8ae65f 100644
 +	{}
 +};
 +
++static const struct error_parser_data xcvr_parser_data = {
++	.err_msg	= "deprecated parameter '%s' not supported by kernel\n",
++	.ret_val	= -EINVAL,
++	.extra_args	= 1,
++};
++
 +static const struct lookup_entry_u8 autoneg_values[] = {
 +	{ .arg = "off",		.val = AUTONEG_DISABLE },
 +	{ .arg = "on",		.val = AUTONEG_ENABLE },
@@ -173,9 +179,10 @@ index 921aafb22595..4eaa0a8ae65f 100644
 +	.reset_char	= 'd',
 +};
 +
-+const struct byte_str_params sopass_parser_data = {
++const struct byte_str_parser_data sopass_parser_data = {
++	.min_len	= 6,
 +	.max_len	= 6,
-+	.delim		= '/',
++	.delim		= ':',
 +};
 +
 +static const struct bitset_parser_data msglvl_parser_data = {
@@ -205,6 +212,13 @@ index 921aafb22595..4eaa0a8ae65f 100644
 +		.group		= ETHTOOL_MSG_LINKINFO_SET,
 +		.type		= ETHTOOL_A_LINKINFO_PHYADDR,
 +		.handler	= nl_parse_direct_u8,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "xcvr",
++		.group		= ETHTOOL_MSG_LINKINFO_SET,
++		.handler	= nl_parse_error,
++		.handler_data	= &xcvr_parser_data,
 +		.min_argc	= 1,
 +	},
 +	{
@@ -277,7 +291,7 @@ index 921aafb22595..4eaa0a8ae65f 100644
 +
 +	ret = nl_parser(nlctx, sset_params, NULL, PARSER_GROUP_MSG);
 +	if (ret < 0)
-+		return 2;
++		return 1;
 +
 +	if (ret == 0)
 +		return 0;

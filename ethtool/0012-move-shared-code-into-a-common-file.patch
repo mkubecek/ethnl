@@ -1,7 +1,7 @@
 From a41ae34550991a6029b64f7ad961d35b6f40dc5a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 19:15:24 +0100
-Subject: [PATCH 12/18] move shared code into a common file
+Subject: [PATCH 12/19] move shared code into a common file
 
 Move code which is going to be shared between ioctl and netlink
 implementation into a common file common.c and declarations into header

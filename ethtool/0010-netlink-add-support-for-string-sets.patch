@@ -1,7 +1,7 @@
 From 4123a0eb432cbfda6306289e3e080b033c26ffde Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 14:09:19 +0200
-Subject: [PATCH 10/18] netlink: add support for string sets
+Subject: [PATCH 10/19] netlink: add support for string sets
 
 Add infrastructure for querying kernel string sets (analog to ioctl
 commands ETHTOOL_GSSET_INFO and ETHTOOL_GSTRINGS) and keeping the results.

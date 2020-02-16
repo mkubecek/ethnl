@@ -1,7 +1,7 @@
-From c4f591c6ebc35c6834603e2ddf08e38cee2a7dd9 Mon Sep 17 00:00:00 2001
+From 3701636a5940021b78e7ccb09122785771332ba3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 23:04:32 +0100
-Subject: [PATCH 17/18] netlink: add bitset command line parser handlers
+Subject: [PATCH 17/19] netlink: add bitset command line parser handlers
 
 Add three more command line parser handlers for different representation of
 bitsets:
@@ -15,12 +15,12 @@ Numeric syntax %u[/%u] is also supported.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- netlink/parser.c | 439 +++++++++++++++++++++++++++++++++++++++++++++++
- netlink/parser.h |  28 ++-
- 2 files changed, 461 insertions(+), 6 deletions(-)
+ netlink/parser.c | 441 +++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/parser.h |  19 ++
+ 2 files changed, 460 insertions(+)
 
 diff --git a/netlink/parser.c b/netlink/parser.c
-index ef210ff04159..3d5593100771 100644
+index dd670e593e62..f3c3dac6997d 100644
 --- a/netlink/parser.c
 +++ b/netlink/parser.c
 @@ -37,6 +37,13 @@ static void parser_err_invalid_value(struct nl_context *nlctx, const char *val)
@@ -34,10 +34,10 @@ index ef210ff04159..3d5593100771 100644
 +		nlctx->cmd, flag, nlctx->param);
 +}
 +
- static int __parse_u32(const char *arg, uint32_t *result, uint32_t min,
- 		       uint32_t max, int base)
+ static bool __prefix_0x(const char *p)
  {
-@@ -271,6 +278,35 @@ int nl_parse_lookup_u8(struct nl_context *nlctx, uint16_t type,
+ 	return p[0] == '0' && (p[1] == 'x' || p[1] == 'X');
+@@ -276,6 +283,35 @@ int nl_parse_lookup_u8(struct nl_context *nlctx, uint16_t type,
  	return (type && ethnla_put_u8(msgbuff, type, val)) ? -EMSGSIZE : 0;
  }
  
@@ -73,8 +73,8 @@ index ef210ff04159..3d5593100771 100644
  static bool __is_hex(char c)
  {
  	if (isdigit(c))
-@@ -369,6 +405,409 @@ err:
- 	return -EINVAL;
+@@ -399,6 +435,411 @@ int nl_parse_error(struct nl_context *nlctx, uint16_t type, const void *data,
+ 	return parser_data->ret_val;
  }
  
 +/* bitset parser handlers */
@@ -91,7 +91,7 @@ index ef210ff04159..3d5593100771 100644
 +
 +	if (!arg)
 +		return false;
-+	if (arg[0] == '0' && arg[1] == 'x')
++	if (__prefix_0x(arg))
 +		return true;
 +	while (*p) {
 +		if (*p == '/') {
@@ -99,7 +99,7 @@ index ef210ff04159..3d5593100771 100644
 +				return false;
 +			has_slash = true;
 +			p++;
-+			if (p[0] == '0' && p[1] == 'x')
++			if (__prefix_0x(p))
 +				p += 2;
 +			continue;
 +		}
@@ -127,6 +127,8 @@ index ef210ff04159..3d5593100771 100644
 +	unsigned int nbits = 0;
 +	const char *p = arg;
 +
++	if (!len)
++		return -EINVAL;
 +	if (!force_hex && len <= __MAX_U32_DIGITS) {
 +		strncpy(buff, arg, len);
 +		if (!buff[__MAX_U32_DIGITS]) {
@@ -183,7 +185,7 @@ index ef210ff04159..3d5593100771 100644
 +	int ret = 0;
 +	int nbits;
 +
-+	if (arg[0] == '0' && arg[1] == 'x') {
++	if (__prefix_0x(arg)) {
 +		force_hex1 = true;
 +		arg += 2;
 +	}
@@ -199,7 +201,7 @@ index ef210ff04159..3d5593100771 100644
 +
 +	if (maskptr) {
 +		maskptr++;
-+		if (maskptr[0] == '0' && maskptr[1] == 'x') {
++		if (__prefix_0x(maskptr)) {
 +			maskptr += 2;
 +			force_hex2 = true;
 +		}
@@ -484,24 +486,11 @@ index ef210ff04159..3d5593100771 100644
  
  static const struct param_parser *find_parser(const struct param_parser *params,
 diff --git a/netlink/parser.h b/netlink/parser.h
-index c510d2a6941e..63f92b3cf370 100644
+index 7272c2ea46ba..c0b43a0aae96 100644
 --- a/netlink/parser.h
 +++ b/netlink/parser.h
-@@ -26,12 +26,6 @@ struct lookup_entry_u8 {
- 	uint8_t		val;
- };
- 
--struct char_bitset_parser_data {
--	const char	*bit_chars;
--	unsigned int	nbits;
--	char		reset_char;
--};
--
- struct byte_str_params {
- 	unsigned int	min_len;
- 	unsigned int	max_len;
-@@ -43,6 +37,18 @@ struct byte_str_value {
- 	u8		*data;
+@@ -43,6 +43,18 @@ struct error_parser_data {
+ 	unsigned int	extra_args;
  };
  
 +struct bitset_parser_data {
@@ -519,16 +508,13 @@ index c510d2a6941e..63f92b3cf370 100644
  typedef int (*param_parser_cb_t)(struct nl_context *, uint16_t, const void *,
  				 struct nl_msg_buff *, void *);
  
-@@ -85,6 +91,16 @@ int nl_parse_lookup_u32(struct nl_context *nlctx, uint16_t type,
- int nl_parse_lookup_u8(struct nl_context *nlctx, uint16_t type,
- 		       const void *data, struct nl_msg_buff *msgbuff,
- 		       void *dest);
+@@ -88,6 +100,13 @@ int nl_parse_lookup_u8(struct nl_context *nlctx, uint16_t type,
+ /* always fail (for deprecated parameters) */
+ int nl_parse_error(struct nl_context *nlctx, uint16_t type, const void *data,
+ 		   struct nl_msg_buff *msgbuff, void *dest);
 +/* bitset represented by %x[/%x] or name on|off ... [--] */
 +int nl_parse_bitset(struct nl_context *nlctx, uint16_t type, const void *data,
 +		    struct nl_msg_buff *msgbuff, void *dest);
-+/* bitset without mask represented by %u or name ... [--] */
-+int nl_parse_bitlist(struct nl_context *nlctx, uint16_t type, const void *data,
-+		     struct nl_msg_buff *msgbuff, void *dest);
 +/* bitset represented by %u[/%u] or string (characters for bits) */
 +int nl_parse_char_bitset(struct nl_context *nlctx, uint16_t type,
 +			 const void *data, struct nl_msg_buff *msgbuff,
