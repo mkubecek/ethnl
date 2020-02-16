@@ -1,6 +1,6 @@
-From 3701636a5940021b78e7ccb09122785771332ba3 Mon Sep 17 00:00:00 2001
+From 0b7c08ff6e92dc301abb9a066dce2e7f3d45990c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Thu, 13 Feb 2020 23:04:32 +0100
+Date: Sun, 16 Feb 2020 23:41:51 +0100
 Subject: [PATCH 17/19] netlink: add bitset command line parser handlers
 
 Add three more command line parser handlers for different representation of
@@ -15,29 +15,28 @@ Numeric syntax %u[/%u] is also supported.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- netlink/parser.c | 441 +++++++++++++++++++++++++++++++++++++++++++++++
- netlink/parser.h |  19 ++
- 2 files changed, 460 insertions(+)
+ netlink/parser.c | 443 +++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/parser.h |  21 +++
+ 2 files changed, 464 insertions(+)
 
 diff --git a/netlink/parser.c b/netlink/parser.c
-index dd670e593e62..f3c3dac6997d 100644
+index 0e2190eed0b4..40eb4a5c0b26 100644
 --- a/netlink/parser.c
 +++ b/netlink/parser.c
-@@ -37,6 +37,13 @@ static void parser_err_invalid_value(struct nl_context *nlctx, const char *val)
+@@ -43,6 +43,12 @@ static void parser_err_invalid_value(struct nl_context *nlctx, const char *val)
  		nlctx->cmd, val, nlctx->param);
  }
  
 +static void parser_err_invalid_flag(struct nl_context *nlctx, const char *flag)
 +{
-+	fprintf(stderr, "ethtool (%s): flag '%s' for parameter '%s' is not "
-+			"followed by 'on' or 'off'\n",
++	fprintf(stderr, "ethtool (%s): flag '%s' for parameter '%s' is not followed by 'on' or 'off'\n",
 +		nlctx->cmd, flag, nlctx->param);
 +}
 +
  static bool __prefix_0x(const char *p)
  {
  	return p[0] == '0' && (p[1] == 'x' || p[1] == 'X');
-@@ -276,6 +283,35 @@ int nl_parse_lookup_u8(struct nl_context *nlctx, uint16_t type,
+@@ -282,6 +288,35 @@ int nl_parse_lookup_u8(struct nl_context *nlctx, uint16_t type,
  	return (type && ethnla_put_u8(msgbuff, type, val)) ? -EMSGSIZE : 0;
  }
  
@@ -73,7 +72,7 @@ index dd670e593e62..f3c3dac6997d 100644
  static bool __is_hex(char c)
  {
  	if (isdigit(c))
-@@ -399,6 +435,411 @@ int nl_parse_error(struct nl_context *nlctx, uint16_t type, const void *data,
+@@ -405,6 +440,414 @@ int nl_parse_error(struct nl_context *nlctx, uint16_t type, const void *data,
  	return parser_data->ret_val;
  }
  
@@ -121,7 +120,7 @@ index dd670e593e62..f3c3dac6997d 100644
 + * value on error.
 + */
 +static int __parse_num_string(const char *arg, unsigned int len, uint32_t *dst,
-+			    bool force_hex)
++			      bool force_hex)
 +{
 +	char buff[__MAX_U32_DIGITS + 1] = {};
 +	unsigned int nbits = 0;
@@ -235,8 +234,10 @@ index dd670e593e62..f3c3dac6997d 100644
 +	if (!type)
 +		goto out_free;
 +	ret = -EMSGSIZE;
-+	if (!(nest = ethnla_nest_start(msgbuff, type)) ||
-+	    ethnla_put_flag(msgbuff, ETHTOOL_A_BITSET_NOMASK, !mask) ||
++	nest = ethnla_nest_start(msgbuff, type);
++	if (!nest)
++	       goto out_free;
++	if (ethnla_put_flag(msgbuff, ETHTOOL_A_BITSET_NOMASK, !mask) ||
 +	    ethnla_put_u32(msgbuff, ETHTOOL_A_BITSET_SIZE, nbits) ||
 +	    ethnla_put(msgbuff, ETHTOOL_A_BITSET_VALUE,
 +		       nwords * sizeof(uint32_t), value) ||
@@ -297,7 +298,8 @@ index dd670e593e62..f3c3dac6997d 100644
 +		}
 +
 +		ret = -EMSGSIZE;
-+		bit_attr = ethnla_nest_start(msgbuff, ETHTOOL_A_BITSET_BITS_BIT);
++		bit_attr = ethnla_nest_start(msgbuff,
++					     ETHTOOL_A_BITSET_BITS_BIT);
 +		if (!bit_attr)
 +			goto err;
 +		if (ethnla_put_strz(msgbuff, ETHTOOL_A_BITSET_BIT_NAME,
@@ -486,18 +488,20 @@ index dd670e593e62..f3c3dac6997d 100644
  
  static const struct param_parser *find_parser(const struct param_parser *params,
 diff --git a/netlink/parser.h b/netlink/parser.h
-index 7272c2ea46ba..c0b43a0aae96 100644
+index b5e8cd418b50..3cc26d21916c 100644
 --- a/netlink/parser.h
 +++ b/netlink/parser.h
-@@ -43,6 +43,18 @@ struct error_parser_data {
+@@ -79,6 +79,20 @@ struct error_parser_data {
  	unsigned int	extra_args;
  };
  
++/* used by nl_parse_bitset() */
 +struct bitset_parser_data {
 +	bool		force_hex;
 +	bool		no_mask;
 +};
 +
++/* used by nl_parse_char_bitset() */
 +struct char_bitset_parser_data {
 +	const char	*bit_chars;
 +	unsigned int	nbits;
@@ -505,13 +509,13 @@ index 7272c2ea46ba..c0b43a0aae96 100644
 +	bool		no_mask;
 +};
 +
- typedef int (*param_parser_cb_t)(struct nl_context *, uint16_t, const void *,
- 				 struct nl_msg_buff *, void *);
+ int parse_u32(const char *arg, uint32_t *result);
  
-@@ -88,6 +100,13 @@ int nl_parse_lookup_u8(struct nl_context *nlctx, uint16_t type,
- /* always fail (for deprecated parameters) */
- int nl_parse_error(struct nl_context *nlctx, uint16_t type, const void *data,
- 		   struct nl_msg_buff *msgbuff, void *dest);
+ /* parser handlers to use as param_parser::handler */
+@@ -115,6 +129,13 @@ int nl_parse_error(struct nl_context *nlctx, uint16_t type, const void *data,
+ int nl_parse_byte_str(struct nl_context *nlctx, uint16_t type,
+ 		      const void *data, struct nl_msg_buff *msgbuff,
+ 		      void *dest);
 +/* bitset represented by %x[/%x] or name on|off ... [--] */
 +int nl_parse_bitset(struct nl_context *nlctx, uint16_t type, const void *data,
 +		    struct nl_msg_buff *msgbuff, void *dest);
@@ -519,9 +523,9 @@ index 7272c2ea46ba..c0b43a0aae96 100644
 +int nl_parse_char_bitset(struct nl_context *nlctx, uint16_t type,
 +			 const void *data, struct nl_msg_buff *msgbuff,
 +			 void *dest);
- /* NLA_BINARY represented by %x:%x:...%x (e.g. a MAC address) */
- int nl_parse_byte_str(struct nl_context *nlctx, uint16_t type,
- 		      const void *data, struct nl_msg_buff *msgbuff,
+ 
+ /* main entry point called to parse the command line */
+ int nl_parser(struct nl_context *nlctx, const struct param_parser *params,
 -- 
 2.25.0
 

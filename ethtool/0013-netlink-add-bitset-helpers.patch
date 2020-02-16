@@ -1,17 +1,21 @@
-From 2b1b03fcc4fe6fefbd520d19d37e98fc01e813d0 Mon Sep 17 00:00:00 2001
+From 187f6ef4d1ae808b4b1cd0138c30906c68aea26d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Thu, 13 Feb 2020 22:01:26 +0100
+Date: Sun, 16 Feb 2020 23:41:42 +0100
 Subject: [PATCH 13/19] netlink: add bitset helpers
 
 Add basic functions for work with arbitrary length bitsets used in ethtool
 netlink interface.
 
+The most important function is walk_bitset() which iterates through bits of
+a bitset (passed as pointer to the nest attribute) and calls provided
+callback for each bit.
+
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am      |   2 +-
- netlink/bitset.c | 195 +++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/bitset.c | 201 +++++++++++++++++++++++++++++++++++++++++++++++
  netlink/bitset.h |  25 ++++++
- 3 files changed, 221 insertions(+), 1 deletion(-)
+ 3 files changed, 227 insertions(+), 1 deletion(-)
  create mode 100644 netlink/bitset.c
  create mode 100644 netlink/bitset.h
 
@@ -30,10 +34,16 @@ index 77b13da1442c..65586d9f51a1 100644
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/netlink/bitset.c b/netlink/bitset.c
 new file mode 100644
-index 000000000000..9676d3355a0a
+index 000000000000..69c3ed993cd7
 --- /dev/null
 +++ b/netlink/bitset.c
-@@ -0,0 +1,195 @@
+@@ -0,0 +1,201 @@
++/*
++ * bitset.h - netlink bitset helpers
++ *
++ * Functions for easier handling of ethtool netlink bitset attributes.
++ */
++
 +#include <stdio.h>
 +#include <errno.h>
 +
@@ -231,14 +241,14 @@ index 000000000000..9676d3355a0a
 +}
 diff --git a/netlink/bitset.h b/netlink/bitset.h
 new file mode 100644
-index 000000000000..1764d4685682
+index 000000000000..0f349af87f46
 --- /dev/null
 +++ b/netlink/bitset.h
 @@ -0,0 +1,25 @@
 +/*
 + * bitset.h - netlink bitset helpers
 + *
-+ * Declarations of helpers for handling ethtool netlink bitsets
++ * Declarations of helpers for handling ethtool netlink bitsets.
 + */
 +
 +#ifndef ETHTOOL_NETLINK_BITSET_H__

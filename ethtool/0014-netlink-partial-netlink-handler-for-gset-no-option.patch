@@ -1,6 +1,6 @@
-From fd0ac88ef4fb77963c54c14747c17c6119f1e62e Mon Sep 17 00:00:00 2001
+From 49fc63392858973b71e188f92142f45500c1de04 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Wed, 22 Nov 2017 17:54:35 +0100
+Date: Sun, 16 Feb 2020 23:41:44 +0100
 Subject: [PATCH 14/19] netlink: partial netlink handler for gset (no option)
 
 Partially implement "ethtool <dev>" subcommand. This commit retrieves and
@@ -16,9 +16,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Makefile.am        |   1 +
  ethtool.c          |   1 +
  netlink/extapi.h   |   3 +
- netlink/monitor.c  |  19 ++
- netlink/settings.c | 591 +++++++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 615 insertions(+)
+ netlink/monitor.c  |  16 ++
+ netlink/netlink.h  |   3 +
+ netlink/settings.c | 641 +++++++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 665 insertions(+)
  create mode 100644 netlink/settings.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -34,7 +35,7 @@ index 65586d9f51a1..e4e864add586 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.c b/ethtool.c
-index b55430fa0335..3545b7f34560 100644
+index c2b7cc8c0502..a69233bd73fc 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -5805,6 +5805,7 @@ int main(int argc, char **argp)
@@ -46,7 +47,7 @@ index b55430fa0335..3545b7f34560 100644
  	no_dev = false;
  
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index b4910401ae11..782963c4987c 100644
+index 1d5b68226af4..8608ea7f51f5 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -15,6 +15,7 @@ struct nl_context;
@@ -67,17 +68,10 @@ index b4910401ae11..782963c4987c 100644
  
  #endif /* ETHTOOL_EXTAPI_H__ */
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index b1f0f48cd13c..fcdcea66ef63 100644
+index 300fd5bc2e51..e8fdcd2b93ef 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -5,10 +5,21 @@
- #include "nlsock.h"
- #include "strset.h"
- 
-+int linkmodes_reply_cb(const struct nlmsghdr *nlhdr, void *data);
-+int linkinfo_reply_cb(const struct nlmsghdr *nlhdr, void *data);
-+
- static struct {
+@@ -15,6 +15,14 @@ static struct {
  	uint8_t		cmd;
  	mnl_cb_t	cb;
  } monitor_callbacks[] = {
@@ -92,7 +86,7 @@ index b1f0f48cd13c..fcdcea66ef63 100644
  };
  
  static void clear_filter(struct nl_context *nlctx)
-@@ -64,6 +75,14 @@ static struct monitor_option monitor_opts[] = {
+@@ -70,6 +78,14 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "|--all",
  		.cmd		= 0,
  	},
@@ -107,12 +101,32 @@ index b1f0f48cd13c..fcdcea66ef63 100644
  };
  
  static bool pattern_match(const char *s, const char *pattern)
+diff --git a/netlink/netlink.h b/netlink/netlink.h
+index 1a2e743ff6b2..790d0802b925 100644
+--- a/netlink/netlink.h
++++ b/netlink/netlink.h
+@@ -46,6 +46,9 @@ int attr_cb(const struct nlattr *attr, void *data);
+ const char *get_dev_name(const struct nlattr *nest);
+ int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname);
+ 
++int linkmodes_reply_cb(const struct nlmsghdr *nlhdr, void *data);
++int linkinfo_reply_cb(const struct nlmsghdr *nlhdr, void *data);
++
+ static inline void copy_devname(char *dst, const char *src)
+ {
+ 	strncpy(dst, src, ALTIFNAMSIZ);
 diff --git a/netlink/settings.c b/netlink/settings.c
 new file mode 100644
-index 000000000000..d542180211ba
+index 000000000000..24b7a4495961
 --- /dev/null
 +++ b/netlink/settings.c
-@@ -0,0 +1,591 @@
+@@ -0,0 +1,641 @@
++/*
++ * settings.c - netlink implementation of settings commands
++ *
++ * Implementation of "ethtool <dev>" and "ethtool -s <dev> ...".
++ */
++
 +#include <errno.h>
 +#include <string.h>
 +#include <stdio.h>
@@ -140,12 +154,12 @@ index 000000000000..d542180211ba
 +	u8			duplex;
 +};
 +
-+static const char *names_duplex[] = {
++static const char * const names_duplex[] = {
 +	[DUPLEX_HALF]		= "Half",
 +	[DUPLEX_FULL]		= "Full",
 +};
 +
-+static const char *names_port[] = {
++static const char * const names_port[] = {
 +	[PORT_TP]		= "Twisted Pair",
 +	[PORT_AUI]		= "AUI",
 +	[PORT_BNC]		= "BNC",
@@ -156,7 +170,7 @@ index 000000000000..d542180211ba
 +	[PORT_OTHER]		= "Other",
 +};
 +
-+static const char *names_transceiver[] = {
++static const char * const names_transceiver[] = {
 +	[XCVR_INTERNAL]		= "internal",
 +	[XCVR_EXTERNAL]		= "external",
 +};
@@ -167,110 +181,154 @@ index 000000000000..d542180211ba
 + * sort them out ourselves
 + */
 +static const struct link_mode_info link_modes[] = {
-+        [ETHTOOL_LINK_MODE_10baseT_Half_BIT] =
++	[ETHTOOL_LINK_MODE_10baseT_Half_BIT] =
 +		{ LM_CLASS_REAL,	10,	DUPLEX_HALF },
-+        [ETHTOOL_LINK_MODE_10baseT_Full_BIT] =
++	[ETHTOOL_LINK_MODE_10baseT_Full_BIT] =
 +		{ LM_CLASS_REAL,	10,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_100baseT_Half_BIT] =
++	[ETHTOOL_LINK_MODE_100baseT_Half_BIT] =
 +		{ LM_CLASS_REAL,	100,	DUPLEX_HALF },
-+        [ETHTOOL_LINK_MODE_100baseT_Full_BIT] =
++	[ETHTOOL_LINK_MODE_100baseT_Full_BIT] =
 +		{ LM_CLASS_REAL,	100,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_1000baseT_Half_BIT] =
++	[ETHTOOL_LINK_MODE_1000baseT_Half_BIT] =
 +		{ LM_CLASS_REAL,	1000,	DUPLEX_HALF },
-+        [ETHTOOL_LINK_MODE_1000baseT_Full_BIT] =
++	[ETHTOOL_LINK_MODE_1000baseT_Full_BIT] =
 +		{ LM_CLASS_REAL,	1000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_Autoneg_BIT] =
++	[ETHTOOL_LINK_MODE_Autoneg_BIT] =
 +		{ LM_CLASS_AUTONEG },
-+        [ETHTOOL_LINK_MODE_TP_BIT] =
++	[ETHTOOL_LINK_MODE_TP_BIT] =
 +		{ LM_CLASS_PORT },
-+        [ETHTOOL_LINK_MODE_AUI_BIT] =
++	[ETHTOOL_LINK_MODE_AUI_BIT] =
 +		{ LM_CLASS_PORT },
-+        [ETHTOOL_LINK_MODE_MII_BIT] =
++	[ETHTOOL_LINK_MODE_MII_BIT] =
 +		{ LM_CLASS_PORT },
-+        [ETHTOOL_LINK_MODE_FIBRE_BIT] =
++	[ETHTOOL_LINK_MODE_FIBRE_BIT] =
 +		{ LM_CLASS_PORT },
-+        [ETHTOOL_LINK_MODE_BNC_BIT] =
++	[ETHTOOL_LINK_MODE_BNC_BIT] =
 +		{ LM_CLASS_PORT },
-+        [ETHTOOL_LINK_MODE_10000baseT_Full_BIT] =
++	[ETHTOOL_LINK_MODE_10000baseT_Full_BIT] =
 +		{ LM_CLASS_REAL,	10000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_Pause_BIT] =
++	[ETHTOOL_LINK_MODE_Pause_BIT] =
 +		{ LM_CLASS_PAUSE },
-+        [ETHTOOL_LINK_MODE_Asym_Pause_BIT] =
++	[ETHTOOL_LINK_MODE_Asym_Pause_BIT] =
 +		{ LM_CLASS_PAUSE },
-+        [ETHTOOL_LINK_MODE_2500baseX_Full_BIT] =
++	[ETHTOOL_LINK_MODE_2500baseX_Full_BIT] =
 +		{ LM_CLASS_REAL,	2500,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_Backplane_BIT] =
++	[ETHTOOL_LINK_MODE_Backplane_BIT] =
 +		{ LM_CLASS_PORT },
-+        [ETHTOOL_LINK_MODE_1000baseKX_Full_BIT] =
++	[ETHTOOL_LINK_MODE_1000baseKX_Full_BIT] =
 +		{ LM_CLASS_REAL,	1000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_10000baseKX4_Full_BIT] =
++	[ETHTOOL_LINK_MODE_10000baseKX4_Full_BIT] =
 +		{ LM_CLASS_REAL,	10000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_10000baseKR_Full_BIT] =
++	[ETHTOOL_LINK_MODE_10000baseKR_Full_BIT] =
 +		{ LM_CLASS_REAL,	10000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_10000baseR_FEC_BIT] =
++	[ETHTOOL_LINK_MODE_10000baseR_FEC_BIT] =
 +		{ LM_CLASS_REAL,	10000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_20000baseMLD2_Full_BIT] =
++	[ETHTOOL_LINK_MODE_20000baseMLD2_Full_BIT] =
 +		{ LM_CLASS_REAL,	20000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_20000baseKR2_Full_BIT] =
++	[ETHTOOL_LINK_MODE_20000baseKR2_Full_BIT] =
 +		{ LM_CLASS_REAL,	20000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_40000baseKR4_Full_BIT] =
++	[ETHTOOL_LINK_MODE_40000baseKR4_Full_BIT] =
 +		{ LM_CLASS_REAL,	40000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_40000baseCR4_Full_BIT] =
++	[ETHTOOL_LINK_MODE_40000baseCR4_Full_BIT] =
 +		{ LM_CLASS_REAL,	40000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_40000baseSR4_Full_BIT] =
++	[ETHTOOL_LINK_MODE_40000baseSR4_Full_BIT] =
 +		{ LM_CLASS_REAL,	40000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_40000baseLR4_Full_BIT] =
++	[ETHTOOL_LINK_MODE_40000baseLR4_Full_BIT] =
 +		{ LM_CLASS_REAL,	40000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_56000baseKR4_Full_BIT] =
++	[ETHTOOL_LINK_MODE_56000baseKR4_Full_BIT] =
 +		{ LM_CLASS_REAL,	56000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_56000baseCR4_Full_BIT] =
++	[ETHTOOL_LINK_MODE_56000baseCR4_Full_BIT] =
 +		{ LM_CLASS_REAL,	56000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_56000baseSR4_Full_BIT] =
++	[ETHTOOL_LINK_MODE_56000baseSR4_Full_BIT] =
 +		{ LM_CLASS_REAL,	56000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_56000baseLR4_Full_BIT] =
++	[ETHTOOL_LINK_MODE_56000baseLR4_Full_BIT] =
 +		{ LM_CLASS_REAL,	56000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_25000baseCR_Full_BIT] =
++	[ETHTOOL_LINK_MODE_25000baseCR_Full_BIT] =
 +		{ LM_CLASS_REAL,	25000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_25000baseKR_Full_BIT] =
++	[ETHTOOL_LINK_MODE_25000baseKR_Full_BIT] =
 +		{ LM_CLASS_REAL,	25000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_25000baseSR_Full_BIT] =
++	[ETHTOOL_LINK_MODE_25000baseSR_Full_BIT] =
 +		{ LM_CLASS_REAL,	25000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_50000baseCR2_Full_BIT] =
++	[ETHTOOL_LINK_MODE_50000baseCR2_Full_BIT] =
 +		{ LM_CLASS_REAL,	50000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_50000baseKR2_Full_BIT] =
++	[ETHTOOL_LINK_MODE_50000baseKR2_Full_BIT] =
 +		{ LM_CLASS_REAL,	50000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT] =
++	[ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT] =
 +		{ LM_CLASS_REAL,	100000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_100000baseSR4_Full_BIT] =
++	[ETHTOOL_LINK_MODE_100000baseSR4_Full_BIT] =
 +		{ LM_CLASS_REAL,	100000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT] =
++	[ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT] =
 +		{ LM_CLASS_REAL,	100000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT] =
++	[ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT] =
 +		{ LM_CLASS_REAL,	100000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_50000baseSR2_Full_BIT] =
++	[ETHTOOL_LINK_MODE_50000baseSR2_Full_BIT] =
 +		{ LM_CLASS_REAL,	50000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_1000baseX_Full_BIT] =
++	[ETHTOOL_LINK_MODE_1000baseX_Full_BIT] =
 +		{ LM_CLASS_REAL,	1000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_10000baseCR_Full_BIT] =
++	[ETHTOOL_LINK_MODE_10000baseCR_Full_BIT] =
 +		{ LM_CLASS_REAL,	10000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_10000baseSR_Full_BIT] =
++	[ETHTOOL_LINK_MODE_10000baseSR_Full_BIT] =
 +		{ LM_CLASS_REAL,	10000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_10000baseLR_Full_BIT] =
++	[ETHTOOL_LINK_MODE_10000baseLR_Full_BIT] =
 +		{ LM_CLASS_REAL,	10000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_10000baseLRM_Full_BIT] =
++	[ETHTOOL_LINK_MODE_10000baseLRM_Full_BIT] =
 +		{ LM_CLASS_REAL,	10000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_10000baseER_Full_BIT] =
++	[ETHTOOL_LINK_MODE_10000baseER_Full_BIT] =
 +		{ LM_CLASS_REAL,	10000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_2500baseT_Full_BIT] =
++	[ETHTOOL_LINK_MODE_2500baseT_Full_BIT] =
 +		{ LM_CLASS_REAL,	2500,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_5000baseT_Full_BIT] =
++	[ETHTOOL_LINK_MODE_5000baseT_Full_BIT] =
 +		{ LM_CLASS_REAL,	5000,	DUPLEX_FULL },
-+        [ETHTOOL_LINK_MODE_FEC_NONE_BIT] =
++	[ETHTOOL_LINK_MODE_FEC_NONE_BIT] =
 +		{ LM_CLASS_FEC },
-+        [ETHTOOL_LINK_MODE_FEC_RS_BIT] =
++	[ETHTOOL_LINK_MODE_FEC_RS_BIT] =
 +		{ LM_CLASS_FEC },
-+        [ETHTOOL_LINK_MODE_FEC_BASER_BIT] =
++	[ETHTOOL_LINK_MODE_FEC_BASER_BIT] =
 +		{ LM_CLASS_FEC },
++	[ETHTOOL_LINK_MODE_50000baseKR_Full_BIT] =
++		{ LM_CLASS_REAL,	50000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_50000baseSR_Full_BIT] =
++		{ LM_CLASS_REAL,	50000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_50000baseCR_Full_BIT] =
++		{ LM_CLASS_REAL,	50000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_50000baseLR_ER_FR_Full_BIT] =
++		{ LM_CLASS_REAL,	50000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_50000baseDR_Full_BIT] =
++		{ LM_CLASS_REAL,	50000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_100000baseKR2_Full_BIT] =
++		{ LM_CLASS_REAL,	100000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_100000baseSR2_Full_BIT] =
++		{ LM_CLASS_REAL,	100000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_100000baseCR2_Full_BIT] =
++		{ LM_CLASS_REAL,	100000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_100000baseLR2_ER2_FR2_Full_BIT] =
++		{ LM_CLASS_REAL,	100000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_100000baseDR2_Full_BIT] =
++		{ LM_CLASS_REAL,	100000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_200000baseKR4_Full_BIT] =
++		{ LM_CLASS_REAL,	200000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_200000baseSR4_Full_BIT] =
++		{ LM_CLASS_REAL,	200000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_200000baseLR4_ER4_FR4_Full_BIT] =
++		{ LM_CLASS_REAL,	200000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_200000baseDR4_Full_BIT] =
++		{ LM_CLASS_REAL,	200000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_200000baseCR4_Full_BIT] =
++		{ LM_CLASS_REAL,	200000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_100baseT1_Full_BIT] =
++		{ LM_CLASS_REAL,	100,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_1000baseT1_Full_BIT] =
++		{ LM_CLASS_REAL,	1000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_400000baseKR8_Full_BIT] =
++		{ LM_CLASS_REAL,	400000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_400000baseSR8_Full_BIT] =
++		{ LM_CLASS_REAL,	400000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_400000baseLR8_ER8_FR8_Full_BIT] =
++		{ LM_CLASS_REAL,	400000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_400000baseDR8_Full_BIT] =
++		{ LM_CLASS_REAL,	400000,	DUPLEX_FULL },
++	[ETHTOOL_LINK_MODE_400000baseCR8_Full_BIT] =
++		{ LM_CLASS_REAL,	400000,	DUPLEX_FULL },
 +};
 +const unsigned int link_modes_count = ARRAY_SIZE(link_modes);
 +
@@ -279,10 +337,8 @@ index 000000000000..d542180211ba
 +	unsigned int mode_class = (mode < link_modes_count) ?
 +				   link_modes[mode].class : LM_CLASS_UNKNOWN;
 +
-+	if (mode_class == class)
-+		return true;
-+	return (mode_class == class) ||
-+	       ((class == LM_CLASS_REAL) && (mode_class = LM_CLASS_UNKNOWN));
++	return mode_class == class ||
++	       (class == LM_CLASS_REAL && mode_class == LM_CLASS_UNKNOWN);
 +}
 +
 +static void print_enum(const char *const *info, unsigned int n_info,
@@ -329,7 +385,7 @@ index 000000000000..d542180211ba
 +
 +static int dump_link_modes(struct nl_context *nlctx,
 +			   const struct nlattr *bitset, bool mask,
-+			   unsigned class, const char *before,
++			   unsigned int class, const char *before,
 +			   const char *between, const char *after,
 +			   const char *if_none)
 +{
@@ -383,10 +439,10 @@ index 000000000000..d542180211ba
 +			if (first)
 +				first = false;
 +			/* ugly hack to preserve old output format */
-+			if ((class == LM_CLASS_REAL) && (prev == idx - 1) &&
-+			    (prev < link_modes_count) &&
-+			    (link_modes[prev].class == LM_CLASS_REAL) &&
-+			    (link_modes[prev].duplex == DUPLEX_HALF))
++			if (class == LM_CLASS_REAL && (prev == idx - 1) &&
++			    prev < link_modes_count &&
++			    link_modes[prev].class == LM_CLASS_REAL &&
++			    link_modes[prev].duplex == DUPLEX_HALF)
 +				putchar(' ');
 +			else if (between)
 +				printf("\t%s", between);
@@ -553,14 +609,16 @@ index 000000000000..d542180211ba
 +		return MNL_CB_OK;
 +
 +	if (tb[ETHTOOL_A_LINKMODES_OURS]) {
-+	    ret = dump_our_modes(nlctx, tb[ETHTOOL_A_LINKMODES_OURS], &first);
-+	    if (ret < 0)
-+		    goto err;
++		ret = dump_our_modes(nlctx, tb[ETHTOOL_A_LINKMODES_OURS],
++				     &first);
++		if (ret < 0)
++			goto err;
 +	}
 +	if (tb[ETHTOOL_A_LINKMODES_PEER]) {
-+	    ret = dump_peer_modes(nlctx, tb[ETHTOOL_A_LINKMODES_PEER], &first);
-+	    if (ret < 0)
-+		    goto err;
++		ret = dump_peer_modes(nlctx, tb[ETHTOOL_A_LINKMODES_PEER],
++				      &first);
++		if (ret < 0)
++			goto err;
 +	}
 +	if (tb[ETHTOOL_A_LINKMODES_SPEED]) {
 +		uint32_t val = mnl_attr_get_u32(tb[ETHTOOL_A_LINKMODES_SPEED]);

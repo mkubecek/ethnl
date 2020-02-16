@@ -1,6 +1,6 @@
-From 3145b98385d1bd173af3b83170134bb41e00dd0a Mon Sep 17 00:00:00 2001
+From 7fa62e89f96fe88ae628951aa38c939a138e0aca Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Tue, 11 Feb 2020 18:31:42 +0100
+Date: Sun, 16 Feb 2020 23:41:30 +0100
 Subject: [PATCH 07/19] netlink: message buffer and composition helpers
 
 Add data structure for flexible message buffer and helpers for safe message
@@ -14,10 +14,10 @@ MAX_MSG_SIZE (4 MB), an error is issued.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |   1 +
- netlink/msgbuff.c | 163 ++++++++++++++++++++++++++++++++++++++++++++++
- netlink/msgbuff.h | 104 +++++++++++++++++++++++++++++
+ netlink/msgbuff.c | 169 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/msgbuff.h | 106 +++++++++++++++++++++++++++++
  netlink/netlink.h |   1 +
- 4 files changed, 269 insertions(+)
+ 4 files changed, 277 insertions(+)
  create mode 100644 netlink/msgbuff.c
  create mode 100644 netlink/msgbuff.h
 
@@ -35,10 +35,16 @@ index 3748d0df5608..12412b433445 100644
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/netlink/msgbuff.c b/netlink/msgbuff.c
 new file mode 100644
-index 000000000000..5aad77b8167d
+index 000000000000..1e73354d194b
 --- /dev/null
 +++ b/netlink/msgbuff.c
-@@ -0,0 +1,163 @@
+@@ -0,0 +1,169 @@
++/*
++ * msgbuff.c - netlink message buffer
++ *
++ * Data structures and code for flexible message buffer abstraction.
++ */
++
 +#include <string.h>
 +#include <errno.h>
 +#include <stdlib.h>
@@ -204,14 +210,14 @@ index 000000000000..5aad77b8167d
 +}
 diff --git a/netlink/msgbuff.h b/netlink/msgbuff.h
 new file mode 100644
-index 000000000000..358f7a0e3a2c
+index 000000000000..6f3baa9992fd
 --- /dev/null
 +++ b/netlink/msgbuff.h
-@@ -0,0 +1,104 @@
+@@ -0,0 +1,106 @@
 +/*
 + * msgbuff.h - netlink message buffer
 + *
-+ * Declarations of netlink mesage buffer and related functions
++ * Declarations of netlink message buffer and related functions.
 + */
 +
 +#ifndef ETHTOOL_NETLINK_MSGBUFF_H__
@@ -262,12 +268,14 @@ index 000000000000..358f7a0e3a2c
 +
 +/* put data wrappers */
 +
-+static inline void ethnla_nest_end(struct nl_msg_buff *msgbuff, struct nlattr *nest)
++static inline void ethnla_nest_end(struct nl_msg_buff *msgbuff,
++				   struct nlattr *nest)
 +{
 +	return mnl_attr_nest_end(msgbuff->nlhdr, nest);
 +}
 +
-+static inline void ethnla_nest_cancel(struct nl_msg_buff *msgbuff, struct nlattr *nest)
++static inline void ethnla_nest_cancel(struct nl_msg_buff *msgbuff,
++				      struct nlattr *nest)
 +{
 +	return mnl_attr_nest_cancel(msgbuff->nlhdr, nest);
 +}

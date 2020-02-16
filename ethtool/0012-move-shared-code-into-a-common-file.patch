@@ -1,6 +1,6 @@
-From a41ae34550991a6029b64f7ad961d35b6f40dc5a Mon Sep 17 00:00:00 2001
+From 471f305214f79cfd48c08dfad51b378bdac0baf7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Thu, 13 Feb 2020 19:15:24 +0100
+Date: Sun, 16 Feb 2020 23:41:40 +0100
 Subject: [PATCH 12/19] move shared code into a common file
 
 Move code which is going to be shared between ioctl and netlink
@@ -10,10 +10,10 @@ file common.h.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am |   2 +-
- common.c    | 138 +++++++++++++++++++++++++++++++++++++++++++++++
- common.h    |  20 +++++++
+ common.c    | 145 +++++++++++++++++++++++++++++++++++++++++++++++++
+ common.h    |  26 +++++++++
  ethtool.c   | 151 +++-------------------------------------------------
- 4 files changed, 166 insertions(+), 145 deletions(-)
+ 4 files changed, 179 insertions(+), 145 deletions(-)
  create mode 100644 common.c
  create mode 100644 common.h
 
@@ -32,10 +32,16 @@ index 92aefb9843bc..77b13da1442c 100644
  if ETHTOOL_ENABLE_PRETTY_DUMP
 diff --git a/common.c b/common.c
 new file mode 100644
-index 000000000000..8b661abe2e79
+index 000000000000..f9c41a32d3a3
 --- /dev/null
 +++ b/common.c
-@@ -0,0 +1,138 @@
+@@ -0,0 +1,145 @@
++/*
++ * common.h - common code header
++ *
++ * Data and functions shared by ioctl and netlink implementation.
++ */
++
 +#include "internal.h"
 +#include "common.h"
 +
@@ -141,7 +147,8 @@ index 000000000000..8b661abe2e79
 +
 +		fprintf(stdout, "        SecureOn password: ");
 +		for (i = 0; i < SOPASS_MAX; i++) {
-+			fprintf(stdout, "%s%02x", delim?":":"", wol->sopass[i]);
++			fprintf(stdout, "%s%02x", delim ? ":" : "",
++				wol->sopass[i]);
 +			delim = 1;
 +		}
 +		fprintf(stdout, "\n");
@@ -176,16 +183,22 @@ index 000000000000..8b661abe2e79
 +}
 diff --git a/common.h b/common.h
 new file mode 100644
-index 000000000000..f6f256780498
+index 000000000000..3a680114a7c2
 --- /dev/null
 +++ b/common.h
-@@ -0,0 +1,20 @@
+@@ -0,0 +1,26 @@
++/*
++ * common.h - common code header
++ *
++ * Declarations for data and functions shared by ioctl and netlink code.
++ */
++
 +#ifndef ETHTOOL_COMMON_H__
 +#define ETHTOOL_COMMON_H__
 +
 +#include "internal.h"
 +
-+#define KERNEL_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))
++#define KERNEL_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
 +
 +struct flag_info {
 +	const char *name;
@@ -201,7 +214,7 @@ index 000000000000..f6f256780498
 +
 +#endif /* ETHTOOL_COMMON_H__ */
 diff --git a/ethtool.c b/ethtool.c
-index 2b0922dbb315..b55430fa0335 100644
+index 97eaa58a3090..c2b7cc8c0502 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -48,32 +48,13 @@

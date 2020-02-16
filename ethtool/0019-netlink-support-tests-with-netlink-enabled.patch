@@ -1,6 +1,6 @@
-From d9a3a4652c781a01e8c2c3cacca28e744358c6ee Mon Sep 17 00:00:00 2001
+From 47ceca3b25441ecf3bb00c52915c3ddcfe7612c4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Sun, 16 Feb 2020 01:03:22 +0100
+Date: Sun, 16 Feb 2020 23:41:55 +0100
 Subject: [PATCH 19/19] netlink: support tests with netlink enabled
 
 As there is no netlink implementation of features (-k / -K) yet, we only
@@ -33,10 +33,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 46 insertions(+), 3 deletions(-)
 
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 8bbf65deafd5..b985e53c0626 100644
+index 2e49c6618c53..14f9f29b6135 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -137,6 +137,12 @@ static int family_info_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -143,6 +143,12 @@ static int family_info_cb(const struct nlmsghdr *nlhdr, void *data)
  	return MNL_CB_OK;
  }
  
@@ -49,7 +49,7 @@ index 8bbf65deafd5..b985e53c0626 100644
  static int get_genl_family(struct nl_socket *nlsk, struct fam_info *info)
  {
  	struct nl_msg_buff *msgbuff = &nlsk->msgbuff;
-@@ -159,6 +165,7 @@ out:
+@@ -165,6 +171,7 @@ out:
  	nlsk->nlctx->suppress_nlerr = false;
  	return ret;
  }
@@ -58,10 +58,10 @@ index 8bbf65deafd5..b985e53c0626 100644
  int netlink_init(struct cmd_context *ctx)
  {
 diff --git a/netlink/nlsock.c b/netlink/nlsock.c
-index 543e7e9db512..517893d46494 100644
+index 8cb661e96e30..3ed6baf3afa1 100644
 --- a/netlink/nlsock.c
 +++ b/netlink/nlsock.c
-@@ -211,6 +211,7 @@ int nlsock_prep_get_request(struct nl_socket *nlsk, unsigned int nlcmd,
+@@ -218,6 +218,7 @@ int nlsock_prep_get_request(struct nl_socket *nlsk, unsigned int nlcmd,
  	return 0;
  }
  
@@ -69,7 +69,7 @@ index 543e7e9db512..517893d46494 100644
  ssize_t nlsock_sendmsg(struct nl_socket *nlsk, struct nl_msg_buff *altbuff)
  {
  	struct nl_msg_buff *msgbuff = altbuff ?: &nlsk->msgbuff;
-@@ -220,6 +221,7 @@ ssize_t nlsock_sendmsg(struct nl_socket *nlsk, struct nl_msg_buff *altbuff)
+@@ -227,6 +228,7 @@ ssize_t nlsock_sendmsg(struct nl_socket *nlsk, struct nl_msg_buff *altbuff)
  	debug_msg(nlsk, msgbuff->buff, nlhdr->nlmsg_len, true);
  	return mnl_socket_sendto(nlsk->sk, nlhdr, nlhdr->nlmsg_len);
  }

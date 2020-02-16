@@ -1,6 +1,6 @@
-From 3581299ca23730474bd01a6664d2c91619ca7b04 Mon Sep 17 00:00:00 2001
+From 2f38230d8cbaa8bcbf91c47c5bb111c292a65237 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Fri, 14 Feb 2020 11:07:13 +0100
+Date: Sun, 16 Feb 2020 23:41:46 +0100
 Subject: [PATCH 15/19] netlink: support getting wake-on-lan and debugging
  settings
 
@@ -13,24 +13,16 @@ display corresponding notifications.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- netlink/monitor.c  |  18 ++++++++
+ netlink/monitor.c  |  16 +++++++
+ netlink/netlink.h  |   2 +
  netlink/settings.c | 111 +++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 129 insertions(+)
+ 3 files changed, 129 insertions(+)
 
 diff --git a/netlink/monitor.c b/netlink/monitor.c
-index fcdcea66ef63..4626b9bbff5e 100644
+index e8fdcd2b93ef..5fce6b64c08c 100644
 --- a/netlink/monitor.c
 +++ b/netlink/monitor.c
-@@ -7,6 +7,8 @@
- 
- int linkmodes_reply_cb(const struct nlmsghdr *nlhdr, void *data);
- int linkinfo_reply_cb(const struct nlmsghdr *nlhdr, void *data);
-+int wol_reply_cb(const struct nlmsghdr *nlhdr, void *data);
-+int debug_reply_cb(const struct nlmsghdr *nlhdr, void *data);
- 
- static struct {
- 	uint8_t		cmd;
-@@ -20,6 +22,14 @@ static struct {
+@@ -23,6 +23,14 @@ static struct {
  		.cmd	= ETHTOOL_MSG_LINKINFO_NTF,
  		.cb	= linkinfo_reply_cb,
  	},
@@ -45,7 +37,7 @@ index fcdcea66ef63..4626b9bbff5e 100644
  };
  
  static void clear_filter(struct nl_context *nlctx)
-@@ -83,6 +93,14 @@ static struct monitor_option monitor_opts[] = {
+@@ -86,6 +94,14 @@ static struct monitor_option monitor_opts[] = {
  		.pattern	= "-s|--change",
  		.cmd		= ETHTOOL_MSG_LINKMODES_NTF,
  	},
@@ -60,11 +52,24 @@ index fcdcea66ef63..4626b9bbff5e 100644
  };
  
  static bool pattern_match(const char *s, const char *pattern)
+diff --git a/netlink/netlink.h b/netlink/netlink.h
+index 790d0802b925..5e1d00ed9ce8 100644
+--- a/netlink/netlink.h
++++ b/netlink/netlink.h
+@@ -48,6 +48,8 @@ int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname);
+ 
+ int linkmodes_reply_cb(const struct nlmsghdr *nlhdr, void *data);
+ int linkinfo_reply_cb(const struct nlmsghdr *nlhdr, void *data);
++int wol_reply_cb(const struct nlmsghdr *nlhdr, void *data);
++int debug_reply_cb(const struct nlmsghdr *nlhdr, void *data);
+ 
+ static inline void copy_devname(char *dst, const char *src)
+ {
 diff --git a/netlink/settings.c b/netlink/settings.c
-index d542180211ba..921aafb22595 100644
+index 24b7a4495961..fed121471d0f 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -555,6 +555,101 @@ int linkstate_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -605,6 +605,101 @@ int linkstate_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  	return MNL_CB_OK;
  }
  
@@ -166,7 +171,7 @@ index d542180211ba..921aafb22595 100644
  int nl_gset(struct cmd_context *ctx)
  {
  	struct nl_context *nlctx = ctx->nlctx;
-@@ -585,6 +680,22 @@ int nl_gset(struct cmd_context *ctx)
+@@ -635,6 +730,22 @@ int nl_gset(struct cmd_context *ctx)
  	if (ret < 0)
  		goto err;
  

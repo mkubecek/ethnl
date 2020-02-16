@@ -1,8 +1,7 @@
-From 17570da333476bb911b0d0d39b0c0c40dd583f09 Mon Sep 17 00:00:00 2001
+From 2556ab951c4f71d1a0ef0824cf7c1bc17bc5042d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Sun, 26 Aug 2018 18:06:30 +0200
-Subject: [PATCH 03/19] ethtool: add --debug option to control debugging
- messages
+Date: Sun, 16 Feb 2020 23:41:22 +0100
+Subject: [PATCH 03/19] add --debug option to control debugging messages
 
 Introduce --debug option to control which debugging messages will be shown.
 Argument is a number which is interpreted as bit mask; default value is

@@ -1,10 +1,11 @@
-From 4123a0eb432cbfda6306289e3e080b033c26ffde Mon Sep 17 00:00:00 2001
+From 7cabfa0594c93c5b038b0851a3f87dd5ae4aeaad Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Mon, 23 Jul 2018 14:09:19 +0200
+Date: Sun, 16 Feb 2020 23:41:36 +0100
 Subject: [PATCH 10/19] netlink: add support for string sets
 
-Add infrastructure for querying kernel string sets (analog to ioctl
-commands ETHTOOL_GSSET_INFO and ETHTOOL_GSTRINGS) and keeping the results.
+Add infrastructure for querying kernel for string sets (analog to ioctl
+commands ETHTOOL_GSSET_INFO and ETHTOOL_GSTRINGS), caching the results and
+making them available to netlink code.
 
 There are two types of string sets: global (not related to a device) and
 per device (each device has its set of string sets). Per device string sets
@@ -12,16 +13,18 @@ are stored in a linked list (one entry for each device) for now.
 
 String sets can be either preloaded completely on start using
 preload_global_strings() and preload_perdev_strings() or requested by one
-when there is a need for them.
+when there is a need for them. In the latter case (preferred, in particular
+for one shot operation mode), second netlink socket is used to request the
+string set contents.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |   2 +-
  netlink/netlink.c |  53 +++++++++
  netlink/netlink.h |   9 ++
- netlink/strset.c  | 289 ++++++++++++++++++++++++++++++++++++++++++++++
- netlink/strset.h  |  19 +++
- 5 files changed, 371 insertions(+), 1 deletion(-)
+ netlink/strset.c  | 295 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/strset.h  |  25 ++++
+ 5 files changed, 383 insertions(+), 1 deletion(-)
  create mode 100644 netlink/strset.c
  create mode 100644 netlink/strset.h
 
@@ -39,10 +42,10 @@ index 857de24a130a..2685280aee15 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index eaa75898db74..8bbf65deafd5 100644
+index 2128e2775e12..2e49c6618c53 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -5,6 +5,7 @@
+@@ -11,6 +11,7 @@
  #include "extapi.h"
  #include "msgbuff.h"
  #include "nlsock.h"
@@ -50,7 +53,7 @@ index eaa75898db74..8bbf65deafd5 100644
  
  /* Used as reply callback for requests where no reply is expected (e.g. most
   * "set" type commands)
-@@ -34,6 +35,57 @@ int attr_cb(const struct nlattr *attr, void *data)
+@@ -40,6 +41,57 @@ int attr_cb(const struct nlattr *attr, void *data)
  	return MNL_CB_OK;
  }
  
@@ -108,17 +111,17 @@ index eaa75898db74..8bbf65deafd5 100644
  /* initialization */
  
  struct fam_info {
-@@ -147,4 +199,5 @@ void netlink_done(struct cmd_context *ctx)
+@@ -153,4 +205,5 @@ void netlink_done(struct cmd_context *ctx)
  
  	free(ctx->nlctx);
  	ctx->nlctx = NULL;
 +	cleanup_all_strings();
  }
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index e0cb6baa6c28..37dd39199c93 100644
+index 081226be73e8..84a5e5c0f204 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -38,6 +38,15 @@ struct attr_tb_info {
+@@ -39,6 +39,15 @@ struct attr_tb_info {
  int nomsg_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int attr_cb(const struct nlattr *attr, void *data);
  
@@ -127,8 +130,8 @@ index e0cb6baa6c28..37dd39199c93 100644
 +
 +static inline void copy_devname(char *dst, const char *src)
 +{
-+        strncpy(dst, src, ALTIFNAMSIZ);
-+        dst[ALTIFNAMSIZ - 1] = '\0';
++	strncpy(dst, src, ALTIFNAMSIZ);
++	dst[ALTIFNAMSIZ - 1] = '\0';
 +}
 +
  static inline int netlink_init_ethnl2_socket(struct nl_context *nlctx)
@@ -136,10 +139,16 @@ index e0cb6baa6c28..37dd39199c93 100644
  	if (nlctx->ethnl2_socket)
 diff --git a/netlink/strset.c b/netlink/strset.c
 new file mode 100644
-index 000000000000..1353ae608829
+index 000000000000..bc468ae5a88e
 --- /dev/null
 +++ b/netlink/strset.c
-@@ -0,0 +1,289 @@
+@@ -0,0 +1,295 @@
++/*
++ * strset.c - string set handling
++ *
++ * Implementation of local cache of ethtool string sets.
++ */
++
 +#include <errno.h>
 +#include <string.h>
 +
@@ -431,10 +440,16 @@ index 000000000000..1353ae608829
 +}
 diff --git a/netlink/strset.h b/netlink/strset.h
 new file mode 100644
-index 000000000000..c1870ac9c9c0
+index 000000000000..72a4a3929244
 --- /dev/null
 +++ b/netlink/strset.h
-@@ -0,0 +1,19 @@
+@@ -0,0 +1,25 @@
++/*
++ * strset.h - string set handling
++ *
++ * Interface for local cache of ethtool string sets.
++ */
++
 +#ifndef ETHTOOL_NETLINK_STRSET_H__
 +#define ETHTOOL_NETLINK_STRSET_H__
 +

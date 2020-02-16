@@ -1,6 +1,6 @@
-From b42964e5c80831ad580ea266f3da054f50194785 Mon Sep 17 00:00:00 2001
+From 5197e78e7136fef6967bd4d3aeed2301429bb865 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Thu, 13 Feb 2020 23:04:32 +0100
+Date: Sun, 16 Feb 2020 23:41:49 +0100
 Subject: [PATCH 16/19] netlink: add basic command line parsing helpers
 
 Existing command line parser functions from the ioctl interface are often
@@ -23,13 +23,16 @@ entries assigning parser handlers and optional data to command line
 parameters and generates corresponding netlink attributes or fills raw
 data.
 
+Optionally, attributes can be divided into multiple netlink messages or
+multiple nested attributes.
+
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |   2 +-
  netlink/netlink.h |   4 +
- netlink/parser.c  | 609 ++++++++++++++++++++++++++++++++++++++++++++++
- netlink/parser.h  | 100 ++++++++
- 4 files changed, 714 insertions(+), 1 deletion(-)
+ netlink/parser.c  | 615 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/parser.h  | 123 ++++++++++
+ 4 files changed, 743 insertions(+), 1 deletion(-)
  create mode 100644 netlink/parser.c
  create mode 100644 netlink/parser.h
 
@@ -47,7 +50,7 @@ index e4e864add586..bb95ead79e9d 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index bdc06bd250cb..81fe233b04d5 100644
+index 5e1d00ed9ce8..43f57f06e2d5 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -30,6 +30,10 @@ struct nl_context {
@@ -63,10 +66,16 @@ index bdc06bd250cb..81fe233b04d5 100644
  struct attr_tb_info {
 diff --git a/netlink/parser.c b/netlink/parser.c
 new file mode 100644
-index 000000000000..dd670e593e62
+index 000000000000..0e2190eed0b4
 --- /dev/null
 +++ b/netlink/parser.c
-@@ -0,0 +1,609 @@
+@@ -0,0 +1,615 @@
++/*
++ * parser.c - netlink command line parser
++ *
++ * Implementation of command line parser used by netlink code.
++ */
++
 +#include <string.h>
 +#include <stdlib.h>
 +#include <errno.h>
@@ -471,7 +480,7 @@ index 000000000000..dd670e593e62
 +/* parser implementation */
 +
 +static const struct param_parser *find_parser(const struct param_parser *params,
-+				       const char *arg)
++					      const char *arg)
 +{
 +	const struct param_parser *parser;
 +
@@ -578,7 +587,7 @@ index 000000000000..dd670e593e62
 +			goto out_free_buffs;
 +		msgbuff = &buff->msgbuff;
 +
-+		switch(group_style) {
++		switch (group_style) {
 +		case PARSER_GROUP_NEST:
 +			ret = -EMSGSIZE;
 +			nest = ethnla_nest_start(&buff->msgbuff, parser->group);
@@ -649,7 +658,7 @@ index 000000000000..dd670e593e62
 +		if (group_style == PARSER_GROUP_NONE ||
 +		    msgbuff_len(msgbuff) == buff->orig_len)
 +			continue;
-+		switch(group_style) {
++		switch (group_style) {
 +		case PARSER_GROUP_NEST:
 +			ethnla_nest_end(msgbuff, msgbuff->payload);
 +			ret = msgbuff_append(&nlsk->msgbuff, msgbuff);
@@ -678,10 +687,16 @@ index 000000000000..dd670e593e62
 +}
 diff --git a/netlink/parser.h b/netlink/parser.h
 new file mode 100644
-index 000000000000..7272c2ea46ba
+index 000000000000..b5e8cd418b50
 --- /dev/null
 +++ b/netlink/parser.h
-@@ -0,0 +1,100 @@
+@@ -0,0 +1,123 @@
++/*
++ * parser.h - netlink command line parser
++ *
++ * Interface for command line parser used by netlink code.
++ */
++
 +#ifndef ETHTOOL_NETLINK_PARSER_H__
 +#define ETHTOOL_NETLINK_PARSER_H__
 +
@@ -689,55 +704,72 @@ index 000000000000..7272c2ea46ba
 +
 +#include "netlink.h"
 +
++/* Some commands need to generate multiple netlink messages or multiple nested
++ * attributes from one set of command line parameters. Argument @group_style
++ * of nl_parser() takes one of three values:
++ *
++ * PARSER_GROUP_NONE - no grouping, flat series of attributes (default)
++ * PARSER_GROUP_NEST - one nest for each @group value (@group is nest type)
++ * PARSER_GROUP_MSG  - one message for each @group value (@group is command)
++ */
 +enum parser_group_style {
 +	PARSER_GROUP_NONE = 0,
 +	PARSER_GROUP_NEST,
 +	PARSER_GROUP_MSG,
 +};
 +
++typedef int (*param_parser_cb_t)(struct nl_context *, uint16_t, const void *,
++				 struct nl_msg_buff *, void *);
++
++struct param_parser {
++	/* command line parameter handled by this entry */
++	const char		*arg;
++	/* group id (see enum parser_group_style above) */
++	unsigned int		group;
++	/* netlink attribute type */
++	uint16_t		type;		/* netlink attribute type */
++	/* function called to parse parameter and its value */
++	param_parser_cb_t	handler;
++	/* pointer passed as @data argument of the handler */
++	const void		*handler_data;
++	/* minimum number of extra arguments after this parameter */
++	unsigned int		min_argc;
++	/* if @dest is passed to nl_parser(), offset to store value */
++	unsigned int		dest_offset;
++};
++
++/* data structures used for handler data */
++
++/* used by nl_parse_lookup_u32() */
 +struct lookup_entry_u32 {
 +	const char	*arg;
 +	uint32_t	val;
 +};
 +
-+struct lookup_entry_u16 {
-+	const char	*arg;
-+	uint16_t	val;
-+};
-+
++/* used by nl_parse_lookup_u8() */
 +struct lookup_entry_u8 {
 +	const char	*arg;
 +	uint8_t		val;
 +};
 +
++/* used by nl_parse_byte_str() */
 +struct byte_str_parser_data {
 +	unsigned int	min_len;
 +	unsigned int	max_len;
 +	char		delim;
 +};
 +
++/* used for value stored by nl_parse_byte_str() */
 +struct byte_str_value {
 +	unsigned int	len;
 +	u8		*data;
 +};
 +
++/* used by nl_parse_error() */
 +struct error_parser_data {
-+	const char *	err_msg;
++	const char	*err_msg;
 +	int		ret_val;
 +	unsigned int	extra_args;
-+};
-+
-+typedef int (*param_parser_cb_t)(struct nl_context *, uint16_t, const void *,
-+				 struct nl_msg_buff *, void *);
-+
-+struct param_parser {
-+	const char		*arg;
-+	unsigned int		group;
-+	uint16_t		type;
-+	param_parser_cb_t	handler;
-+	const void		*handler_data;
-+	unsigned int		min_argc;
-+	unsigned int		dest_offset;
 +};
 +
 +int parse_u32(const char *arg, uint32_t *result);
@@ -777,7 +809,7 @@ index 000000000000..7272c2ea46ba
 +		      const void *data, struct nl_msg_buff *msgbuff,
 +		      void *dest);
 +
-+/* parse command line */
++/* main entry point called to parse the command line */
 +int nl_parser(struct nl_context *nlctx, const struct param_parser *params,
 +	      void *dest, enum parser_group_style group_style);
 +

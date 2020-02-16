@@ -1,6 +1,6 @@
-From 4a9cbd491acc44407a37a6ef26fca1df8b3eea6f Mon Sep 17 00:00:00 2001
+From c2e9d72fd393cea8a573928786aa1884d0c2896b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Thu, 13 Feb 2020 13:10:52 +0100
+Date: Sun, 16 Feb 2020 23:41:34 +0100
 Subject: [PATCH 09/19] netlink: initialize ethtool netlink socket
 
 As part of the netlink initialization, set up netlink socket for ethtool
@@ -13,10 +13,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 104 insertions(+), 1 deletion(-)
 
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 168d7aa2ca4c..eaa75898db74 100644
+index 7d5eca666c84..2128e2775e12 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -3,6 +3,8 @@
+@@ -9,6 +9,8 @@
  #include "../internal.h"
  #include "netlink.h"
  #include "extapi.h"
@@ -25,7 +25,7 @@ index 168d7aa2ca4c..eaa75898db74 100644
  
  /* Used as reply callback for requests where no reply is expected (e.g. most
   * "set" type commands)
-@@ -34,18 +36,108 @@ int attr_cb(const struct nlattr *attr, void *data)
+@@ -40,18 +42,108 @@ int attr_cb(const struct nlattr *attr, void *data)
  
  /* initialization */
  
@@ -38,25 +38,25 @@ index 168d7aa2ca4c..eaa75898db74 100644
 +
 +static void find_mc_group(struct nlattr *nest, struct fam_info *info)
 +{
-+        const struct nlattr *grp_tb[CTRL_ATTR_MCAST_GRP_MAX + 1] = {};
-+        DECLARE_ATTR_TB_INFO(grp_tb);
-+        struct nlattr *grp_attr;
-+        int ret;
++	const struct nlattr *grp_tb[CTRL_ATTR_MCAST_GRP_MAX + 1] = {};
++	DECLARE_ATTR_TB_INFO(grp_tb);
++	struct nlattr *grp_attr;
++	int ret;
 +
-+        mnl_attr_for_each_nested(grp_attr, nest) {
-+                ret = mnl_attr_parse_nested(grp_attr, attr_cb, &grp_tb_info);
-+                if (ret < 0)
-+                        return;
-+                if (!grp_tb[CTRL_ATTR_MCAST_GRP_NAME] ||
-+                    !grp_tb[CTRL_ATTR_MCAST_GRP_ID])
-+                        continue;
++	mnl_attr_for_each_nested(grp_attr, nest) {
++		ret = mnl_attr_parse_nested(grp_attr, attr_cb, &grp_tb_info);
++		if (ret < 0)
++			return;
++		if (!grp_tb[CTRL_ATTR_MCAST_GRP_NAME] ||
++		    !grp_tb[CTRL_ATTR_MCAST_GRP_ID])
++			continue;
 +		if (strcmp(mnl_attr_get_str(grp_tb[CTRL_ATTR_MCAST_GRP_NAME]),
 +			   info->grp_name))
-+                        continue;
-+                info->grp_id =
++			continue;
++		info->grp_id =
 +			mnl_attr_get_u32(grp_tb[CTRL_ATTR_MCAST_GRP_ID]);
-+                return;
-+        }
++		return;
++	}
 +}
 +
 +static int family_info_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -65,7 +65,7 @@ index 168d7aa2ca4c..eaa75898db74 100644
 +	struct nlattr *attr;
 +
 +	mnl_attr_for_each(attr, nlhdr, GENL_HDRLEN) {
-+		switch(mnl_attr_get_type(attr)) {
++		switch (mnl_attr_get_type(attr)) {
 +		case CTRL_ATTR_FAMILY_ID:
 +			info->fam_id = mnl_attr_get_u16(attr);
 +			break;
@@ -136,7 +136,7 @@ index 168d7aa2ca4c..eaa75898db74 100644
  
  void netlink_done(struct cmd_context *ctx)
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 50759ce45221..e0cb6baa6c28 100644
+index 54d2baaab516..081226be73e8 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -11,6 +11,7 @@
@@ -157,7 +157,7 @@ index 50759ce45221..e0cb6baa6c28 100644
  };
  
  struct attr_tb_info {
-@@ -34,4 +38,11 @@ struct attr_tb_info {
+@@ -35,4 +39,11 @@ struct attr_tb_info {
  int nomsg_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int attr_cb(const struct nlattr *attr, void *data);
  

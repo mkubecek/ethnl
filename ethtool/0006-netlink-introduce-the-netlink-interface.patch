@@ -1,6 +1,6 @@
-From 5b9ab9c5c3a20b671b94178c4658664f22e7e13a Mon Sep 17 00:00:00 2001
+From 1c55a56ab56b1ec562ed51d2f799d349ccc3f691 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Wed, 12 Feb 2020 13:03:30 +0100
+Date: Sun, 16 Feb 2020 23:41:28 +0100
 Subject: [PATCH 06/19] netlink: introduce the netlink interface
 
 Initial part of netlink interface based on genetlink and libmnl. The
@@ -9,7 +9,7 @@ adds the generic infrastructure but does not override any ethtool command
 so that there is no actual change in behaviour.
 
 Netlink handlers for ethtool commands are added as nlfunc members to args
-array in ethtool.c. A netlink handler is used if it is avalable (i.e.
+array in ethtool.c. A netlink handler is used if it is available (i.e.
 nlfunc is not null) and ethtool succeeds to initialize netlink socket.
 If netlink implementation exists for a command but the request is not
 supported by kernel (e.g. when new ethtool is used on older kernel), ioctl
@@ -25,9 +25,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.c         | 76 +++++++++++++++++++++++++++++++++++------------
  internal.h        | 12 ++++++++
  netlink/extapi.h  | 31 +++++++++++++++++++
- netlink/netlink.c | 30 +++++++++++++++++++
+ netlink/netlink.c | 36 ++++++++++++++++++++++
  netlink/netlink.h | 26 ++++++++++++++++
- 7 files changed, 184 insertions(+), 22 deletions(-)
+ 7 files changed, 190 insertions(+), 22 deletions(-)
  create mode 100644 netlink/extapi.h
  create mode 100644 netlink/netlink.c
  create mode 100644 netlink/netlink.h
@@ -103,7 +103,7 @@ index a5c1469f9b63..19e7fcb44fb5 100644
  AC_CONFIG_FILES([Makefile ethtool.spec ethtool.8])
  AC_OUTPUT
 diff --git a/ethtool.c b/ethtool.c
-index 3186a72644fd..821bec272ac9 100644
+index 3186a72644fd..5d1ef537f692 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -48,6 +48,8 @@
@@ -196,7 +196,7 @@ index 3186a72644fd..821bec272ac9 100644
 +		/* netlink supports altnames, we will have to recheck against
 +		 * IFNAMSIZ later in case of fallback to ioctl
 +		 */
-+		if (ctx.devname == NULL || strlen(ctx.devname) >= ALTIFNAMSIZ) {
++		if (!ctx.devname || strlen(ctx.devname) >= ALTIFNAMSIZ) {
 +			netlink_done(&ctx);
  			exit_bad_args();
 -
@@ -277,14 +277,14 @@ index 9ec145f55dcb..72a04e638a13 100644
  #ifdef TEST_ETHTOOL
 diff --git a/netlink/extapi.h b/netlink/extapi.h
 new file mode 100644
-index 000000000000..074e0c553a50
+index 000000000000..898dc6cfee71
 --- /dev/null
 +++ b/netlink/extapi.h
 @@ -0,0 +1,31 @@
 +/*
-+ * extapi.h - external netlink interface
++ * extapi.h - external interface of netlink code
 + *
-+ * interface for general non-netlink code
++ * Declarations needed by non-netlink code (mostly ethtool.c).
 + */
 +
 +#ifndef ETHTOOL_EXTAPI_H__
@@ -314,10 +314,16 @@ index 000000000000..074e0c553a50
 +#endif /* ETHTOOL_EXTAPI_H__ */
 diff --git a/netlink/netlink.c b/netlink/netlink.c
 new file mode 100644
-index 000000000000..67179cb8113b
+index 000000000000..84e188119989
 --- /dev/null
 +++ b/netlink/netlink.c
-@@ -0,0 +1,30 @@
+@@ -0,0 +1,36 @@
++/*
++ * netlink.c - basic infrastructure for netlink code
++ *
++ * Heart of the netlink interface implementation.
++ */
++
 +#include <errno.h>
 +
 +#include "../internal.h"

@@ -1,6 +1,6 @@
-From e7fa3216938e5c34f13e0e99e3e2cb7d5f45f5b2 Mon Sep 17 00:00:00 2001
+From 236a64ee07013457f5f0ab57691cfe20ad116f00 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Thu, 13 Feb 2020 10:58:52 +0100
+Date: Sun, 16 Feb 2020 23:41:32 +0100
 Subject: [PATCH 08/19] netlink: netlink socket wrapper and helpers
 
 Add data structure for netlink socket and few helpers to work with it.
@@ -15,10 +15,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  Makefile.am       |   3 +-
  internal.h        |   8 ++
  netlink/netlink.c |  28 +++++
- netlink/netlink.h |  10 ++
- netlink/nlsock.c  | 284 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/netlink.h |  11 ++
+ netlink/nlsock.c  | 291 ++++++++++++++++++++++++++++++++++++++++++++++
  netlink/nlsock.h  |  35 ++++++
- 6 files changed, 367 insertions(+), 1 deletion(-)
+ 6 files changed, 375 insertions(+), 1 deletion(-)
  create mode 100644 netlink/nlsock.c
  create mode 100644 netlink/nlsock.h
 
@@ -58,10 +58,10 @@ index 72a04e638a13..a518bfa99380 100644
   * must not clash with the flags defined for ETHTOOL_{G,S}FLAGS.
   */
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 67179cb8113b..168d7aa2ca4c 100644
+index 84e188119989..7d5eca666c84 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
-@@ -4,6 +4,34 @@
+@@ -10,6 +10,34 @@
  #include "netlink.h"
  #include "extapi.h"
  
@@ -73,7 +73,7 @@ index 67179cb8113b..168d7aa2ca4c 100644
 +	const struct genlmsghdr *ghdr = (const struct genlmsghdr *)(nlhdr + 1);
 +
 +	fprintf(stderr, "received unexpected message: len=%u type=%u cmd=%u\n",
-+	       nlhdr->nlmsg_len, nlhdr->nlmsg_type, ghdr->cmd);
++		nlhdr->nlmsg_len, nlhdr->nlmsg_type, ghdr->cmd);
 +	return MNL_CB_OK;
 +}
 +
@@ -97,10 +97,10 @@ index 67179cb8113b..168d7aa2ca4c 100644
  
  int netlink_init(struct cmd_context *ctx)
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 48c4ebb3d7aa..50759ce45221 100644
+index 48c4ebb3d7aa..54d2baaab516 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -24,4 +24,14 @@ struct nl_context {
+@@ -24,4 +24,15 @@ struct nl_context {
  	uint16_t		ethnl_fam;
  };
  
@@ -108,6 +108,7 @@ index 48c4ebb3d7aa..50759ce45221 100644
 +	const struct nlattr **tb;
 +	unsigned int max_type;
 +};
++
 +#define DECLARE_ATTR_TB_INFO(tbl) \
 +	struct attr_tb_info tbl ## _info = { (tbl), (MNL_ARRAY_SIZE(tbl) - 1) }
 +
@@ -117,10 +118,16 @@ index 48c4ebb3d7aa..50759ce45221 100644
  #endif /* ETHTOOL_NETLINK_INT_H__ */
 diff --git a/netlink/nlsock.c b/netlink/nlsock.c
 new file mode 100644
-index 000000000000..543e7e9db512
+index 000000000000..8cb661e96e30
 --- /dev/null
 +++ b/netlink/nlsock.c
-@@ -0,0 +1,284 @@
+@@ -0,0 +1,291 @@
++/*
++ * nlsock.c - netlink socket
++ *
++ * Data structure and code for netlink socket abstraction.
++ */
++
 +#include <stdint.h>
 +#include <errno.h>
 +
@@ -133,7 +140,7 @@ index 000000000000..543e7e9db512
 +#define __MSG_NAME(x) \
 +	[ETHTOOL_MSG_ ## x] = "ETHTOOL_MSG_" #x
 +
-+static const char *ethnl_umsg_names[] = {
++static const char *const ethnl_umsg_names[] = {
 +	__MSG_NAME(USER_NONE),
 +	__MSG_NAME(STRSET_GET),
 +	__MSG_NAME(LINKINFO_GET),
@@ -147,7 +154,7 @@ index 000000000000..543e7e9db512
 +	__MSG_NAME(WOL_SET),
 +};
 +
-+static const char *ethnl_kmsg_names[] = {
++static const char *const ethnl_kmsg_names[] = {
 +	__MSG_NAME(KERNEL_NONE),
 +	__MSG_NAME(STRSET_GET_REPLY),
 +	__MSG_NAME(LINKINFO_GET_REPLY),
@@ -168,7 +175,7 @@ index 000000000000..543e7e9db512
 +	if (type == ethnl_fam)
 +		return "ethtool";
 +
-+	switch(type) {
++	switch (type) {
 +	case NLMSG_NOOP:
 +		return "noop";
 +	case NLMSG_ERROR:
@@ -187,7 +194,8 @@ index 000000000000..543e7e9db512
 +static void debug_msg_summary(const struct nlmsghdr *nlhdr, int ethnl_fam,
 +			      bool outgoing)
 +{
-+	const char **msg_names = outgoing ? ethnl_umsg_names : ethnl_kmsg_names;
++	const char * const *msg_names =
++		outgoing ? ethnl_umsg_names : ethnl_kmsg_names;
 +	const unsigned int names_cnt =
 +		outgoing ? MNL_ARRAY_SIZE(ethnl_umsg_names) :
 +			   MNL_ARRAY_SIZE(ethnl_kmsg_names);
@@ -208,7 +216,7 @@ index 000000000000..543e7e9db512
 +	fputc('\n', stdout);
 +}
 +
-+static void debug_msg(struct nl_socket *nlsk, const void *msg, unsigned len,
++static void debug_msg(struct nl_socket *nlsk, const void *msg, unsigned int len,
 +		      bool outgoing)
 +{
 +	const char *dirlabel = outgoing ? "sending" : "received";
@@ -376,7 +384,7 @@ index 000000000000..543e7e9db512
 +		goto out_msgbuff;
 +	val = 1;
 +	mnl_socket_setsockopt(nlsk->sk, NETLINK_EXT_ACK, &val, sizeof(val));
-+        ret = mnl_socket_bind(nlsk->sk, 0, MNL_SOCKET_AUTOPID);
++	ret = mnl_socket_bind(nlsk->sk, 0, MNL_SOCKET_AUTOPID);
 +	if (ret < 0)
 +		goto out_close;
 +	nlsk->port = mnl_socket_get_portid(nlsk->sk);
@@ -407,14 +415,14 @@ index 000000000000..543e7e9db512
 +}
 diff --git a/netlink/nlsock.h b/netlink/nlsock.h
 new file mode 100644
-index 000000000000..31e6bcf97911
+index 000000000000..beab176e6775
 --- /dev/null
 +++ b/netlink/nlsock.h
 @@ -0,0 +1,35 @@
 +/*
 + * nlsock.h - netlink socket
 + *
-+ * Declarations of netlink socket structure and related functions
++ * Declarations of netlink socket structure and related functions.
 + */
 +
 +#ifndef ETHTOOL_NETLINK_NLSOCK_H__

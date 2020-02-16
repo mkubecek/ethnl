@@ -1,6 +1,6 @@
-From 96325f1f55137514e379d9a5b4ae55d84ec59eae Mon Sep 17 00:00:00 2001
+From bae4136ea39d9226aa0b1e6b722e7b74d01410f7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Sat, 14 Jul 2018 19:28:19 -0400
+Date: Sun, 16 Feb 2020 23:41:38 +0100
 Subject: [PATCH 11/19] netlink: add notification monitor
 
 With 'ethtool --monitor [ --all | opt ] [dev]', let ethtool listen to
@@ -17,10 +17,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.8.in      |  21 +++++
  ethtool.c         |  14 ++++
  netlink/extapi.h  |   8 ++
- netlink/monitor.c | 191 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/monitor.c | 197 ++++++++++++++++++++++++++++++++++++++++++++++
  netlink/netlink.h |  11 +++
  netlink/strset.c  |   2 +
- 7 files changed, 248 insertions(+)
+ 7 files changed, 254 insertions(+)
  create mode 100644 netlink/monitor.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -36,7 +36,7 @@ index 2685280aee15..92aefb9843bc 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h
  ethtool_CFLAGS += @MNL_CFLAGS@
 diff --git a/ethtool.8.in b/ethtool.8.in
-index 680cad9fbb8f..1c930a3146cc 100644
+index 680cad9fbb8f..28e4f75eee8d 100644
 --- a/ethtool.8.in
 +++ b/ethtool.8.in
 @@ -133,6 +133,13 @@ ethtool \- query or control network driver and hardware settings
@@ -65,7 +65,7 @@ index 680cad9fbb8f..1c930a3146cc 100644
 +.I command
 +If argument matching a command is used, ethtool only shows notifications of
 +this type. Without such argument or with --all, all notification types are
-+shown. 
++shown.
 +.TP
 +.I devname
 +If a device name is used as argument, only notification for this device are
@@ -75,7 +75,7 @@ index 680cad9fbb8f..1c930a3146cc 100644
  Not supported (in part or whole) on all network drivers.
  .SH AUTHOR
 diff --git a/ethtool.c b/ethtool.c
-index 821bec272ac9..2b0922dbb315 100644
+index 5d1ef537f692..97eaa58a3090 100644
 --- a/ethtool.c
 +++ b/ethtool.c
 @@ -5664,6 +5664,7 @@ static int show_usage(struct cmd_context *ctx maybe_unused)
@@ -107,7 +107,7 @@ index 821bec272ac9..2b0922dbb315 100644
  	/* First argument must be either a valid option or a device
  	 * name to get settings for (which we don't expect to begin
 diff --git a/netlink/extapi.h b/netlink/extapi.h
-index 074e0c553a50..b4910401ae11 100644
+index 898dc6cfee71..1d5b68226af4 100644
 --- a/netlink/extapi.h
 +++ b/netlink/extapi.h
 @@ -15,6 +15,10 @@ struct nl_context;
@@ -134,10 +134,16 @@ index 074e0c553a50..b4910401ae11 100644
  #endif /* ETHTOOL_EXTAPI_H__ */
 diff --git a/netlink/monitor.c b/netlink/monitor.c
 new file mode 100644
-index 000000000000..b1f0f48cd13c
+index 000000000000..300fd5bc2e51
 --- /dev/null
 +++ b/netlink/monitor.c
-@@ -0,0 +1,191 @@
+@@ -0,0 +1,197 @@
++/*
++ * monitor.c - netlink notification monitor
++ *
++ * Implementation of "ethtool --monitor" for watching netlink notifications.
++ */
++
 +#include <errno.h>
 +
 +#include "../internal.h"
@@ -181,7 +187,7 @@ index 000000000000..b1f0f48cd13c
 +{
 +	const struct genlmsghdr *ghdr = (const struct genlmsghdr *)(nlhdr + 1);
 +	struct nl_context *nlctx = data;
-+	unsigned i;
++	unsigned int i;
 +
 +	if (!test_filter_cmd(nlctx, ghdr->cmd))
 +		return MNL_CB_OK;
@@ -310,10 +316,10 @@ index 000000000000..b1f0f48cd13c
 +	return ret;
 +}
 +
-+void nl_monitor_usage()
++void nl_monitor_usage(void)
 +{
++	unsigned int i;
 +	const char *p;
-+	unsigned i;
 +
 +	fputs("        ethtool --monitor               Show kernel notifications\n",
 +	      stdout);
@@ -330,7 +336,7 @@ index 000000000000..b1f0f48cd13c
 +	fputs("                [ DEVNAME | * ]\n", stdout);
 +}
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 37dd39199c93..bdc06bd250cb 100644
+index 84a5e5c0f204..1a2e743ff6b2 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -14,6 +14,7 @@
@@ -351,8 +357,8 @@ index 37dd39199c93..bdc06bd250cb 100644
  };
  
  struct attr_tb_info {
-@@ -47,6 +51,13 @@ static inline void copy_devname(char *dst, const char *src)
-         dst[ALTIFNAMSIZ - 1] = '\0';
+@@ -48,6 +52,13 @@ static inline void copy_devname(char *dst, const char *src)
+ 	dst[ALTIFNAMSIZ - 1] = '\0';
  }
  
 +static inline bool dev_ok(const struct nl_context *nlctx)
@@ -366,10 +372,10 @@ index 37dd39199c93..bdc06bd250cb 100644
  {
  	if (nlctx->ethnl2_socket)
 diff --git a/netlink/strset.c b/netlink/strset.c
-index 1353ae608829..f446eff58ad6 100644
+index bc468ae5a88e..75f0327bbe43 100644
 --- a/netlink/strset.c
 +++ b/netlink/strset.c
-@@ -143,6 +143,8 @@ static int strset_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -149,6 +149,8 @@ static int strset_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  			return MNL_CB_OK;
  		nlctx->devname = devname;
  	}
