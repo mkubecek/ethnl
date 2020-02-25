@@ -1,7 +1,7 @@
-From 47ceca3b25441ecf3bb00c52915c3ddcfe7612c4 Mon Sep 17 00:00:00 2001
+From b1e77127e1b96645dcfc5344a10c5080ce688413 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Sun, 16 Feb 2020 23:41:55 +0100
-Subject: [PATCH 19/19] netlink: support tests with netlink enabled
+Date: Sun, 16 Feb 2020 01:03:22 +0100
+Subject: [PATCH 19/22] netlink: support tests with netlink enabled
 
 As there is no netlink implementation of features (-k / -K) yet, we only
 need to take care of test-cmdline. With this patch, the full test suite
@@ -168,5 +168,5 @@ index 6ebb364803a2..b9f80f073d1f 100644
  {
  	const struct test_case *tc;
 -- 
-2.25.0
+2.25.1
 

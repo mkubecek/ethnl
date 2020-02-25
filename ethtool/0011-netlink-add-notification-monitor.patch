@@ -1,7 +1,7 @@
-From bae4136ea39d9226aa0b1e6b722e7b74d01410f7 Mon Sep 17 00:00:00 2001
+From 5a47aeda95a170fae32b8a8f310cfd57bedc468c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Sun, 16 Feb 2020 23:41:38 +0100
-Subject: [PATCH 11/19] netlink: add notification monitor
+Date: Sat, 14 Jul 2018 19:28:19 -0400
+Subject: [PATCH 11/22] netlink: add notification monitor
 
 With 'ethtool --monitor [ --all | opt ] [dev]', let ethtool listen to
 netlink notification and display them in a format similar to output of
@@ -385,5 +385,5 @@ index bc468ae5a88e..75f0327bbe43 100644
  	if (ifindex) {
  		struct perdev_strings *perdev;
 -- 
-2.25.0
+2.25.1
 

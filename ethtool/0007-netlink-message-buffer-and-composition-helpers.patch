@@ -1,7 +1,7 @@
-From 7fa62e89f96fe88ae628951aa38c939a138e0aca Mon Sep 17 00:00:00 2001
+From 243e6cdd79a02065acca55a79407baac7d17b316 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Sun, 16 Feb 2020 23:41:30 +0100
-Subject: [PATCH 07/19] netlink: message buffer and composition helpers
+Date: Tue, 11 Feb 2020 18:31:42 +0100
+Subject: [PATCH 07/22] netlink: message buffer and composition helpers
 
 Add data structure for flexible message buffer and helpers for safe message
 composition.
@@ -333,5 +333,5 @@ index 610beccbefda..48c4ebb3d7aa 100644
  
  #endif /* ETHTOOL_NETLINK_INT_H__ */
 -- 
-2.25.0
+2.25.1
 

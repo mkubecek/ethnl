@@ -1,0 +1,153 @@
+From 549db7e2f1c891b41abd52ff685c45f0094efa6c Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Sat, 22 Feb 2020 19:07:58 +0100
+Subject: [PATCH 22/22] use pretty printing for ethtool netlink messages
+
+Introduce new debugging flag DEBUG_NL_PRETTY_MSG (0x10) which has two
+effects:
+
+  - show request messages embedded in extack error messages in human
+    readable form; if failing attribute offset is provided, highlight the
+    attribute
+  - if DEBUG_NL_MSGS is also set, show structure of all outgoing and
+    incoming ethtool netlink messages in addition to their summary
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ internal.h       |  1 +
+ netlink/nlsock.c | 49 +++++++++++++++++++++++++++++++++++++++---------
+ 2 files changed, 41 insertions(+), 9 deletions(-)
+
+diff --git a/internal.h b/internal.h
+index a518bfa99380..edb07bddd073 100644
+--- a/internal.h
++++ b/internal.h
+@@ -122,6 +122,7 @@ enum {
+ 	DEBUG_NL_MSGS,		/* incoming/outgoing netlink messages */
+ 	DEBUG_NL_DUMP_SND,	/* dump outgoing netlink messages */
+ 	DEBUG_NL_DUMP_RCV,	/* dump incoming netlink messages */
++	DEBUG_NL_PRETTY_MSG,	/* pretty print of messages and errors */
+ };
+ 
+ static inline bool debug_on(unsigned long debug, unsigned int bit)
+diff --git a/netlink/nlsock.c b/netlink/nlsock.c
+index 3ed6baf3afa1..6b87acc88a27 100644
+--- a/netlink/nlsock.c
++++ b/netlink/nlsock.c
+@@ -10,6 +10,7 @@
+ #include "../internal.h"
+ #include "nlsock.h"
+ #include "netlink.h"
++#include "prettymsg.h"
+ 
+ #define NLSOCK_RECV_BUFFSIZE 65536
+ 
+@@ -68,7 +69,7 @@ static const char *msg_type_str(unsigned int type, unsigned int ethnl_fam)
+ }
+ 
+ static void debug_msg_summary(const struct nlmsghdr *nlhdr, int ethnl_fam,
+-			      bool outgoing)
++			      bool outgoing, bool pretty)
+ {
+ 	const char * const *msg_names =
+ 		outgoing ? ethnl_umsg_names : ethnl_kmsg_names;
+@@ -90,6 +91,17 @@ static void debug_msg_summary(const struct nlmsghdr *nlhdr, int ethnl_fam,
+ 		printf(" ethtool cmd %u (%s)", cmd, cmd_name);
+ 	}
+ 	fputc('\n', stdout);
++
++	if (pretty && nlhdr->nlmsg_type == ethnl_fam) {
++		if (outgoing)
++			pretty_print_genlmsg(nlhdr, ethnl_umsg_desc,
++					     ethnl_umsg_n_desc, 0);
++		else
++			pretty_print_genlmsg(nlhdr, ethnl_kmsg_desc,
++					     ethnl_kmsg_n_desc, 0);
++	}
++
++	fputc('\n', stdout);
+ }
+ 
+ static void debug_msg(struct nl_socket *nlsk, const void *msg, unsigned int len,
+@@ -98,20 +110,22 @@ static void debug_msg(struct nl_socket *nlsk, const void *msg, unsigned int len,
+ 	const char *dirlabel = outgoing ? "sending" : "received";
+ 	uint32_t debug = nlsk->nlctx->ctx->debug;
+ 	const struct nlmsghdr *nlhdr = msg;
+-	bool summary, dump;
++	bool summary, dump, pretty;
+ 	int left = len;
+ 
+ 	summary = debug_on(debug, DEBUG_NL_MSGS);
+ 	dump = debug_on(debug,
+ 			outgoing ? DEBUG_NL_DUMP_SND : DEBUG_NL_DUMP_RCV);
++	pretty = debug_on(debug, DEBUG_NL_PRETTY_MSG);
+ 	if (!summary && !dump)
+ 		return;
+ 	printf("%s packet (%u bytes):\n", dirlabel, len);
+ 
+ 	while (nlhdr && left > 0 && mnl_nlmsg_ok(nlhdr, left)) {
+-		if (summary)
++		if (summary) {
+ 			debug_msg_summary(nlhdr, nlsk->nlctx->ethnl_fam,
+-					  outgoing);
++					  outgoing, pretty);
++		}
+ 		if (dump)
+ 			mnl_nlmsg_fprintf(stdout, nlhdr, nlhdr->nlmsg_len,
+ 					  GENL_HDRLEN);
+@@ -120,7 +134,8 @@ static void debug_msg(struct nl_socket *nlsk, const void *msg, unsigned int len,
+ 	}
+ }
+ 
+-static int nlsock_process_ack(struct nlmsghdr *nlhdr, ssize_t len, bool silent)
++static int nlsock_process_ack(struct nlmsghdr *nlhdr, ssize_t len, bool silent,
++			      bool pretty)
+ {
+ 	const struct nlattr *tb[NLMSGERR_ATTR_MAX + 1] = {};
+ 	DECLARE_ATTR_TB_INFO(tb);
+@@ -143,12 +158,23 @@ static int nlsock_process_ack(struct nlmsghdr *nlhdr, ssize_t len, bool silent)
+ 
+ 		fprintf(stderr, "netlink %s: %s",
+ 			nlerr->error ? "error" : "warning", msg);
+-		if (tb[NLMSGERR_ATTR_OFFS])
++		if (!pretty && tb[NLMSGERR_ATTR_OFFS])
+ 			fprintf(stderr, " (offset %u)",
+ 				mnl_attr_get_u32(tb[NLMSGERR_ATTR_OFFS]));
+ 		fputc('\n', stderr);
+ 	}
+ 
++	if (nlerr->error && pretty) {
++		unsigned int err_offset = 0;
++
++		if (tb[NLMSGERR_ATTR_OFFS])
++			err_offset = mnl_attr_get_u32(tb[NLMSGERR_ATTR_OFFS]);
++		fprintf(stderr, "offending message%s:\n",
++			err_offset ? " and attribute" : "");
++		pretty_print_genlmsg(&nlerr->msg, ethnl_umsg_desc,
++				     ethnl_umsg_n_desc, err_offset);
++	}
++
+ out:
+ 	if (nlerr->error) {
+ 		errno = -nlerr->error;
+@@ -180,9 +206,14 @@ int nlsock_process_reply(struct nl_socket *nlsk, mnl_cb_t reply_cb, void *data)
+ 			return -EFAULT;
+ 
+ 		nlhdr = (struct nlmsghdr *)buff;
+-		if (nlhdr->nlmsg_type == NLMSG_ERROR)
+-			return nlsock_process_ack(nlhdr, len,
+-						  nlsk->nlctx->suppress_nlerr);
++		if (nlhdr->nlmsg_type == NLMSG_ERROR) {
++			bool silent = nlsk->nlctx->suppress_nlerr;
++			bool pretty;
++
++			pretty = debug_on(nlsk->nlctx->ctx->debug,
++					  DEBUG_NL_PRETTY_MSG);
++			return nlsock_process_ack(nlhdr, len, silent, pretty);
++		}
+ 
+ 		msgbuff->nlhdr = nlhdr;
+ 		msgbuff->genlhdr = mnl_nlmsg_get_payload(nlhdr);
+-- 
+2.25.1
+

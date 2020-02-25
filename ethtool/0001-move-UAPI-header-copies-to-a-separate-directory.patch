@@ -1,7 +1,7 @@
-From 243c9eb774f9154e842e52dede24b3cf740096de Mon Sep 17 00:00:00 2001
+From 23ae41de7dd8663380d522e0fa2a75bf6b8724af Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Sun, 16 Feb 2020 23:41:18 +0100
-Subject: [PATCH 01/19] move UAPI header copies to a separate directory
+Date: Wed, 22 Nov 2017 09:02:44 +0100
+Subject: [PATCH 01/22] move UAPI header copies to a separate directory
 
 The upcoming netlink series is going to add more local copies of kernel
 UAPI header files and some of them are going to include others. Keeping
@@ -79,5 +79,5 @@ rename to uapi/linux/net_tstamp.h
 
 base-commit: 7dc0af7e386e3f7dbb20c4c0004ace450a09cf7e
 -- 
-2.25.0
+2.25.1
 

@@ -1,7 +1,7 @@
-From e29bb92bfccef317fbb76c4cdaf95678ec4a400a Mon Sep 17 00:00:00 2001
+From 4647d2ab9eed13915bbcc348e4f6a0562185e00a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Sun, 16 Feb 2020 23:41:53 +0100
-Subject: [PATCH 18/19] netlink: add netlink handler for sset (-s)
+Date: Sun, 26 Nov 2017 22:45:28 +0100
+Subject: [PATCH 18/22] netlink: add netlink handler for sset (-s)
 
 Implement "ethtool -s <dev>" subcommand using netlink interface request
 ETHTOOL_MSG_LINKINFO_SET, ETHTOOL_MSG_LINKMODES_SET, ETHTOOL_MSG_WOL_SET
@@ -107,7 +107,7 @@ index 8608ea7f51f5..612002e8228b 100644
  #endif /* ETHTOOL_ENABLE_NETLINK */
  
 diff --git a/netlink/settings.c b/netlink/settings.c
-index fed121471d0f..9922747470ce 100644
+index 7c7c841e3657..6c04bd098e03 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -13,6 +13,7 @@
@@ -118,7 +118,7 @@ index fed121471d0f..9922747470ce 100644
  
  /* GET_SETTINGS */
  
-@@ -750,3 +751,195 @@ int nl_gset(struct cmd_context *ctx)
+@@ -751,3 +752,195 @@ int nl_gset(struct cmd_context *ctx)
  err:
  	return 75;
  }
@@ -315,5 +315,5 @@ index fed121471d0f..9922747470ce 100644
 +	return nlctx->exit_code ?: 75;
 +}
 -- 
-2.25.0
+2.25.1
 

@@ -1,7 +1,7 @@
-From 236a64ee07013457f5f0ab57691cfe20ad116f00 Mon Sep 17 00:00:00 2001
+From 968e120364367cbc1919e0f00f3c0da028d8275c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Sun, 16 Feb 2020 23:41:32 +0100
-Subject: [PATCH 08/19] netlink: netlink socket wrapper and helpers
+Date: Thu, 13 Feb 2020 10:58:52 +0100
+Subject: [PATCH 08/22] netlink: netlink socket wrapper and helpers
 
 Add data structure for netlink socket and few helpers to work with it.
 
@@ -455,5 +455,5 @@ index 000000000000..beab176e6775
 +
 +#endif /* ETHTOOL_NETLINK_NLSOCK_H__ */
 -- 
-2.25.0
+2.25.1
 

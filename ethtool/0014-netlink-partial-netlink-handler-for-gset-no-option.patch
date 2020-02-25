@@ -1,7 +1,7 @@
-From 49fc63392858973b71e188f92142f45500c1de04 Mon Sep 17 00:00:00 2001
+From 573303d07bbdf55c3988c5bf909e315cef645e3a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Sun, 16 Feb 2020 23:41:44 +0100
-Subject: [PATCH 14/19] netlink: partial netlink handler for gset (no option)
+Date: Wed, 22 Nov 2017 17:54:35 +0100
+Subject: [PATCH 14/22] netlink: partial netlink handler for gset (no option)
 
 Partially implement "ethtool <dev>" subcommand. This commit retrieves and
 displays information provided by ETHTOOL_MSG_LINKINFO_GET,
@@ -763,5 +763,5 @@ index 000000000000..24b7a4495961
 +	return 75;
 +}
 -- 
-2.25.0
+2.25.1
 

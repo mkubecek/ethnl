@@ -1,7 +1,7 @@
-From 1bb59e19be6e09aa81075268f34295ae348fb09e Mon Sep 17 00:00:00 2001
+From c8f2a961ecc843e49c1370ab9d2ae62fe393e2ed Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Sun, 16 Feb 2020 23:41:26 +0100
-Subject: [PATCH 05/19] netlink: add netlink related UAPI header files
+Date: Tue, 11 Feb 2020 21:19:37 +0100
+Subject: [PATCH 05/22] netlink: add netlink related UAPI header files
 
 Add copies of kernel UAPI header files needed for netlink interface:
 
@@ -614,5 +614,5 @@ index 000000000000..2c28d329e595
 +
 +#endif /* __LINUX_NETLINK_H */
 -- 
-2.25.0
+2.25.1
 

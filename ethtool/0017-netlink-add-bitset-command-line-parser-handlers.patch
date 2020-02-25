@@ -1,7 +1,7 @@
-From 0b7c08ff6e92dc301abb9a066dce2e7f3d45990c Mon Sep 17 00:00:00 2001
+From ea2aa36a7a9913b4d54a02832c559d9407f064da Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Sun, 16 Feb 2020 23:41:51 +0100
-Subject: [PATCH 17/19] netlink: add bitset command line parser handlers
+Date: Thu, 13 Feb 2020 23:04:32 +0100
+Subject: [PATCH 17/22] netlink: add bitset command line parser handlers
 
 Add three more command line parser handlers for different representation of
 bitsets:
@@ -527,5 +527,5 @@ index b5e8cd418b50..3cc26d21916c 100644
  /* main entry point called to parse the command line */
  int nl_parser(struct nl_context *nlctx, const struct param_parser *params,
 -- 
-2.25.0
+2.25.1
 

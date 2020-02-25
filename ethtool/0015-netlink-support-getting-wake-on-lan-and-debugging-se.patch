@@ -1,7 +1,7 @@
-From 2f38230d8cbaa8bcbf91c47c5bb111c292a65237 Mon Sep 17 00:00:00 2001
+From 5236592b96106e2d5c0809f4e102c742240c91b3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Sun, 16 Feb 2020 23:41:46 +0100
-Subject: [PATCH 15/19] netlink: support getting wake-on-lan and debugging
+Date: Fri, 14 Feb 2020 11:07:13 +0100
+Subject: [PATCH 15/22] netlink: support getting wake-on-lan and debugging
  settings
 
 Finish "ethtool <dev>" command implementation by adding support for
@@ -15,8 +15,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  netlink/monitor.c  |  16 +++++++
  netlink/netlink.h  |   2 +
- netlink/settings.c | 111 +++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 129 insertions(+)
+ netlink/settings.c | 112 +++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 130 insertions(+)
 
 diff --git a/netlink/monitor.c b/netlink/monitor.c
 index e8fdcd2b93ef..5fce6b64c08c 100644
@@ -66,10 +66,10 @@ index 790d0802b925..5e1d00ed9ce8 100644
  static inline void copy_devname(char *dst, const char *src)
  {
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 24b7a4495961..fed121471d0f 100644
+index 24b7a4495961..7c7c841e3657 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
-@@ -605,6 +605,101 @@ int linkstate_reply_cb(const struct nlmsghdr *nlhdr, void *data)
+@@ -605,6 +605,102 @@ int linkstate_reply_cb(const struct nlmsghdr *nlhdr, void *data)
  	return MNL_CB_OK;
  }
  
@@ -138,7 +138,7 @@ index 24b7a4495961..fed121471d0f 100644
 +{
 +	const struct nlattr *tb[ETHTOOL_A_DEBUG_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
-+	const struct stringset *msgmask_strings;
++	const struct stringset *msgmask_strings = NULL;
 +	struct nl_context *nlctx = data;
 +	u32 msg_mask = 0;
 +	int ret;
@@ -155,8 +155,9 @@ index 24b7a4495961..fed121471d0f 100644
 +	ret = netlink_init_ethnl2_socket(nlctx);
 +	if (ret < 0)
 +		return MNL_CB_OK;
-+	msgmask_strings = global_stringset(ETH_SS_MSG_CLASSES,
-+					   nlctx->ethnl2_socket);
++	if (bitset_is_compact(tb[ETHTOOL_A_DEBUG_MSGMASK]))
++		msgmask_strings = global_stringset(ETH_SS_MSG_CLASSES,
++						   nlctx->ethnl2_socket);
 +	walk_bitset(tb[ETHTOOL_A_DEBUG_MSGMASK], NULL, msgmask_cb, &msg_mask);
 +	printf("        Current message level: 0x%08x (%u)\n"
 +	       "                              ",
@@ -171,7 +172,7 @@ index 24b7a4495961..fed121471d0f 100644
  int nl_gset(struct cmd_context *ctx)
  {
  	struct nl_context *nlctx = ctx->nlctx;
-@@ -635,6 +730,22 @@ int nl_gset(struct cmd_context *ctx)
+@@ -635,6 +731,22 @@ int nl_gset(struct cmd_context *ctx)
  	if (ret < 0)
  		goto err;
  
@@ -195,5 +196,5 @@ index 24b7a4495961..fed121471d0f 100644
  err:
  	return 75;
 -- 
-2.25.0
+2.25.1
 

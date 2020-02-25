@@ -1,7 +1,7 @@
-From e3ec63d83cfcf96d33ccb48bab0e6643b9182736 Mon Sep 17 00:00:00 2001
+From a0ad19a363ee0be54663a62867d1c1178d07a7f1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Sun, 16 Feb 2020 23:41:20 +0100
-Subject: [PATCH 02/19] update UAPI header copies
+Date: Fri, 24 Nov 2017 01:02:29 +0100
+Subject: [PATCH 02/22] update UAPI header copies
 
 Update to v5.6-rc1.
 
@@ -115,5 +115,5 @@ index 3d421d912193..f96e650d0af9 100644
 +
  #endif /* _NET_TIMESTAMPING_H */
 -- 
-2.25.0
+2.25.1
 

@@ -1,7 +1,7 @@
-From 7cabfa0594c93c5b038b0851a3f87dd5ae4aeaad Mon Sep 17 00:00:00 2001
+From 72033f53054aa2072de886838dbc218d9fea0eff Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
-Date: Sun, 16 Feb 2020 23:41:36 +0100
-Subject: [PATCH 10/19] netlink: add support for string sets
+Date: Mon, 23 Jul 2018 14:09:19 +0200
+Subject: [PATCH 10/22] netlink: add support for string sets
 
 Add infrastructure for querying kernel for string sets (analog to ioctl
 commands ETHTOOL_GSSET_INFO and ETHTOOL_GSTRINGS), caching the results and
@@ -470,5 +470,5 @@ index 000000000000..72a4a3929244
 +
 +#endif /* ETHTOOL_NETLINK_STRSET_H__ */
 -- 
-2.25.0
+2.25.1
 
