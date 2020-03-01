@@ -1,7 +1,7 @@
-From 4574f6130651b56da57b277dddecc4e188c807df Mon Sep 17 00:00:00 2001
+From 327df4f9b73a2f9ae56a082139f46a8262a3c91b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 12 Feb 2020 13:03:30 +0100
-Subject: [PATCH 06/22] netlink: introduce the netlink interface
+Subject: [PATCH 06/26] netlink: introduce the netlink interface
 
 Initial part of netlink interface based on genetlink and libmnl. The
 netlink interface is available in kernel since 5.6-rc1. This commit only
@@ -20,20 +20,20 @@ interface.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Makefile.am       | 17 +++++++++--
+ Makefile.am       | 18 +++++++++--
  configure.ac      | 14 ++++++++-
  ethtool.c         | 76 +++++++++++++++++++++++++++++++++++------------
  internal.h        | 12 ++++++++
  netlink/extapi.h  | 31 +++++++++++++++++++
  netlink/netlink.c | 36 ++++++++++++++++++++++
  netlink/netlink.h | 26 ++++++++++++++++
- 7 files changed, 190 insertions(+), 22 deletions(-)
+ 7 files changed, 191 insertions(+), 22 deletions(-)
  create mode 100644 netlink/extapi.h
  create mode 100644 netlink/netlink.c
  create mode 100644 netlink/netlink.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 05beb22be669..3748d0df5608 100644
+index 05beb22be669..b510c3ec8a03 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -7,6 +7,8 @@ EXTRA_DIST = LICENSE ethtool.8 ethtool.spec.in aclocal.m4 ChangeLog autogen.sh
@@ -45,7 +45,7 @@ index 05beb22be669..3748d0df5608 100644
  if ETHTOOL_ENABLE_PRETTY_DUMP
  ethtool_SOURCES += \
  		  amd8111e.c de2104x.c dsa.c e100.c e1000.c et131x.c igb.c	\
-@@ -22,12 +24,23 @@ bashcompletiondir = $(BASH_COMPLETION_DIR)
+@@ -22,12 +24,24 @@ bashcompletiondir = $(BASH_COMPLETION_DIR)
  dist_bashcompletion_DATA = shell-completion/bash/ethtool
  endif
  
@@ -53,7 +53,8 @@ index 05beb22be669..3748d0df5608 100644
 +ethtool_SOURCES += \
 +		  netlink/netlink.c netlink/netlink.h netlink/extapi.h \
 +		  uapi/linux/ethtool_netlink.h \
-+		  uapi/linux/netlink.h uapi/linux/genetlink.h
++		  uapi/linux/netlink.h uapi/linux/genetlink.h \
++		  uapi/linux/rtnetlink.h uapi/linux/if_link.h
 +ethtool_CFLAGS += @MNL_CFLAGS@
 +ethtool_LDADD += @MNL_LIBS@
 +endif

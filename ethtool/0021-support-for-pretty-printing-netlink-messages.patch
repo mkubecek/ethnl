@@ -1,7 +1,7 @@
-From 1c131cf3161b80d187b5e3edb086ab0d3adda7f5 Mon Sep 17 00:00:00 2001
+From 24fcb213533e49b5b6793c22c6cd6e46df787a11 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 22 Feb 2020 17:52:37 +0100
-Subject: [PATCH 20/22] support for pretty printing netlink messages
+Subject: [PATCH 21/26] support for pretty printing netlink messages
 
 To improve message reporting and debugging, add support for displaying
 netlink messages in human readable form, e.g.
@@ -31,31 +31,32 @@ formats (depending on context).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Makefile.am         |   1 +
- netlink/prettymsg.c | 169 ++++++++++++++++++++++++++++++++++++++++++++
- netlink/prettymsg.h |  87 +++++++++++++++++++++++
- 3 files changed, 257 insertions(+)
+ Makefile.am         |   2 +-
+ netlink/prettymsg.c | 193 ++++++++++++++++++++++++++++++++++++++++++++
+ netlink/prettymsg.h | 102 +++++++++++++++++++++++
+ 3 files changed, 296 insertions(+), 1 deletion(-)
  create mode 100644 netlink/prettymsg.c
  create mode 100644 netlink/prettymsg.h
 
 diff --git a/Makefile.am b/Makefile.am
-index bb95ead79e9d..c73d2149730d 100644
+index 38268932a955..baef0d20fa41 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -31,6 +31,7 @@ ethtool_SOURCES += \
+@@ -31,7 +31,7 @@ ethtool_SOURCES += \
  		  netlink/nlsock.h netlink/strset.c netlink/strset.h \
  		  netlink/monitor.c netlink/bitset.c netlink/bitset.h \
  		  netlink/settings.c netlink/parser.c netlink/parser.h \
-+		  netlink/prettymsg.c netlink/prettymsg.h \
+-		  netlink/permaddr.c \
++		  netlink/permaddr.c netlink/prettymsg.c netlink/prettymsg.h \
  		  uapi/linux/ethtool_netlink.h \
- 		  uapi/linux/netlink.h uapi/linux/genetlink.h
- ethtool_CFLAGS += @MNL_CFLAGS@
+ 		  uapi/linux/netlink.h uapi/linux/genetlink.h \
+ 		  uapi/linux/rtnetlink.h uapi/linux/if_link.h
 diff --git a/netlink/prettymsg.c b/netlink/prettymsg.c
 new file mode 100644
-index 000000000000..897a6124da2e
+index 000000000000..74fe6f2db7ed
 --- /dev/null
 +++ b/netlink/prettymsg.c
-@@ -0,0 +1,169 @@
+@@ -0,0 +1,193 @@
 +/*
 + * prettymsg.c - human readable message dump
 + *
@@ -66,7 +67,10 @@ index 000000000000..897a6124da2e
 +#include <string.h>
 +#include <errno.h>
 +#include <stdint.h>
++#include <limits.h>
 +#include <linux/genetlink.h>
++#include <linux/rtnetlink.h>
++#include <linux/if_link.h>
 +#include <libmnl/libmnl.h>
 +
 +#include "prettymsg.h"
@@ -93,7 +97,7 @@ index 000000000000..897a6124da2e
 +
 +	for (i = 0; i < alen; i++) {
 +		if (i % __DUMP_LINE == 0)
-+			printf("\n%*s", __INDENT * (level + 1), "");
++			printf("\n%*s", __INDENT * (level + 2), "");
 +		else if (i % __DUMP_BLOCK == 0)
 +			printf("  ");
 +		else
@@ -105,17 +109,19 @@ index 000000000000..897a6124da2e
 +static int pretty_print_attr(const struct nlattr *attr,
 +			     const struct pretty_nla_desc *desc,
 +			     unsigned int ndesc, unsigned int level,
-+			     int err_offset)
++			     int err_offset, bool in_array)
 +{
 +	unsigned int alen = mnl_attr_get_payload_len(attr);
 +	unsigned int atype = mnl_attr_get_type(attr);
++	unsigned int desc_idx = in_array ? 0 : atype;
 +	void *adata = mnl_attr_get_payload(attr);
 +	const struct pretty_nla_desc *adesc;
 +	const char *prefix = "    ";
 +	bool nested;
 +
-+	adesc = (desc && atype < ndesc) ? &desc[atype] : NULL;
-+	nested = (adesc && adesc->format == NLA_NESTED) ||
++	adesc = (desc && desc_idx < ndesc) ? &desc[desc_idx] : NULL;
++	nested = (adesc && (adesc->format == NLA_NESTED ||
++			    adesc->format == NLA_ARRAY)) ||
 +		 (attr->nla_type & NLA_F_NESTED);
 +	if (err_offset >= 0 &&
 +	    err_offset < (nested ? NLA_HDRLEN : attr->nla_len)) {
@@ -125,18 +131,18 @@ index 000000000000..897a6124da2e
 +				"ethtool: bad_attr inside an attribute (offset %d)\n",
 +				err_offset);
 +	}
-+	if (adesc && adesc->name)
++	if (adesc && adesc->name && !in_array)
 +		printf("%s%*s%s", prefix, level * __INDENT, "", adesc->name);
 +	else
 +		printf("%s%*s[%u]", prefix, level * __INDENT, "", atype);
 +
-+	if ((adesc && adesc->format == NLA_NESTED) ||
-+	    (attr->nla_type & NLA_F_NESTED)) {
++	if (nested) {
 +		struct nlattr *child;
 +		int ret = 0;
 +
 +		putchar('\n');
 +		mnl_attr_for_each_nested(child, attr) {
++			bool array = adesc && adesc->format == NLA_ARRAY;
 +			unsigned int child_off;
 +
 +			child_off = (const char *)child - (const char *)attr;
@@ -144,7 +150,7 @@ index 000000000000..897a6124da2e
 +						adesc ? adesc->children : NULL,
 +						adesc ? adesc->n_children : 0,
 +						level + 1,
-+						err_offset - child_off);
++						err_offset - child_off, array);
 +			if (ret < 0)
 +				break;
 +		}
@@ -172,6 +178,15 @@ index 000000000000..897a6124da2e
 +	case NLA_X32:
 +		printf("0x%08x", mnl_attr_get_u32(attr));
 +		break;
++	case NLA_S8:
++		printf("%d", (int)mnl_attr_get_u8(attr));
++		break;
++	case NLA_S16:
++		printf("%d", (int)mnl_attr_get_u16(attr));
++		break;
++	case NLA_S32:
++		printf("%d", (int)mnl_attr_get_u32(attr));
++		break;
 +	case NLA_STRING:
 +		printf("\"%.*s\"", alen, (const char *)adata);
 +		break;
@@ -192,13 +207,32 @@ index 000000000000..897a6124da2e
 +	return 0;
 +}
 +
++static int pretty_print_nlmsg(const struct nlmsghdr *nlhdr,
++			      unsigned int payload_offset,
++			      const struct pretty_nla_desc *desc,
++			      unsigned int ndesc, unsigned int err_offset)
++{
++	const struct nlattr *attr;
++	int attr_offset;
++	int ret;
++
++	mnl_attr_for_each(attr, nlhdr, payload_offset) {
++		attr_offset = (const char *)attr - (const char *)nlhdr;
++		ret = pretty_print_attr(attr, desc, ndesc, 1,
++					err_offset - attr_offset, false);
++		if (ret < 0)
++			return ret;
++	}
++
++	return 0;
++}
++
 +int pretty_print_genlmsg(const struct nlmsghdr *nlhdr,
 +			 const struct pretty_nlmsg_desc *desc,
 +			 unsigned int ndesc, unsigned int err_offset)
 +{
 +	const struct pretty_nlmsg_desc *msg_desc;
 +	const struct genlmsghdr *genlhdr;
-+	const struct nlattr *attr;
 +
 +	if (mnl_nlmsg_get_payload_len(nlhdr) < GENL_HDRLEN) {
 +		fprintf(stderr, "ethtool: message too short (%u bytes)\n",
@@ -212,25 +246,16 @@ index 000000000000..897a6124da2e
 +	else
 +		printf("    [%u]\n", genlhdr->cmd);
 +
-+	mnl_attr_for_each(attr, nlhdr, GENL_HDRLEN) {
-+		int attr_offset = (const char *)attr - (const char *)nlhdr;
-+		int ret;
-+
-+		ret = pretty_print_attr(attr, msg_desc ? msg_desc->attrs : NULL,
-+					msg_desc ? msg_desc->n_attrs : 0, 1,
-+					err_offset - attr_offset);
-+		if (ret < 0)
-+			return ret;
-+	}
-+
-+	return 0;
++	return pretty_print_nlmsg(nlhdr, GENL_HDRLEN,
++				  msg_desc ? msg_desc->attrs : NULL,
++				  msg_desc ? msg_desc->n_attrs : 0, err_offset);
 +}
 diff --git a/netlink/prettymsg.h b/netlink/prettymsg.h
 new file mode 100644
-index 000000000000..01c316888f95
+index 000000000000..68ec275a22f6
 --- /dev/null
 +++ b/netlink/prettymsg.h
-@@ -0,0 +1,87 @@
+@@ -0,0 +1,102 @@
 +/*
 + * prettymsg.h - human readable message dump
 + *
@@ -253,10 +278,14 @@ index 000000000000..01c316888f95
 +	NLA_X8,
 +	NLA_X16,
 +	NLA_X32,
++	NLA_S8,
++	NLA_S16,
++	NLA_S32,
 +	NLA_STRING,
 +	NLA_FLAG,
 +	NLA_BOOL,
 +	NLA_NESTED,
++	NLA_ARRAY,
 +};
 +
 +struct pretty_nla_desc {
@@ -287,6 +316,9 @@ index 000000000000..01c316888f95
 +#define NLATTR_DESC_X8(_name)		NLATTR_DESC(_name, NLA_X8)
 +#define NLATTR_DESC_X16(_name)		NLATTR_DESC(_name, NLA_X16)
 +#define NLATTR_DESC_X32(_name)		NLATTR_DESC(_name, NLA_X32)
++#define NLATTR_DESC_S8(_name)		NLATTR_DESC(_name, NLA_U8)
++#define NLATTR_DESC_S16(_name)		NLATTR_DESC(_name, NLA_U16)
++#define NLATTR_DESC_S32(_name)		NLATTR_DESC(_name, NLA_U32)
 +#define NLATTR_DESC_STRING(_name)	NLATTR_DESC(_name, NLA_STRING)
 +#define NLATTR_DESC_FLAG(_name)		NLATTR_DESC(_name, NLA_FLAG)
 +#define NLATTR_DESC_BOOL(_name)		NLATTR_DESC(_name, NLA_BOOL)
@@ -298,6 +330,14 @@ index 000000000000..01c316888f95
 +		.name = #_name, \
 +		.children = __ ## _children_desc ## _desc, \
 +		.n_children = ARRAY_SIZE(__ ## _children_desc ## _desc), \
++	}
++#define NLATTR_DESC_NESTED_NODESC(_name) NLATTR_DESC(_name, NLA_NESTED)
++#define NLATTR_DESC_ARRAY(_name, _children_desc) \
++	[_name] = { \
++		.format = NLA_ARRAY, \
++		.name = #_name, \
++		.children = __ ## _children_desc ## _desc, \
++		.n_children = 1, \
 +	}
 +
 +#define NLMSG_DESC(_name, _attrs) \

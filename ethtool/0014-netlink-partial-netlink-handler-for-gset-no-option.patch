@@ -1,7 +1,7 @@
-From 573303d07bbdf55c3988c5bf909e315cef645e3a Mon Sep 17 00:00:00 2001
+From fdd436b1a44dd2db8b4389c1bd23876152238aff Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
-Subject: [PATCH 14/22] netlink: partial netlink handler for gset (no option)
+Subject: [PATCH 14/26] netlink: partial netlink handler for gset (no option)
 
 Partially implement "ethtool <dev>" subcommand. This commit retrieves and
 displays information provided by ETHTOOL_MSG_LINKINFO_GET,
@@ -23,7 +23,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/settings.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 65586d9f51a1..e4e864add586 100644
+index 2553cf727a36..77003f27a3a8 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -30,6 +30,7 @@ ethtool_SOURCES += \
@@ -32,8 +32,8 @@ index 65586d9f51a1..e4e864add586 100644
  		  netlink/monitor.c netlink/bitset.c netlink/bitset.h \
 +		  netlink/settings.c \
  		  uapi/linux/ethtool_netlink.h \
- 		  uapi/linux/netlink.h uapi/linux/genetlink.h
- ethtool_CFLAGS += @MNL_CFLAGS@
+ 		  uapi/linux/netlink.h uapi/linux/genetlink.h \
+ 		  uapi/linux/rtnetlink.h uapi/linux/if_link.h
 diff --git a/ethtool.c b/ethtool.c
 index c2b7cc8c0502..a69233bd73fc 100644
 --- a/ethtool.c

@@ -1,7 +1,7 @@
-From de8a4e8c3c3374f4c0d1c9bf7fb56c7901113172 Mon Sep 17 00:00:00 2001
+From 7dd93fe10f4ee2ef2ccd648b7dfd7bf9bab44c35 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 19:15:24 +0100
-Subject: [PATCH 12/22] move shared code into a common file
+Subject: [PATCH 12/26] move shared code into a common file
 
 Move code which is going to be shared between ioctl and netlink
 implementation into a common file common.c and declarations into header
@@ -18,7 +18,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 common.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 92aefb9843bc..77b13da1442c 100644
+index 0aa88ead27d5..90723a49b591 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -6,7 +6,7 @@ EXTRA_DIST = LICENSE ethtool.8 ethtool.spec.in aclocal.m4 ChangeLog autogen.sh

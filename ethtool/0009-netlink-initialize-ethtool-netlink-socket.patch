@@ -1,7 +1,7 @@
-From 015348dce29871f2fb2c047434fc95054f51570d Mon Sep 17 00:00:00 2001
+From 23d8672405814644bdd09bcdea7f522d7410ff4a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 13:10:52 +0100
-Subject: [PATCH 09/22] netlink: initialize ethtool netlink socket
+Subject: [PATCH 09/26] netlink: initialize ethtool netlink socket
 
 As part of the netlink initialization, set up netlink socket for ethtool
 netlink and get id of ethtool genetlink family and monitor multicast group.

@@ -1,7 +1,7 @@
-From 8c913d1dcff70821487417f94543785170272a6e Mon Sep 17 00:00:00 2001
+From 6c0b3a9a96697bb2aebcdd4e22f045fa1084390c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 22:01:26 +0100
-Subject: [PATCH 13/22] netlink: add bitset helpers
+Subject: [PATCH 13/26] netlink: add bitset helpers
 
 Add basic functions for work with arbitrary length bitsets used in ethtool
 netlink interface.
@@ -20,7 +20,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/bitset.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 77b13da1442c..65586d9f51a1 100644
+index 90723a49b591..2553cf727a36 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -29,7 +29,7 @@ ethtool_SOURCES += \
@@ -30,8 +30,8 @@ index 77b13da1442c..65586d9f51a1 100644
 -		  netlink/monitor.c \
 +		  netlink/monitor.c netlink/bitset.c netlink/bitset.h \
  		  uapi/linux/ethtool_netlink.h \
- 		  uapi/linux/netlink.h uapi/linux/genetlink.h
- ethtool_CFLAGS += @MNL_CFLAGS@
+ 		  uapi/linux/netlink.h uapi/linux/genetlink.h \
+ 		  uapi/linux/rtnetlink.h uapi/linux/if_link.h
 diff --git a/netlink/bitset.c b/netlink/bitset.c
 new file mode 100644
 index 000000000000..ed109ec1d2c0

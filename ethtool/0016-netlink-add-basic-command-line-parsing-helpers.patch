@@ -1,7 +1,7 @@
-From fabc1c6d8e1bd6d1f349eee9f01e3bc0780ba3a2 Mon Sep 17 00:00:00 2001
+From 06021e5e6dd27b6d59842733c599303851464ed8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 23:04:32 +0100
-Subject: [PATCH 16/22] netlink: add basic command line parsing helpers
+Subject: [PATCH 16/26] netlink: add basic command line parsing helpers
 
 Existing command line parser functions from the ioctl interface are often
 too closely tied to the ioctl data structures and would not be easily
@@ -37,7 +37,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/parser.h
 
 diff --git a/Makefile.am b/Makefile.am
-index e4e864add586..bb95ead79e9d 100644
+index 77003f27a3a8..2df64cc4cc52 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -30,7 +30,7 @@ ethtool_SOURCES += \
@@ -47,8 +47,8 @@ index e4e864add586..bb95ead79e9d 100644
 -		  netlink/settings.c \
 +		  netlink/settings.c netlink/parser.c netlink/parser.h \
  		  uapi/linux/ethtool_netlink.h \
- 		  uapi/linux/netlink.h uapi/linux/genetlink.h
- ethtool_CFLAGS += @MNL_CFLAGS@
+ 		  uapi/linux/netlink.h uapi/linux/genetlink.h \
+ 		  uapi/linux/rtnetlink.h uapi/linux/if_link.h
 diff --git a/netlink/netlink.h b/netlink/netlink.h
 index 5e1d00ed9ce8..43f57f06e2d5 100644
 --- a/netlink/netlink.h

@@ -1,7 +1,7 @@
-From 549db7e2f1c891b41abd52ff685c45f0094efa6c Mon Sep 17 00:00:00 2001
+From 4ded57a92e2b94af5227dd66b7874f4e4aeaa44c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 22 Feb 2020 19:07:58 +0100
-Subject: [PATCH 22/22] use pretty printing for ethtool netlink messages
+Subject: [PATCH 25/26] use pretty printing for ethtool netlink messages
 
 Introduce new debugging flag DEBUG_NL_PRETTY_MSG (0x10) which has two
 effects:
@@ -15,8 +15,8 @@ effects:
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  internal.h       |  1 +
- netlink/nlsock.c | 49 +++++++++++++++++++++++++++++++++++++++---------
- 2 files changed, 41 insertions(+), 9 deletions(-)
+ netlink/nlsock.c | 72 +++++++++++++++++++++++++++++++++++++-----------
+ 2 files changed, 57 insertions(+), 16 deletions(-)
 
 diff --git a/internal.h b/internal.h
 index a518bfa99380..edb07bddd073 100644
@@ -31,7 +31,7 @@ index a518bfa99380..edb07bddd073 100644
  
  static inline bool debug_on(unsigned long debug, unsigned int bit)
 diff --git a/netlink/nlsock.c b/netlink/nlsock.c
-index 3ed6baf3afa1..6b87acc88a27 100644
+index 92065c7b2d37..b88fb45ed56a 100644
 --- a/netlink/nlsock.c
 +++ b/netlink/nlsock.c
 @@ -10,6 +10,7 @@
@@ -42,39 +42,93 @@ index 3ed6baf3afa1..6b87acc88a27 100644
  
  #define NLSOCK_RECV_BUFFSIZE 65536
  
-@@ -68,7 +69,7 @@ static const char *msg_type_str(unsigned int type, unsigned int ethnl_fam)
+@@ -43,10 +44,12 @@ static void ctrl_msg_summary(const struct nlmsghdr *nlhdr)
+ }
+ 
+ static void genl_msg_summary(const struct nlmsghdr *nlhdr, int ethnl_fam,
+-			     bool outgoing)
++			     bool outgoing, bool pretty)
+ {
+ 	if (nlhdr->nlmsg_type == ethnl_fam) {
++		const struct pretty_nlmsg_desc *msg_desc;
+ 		const struct genlmsghdr *ghdr;
++		unsigned int n_desc;
+ 
+ 		printf(" ethool");
+ 		if (nlhdr->nlmsg_len < NLMSG_HDRLEN + GENL_HDRLEN) {
+@@ -55,27 +58,46 @@ static void genl_msg_summary(const struct nlmsghdr *nlhdr, int ethnl_fam,
+ 		}
+ 		ghdr = mnl_nlmsg_get_payload(nlhdr);
+ 
+-		printf(" cmd %u", ghdr->cmd);
++		msg_desc = outgoing ? ethnl_umsg_desc : ethnl_kmsg_desc;
++		n_desc = outgoing ? ethnl_umsg_n_desc : ethnl_kmsg_n_desc;
++		if (ghdr->cmd < n_desc && msg_desc[ghdr->cmd].name)
++			printf(" %s", msg_desc[ghdr->cmd].name);
++		else
++			printf(" cmd %u", ghdr->cmd);
+ 		fputc('\n', stdout);
+ 
++		if (pretty)
++			pretty_print_genlmsg(nlhdr, msg_desc, n_desc, 0);
+ 		return;
+ 	}
+ 
+-	if (nlhdr->nlmsg_type == GENL_ID_CTRL)
++	if (nlhdr->nlmsg_type == GENL_ID_CTRL) {
+ 		printf(" genl-ctrl\n");
+-	else
++		if (pretty)
++			pretty_print_genlmsg(nlhdr, genlctrl_msg_desc,
++					     genlctrl_msg_n_desc, 0);
++	} else {
+ 		fputc('\n', stdout);
++		if (pretty)
++			pretty_print_genlmsg(nlhdr, NULL, 0, 0);
++	}
+ }
+ 
+-static void rtnl_msg_summary(const struct nlmsghdr *nlhdr)
++static void rtnl_msg_summary(const struct nlmsghdr *nlhdr, bool pretty)
+ {
+ 	unsigned int type = nlhdr->nlmsg_type;
+ 
+-	printf(" type %u\n", type);
++	if (type < rtnl_msg_n_desc && rtnl_msg_desc[type].name)
++		printf(" %s\n", rtnl_msg_desc[type].name);
++	else
++		printf(" type %u\n", type);
++
++	if (pretty)
++		pretty_print_rtnlmsg(nlhdr, 0);
  }
  
  static void debug_msg_summary(const struct nlmsghdr *nlhdr, int ethnl_fam,
--			      bool outgoing)
-+			      bool outgoing, bool pretty)
+-			      int nl_fam, bool outgoing)
++			      int nl_fam, bool outgoing, bool pretty)
  {
- 	const char * const *msg_names =
- 		outgoing ? ethnl_umsg_names : ethnl_kmsg_names;
-@@ -90,6 +91,17 @@ static void debug_msg_summary(const struct nlmsghdr *nlhdr, int ethnl_fam,
- 		printf(" ethtool cmd %u (%s)", cmd, cmd_name);
- 	}
- 	fputc('\n', stdout);
-+
-+	if (pretty && nlhdr->nlmsg_type == ethnl_fam) {
-+		if (outgoing)
-+			pretty_print_genlmsg(nlhdr, ethnl_umsg_desc,
-+					     ethnl_umsg_n_desc, 0);
-+		else
-+			pretty_print_genlmsg(nlhdr, ethnl_kmsg_desc,
-+					     ethnl_kmsg_n_desc, 0);
-+	}
-+
-+	fputc('\n', stdout);
- }
+ 	printf("    msg length %u", nlhdr->nlmsg_len);
  
- static void debug_msg(struct nl_socket *nlsk, const void *msg, unsigned int len,
-@@ -98,20 +110,22 @@ static void debug_msg(struct nl_socket *nlsk, const void *msg, unsigned int len,
+@@ -86,10 +108,10 @@ static void debug_msg_summary(const struct nlmsghdr *nlhdr, int ethnl_fam,
+ 
+ 	switch(nl_fam) {
+ 	case NETLINK_GENERIC:
+-		genl_msg_summary(nlhdr, ethnl_fam, outgoing);
++		genl_msg_summary(nlhdr, ethnl_fam, outgoing, pretty);
+ 		break;
+ 	case NETLINK_ROUTE:
+-		rtnl_msg_summary(nlhdr);
++		rtnl_msg_summary(nlhdr, pretty);
+ 		break;
+ 	default:
+ 		fputc('\n', stdout);
+@@ -103,13 +125,14 @@ static void debug_msg(struct nl_socket *nlsk, const void *msg, unsigned int len,
  	const char *dirlabel = outgoing ? "sending" : "received";
  	uint32_t debug = nlsk->nlctx->ctx->debug;
  	const struct nlmsghdr *nlhdr = msg;
 -	bool summary, dump;
 +	bool summary, dump, pretty;
+ 	const char *nl_fam_label;
  	int left = len;
  
  	summary = debug_on(debug, DEBUG_NL_MSGS);
@@ -83,19 +137,17 @@ index 3ed6baf3afa1..6b87acc88a27 100644
 +	pretty = debug_on(debug, DEBUG_NL_PRETTY_MSG);
  	if (!summary && !dump)
  		return;
- 	printf("%s packet (%u bytes):\n", dirlabel, len);
- 
+ 	switch(nlsk->nl_fam) {
+@@ -128,7 +151,7 @@ static void debug_msg(struct nl_socket *nlsk, const void *msg, unsigned int len,
  	while (nlhdr && left > 0 && mnl_nlmsg_ok(nlhdr, left)) {
--		if (summary)
-+		if (summary) {
+ 		if (summary)
  			debug_msg_summary(nlhdr, nlsk->nlctx->ethnl_fam,
--					  outgoing);
-+					  outgoing, pretty);
-+		}
+-					  nlsk->nl_fam, outgoing);
++					  nlsk->nl_fam, outgoing, pretty);
  		if (dump)
  			mnl_nlmsg_fprintf(stdout, nlhdr, nlhdr->nlmsg_len,
  					  GENL_HDRLEN);
-@@ -120,7 +134,8 @@ static void debug_msg(struct nl_socket *nlsk, const void *msg, unsigned int len,
+@@ -137,7 +160,8 @@ static void debug_msg(struct nl_socket *nlsk, const void *msg, unsigned int len,
  	}
  }
  
@@ -105,7 +157,7 @@ index 3ed6baf3afa1..6b87acc88a27 100644
  {
  	const struct nlattr *tb[NLMSGERR_ATTR_MAX + 1] = {};
  	DECLARE_ATTR_TB_INFO(tb);
-@@ -143,12 +158,23 @@ static int nlsock_process_ack(struct nlmsghdr *nlhdr, ssize_t len, bool silent)
+@@ -160,12 +184,23 @@ static int nlsock_process_ack(struct nlmsghdr *nlhdr, ssize_t len, bool silent)
  
  		fprintf(stderr, "netlink %s: %s",
  			nlerr->error ? "error" : "warning", msg);
@@ -130,7 +182,7 @@ index 3ed6baf3afa1..6b87acc88a27 100644
  out:
  	if (nlerr->error) {
  		errno = -nlerr->error;
-@@ -180,9 +206,14 @@ int nlsock_process_reply(struct nl_socket *nlsk, mnl_cb_t reply_cb, void *data)
+@@ -197,9 +232,14 @@ int nlsock_process_reply(struct nl_socket *nlsk, mnl_cb_t reply_cb, void *data)
  			return -EFAULT;
  
  		nlhdr = (struct nlmsghdr *)buff;

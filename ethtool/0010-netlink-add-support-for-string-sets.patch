@@ -1,7 +1,7 @@
-From 72033f53054aa2072de886838dbc218d9fea0eff Mon Sep 17 00:00:00 2001
+From 76035ab59f58855a76666c64d4b133664c7f6cfc Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 14:09:19 +0200
-Subject: [PATCH 10/22] netlink: add support for string sets
+Subject: [PATCH 10/26] netlink: add support for string sets
 
 Add infrastructure for querying kernel for string sets (analog to ioctl
 commands ETHTOOL_GSSET_INFO and ETHTOOL_GSTRINGS), caching the results and
@@ -29,7 +29,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/strset.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 857de24a130a..2685280aee15 100644
+index 04f4157e7bc0..aa41b21fa779 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -28,7 +28,7 @@ if ETHTOOL_ENABLE_NETLINK
@@ -39,8 +39,8 @@ index 857de24a130a..2685280aee15 100644
 -		  netlink/nlsock.h \
 +		  netlink/nlsock.h netlink/strset.c netlink/strset.h \
  		  uapi/linux/ethtool_netlink.h \
- 		  uapi/linux/netlink.h uapi/linux/genetlink.h
- ethtool_CFLAGS += @MNL_CFLAGS@
+ 		  uapi/linux/netlink.h uapi/linux/genetlink.h \
+ 		  uapi/linux/rtnetlink.h uapi/linux/if_link.h
 diff --git a/netlink/netlink.c b/netlink/netlink.c
 index 2128e2775e12..2e49c6618c53 100644
 --- a/netlink/netlink.c

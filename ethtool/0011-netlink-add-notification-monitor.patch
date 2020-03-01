@@ -1,7 +1,7 @@
-From 5a47aeda95a170fae32b8a8f310cfd57bedc468c Mon Sep 17 00:00:00 2001
+From 8c436f1dabf693f7616d603faf2377cd12175165 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
-Subject: [PATCH 11/22] netlink: add notification monitor
+Subject: [PATCH 11/26] netlink: add notification monitor
 
 With 'ethtool --monitor [ --all | opt ] [dev]', let ethtool listen to
 netlink notification and display them in a format similar to output of
@@ -24,7 +24,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/monitor.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 2685280aee15..92aefb9843bc 100644
+index aa41b21fa779..0aa88ead27d5 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -29,6 +29,7 @@ ethtool_SOURCES += \
@@ -33,8 +33,8 @@ index 2685280aee15..92aefb9843bc 100644
  		  netlink/nlsock.h netlink/strset.c netlink/strset.h \
 +		  netlink/monitor.c \
  		  uapi/linux/ethtool_netlink.h \
- 		  uapi/linux/netlink.h uapi/linux/genetlink.h
- ethtool_CFLAGS += @MNL_CFLAGS@
+ 		  uapi/linux/netlink.h uapi/linux/genetlink.h \
+ 		  uapi/linux/rtnetlink.h uapi/linux/if_link.h
 diff --git a/ethtool.8.in b/ethtool.8.in
 index 680cad9fbb8f..28e4f75eee8d 100644
 --- a/ethtool.8.in

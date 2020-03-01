@@ -1,7 +1,7 @@
-From ea2aa36a7a9913b4d54a02832c559d9407f064da Mon Sep 17 00:00:00 2001
+From 08ecbd3f38382a6e86625c0871713a54de5fc4ef Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 23:04:32 +0100
-Subject: [PATCH 17/22] netlink: add bitset command line parser handlers
+Subject: [PATCH 17/26] netlink: add bitset command line parser handlers
 
 Add three more command line parser handlers for different representation of
 bitsets:

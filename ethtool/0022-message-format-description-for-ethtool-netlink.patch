@@ -1,7 +1,7 @@
-From 2ff6a4346ac47ff18b744a1af384e16bc38b4461 Mon Sep 17 00:00:00 2001
+From b4e4aaacb74ad7cf2eaf096f8432e936e036a916 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 22 Feb 2020 18:13:41 +0100
-Subject: [PATCH 21/22] message format description for ethtool netlink
+Subject: [PATCH 22/26] message format description for ethtool netlink
 
 Add description of ethtool netlink message formats to be used for pretty
 printing infrastructure. These arrays map (numeric) attribute types to
@@ -17,25 +17,25 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/desc-ethtool.c
 
 diff --git a/Makefile.am b/Makefile.am
-index c73d2149730d..a8179ac3ef17 100644
+index baef0d20fa41..adbe5bc52b4b 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -32,6 +32,7 @@ ethtool_SOURCES += \
  		  netlink/monitor.c netlink/bitset.c netlink/bitset.h \
  		  netlink/settings.c netlink/parser.c netlink/parser.h \
- 		  netlink/prettymsg.c netlink/prettymsg.h \
+ 		  netlink/permaddr.c netlink/prettymsg.c netlink/prettymsg.h \
 +		  netlink/desc-ethtool.c \
  		  uapi/linux/ethtool_netlink.h \
- 		  uapi/linux/netlink.h uapi/linux/genetlink.h
- ethtool_CFLAGS += @MNL_CFLAGS@
+ 		  uapi/linux/netlink.h uapi/linux/genetlink.h \
+ 		  uapi/linux/rtnetlink.h uapi/linux/if_link.h
 diff --git a/netlink/desc-ethtool.c b/netlink/desc-ethtool.c
 new file mode 100644
-index 000000000000..4a73aa0694f4
+index 000000000000..76c6f13e4648
 --- /dev/null
 +++ b/netlink/desc-ethtool.c
 @@ -0,0 +1,139 @@
 +/*
-+ * ethnlmsg.c - ethtool netlink format descriptions
++ * desc-ethtool.c - ethtool netlink format descriptions
 + *
 + * Descriptions of ethtool netlink messages and attributes for pretty print.
 + */
@@ -174,10 +174,10 @@ index 000000000000..4a73aa0694f4
 +
 +const unsigned int ethnl_kmsg_n_desc = ARRAY_SIZE(ethnl_kmsg_desc);
 diff --git a/netlink/prettymsg.h b/netlink/prettymsg.h
-index 01c316888f95..528ae2cf827f 100644
+index 68ec275a22f6..9d8ca77fd42c 100644
 --- a/netlink/prettymsg.h
 +++ b/netlink/prettymsg.h
-@@ -84,4 +84,11 @@ int pretty_print_genlmsg(const struct nlmsghdr *nlhdr,
+@@ -99,4 +99,11 @@ int pretty_print_genlmsg(const struct nlmsghdr *nlhdr,
  			 const struct pretty_nlmsg_desc *desc,
  			 unsigned int ndesc, unsigned int err_offset);
  

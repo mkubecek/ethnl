@@ -1,7 +1,7 @@
-From 968e120364367cbc1919e0f00f3c0da028d8275c Mon Sep 17 00:00:00 2001
+From 17674eafa44a5a8b0b2fd2891112d0c441529cea Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 10:58:52 +0100
-Subject: [PATCH 08/22] netlink: netlink socket wrapper and helpers
+Subject: [PATCH 08/26] netlink: netlink socket wrapper and helpers
 
 Add data structure for netlink socket and few helpers to work with it.
 
@@ -16,14 +16,14 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  internal.h        |   8 ++
  netlink/netlink.c |  28 +++++
  netlink/netlink.h |  11 ++
- netlink/nlsock.c  | 291 ++++++++++++++++++++++++++++++++++++++++++++++
- netlink/nlsock.h  |  35 ++++++
- 6 files changed, 375 insertions(+), 1 deletion(-)
+ netlink/nlsock.c  | 310 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/nlsock.h  |  37 ++++++
+ 6 files changed, 396 insertions(+), 1 deletion(-)
  create mode 100644 netlink/nlsock.c
  create mode 100644 netlink/nlsock.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 12412b433445..857de24a130a 100644
+index 81099a79a793..04f4157e7bc0 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -27,7 +27,8 @@ endif
@@ -34,8 +34,8 @@ index 12412b433445..857de24a130a 100644
 +		  netlink/msgbuff.c netlink/msgbuff.h netlink/nlsock.c \
 +		  netlink/nlsock.h \
  		  uapi/linux/ethtool_netlink.h \
- 		  uapi/linux/netlink.h uapi/linux/genetlink.h
- ethtool_CFLAGS += @MNL_CFLAGS@
+ 		  uapi/linux/netlink.h uapi/linux/genetlink.h \
+ 		  uapi/linux/rtnetlink.h uapi/linux/if_link.h
 diff --git a/internal.h b/internal.h
 index 72a04e638a13..a518bfa99380 100644
 --- a/internal.h
@@ -118,10 +118,10 @@ index 48c4ebb3d7aa..54d2baaab516 100644
  #endif /* ETHTOOL_NETLINK_INT_H__ */
 diff --git a/netlink/nlsock.c b/netlink/nlsock.c
 new file mode 100644
-index 000000000000..8cb661e96e30
+index 000000000000..7e8f3b15b87f
 --- /dev/null
 +++ b/netlink/nlsock.c
-@@ -0,0 +1,291 @@
+@@ -0,0 +1,310 @@
 +/*
 + * nlsock.c - netlink socket
 + *
@@ -137,83 +137,88 @@ index 000000000000..8cb661e96e30
 +
 +#define NLSOCK_RECV_BUFFSIZE 65536
 +
-+#define __MSG_NAME(x) \
-+	[ETHTOOL_MSG_ ## x] = "ETHTOOL_MSG_" #x
-+
-+static const char *const ethnl_umsg_names[] = {
-+	__MSG_NAME(USER_NONE),
-+	__MSG_NAME(STRSET_GET),
-+	__MSG_NAME(LINKINFO_GET),
-+	__MSG_NAME(LINKINFO_SET),
-+	__MSG_NAME(LINKMODES_GET),
-+	__MSG_NAME(LINKMODES_SET),
-+	__MSG_NAME(LINKSTATE_GET),
-+	__MSG_NAME(DEBUG_GET),
-+	__MSG_NAME(DEBUG_SET),
-+	__MSG_NAME(WOL_GET),
-+	__MSG_NAME(WOL_SET),
-+};
-+
-+static const char *const ethnl_kmsg_names[] = {
-+	__MSG_NAME(KERNEL_NONE),
-+	__MSG_NAME(STRSET_GET_REPLY),
-+	__MSG_NAME(LINKINFO_GET_REPLY),
-+	__MSG_NAME(LINKINFO_NTF),
-+	__MSG_NAME(LINKMODES_GET_REPLY),
-+	__MSG_NAME(LINKMODES_NTF),
-+	__MSG_NAME(LINKSTATE_GET_REPLY),
-+	__MSG_NAME(DEBUG_GET_REPLY),
-+	__MSG_NAME(DEBUG_NTF),
-+	__MSG_NAME(WOL_GET_REPLY),
-+	__MSG_NAME(WOL_NTF),
-+};
-+
-+#undef __MSG_NAME
-+
-+static const char *msg_type_str(unsigned int type, unsigned int ethnl_fam)
++static void ctrl_msg_summary(const struct nlmsghdr *nlhdr)
 +{
-+	if (type == ethnl_fam)
-+		return "ethtool";
++	const struct nlmsgerr *nlerr;
 +
-+	switch (type) {
++	switch (nlhdr->nlmsg_type) {
 +	case NLMSG_NOOP:
-+		return "noop";
++		printf(" noop\n");
++		break;
 +	case NLMSG_ERROR:
-+		return "error";
++		printf(" error");
++		if (nlhdr->nlmsg_len < NLMSG_HDRLEN + sizeof(*nlerr)) {
++			printf(" malformed\n");
++			break;
++		}
++		nlerr = mnl_nlmsg_get_payload(nlhdr);
++		printf(" errno=%d\n", nlerr->error);
++		break;
 +	case NLMSG_DONE:
-+		return "done";
++		printf(" done\n");
++		break;
 +	case NLMSG_OVERRUN:
-+		return "overrun";
-+	case GENL_ID_CTRL:
-+		return "genl-ctrl";
++		printf(" overrun\n");
++		break;
++	default:
++		printf(" type %u\n", nlhdr->nlmsg_type);
++		break;
++	}
++}
++
++static void genl_msg_summary(const struct nlmsghdr *nlhdr, int ethnl_fam,
++			     bool outgoing)
++{
++	if (nlhdr->nlmsg_type == ethnl_fam) {
++		const struct genlmsghdr *ghdr;
++
++		printf(" ethool");
++		if (nlhdr->nlmsg_len < NLMSG_HDRLEN + GENL_HDRLEN) {
++			printf(" malformed\n");
++			return;
++		}
++		ghdr = mnl_nlmsg_get_payload(nlhdr);
++
++		printf(" cmd %u", ghdr->cmd);
++		fputc('\n', stdout);
++
++		return;
 +	}
 +
-+	return "unknown";
++	if (nlhdr->nlmsg_type == GENL_ID_CTRL)
++		printf(" genl-ctrl\n");
++	else
++		fputc('\n', stdout);
++}
++
++static void rtnl_msg_summary(const struct nlmsghdr *nlhdr)
++{
++	unsigned int type = nlhdr->nlmsg_type;
++
++	printf(" type %u\n", type);
 +}
 +
 +static void debug_msg_summary(const struct nlmsghdr *nlhdr, int ethnl_fam,
-+			      bool outgoing)
++			      int nl_fam, bool outgoing)
 +{
-+	const char * const *msg_names =
-+		outgoing ? ethnl_umsg_names : ethnl_kmsg_names;
-+	const unsigned int names_cnt =
-+		outgoing ? MNL_ARRAY_SIZE(ethnl_umsg_names) :
-+			   MNL_ARRAY_SIZE(ethnl_kmsg_names);
++	printf("    msg length %u", nlhdr->nlmsg_len);
 +
-+	printf("    msg length %u family %u (%s) flags %04x", nlhdr->nlmsg_len,
-+	       nlhdr->nlmsg_type, msg_type_str(nlhdr->nlmsg_type, ethnl_fam),
-+	       nlhdr->nlmsg_flags);
-+	if (nlhdr->nlmsg_type == ethnl_fam &&
-+	    nlhdr->nlmsg_len >= NLMSG_HDRLEN + GENL_HDRLEN) {
-+		const struct genlmsghdr *ghdr = mnl_nlmsg_get_payload(nlhdr);
-+		unsigned int cmd = ghdr->cmd;
-+		const char *cmd_name = "unknown";
-+
-+		if (cmd < names_cnt && msg_names[cmd])
-+			cmd_name = msg_names[cmd];
-+		printf(" ethtool cmd %u (%s)", cmd, cmd_name);
++	if (nlhdr->nlmsg_type < NLMSG_MIN_TYPE) {
++		ctrl_msg_summary(nlhdr);
++		return;
 +	}
-+	fputc('\n', stdout);
++
++	switch(nl_fam) {
++	case NETLINK_GENERIC:
++		genl_msg_summary(nlhdr, ethnl_fam, outgoing);
++		break;
++	case NETLINK_ROUTE:
++		rtnl_msg_summary(nlhdr);
++		break;
++	default:
++		fputc('\n', stdout);
++		break;
++	}
 +}
 +
 +static void debug_msg(struct nl_socket *nlsk, const void *msg, unsigned int len,
@@ -223,6 +228,7 @@ index 000000000000..8cb661e96e30
 +	uint32_t debug = nlsk->nlctx->ctx->debug;
 +	const struct nlmsghdr *nlhdr = msg;
 +	bool summary, dump;
++	const char *nl_fam_label;
 +	int left = len;
 +
 +	summary = debug_on(debug, DEBUG_NL_MSGS);
@@ -230,12 +236,23 @@ index 000000000000..8cb661e96e30
 +			outgoing ? DEBUG_NL_DUMP_SND : DEBUG_NL_DUMP_RCV);
 +	if (!summary && !dump)
 +		return;
-+	printf("%s packet (%u bytes):\n", dirlabel, len);
++	switch(nlsk->nl_fam) {
++	case NETLINK_GENERIC:
++		nl_fam_label = "genetlink";
++		break;
++	case NETLINK_ROUTE:
++		nl_fam_label = "rtnetlink";
++		break;
++	default:
++		nl_fam_label = "netlink";
++		break;
++	}
++	printf("%s %s packet (%u bytes):\n", dirlabel, nl_fam_label, len);
 +
 +	while (nlhdr && left > 0 && mnl_nlmsg_ok(nlhdr, left)) {
 +		if (summary)
 +			debug_msg_summary(nlhdr, nlsk->nlctx->ethnl_fam,
-+					  outgoing);
++					  nlsk->nl_fam, outgoing);
 +		if (dump)
 +			mnl_nlmsg_fprintf(stdout, nlhdr, nlhdr->nlmsg_len,
 +					  GENL_HDRLEN);
@@ -366,7 +383,8 @@ index 000000000000..8cb661e96e30
 +	return nlsk->nlctx->exit_code ?: 1;
 +}
 +
-+int __nlsock_init(struct nl_context *nlctx, struct nl_socket **__nlsk, int bus)
++int __nlsock_init(struct nl_context *nlctx, struct nl_socket **__nlsk,
++		  int nl_fam)
 +{
 +	struct nl_socket *nlsk;
 +	int val;
@@ -379,7 +397,7 @@ index 000000000000..8cb661e96e30
 +	msgbuff_init(&nlsk->msgbuff);
 +
 +	ret = -ECONNREFUSED;
-+	nlsk->sk = mnl_socket_open(bus);
++	nlsk->sk = mnl_socket_open(nl_fam);
 +	if (!nlsk->sk)
 +		goto out_msgbuff;
 +	val = 1;
@@ -388,6 +406,7 @@ index 000000000000..8cb661e96e30
 +	if (ret < 0)
 +		goto out_close;
 +	nlsk->port = mnl_socket_get_portid(nlsk->sk);
++	nlsk->nl_fam = nl_fam;
 +
 +	*__nlsk = nlsk;
 +	return 0;
@@ -415,10 +434,10 @@ index 000000000000..8cb661e96e30
 +}
 diff --git a/netlink/nlsock.h b/netlink/nlsock.h
 new file mode 100644
-index 000000000000..beab176e6775
+index 000000000000..1ed05da209f8
 --- /dev/null
 +++ b/netlink/nlsock.h
-@@ -0,0 +1,35 @@
+@@ -0,0 +1,37 @@
 +/*
 + * nlsock.h - netlink socket
 + *
@@ -442,9 +461,11 @@ index 000000000000..beab176e6775
 +	struct nl_msg_buff	msgbuff;
 +	unsigned int		port;
 +	unsigned int		seq;
++	int			nl_fam;
 +};
 +
-+int __nlsock_init(struct nl_context *nlctx, struct nl_socket **__nlsk, int bus);
++int __nlsock_init(struct nl_context *nlctx, struct nl_socket **__nlsk,
++		  int nl_fam);
 +int nlsock_init(struct nl_context *nlctx,  struct nl_socket **__nlsk);
 +void nlsock_done(struct nl_socket *nlsk);
 +int nlsock_prep_get_request(struct nl_socket *nlsk, unsigned int nlcmd,
