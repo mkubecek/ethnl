@@ -1,4 +1,4 @@
-From f02e076968d4655918a3c2a07702a5e55af7c7d8 Mon Sep 17 00:00:00 2001
+From 745ac9687d5b539a9d118158fe35210a0907cbcf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 16 Feb 2020 01:03:22 +0100
 Subject: [PATCH 19/26] netlink: support tests with netlink enabled

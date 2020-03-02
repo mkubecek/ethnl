@@ -1,4 +1,4 @@
-From fdd436b1a44dd2db8b4389c1bd23876152238aff Mon Sep 17 00:00:00 2001
+From 806508d4a357c031fccf7213503fa63427ad406c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 14/26] netlink: partial netlink handler for gset (no option)
@@ -17,8 +17,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.c          |   1 +
  netlink/extapi.h   |   3 +
  netlink/monitor.c  |  16 ++
- netlink/netlink.h  |   3 +
- netlink/settings.c | 641 +++++++++++++++++++++++++++++++++++++++++++++
+ netlink/netlink.h  |   4 +
+ netlink/settings.c | 640 +++++++++++++++++++++++++++++++++++++++++++++
  6 files changed, 665 insertions(+)
  create mode 100644 netlink/settings.c
 
@@ -102,10 +102,18 @@ index 300fd5bc2e51..e8fdcd2b93ef 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 1a2e743ff6b2..790d0802b925 100644
+index 1a2e743ff6b2..94973b6c34de 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -46,6 +46,9 @@ int attr_cb(const struct nlattr *attr, void *data);
+@@ -30,6 +30,7 @@ struct nl_context {
+ 	bool			is_monitor;
+ 	uint32_t		filter_cmds[CMDMASK_WORDS];
+ 	const char		*filter_devname;
++	bool			no_banner;
+ };
+ 
+ struct attr_tb_info {
+@@ -46,6 +47,9 @@ int attr_cb(const struct nlattr *attr, void *data);
  const char *get_dev_name(const struct nlattr *nest);
  int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname);
  
@@ -117,10 +125,10 @@ index 1a2e743ff6b2..790d0802b925 100644
  	strncpy(dst, src, ALTIFNAMSIZ);
 diff --git a/netlink/settings.c b/netlink/settings.c
 new file mode 100644
-index 000000000000..24b7a4495961
+index 000000000000..a3d77a8046e2
 --- /dev/null
 +++ b/netlink/settings.c
-@@ -0,0 +1,641 @@
+@@ -0,0 +1,640 @@
 +/*
 + * settings.c - netlink implementation of settings commands
 + *
@@ -154,12 +162,12 @@ index 000000000000..24b7a4495961
 +	u8			duplex;
 +};
 +
-+static const char * const names_duplex[] = {
++static const char *const names_duplex[] = {
 +	[DUPLEX_HALF]		= "Half",
 +	[DUPLEX_FULL]		= "Full",
 +};
 +
-+static const char * const names_port[] = {
++static const char *const names_port[] = {
 +	[PORT_TP]		= "Twisted Pair",
 +	[PORT_AUI]		= "AUI",
 +	[PORT_BNC]		= "BNC",
@@ -170,7 +178,7 @@ index 000000000000..24b7a4495961
 +	[PORT_OTHER]		= "Other",
 +};
 +
-+static const char * const names_transceiver[] = {
++static const char *const names_transceiver[] = {
 +	[XCVR_INTERNAL]		= "internal",
 +	[XCVR_EXTERNAL]		= "external",
 +};
@@ -375,12 +383,12 @@ index 000000000000..24b7a4495961
 +	return ret;
 +}
 +
-+static void print_banner(struct nl_context *nlctx, bool *first)
++static void print_banner(struct nl_context *nlctx)
 +{
-+	if (!*first)
++	if (nlctx->no_banner)
 +		return;
 +	printf("Settings for %s:\n", nlctx->devname);
-+	*first = false;
++	nlctx->no_banner = true;
 +}
 +
 +static int dump_link_modes(struct nl_context *nlctx,
@@ -508,13 +516,12 @@ index 000000000000..24b7a4495961
 +	return ret;
 +}
 +
-+static int dump_our_modes(struct nl_context *nlctx, const struct nlattr *attr,
-+			  bool *first)
++static int dump_our_modes(struct nl_context *nlctx, const struct nlattr *attr)
 +{
 +	bool autoneg;
 +	int ret;
 +
-+	print_banner(nlctx, first);
++	print_banner(nlctx);
 +	ret = dump_link_modes(nlctx, attr, true, LM_CLASS_PORT,
 +			      "Supported ports: [ ", " ", " ]\n", NULL);
 +	if (ret < 0)
@@ -562,13 +569,12 @@ index 000000000000..24b7a4495961
 +	return ret;
 +}
 +
-+static int dump_peer_modes(struct nl_context *nlctx, const struct nlattr *attr,
-+			   bool *first)
++static int dump_peer_modes(struct nl_context *nlctx, const struct nlattr *attr)
 +{
 +	bool autoneg;
 +	int ret;
 +
-+	print_banner(nlctx, first);
++	print_banner(nlctx);
 +	ret = dump_link_modes(nlctx, attr, false, LM_CLASS_REAL,
 +			      "Link partner advertised link modes:  ",
 +			      NULL, "\n", "Not reported");
@@ -598,9 +604,10 @@ index 000000000000..24b7a4495961
 +	const struct nlattr *tb[ETHTOOL_A_LINKMODES_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	struct nl_context *nlctx = data;
-+	bool first = true;
 +	int ret;
 +
++	if (nlctx->is_dump || nlctx->is_monitor)
++		nlctx->no_banner = false;
 +	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return ret;
@@ -609,21 +616,19 @@ index 000000000000..24b7a4495961
 +		return MNL_CB_OK;
 +
 +	if (tb[ETHTOOL_A_LINKMODES_OURS]) {
-+		ret = dump_our_modes(nlctx, tb[ETHTOOL_A_LINKMODES_OURS],
-+				     &first);
++		ret = dump_our_modes(nlctx, tb[ETHTOOL_A_LINKMODES_OURS]);
 +		if (ret < 0)
 +			goto err;
 +	}
 +	if (tb[ETHTOOL_A_LINKMODES_PEER]) {
-+		ret = dump_peer_modes(nlctx, tb[ETHTOOL_A_LINKMODES_PEER],
-+				      &first);
++		ret = dump_peer_modes(nlctx, tb[ETHTOOL_A_LINKMODES_PEER]);
 +		if (ret < 0)
 +			goto err;
 +	}
 +	if (tb[ETHTOOL_A_LINKMODES_SPEED]) {
 +		uint32_t val = mnl_attr_get_u32(tb[ETHTOOL_A_LINKMODES_SPEED]);
 +
-+		print_banner(nlctx, &first);
++		print_banner(nlctx);
 +		if (val == 0 || val == (uint16_t)(-1) || val == (uint32_t)(-1))
 +			printf("\tSpeed: Unknown!\n");
 +		else
@@ -632,14 +637,14 @@ index 000000000000..24b7a4495961
 +	if (tb[ETHTOOL_A_LINKMODES_DUPLEX]) {
 +		uint8_t val = mnl_attr_get_u8(tb[ETHTOOL_A_LINKMODES_DUPLEX]);
 +
-+		print_banner(nlctx, &first);
++		print_banner(nlctx);
 +		print_enum(names_duplex, ARRAY_SIZE(names_duplex), val,
 +			   "Duplex");
 +	}
 +	if (tb[ETHTOOL_A_LINKMODES_AUTONEG]) {
 +		int autoneg = mnl_attr_get_u8(tb[ETHTOOL_A_LINKMODES_AUTONEG]);
 +
-+		print_banner(nlctx, &first);
++		print_banner(nlctx);
 +		printf("\tAuto-negotiation: %s\n",
 +		       (autoneg == AUTONEG_DISABLE) ? "off" : "on");
 +	}
@@ -658,10 +663,11 @@ index 000000000000..24b7a4495961
 +	const struct nlattr *tb[ETHTOOL_A_LINKINFO_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	struct nl_context *nlctx = data;
-+	bool first = true;
 +	int port = -1;
 +	int ret;
 +
++	if (nlctx->is_dump || nlctx->is_monitor)
++		nlctx->no_banner = false;
 +	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return ret;
@@ -672,21 +678,21 @@ index 000000000000..24b7a4495961
 +	if (tb[ETHTOOL_A_LINKINFO_PORT]) {
 +		uint8_t val = mnl_attr_get_u8(tb[ETHTOOL_A_LINKINFO_PORT]);
 +
-+		print_banner(nlctx, &first);
++		print_banner(nlctx);
 +		print_enum(names_port, ARRAY_SIZE(names_port), val, "Port");
 +		port = val;
 +	}
 +	if (tb[ETHTOOL_A_LINKINFO_PHYADDR]) {
 +		uint8_t val = mnl_attr_get_u8(tb[ETHTOOL_A_LINKINFO_PHYADDR]);
 +
-+		print_banner(nlctx, &first);
++		print_banner(nlctx);
 +		printf("\tPHYAD: %u\n", val);
 +	}
 +	if (tb[ETHTOOL_A_LINKINFO_TRANSCEIVER]) {
 +		uint8_t val;
 +
 +		val = mnl_attr_get_u8(tb[ETHTOOL_A_LINKINFO_TRANSCEIVER]);
-+		print_banner(nlctx, &first);
++		print_banner(nlctx);
 +		print_enum(names_transceiver, ARRAY_SIZE(names_transceiver),
 +			   val, "Transceiver");
 +	}
@@ -696,7 +702,7 @@ index 000000000000..24b7a4495961
 +		uint8_t mdix_ctrl =
 +			mnl_attr_get_u8(tb[ETHTOOL_A_LINKINFO_TP_MDIX_CTRL]);
 +
-+		print_banner(nlctx, &first);
++		print_banner(nlctx);
 +		dump_mdix(mdix, mdix_ctrl);
 +	}
 +
@@ -708,9 +714,10 @@ index 000000000000..24b7a4495961
 +	const struct nlattr *tb[ETHTOOL_A_LINKSTATE_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	struct nl_context *nlctx = data;
-+	bool first = true;
 +	int ret;
 +
++	if (nlctx->is_dump || nlctx->is_monitor)
++		nlctx->no_banner = false;
 +	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return ret;
@@ -721,7 +728,7 @@ index 000000000000..24b7a4495961
 +	if (tb[ETHTOOL_A_LINKSTATE_LINK]) {
 +		uint8_t val = mnl_attr_get_u8(tb[ETHTOOL_A_LINKSTATE_LINK]);
 +
-+		print_banner(nlctx, &first);
++		print_banner(nlctx);
 +		printf("\tLink detected: %s\n", val ? "yes" : "no");
 +	}
 +

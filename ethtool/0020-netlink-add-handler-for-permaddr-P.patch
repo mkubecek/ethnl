@@ -1,4 +1,4 @@
-From 8b3e1199ffb8a05773c61227042df74668955850 Mon Sep 17 00:00:00 2001
+From bff45e5a651cd7577cce5cc760791ae716f5d371 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 1 Mar 2020 18:10:44 +0100
 Subject: [PATCH 20/26] netlink: add handler for permaddr (-P)
@@ -79,7 +79,7 @@ index 612002e8228b..d5b3cd92d4ab 100644
  #endif /* ETHTOOL_ENABLE_NETLINK */
  
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 43f57f06e2d5..1558b2476cb3 100644
+index dda793f09c14..f5b1553c3423 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -27,6 +27,7 @@ struct nl_context {
@@ -90,7 +90,7 @@ index 43f57f06e2d5..1558b2476cb3 100644
  	bool			is_monitor;
  	uint32_t		filter_cmds[CMDMASK_WORDS];
  	const char		*filter_devname;
-@@ -75,4 +76,11 @@ static inline int netlink_init_ethnl2_socket(struct nl_context *nlctx)
+@@ -76,4 +77,11 @@ static inline int netlink_init_ethnl2_socket(struct nl_context *nlctx)
  	return nlsock_init(nlctx, &nlctx->ethnl2_socket);
  }
  

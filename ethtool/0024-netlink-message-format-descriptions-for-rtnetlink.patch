@@ -1,7 +1,7 @@
-From bfb7850cc771b86a5f6fcdd266cce74bda063e4c Mon Sep 17 00:00:00 2001
+From 687fddfd9de82bf4220e8a1b9c051e683c0e3bed Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 1 Mar 2020 18:18:12 +0100
-Subject: [PATCH 24/26] message format descriptions for rtnetlink
+Subject: [PATCH 24/26] netlink: message format descriptions for rtnetlink
 
 Add description of rtnetlink message formats to be used for pretty printing
 infrastructure and helper function to pretty print rtnetlink messages.

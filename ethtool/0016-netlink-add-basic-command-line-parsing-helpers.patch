@@ -1,4 +1,4 @@
-From 06021e5e6dd27b6d59842733c599303851464ed8 Mon Sep 17 00:00:00 2001
+From 668355ea1705d59e01d743065daa5a828bb25e19 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 23:04:32 +0100
 Subject: [PATCH 16/26] netlink: add basic command line parsing helpers
@@ -50,13 +50,13 @@ index 77003f27a3a8..2df64cc4cc52 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h \
  		  uapi/linux/rtnetlink.h uapi/linux/if_link.h
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 5e1d00ed9ce8..43f57f06e2d5 100644
+index aecd83a5160b..dda793f09c14 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -30,6 +30,10 @@ struct nl_context {
- 	bool			is_monitor;
+@@ -31,6 +31,10 @@ struct nl_context {
  	uint32_t		filter_cmds[CMDMASK_WORDS];
  	const char		*filter_devname;
+ 	bool			no_banner;
 +	const char		*cmd;
 +	const char		*param;
 +	char			**argp;

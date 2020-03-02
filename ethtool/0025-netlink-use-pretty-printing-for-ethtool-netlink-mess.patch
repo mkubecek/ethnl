@@ -1,7 +1,8 @@
-From 4ded57a92e2b94af5227dd66b7874f4e4aeaa44c Mon Sep 17 00:00:00 2001
+From f351871d5641892a165994b96b57956d93fc50d5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 22 Feb 2020 19:07:58 +0100
-Subject: [PATCH 25/26] use pretty printing for ethtool netlink messages
+Subject: [PATCH 25/26] netlink: use pretty printing for ethtool netlink
+ messages
 
 Introduce new debugging flag DEBUG_NL_PRETTY_MSG (0x10) which has two
 effects:
