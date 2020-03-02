@@ -1,0 +1,27 @@
+initial netlink interface implementation for 5.6 release
+
+This series adds initial support for ethtool netlink interface provided by
+kernel since 5.6-rc1. The traditional ioctl interface is still supported
+for compatibility with older kernels. The netlink interface and message
+formats are documented in Documentation/networking/ethtool-netlink.rst file
+in kernel source tree.
+
+Netlink interface is preferred but ethtool falls back to ioctl if netlink
+interface is not available (i.e. the "ethtool" genetlink family is not
+registered). It also falls back if a particular command is not implemented
+in netlink (kernel returns -EOPNOTSUPP). This allows new ethtool versions
+to work with older kernel versions while support for ethool commands is
+added in steps.
+
+The series aims to touch existing ioctl code as little as possible in the
+first phase to minimize the risk of introducing regressions. It is also
+possible to build ethtool without netlink support if --disable-netlink is
+passed to configure script. The most visible changes to existing code are
+
+  - UAPI header copies are moved to uapi/ under original names
+  - some variables and functions which are going to be shared with netlink
+    code are moved from ethtool.c to common.c and common.h
+  - args[] array in ethtool.c was rewritten to use named initializers
+
+Except for changes to main(), all netlink specific code is in a separate
+directory netlink/ and is divided into multiple files.
