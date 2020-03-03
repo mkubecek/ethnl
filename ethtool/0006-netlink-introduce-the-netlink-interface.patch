@@ -1,4 +1,4 @@
-From 327df4f9b73a2f9ae56a082139f46a8262a3c91b Mon Sep 17 00:00:00 2001
+From f3fbd9e627962e34796530bc19c7519195b94b98 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 12 Feb 2020 13:03:30 +0100
 Subject: [PATCH 06/26] netlink: introduce the netlink interface
@@ -357,7 +357,7 @@ index 000000000000..84e188119989
 +}
 diff --git a/netlink/netlink.h b/netlink/netlink.h
 new file mode 100644
-index 000000000000..610beccbefda
+index 000000000000..99636ac8d9c4
 --- /dev/null
 +++ b/netlink/netlink.h
 @@ -0,0 +1,26 @@
@@ -383,7 +383,7 @@ index 000000000000..610beccbefda
 +	const char		*devname;
 +	bool			is_dump;
 +	int			exit_code;
-+	bool			suppress_nlerr;
++	unsigned int		suppress_nlerr;
 +};
 +
 +#endif /* ETHTOOL_NETLINK_INT_H__ */

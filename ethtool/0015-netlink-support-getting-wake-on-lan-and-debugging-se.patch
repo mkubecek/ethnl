@@ -1,4 +1,4 @@
-From 05fc269cc760cafbe63d4659d05cd335380d2e2b Mon Sep 17 00:00:00 2001
+From b5e9dee5ed6bb72289aa29bef6c0dc1f12b5956e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 14 Feb 2020 11:07:13 +0100
 Subject: [PATCH 15/26] netlink: support getting wake-on-lan and debugging
@@ -13,10 +13,10 @@ display corresponding notifications.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- netlink/monitor.c  |  16 ++++++
+ netlink/monitor.c  |  16 +++++++
  netlink/netlink.h  |   2 +
- netlink/settings.c | 120 +++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 138 insertions(+)
+ netlink/settings.c | 115 +++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 133 insertions(+)
 
 diff --git a/netlink/monitor.c b/netlink/monitor.c
 index e8fdcd2b93ef..5fce6b64c08c 100644
@@ -53,7 +53,7 @@ index e8fdcd2b93ef..5fce6b64c08c 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 94973b6c34de..aecd83a5160b 100644
+index 16754899976d..730f8e1b3fe9 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -49,6 +49,8 @@ int get_dev_info(const struct nlattr *nest, int *ifindex, char *ifname);
@@ -66,7 +66,7 @@ index 94973b6c34de..aecd83a5160b 100644
  static inline void copy_devname(char *dst, const char *src)
  {
 diff --git a/netlink/settings.c b/netlink/settings.c
-index a3d77a8046e2..637d5c6bd324 100644
+index 46c292a3d92d..e95bbcc9ad86 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -604,6 +604,110 @@ int linkstate_reply_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -177,32 +177,33 @@ index a3d77a8046e2..637d5c6bd324 100644
 +	return MNL_CB_OK;
 +}
 +
- int nl_gset(struct cmd_context *ctx)
+ static int gset_request(struct nl_socket *nlsk, uint8_t msg_type,
+ 			uint16_t hdr_attr, mnl_cb_t cb)
  {
- 	struct nl_context *nlctx = ctx->nlctx;
-@@ -634,6 +738,22 @@ int nl_gset(struct cmd_context *ctx)
- 	if (ret < 0)
- 		goto err;
+@@ -633,6 +737,16 @@ int nl_gset(struct cmd_context *ctx)
+ 	if (ret == -ENODEV)
+ 		return ret;
  
-+	ret = nlsock_prep_get_request(nlsk, ETHTOOL_MSG_WOL_GET,
-+				      ETHTOOL_A_WOL_HEADER, 0);
-+	if (ret < 0)
-+		goto err;
-+	ret = nlsock_send_get_request(nlsk, wol_reply_cb);
-+	if (ret < 0)
-+		goto err;
++	ret = gset_request(nlsk, ETHTOOL_MSG_WOL_GET, ETHTOOL_A_WOL_HEADER,
++			   wol_reply_cb);
++	if (ret == -ENODEV)
++		return ret;
 +
-+	ret = nlsock_prep_get_request(nlsk, ETHTOOL_MSG_DEBUG_GET,
-+				      ETHTOOL_A_DEBUG_HEADER, 0);
-+	if (ret < 0)
-+		goto err;
-+	ret = nlsock_send_get_request(nlsk, debug_reply_cb);
-+	if (ret < 0)
-+		goto err;
++	ret = gset_request(nlsk, ETHTOOL_MSG_DEBUG_GET, ETHTOOL_A_DEBUG_HEADER,
++			   debug_reply_cb);
++	if (ret == -ENODEV)
++		return ret;
++
+ 	ret = gset_request(nlsk, ETHTOOL_MSG_LINKSTATE_GET,
+ 			   ETHTOOL_A_LINKSTATE_HEADER, linkstate_reply_cb);
+ 	if (ret == -ENODEV)
+@@ -643,5 +757,6 @@ int nl_gset(struct cmd_context *ctx)
+ 		return 75;
+ 	}
+ 
 +
  	return 0;
- err:
- 	return 75;
+ }
 -- 
 2.25.1
 

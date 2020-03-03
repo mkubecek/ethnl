@@ -1,4 +1,4 @@
-From 745ac9687d5b539a9d118158fe35210a0907cbcf Mon Sep 17 00:00:00 2001
+From 582820a7fd28b83f04ec1fc6c1aaa88aa770984c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 16 Feb 2020 01:03:22 +0100
 Subject: [PATCH 19/26] netlink: support tests with netlink enabled
@@ -33,7 +33,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  4 files changed, 46 insertions(+), 3 deletions(-)
 
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 2e49c6618c53..14f9f29b6135 100644
+index 60f7912181df..39f406387233 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -143,6 +143,12 @@ static int family_info_cb(const struct nlmsghdr *nlhdr, void *data)
@@ -50,7 +50,7 @@ index 2e49c6618c53..14f9f29b6135 100644
  {
  	struct nl_msg_buff *msgbuff = &nlsk->msgbuff;
 @@ -165,6 +171,7 @@ out:
- 	nlsk->nlctx->suppress_nlerr = false;
+ 	nlsk->nlctx->suppress_nlerr = 0;
  	return ret;
  }
 +#endif
@@ -58,25 +58,25 @@ index 2e49c6618c53..14f9f29b6135 100644
  int netlink_init(struct cmd_context *ctx)
  {
 diff --git a/netlink/nlsock.c b/netlink/nlsock.c
-index 7e8f3b15b87f..92065c7b2d37 100644
+index d5fa668f508d..4366c52ce390 100644
 --- a/netlink/nlsock.c
 +++ b/netlink/nlsock.c
-@@ -235,6 +235,7 @@ int nlsock_prep_get_request(struct nl_socket *nlsk, unsigned int nlcmd,
+@@ -261,6 +261,7 @@ int nlsock_prep_get_request(struct nl_socket *nlsk, unsigned int nlcmd,
  	return 0;
  }
  
 +#ifndef TEST_ETHTOOL
- ssize_t nlsock_sendmsg(struct nl_socket *nlsk, struct nl_msg_buff *altbuff)
- {
- 	struct nl_msg_buff *msgbuff = altbuff ?: &nlsk->msgbuff;
-@@ -244,6 +245,7 @@ ssize_t nlsock_sendmsg(struct nl_socket *nlsk, struct nl_msg_buff *altbuff)
+ /**
+  * nlsock_sendmsg() - send a netlink message to kernel
+  * @nlsk:    netlink socket
+@@ -277,6 +278,7 @@ ssize_t nlsock_sendmsg(struct nl_socket *nlsk, struct nl_msg_buff *altbuff)
  	debug_msg(nlsk, msgbuff->buff, nlhdr->nlmsg_len, true);
  	return mnl_socket_sendto(nlsk->sk, nlhdr, nlhdr->nlmsg_len);
  }
 +#endif
  
- int nlsock_send_get_request(struct nl_socket *nlsk, mnl_cb_t cb)
- {
+ /**
+  * nlsock_send_get_request() - send request and process reply
 diff --git a/test-cmdline.c b/test-cmdline.c
 index b76e2c3e640b..a6c0bd1efc2d 100644
 --- a/test-cmdline.c

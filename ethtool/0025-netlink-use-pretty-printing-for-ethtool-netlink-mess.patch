@@ -1,4 +1,4 @@
-From f351871d5641892a165994b96b57956d93fc50d5 Mon Sep 17 00:00:00 2001
+From 1bac7de7900abe0ead70d2d25d4d05247a45c519 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 22 Feb 2020 19:07:58 +0100
 Subject: [PATCH 25/26] netlink: use pretty printing for ethtool netlink
@@ -16,8 +16,8 @@ effects:
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  internal.h       |  1 +
- netlink/nlsock.c | 72 +++++++++++++++++++++++++++++++++++++-----------
- 2 files changed, 57 insertions(+), 16 deletions(-)
+ netlink/nlsock.c | 71 +++++++++++++++++++++++++++++++++++++-----------
+ 2 files changed, 56 insertions(+), 16 deletions(-)
 
 diff --git a/internal.h b/internal.h
 index a518bfa99380..edb07bddd073 100644
@@ -32,7 +32,7 @@ index a518bfa99380..edb07bddd073 100644
  
  static inline bool debug_on(unsigned long debug, unsigned int bit)
 diff --git a/netlink/nlsock.c b/netlink/nlsock.c
-index 92065c7b2d37..b88fb45ed56a 100644
+index 4366c52ce390..22abb68b6646 100644
 --- a/netlink/nlsock.c
 +++ b/netlink/nlsock.c
 @@ -10,6 +10,7 @@
@@ -148,17 +148,16 @@ index 92065c7b2d37..b88fb45ed56a 100644
  		if (dump)
  			mnl_nlmsg_fprintf(stdout, nlhdr, nlhdr->nlmsg_len,
  					  GENL_HDRLEN);
-@@ -137,7 +160,8 @@ static void debug_msg(struct nl_socket *nlsk, const void *msg, unsigned int len,
- 	}
- }
- 
--static int nlsock_process_ack(struct nlmsghdr *nlhdr, ssize_t len, bool silent)
-+static int nlsock_process_ack(struct nlmsghdr *nlhdr, ssize_t len, bool silent,
-+			      bool pretty)
+@@ -146,7 +169,7 @@ static void debug_msg(struct nl_socket *nlsk, const void *msg, unsigned int len,
+  * Return: error code extracted from the message
+  */
+ static int nlsock_process_ack(struct nlmsghdr *nlhdr, ssize_t len,
+-			      unsigned int suppress_nlerr)
++			      unsigned int suppress_nlerr, bool pretty)
  {
  	const struct nlattr *tb[NLMSGERR_ATTR_MAX + 1] = {};
  	DECLARE_ATTR_TB_INFO(tb);
-@@ -160,12 +184,23 @@ static int nlsock_process_ack(struct nlmsghdr *nlhdr, ssize_t len, bool silent)
+@@ -174,12 +197,23 @@ static int nlsock_process_ack(struct nlmsghdr *nlhdr, ssize_t len,
  
  		fprintf(stderr, "netlink %s: %s",
  			nlerr->error ? "error" : "warning", msg);
@@ -183,7 +182,7 @@ index 92065c7b2d37..b88fb45ed56a 100644
  out:
  	if (nlerr->error) {
  		errno = -nlerr->error;
-@@ -197,9 +232,14 @@ int nlsock_process_reply(struct nl_socket *nlsk, mnl_cb_t reply_cb, void *data)
+@@ -223,9 +257,14 @@ int nlsock_process_reply(struct nl_socket *nlsk, mnl_cb_t reply_cb, void *data)
  			return -EFAULT;
  
  		nlhdr = (struct nlmsghdr *)buff;

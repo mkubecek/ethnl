@@ -1,4 +1,4 @@
-From 806508d4a357c031fccf7213503fa63427ad406c Mon Sep 17 00:00:00 2001
+From 5f7fb01280a5b199e91d0fd398573cd19f0ff3ae Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 14/26] netlink: partial netlink handler for gset (no option)
@@ -18,8 +18,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  netlink/extapi.h   |   3 +
  netlink/monitor.c  |  16 ++
  netlink/netlink.h  |   4 +
- netlink/settings.c | 640 +++++++++++++++++++++++++++++++++++++++++++++
- 6 files changed, 665 insertions(+)
+ netlink/settings.c | 647 +++++++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 672 insertions(+)
  create mode 100644 netlink/settings.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -102,7 +102,7 @@ index 300fd5bc2e51..e8fdcd2b93ef 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 1a2e743ff6b2..94973b6c34de 100644
+index be44f9c16f19..16754899976d 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -30,6 +30,7 @@ struct nl_context {
@@ -125,10 +125,10 @@ index 1a2e743ff6b2..94973b6c34de 100644
  	strncpy(dst, src, ALTIFNAMSIZ);
 diff --git a/netlink/settings.c b/netlink/settings.c
 new file mode 100644
-index 000000000000..a3d77a8046e2
+index 000000000000..46c292a3d92d
 --- /dev/null
 +++ b/netlink/settings.c
-@@ -0,0 +1,640 @@
+@@ -0,0 +1,647 @@
 +/*
 + * settings.c - netlink implementation of settings commands
 + *
@@ -735,39 +735,46 @@ index 000000000000..a3d77a8046e2
 +	return MNL_CB_OK;
 +}
 +
++static int gset_request(struct nl_socket *nlsk, uint8_t msg_type,
++			uint16_t hdr_attr, mnl_cb_t cb)
++{
++	int ret;
++
++	ret = nlsock_prep_get_request(nlsk, msg_type, hdr_attr, 0);
++	if (ret < 0)
++		return ret;
++	return nlsock_send_get_request(nlsk, cb);
++}
++
 +int nl_gset(struct cmd_context *ctx)
 +{
 +	struct nl_context *nlctx = ctx->nlctx;
 +	struct nl_socket *nlsk = nlctx->ethnl_socket;
 +	int ret;
 +
-+	ret = nlsock_prep_get_request(nlsk, ETHTOOL_MSG_LINKMODES_GET,
-+				      ETHTOOL_A_LINKMODES_HEADER, 0);
-+	if (ret < 0)
-+		goto err;
-+	ret = nlsock_send_get_request(nlsk, linkmodes_reply_cb);
-+	if (ret < 0)
-+		goto err;
++	nlctx->suppress_nlerr = 1;
 +
-+	ret = nlsock_prep_get_request(nlsk, ETHTOOL_MSG_LINKINFO_GET,
-+				      ETHTOOL_A_LINKINFO_HEADER, 0);
-+	if (ret < 0)
-+		goto err;
-+	ret = nlsock_send_get_request(nlsk, linkinfo_reply_cb);
-+	if (ret < 0)
-+		goto err;
++	ret = gset_request(nlsk, ETHTOOL_MSG_LINKMODES_GET,
++			   ETHTOOL_A_LINKMODES_HEADER, linkmodes_reply_cb);
++	if (ret == -ENODEV)
++		return ret;
 +
-+	ret = nlsock_prep_get_request(nlsk, ETHTOOL_MSG_LINKSTATE_GET,
-+				      ETHTOOL_A_LINKSTATE_HEADER, 0);
-+	if (ret < 0)
-+		goto err;
-+	ret = nlsock_send_get_request(nlsk, linkstate_reply_cb);
-+	if (ret < 0)
-+		goto err;
++	ret = gset_request(nlsk, ETHTOOL_MSG_LINKINFO_GET,
++			   ETHTOOL_A_LINKINFO_HEADER, linkinfo_reply_cb);
++	if (ret == -ENODEV)
++		return ret;
++
++	ret = gset_request(nlsk, ETHTOOL_MSG_LINKSTATE_GET,
++			   ETHTOOL_A_LINKSTATE_HEADER, linkstate_reply_cb);
++	if (ret == -ENODEV)
++		return ret;
++
++	if (!nlctx->no_banner) {
++		printf("No data available\n");
++		return 75;
++	}
 +
 +	return 0;
-+err:
-+	return 75;
 +}
 -- 
 2.25.1

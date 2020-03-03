@@ -1,4 +1,4 @@
-From 8c436f1dabf693f7616d603faf2377cd12175165 Mon Sep 17 00:00:00 2001
+From 2c4d1752fda44e8b8bdf96993db43e93335c37c2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
 Subject: [PATCH 11/26] netlink: add notification monitor
@@ -336,7 +336,7 @@ index 000000000000..300fd5bc2e51
 +	fputs("                [ DEVNAME | * ]\n", stdout);
 +}
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 84a5e5c0f204..1a2e743ff6b2 100644
+index 04ad7bcd347c..be44f9c16f19 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -14,6 +14,7 @@

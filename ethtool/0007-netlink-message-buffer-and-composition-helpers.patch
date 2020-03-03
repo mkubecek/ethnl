@@ -1,4 +1,4 @@
-From 561b39c89bd7df6ffa521d13fa61f9c2df13e831 Mon Sep 17 00:00:00 2001
+From 8fcebc851140198c3fa8381550982e2eae8b76f5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 11 Feb 2020 18:31:42 +0100
 Subject: [PATCH 07/26] netlink: message buffer and composition helpers
@@ -14,10 +14,10 @@ MAX_MSG_SIZE (4 MB), an error is issued.
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Makefile.am       |   1 +
- netlink/msgbuff.c | 169 ++++++++++++++++++++++++++++++++++++++++++++++
- netlink/msgbuff.h | 106 +++++++++++++++++++++++++++++
+ netlink/msgbuff.c | 255 ++++++++++++++++++++++++++++++++++++++++++++++
+ netlink/msgbuff.h | 117 +++++++++++++++++++++
  netlink/netlink.h |   1 +
- 4 files changed, 277 insertions(+)
+ 4 files changed, 374 insertions(+)
  create mode 100644 netlink/msgbuff.c
  create mode 100644 netlink/msgbuff.h
 
@@ -35,10 +35,10 @@ index b510c3ec8a03..81099a79a793 100644
  		  uapi/linux/rtnetlink.h uapi/linux/if_link.h
 diff --git a/netlink/msgbuff.c b/netlink/msgbuff.c
 new file mode 100644
-index 000000000000..1e73354d194b
+index 000000000000..74065709ef7d
 --- /dev/null
 +++ b/netlink/msgbuff.c
-@@ -0,0 +1,169 @@
+@@ -0,0 +1,255 @@
 +/*
 + * msgbuff.c - netlink message buffer
 + *
@@ -56,6 +56,17 @@ index 000000000000..1e73354d194b
 +
 +#define MAX_MSG_SIZE (4 << 20)		/* 4 MB */
 +
++/**
++ * msgbuff_realloc() - reallocate buffer if needed
++ * @msgbuff:  message buffer
++ * @new_size: requested minimum size (add MNL_SOCKET_BUFFER_SIZE if zero)
++ *
++ * Make sure allocated buffer has size at least @new_size. If @new_size is
++ * shorter than current size, do nothing. If @new_size is 0, grow buffer by
++ * MNL_SOCKET_BUFFER_SIZE. Fail if new size would exceed MAX_MSG_SIZE.
++ *
++ * Return: 0 on success or negative error code
++ */
 +int msgbuff_realloc(struct nl_msg_buff *msgbuff, unsigned int new_size)
 +{
 +	unsigned int nlhdr_off, genlhdr_off, payload_off;
@@ -93,6 +104,16 @@ index 000000000000..1e73354d194b
 +	return 0;
 +}
 +
++/**
++ * msgbuff_append() - add contents of another message buffer
++ * @dest: target message buffer
++ * @src:  source message buffer
++ *
++ * Append contents of @src at the end of @dest. Fail if target buffer cannot
++ * be reallocated to sufficient size.
++ *
++ * Return: 0 on success or negative error code.
++ */
 +int msgbuff_append(struct nl_msg_buff *dest, struct nl_msg_buff *src)
 +{
 +	unsigned int src_len = mnl_nlmsg_get_payload_len(src->nlhdr);
@@ -108,6 +129,19 @@ index 000000000000..1e73354d194b
 +	return 0;
 +}
 +
++/**
++ * ethnla_put - write a netlink attribute to message buffer
++ * @msgbuff: message buffer
++ * @type:    attribute type
++ * @len:     attribute payload length
++ * @data:    attribute payload
++ *
++ * Appends a netlink attribute with header to message buffer, reallocates
++ * if needed. This is mostly used via specific ethnla_put_* wrappers for
++ * basic data types.
++ *
++ * Return: false on success, true on error (reallocation failed)
++ */
 +bool ethnla_put(struct nl_msg_buff *msgbuff, uint16_t type, size_t len,
 +		const void *data)
 +{
@@ -123,6 +157,13 @@ index 000000000000..1e73354d194b
 +	return false;
 +}
 +
++/**
++ * ethnla_nest_start - start a nested attribute
++ * @msgbuff: message buffer
++ * @type:    nested attribute type (NLA_F_NESTED is added automatically)
++ *
++ * Return: pointer to the nest attribute or null of error
++ */
 +struct nlattr *ethnla_nest_start(struct nl_msg_buff *msgbuff, uint16_t type)
 +{
 +	struct nlmsghdr *nlhdr = msgbuff->nlhdr;
@@ -137,6 +178,15 @@ index 000000000000..1e73354d194b
 +	return NULL;
 +}
 +
++/**
++ * ethnla_fill_header() - write standard ethtool request header to message
++ * @msgbuff: message buffer
++ * @type:    attribute type for header nest
++ * @devname: device name (NULL to omit)
++ * @flags:   request flags (omitted if 0)
++ *
++ * Return: pointer to the nest attribute or null of error
++ */
 +bool ethnla_fill_header(struct nl_msg_buff *msgbuff, uint16_t type,
 +			const char *devname, uint32_t flags)
 +{
@@ -160,7 +210,19 @@ index 000000000000..1e73354d194b
 +	return true;
 +}
 +
-+/* initialize a genetlink message and fill netlink and genetlink header */
++/**
++ * __msg_init() - init a genetlink message, fill netlink and genetlink header
++ * @msgbuff: message buffer
++ * @family:  genetlink family
++ * @cmd:     genetlink command (genlmsghdr::cmd)
++ * @flags:   netlink flags (nlmsghdr::nlmsg_flags)
++ * @version: genetlink family version (genlmsghdr::version)
++ *
++ * Initialize a new genetlink message, fill netlink and genetlink header and
++ * set pointers in struct nl_msg_buff.
++ *
++ * Return: 0 on success or negative error code.
++ */
 +int __msg_init(struct nl_msg_buff *msgbuff, int family, int cmd,
 +	       unsigned int flags, int version)
 +{
@@ -188,7 +250,17 @@ index 000000000000..1e73354d194b
 +	return 0;
 +}
 +
-+/* simplified wrapper to initialize an ethtool netlink message */
++/**
++ * msg_init() - init an ethtool netlink message
++ * @msgbuff: message buffer
++ * @cmd:     genetlink command (genlmsghdr::cmd)
++ * @flags:   netlink flags (nlmsghdr::nlmsg_flags)
++ *
++ * Initialize a new ethtool netlink message, fill netlink and genetlink header
++ * and set pointers in struct nl_msg_buff.
++ *
++ * Return: 0 on success or negative error code.
++ */
 +int msg_init(struct nl_context *nlctx, struct nl_msg_buff *msgbuff, int cmd,
 +	     unsigned int flags)
 +{
@@ -196,11 +268,25 @@ index 000000000000..1e73354d194b
 +			  ETHTOOL_GENL_VERSION);
 +}
 +
++/**
++ * msgbuff_init() - initialize a message buffer
++ * @msgbuff: message buffer
++ *
++ * Initialize a message buffer structure before first use. Buffer length is
++ * set to zero and the buffer is not allocated until the first call to
++ * msgbuff_reallocate().
++ */
 +void msgbuff_init(struct nl_msg_buff *msgbuff)
 +{
 +	memset(msgbuff, '\0', sizeof(*msgbuff));
 +}
 +
++/**
++ * msg_done() - destroy a message buffer
++ * @msgbuff: message buffer
++ *
++ * Free the buffer and reset size and remaining size.
++ */
 +void msgbuff_done(struct nl_msg_buff *msgbuff)
 +{
 +	free(msgbuff->buff);
@@ -210,10 +296,10 @@ index 000000000000..1e73354d194b
 +}
 diff --git a/netlink/msgbuff.h b/netlink/msgbuff.h
 new file mode 100644
-index 000000000000..6f3baa9992fd
+index 000000000000..24b99c5a28d7
 --- /dev/null
 +++ b/netlink/msgbuff.h
-@@ -0,0 +1,106 @@
+@@ -0,0 +1,117 @@
 +/*
 + * msgbuff.h - netlink message buffer
 + *
@@ -230,6 +316,15 @@ index 000000000000..6f3baa9992fd
 +
 +struct nl_context;
 +
++/**
++ * struct nl_msg_buff - message buffer abstraction
++ * @buff:    pointer to buffer
++ * @size:    total size of allocated buffer
++ * @left:    remaining length current message end to end of buffer
++ * @nlhdr:   pointer to netlink header of current message
++ * @genlhdr: pointer to genetlink header of current message
++ * @payload: pointer to message payload (after genetlink header)
++ */
 +struct nl_msg_buff {
 +	char			*buff;
 +	unsigned int		size;
@@ -255,11 +350,13 @@ index 000000000000..6f3baa9992fd
 +bool ethnla_fill_header(struct nl_msg_buff *msgbuff, uint16_t type,
 +			const char *devname, uint32_t flags);
 +
++/* length of current message */
 +static inline unsigned int msgbuff_len(const struct nl_msg_buff *msgbuff)
 +{
 +	return msgbuff->nlhdr->nlmsg_len;
 +}
 +
++/* reset message length to position returned by msgbuff_len() */
 +static inline void msgbuff_reset(const struct nl_msg_buff *msgbuff,
 +				 unsigned int len)
 +{
@@ -271,13 +368,13 @@ index 000000000000..6f3baa9992fd
 +static inline void ethnla_nest_end(struct nl_msg_buff *msgbuff,
 +				   struct nlattr *nest)
 +{
-+	return mnl_attr_nest_end(msgbuff->nlhdr, nest);
++	mnl_attr_nest_end(msgbuff->nlhdr, nest);
 +}
 +
 +static inline void ethnla_nest_cancel(struct nl_msg_buff *msgbuff,
 +				      struct nlattr *nest)
 +{
-+	return mnl_attr_nest_cancel(msgbuff->nlhdr, nest);
++	mnl_attr_nest_cancel(msgbuff->nlhdr, nest);
 +}
 +
 +static inline bool ethnla_put_u32(struct nl_msg_buff *msgbuff, uint16_t type,
@@ -321,13 +418,13 @@ index 000000000000..6f3baa9992fd
 +
 +#endif /* ETHTOOL_NETLINK_MSGBUFF_H__ */
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 610beccbefda..48c4ebb3d7aa 100644
+index 99636ac8d9c4..1eaeec30b7d2 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -21,6 +21,7 @@ struct nl_context {
  	bool			is_dump;
  	int			exit_code;
- 	bool			suppress_nlerr;
+ 	unsigned int		suppress_nlerr;
 +	uint16_t		ethnl_fam;
  };
  

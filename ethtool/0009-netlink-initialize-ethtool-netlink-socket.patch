@@ -1,4 +1,4 @@
-From 23d8672405814644bdd09bcdea7f522d7410ff4a Mon Sep 17 00:00:00 2001
+From 409cc44b08b1f58bfb32e6230c81097a2f4007ac Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 13:10:52 +0100
 Subject: [PATCH 09/26] netlink: initialize ethtool netlink socket
@@ -13,7 +13,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 104 insertions(+), 1 deletion(-)
 
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 7d5eca666c84..2128e2775e12 100644
+index 7d5eca666c84..7cd7bef6eac9 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -9,6 +9,8 @@
@@ -83,7 +83,7 @@ index 7d5eca666c84..2128e2775e12 100644
 +	struct nl_msg_buff *msgbuff = &nlsk->msgbuff;
 +	int ret;
 +
-+	nlsk->nlctx->suppress_nlerr = true;
++	nlsk->nlctx->suppress_nlerr = 2;
 +	ret = __msg_init(msgbuff, GENL_ID_CTRL, CTRL_CMD_GETFAMILY,
 +			 NLM_F_REQUEST | NLM_F_ACK, 1);
 +	if (ret < 0)
@@ -97,7 +97,7 @@ index 7d5eca666c84..2128e2775e12 100644
 +	ret = info->fam_id ? 0 : -EADDRNOTAVAIL;
 +
 +out:
-+	nlsk->nlctx->suppress_nlerr = false;
++	nlsk->nlctx->suppress_nlerr = 0;
 +	return ret;
 +}
 +
@@ -114,7 +114,7 @@ index 7d5eca666c84..2128e2775e12 100644
  	if (!nlctx)
  		return -ENOMEM;
  	nlctx->ctx = ctx;
-+	ret = nlsock_init(nlctx, &nlctx->ethnl_socket);
++	ret = nlsock_init(nlctx, &nlctx->ethnl_socket, NETLINK_GENERIC);
 +	if (ret < 0)
 +		goto out_free;
 +	ret = get_genl_family(nlctx->ethnl_socket, &info);
@@ -136,7 +136,7 @@ index 7d5eca666c84..2128e2775e12 100644
  
  void netlink_done(struct cmd_context *ctx)
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 54d2baaab516..081226be73e8 100644
+index fbcea0b62240..9ba03b05163f 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -11,6 +11,7 @@
@@ -149,7 +149,7 @@ index 54d2baaab516..081226be73e8 100644
  
 @@ -22,6 +23,9 @@ struct nl_context {
  	int			exit_code;
- 	bool			suppress_nlerr;
+ 	unsigned int		suppress_nlerr;
  	uint16_t		ethnl_fam;
 +	uint32_t		ethnl_mongrp;
 +	struct nl_socket	*ethnl_socket;
@@ -165,7 +165,7 @@ index 54d2baaab516..081226be73e8 100644
 +{
 +	if (nlctx->ethnl2_socket)
 +		return 0;
-+	return nlsock_init(nlctx, &nlctx->ethnl2_socket);
++	return nlsock_init(nlctx, &nlctx->ethnl2_socket, NETLINK_GENERIC);
 +}
 +
  #endif /* ETHTOOL_NETLINK_INT_H__ */

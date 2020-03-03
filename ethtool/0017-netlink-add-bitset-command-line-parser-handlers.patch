@@ -1,4 +1,4 @@
-From e5a3a5bb39cbea7035cfc492c29623056dd0acd1 Mon Sep 17 00:00:00 2001
+From de37c72e5930313be33916a40c20dbae461bd7d6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 23:04:32 +0100
 Subject: [PATCH 17/26] netlink: add bitset command line parser handlers

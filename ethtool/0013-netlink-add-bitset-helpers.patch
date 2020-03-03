@@ -1,4 +1,4 @@
-From 6c0b3a9a96697bb2aebcdd4e22f045fa1084390c Mon Sep 17 00:00:00 2001
+From 8c55ea2346aa1bb5cf2a702a8cf37e08aba9b3c6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 22:01:26 +0100
 Subject: [PATCH 13/26] netlink: add bitset helpers

@@ -1,4 +1,4 @@
-From 30e03b1c4a94a4efbf20af6b8ffba999059fa8a6 Mon Sep 17 00:00:00 2001
+From a589b3c4c06d0ef376aaad6bab3f0492456acb12 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 18/26] netlink: add netlink handler for sset (-s)
@@ -107,7 +107,7 @@ index 8608ea7f51f5..612002e8228b 100644
  #endif /* ETHTOOL_ENABLE_NETLINK */
  
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 637d5c6bd324..cf128c6e9b06 100644
+index e95bbcc9ad86..07eeddc87557 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -13,6 +13,7 @@
@@ -118,9 +118,9 @@ index 637d5c6bd324..cf128c6e9b06 100644
  
  /* GET_SETTINGS */
  
-@@ -758,3 +759,195 @@ int nl_gset(struct cmd_context *ctx)
- err:
- 	return 75;
+@@ -760,3 +761,195 @@ int nl_gset(struct cmd_context *ctx)
+ 
+ 	return 0;
  }
 +
 +/* SET_SETTINGS */

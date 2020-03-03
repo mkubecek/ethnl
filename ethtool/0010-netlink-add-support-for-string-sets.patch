@@ -1,4 +1,4 @@
-From 76035ab59f58855a76666c64d4b133664c7f6cfc Mon Sep 17 00:00:00 2001
+From 7e0349e9ec576bf704165b7d25daf6ce7befc88b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 14:09:19 +0200
 Subject: [PATCH 10/26] netlink: add support for string sets
@@ -42,7 +42,7 @@ index 04f4157e7bc0..aa41b21fa779 100644
  		  uapi/linux/netlink.h uapi/linux/genetlink.h \
  		  uapi/linux/rtnetlink.h uapi/linux/if_link.h
 diff --git a/netlink/netlink.c b/netlink/netlink.c
-index 2128e2775e12..2e49c6618c53 100644
+index 7cd7bef6eac9..60f7912181df 100644
 --- a/netlink/netlink.c
 +++ b/netlink/netlink.c
 @@ -11,6 +11,7 @@
@@ -118,7 +118,7 @@ index 2128e2775e12..2e49c6618c53 100644
 +	cleanup_all_strings();
  }
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 081226be73e8..84a5e5c0f204 100644
+index 9ba03b05163f..04ad7bcd347c 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -39,6 +39,15 @@ struct attr_tb_info {

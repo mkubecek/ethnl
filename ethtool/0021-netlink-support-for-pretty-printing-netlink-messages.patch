@@ -1,4 +1,4 @@
-From 564dfd884cc5930678a329aa579085046165c33a Mon Sep 17 00:00:00 2001
+From d1c6d2e93720a44154a2f353789aaff135f0f14e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 22 Feb 2020 17:52:37 +0100
 Subject: [PATCH 21/26] netlink: support for pretty printing netlink messages

@@ -1,4 +1,4 @@
-From bff45e5a651cd7577cce5cc760791ae716f5d371 Mon Sep 17 00:00:00 2001
+From 2d727361b132fa9109f410434be67a97fcb49214 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 1 Mar 2020 18:10:44 +0100
 Subject: [PATCH 20/26] netlink: add handler for permaddr (-P)
@@ -30,8 +30,8 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.c          |   1 +
  netlink/extapi.h   |   2 +
  netlink/netlink.h  |   8 ++++
- netlink/permaddr.c | 108 +++++++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 120 insertions(+)
+ netlink/permaddr.c | 114 +++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 126 insertions(+)
  create mode 100644 netlink/permaddr.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -79,7 +79,7 @@ index 612002e8228b..d5b3cd92d4ab 100644
  #endif /* ETHTOOL_ENABLE_NETLINK */
  
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index dda793f09c14..f5b1553c3423 100644
+index 3ab5f2329e2f..db078d28fabb 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -27,6 +27,7 @@ struct nl_context {
@@ -91,23 +91,23 @@ index dda793f09c14..f5b1553c3423 100644
  	uint32_t		filter_cmds[CMDMASK_WORDS];
  	const char		*filter_devname;
 @@ -76,4 +77,11 @@ static inline int netlink_init_ethnl2_socket(struct nl_context *nlctx)
- 	return nlsock_init(nlctx, &nlctx->ethnl2_socket);
+ 	return nlsock_init(nlctx, &nlctx->ethnl2_socket, NETLINK_GENERIC);
  }
  
 +static inline int netlink_init_rtnl_socket(struct nl_context *nlctx)
 +{
 +	if (nlctx->rtnl_socket)
 +		return 0;
-+	return __nlsock_init(nlctx, &nlctx->rtnl_socket, NETLINK_ROUTE);
++	return nlsock_init(nlctx, &nlctx->rtnl_socket, NETLINK_ROUTE);
 +}
 +
  #endif /* ETHTOOL_NETLINK_INT_H__ */
 diff --git a/netlink/permaddr.c b/netlink/permaddr.c
 new file mode 100644
-index 000000000000..a34f9c1bd599
+index 000000000000..006eac6c0094
 --- /dev/null
 +++ b/netlink/permaddr.c
-@@ -0,0 +1,108 @@
+@@ -0,0 +1,114 @@
 +/*
 + * permaddr.c - netlink implementation of permanent address request
 + *
@@ -180,11 +180,17 @@ index 000000000000..a34f9c1bd599
 +		goto err;
 +	ret = mnl_attr_parse(nlhdr, sizeof(struct ifinfomsg), attr_cb,
 +			     &tb_info);
-+	if (ret < 0 || !tb[IFLA_IFNAME] || !tb[IFLA_PERM_ADDRESS])
++	if (ret < 0 || !tb[IFLA_IFNAME])
 +		goto err;
 +	nlctx->devname = mnl_attr_get_str(tb[IFLA_IFNAME]);
 +	if (!dev_ok(nlctx))
 +		goto err;
++
++	if (!tb[IFLA_PERM_ADDRESS]) {
++		if (!nlctx->is_dump)
++			printf("Permanent address: not set\n");
++		return MNL_CB_OK;
++	}
 +
 +	if (nlctx->is_dump)
 +		printf("Permanent address of %s:", nlctx->devname);
@@ -199,7 +205,7 @@ index 000000000000..a34f9c1bd599
 +err:
 +	if (nlctx->is_dump || nlctx->is_monitor)
 +		return MNL_CB_OK;
-+	nlctx->exit_code =2;
++	nlctx->exit_code = 2;
 +	return MNL_CB_ERROR;
 +}
 +
