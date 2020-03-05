@@ -1,7 +1,7 @@
-From 79bd3e497adbf099d722e0c4dfc34f5e78726f48 Mon Sep 17 00:00:00 2001
+From c7d9b9f9f95b8365fab4ec597b99360d7bfdaa3b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 10:58:52 +0100
-Subject: [PATCH 08/26] netlink: netlink socket wrapper and helpers
+Subject: [PATCH 08/25] netlink: netlink socket wrapper and helpers
 
 Add data structure for netlink socket and few helpers to work with it.
 
@@ -9,6 +9,13 @@ The nl_socket structure is a wrapper for struct mnl_socket from libmnl,
 a message buffer and some additional data. Helpers for sending netlink
 (and genetlink), processing replies are provided as well as debugging
 helpers.
+
+v2:
+  - reworked debugging output for incoming/outgoing messages
+  - drop tables of message type names (replaced in patch 22)
+  - nl_context::suppress_nlerr allows two levels (EOPNOTSUPP / all codes)
+  - drop nlsock_init(), rename __nlsock_init() to nlsock_init()
+  - add kerneldoc style comments
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---

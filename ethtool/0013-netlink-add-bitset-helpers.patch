@@ -1,7 +1,7 @@
-From 8c55ea2346aa1bb5cf2a702a8cf37e08aba9b3c6 Mon Sep 17 00:00:00 2001
+From 48a31badbefa340dad67752177a4057c6acb745c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 22:01:26 +0100
-Subject: [PATCH 13/26] netlink: add bitset helpers
+Subject: [PATCH 13/25] netlink: add bitset helpers
 
 Add basic functions for work with arbitrary length bitsets used in ethtool
 netlink interface.
@@ -9,6 +9,9 @@ netlink interface.
 The most important function is walk_bitset() which iterates through bits of
 a bitset (passed as pointer to the nest attribute) and calls provided
 callback for each bit.
+
+v2:
+  - add bitset_is_compact() helper
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---

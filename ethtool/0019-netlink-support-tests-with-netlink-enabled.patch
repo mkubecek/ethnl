@@ -1,7 +1,7 @@
-From 582820a7fd28b83f04ec1fc6c1aaa88aa770984c Mon Sep 17 00:00:00 2001
+From a9779a257bdc037a76d506fb4fc1957cf3c998ad Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 16 Feb 2020 01:03:22 +0100
-Subject: [PATCH 19/26] netlink: support tests with netlink enabled
+Subject: [PATCH 19/25] netlink: support tests with netlink enabled
 
 As there is no netlink implementation of features (-k / -K) yet, we only
 need to take care of test-cmdline. With this patch, the full test suite

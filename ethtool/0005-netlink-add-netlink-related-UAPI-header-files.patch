@@ -1,7 +1,7 @@
-From a9ba1c76b950cc1a83faf625f94606517a3c502f Mon Sep 17 00:00:00 2001
+From 8ed2e8992af7ed1e9cd100fcd5e94cdabea03694 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 11 Feb 2020 21:19:37 +0100
-Subject: [PATCH 05/26] netlink: add netlink related UAPI header files
+Subject: [PATCH 05/25] netlink: add netlink related UAPI header files
 
 Add copies of kernel UAPI header files needed for netlink interface:
 
@@ -12,6 +12,9 @@ Add copies of kernel UAPI header files needed for netlink interface:
   <linux/if_link.h>
 
 The (sanitized) copies are taken from v5.6-rc1.
+
+v2:
+  - add linux/rtnetlink.h and linux/if_link.h
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---

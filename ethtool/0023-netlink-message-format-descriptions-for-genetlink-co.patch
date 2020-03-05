@@ -1,7 +1,7 @@
-From decd556c7f1631c52174d780cb91390c517c235f Mon Sep 17 00:00:00 2001
+From e88468e54a57e2f6af207d14bcf3c529f7d341d8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 1 Mar 2020 18:17:29 +0100
-Subject: [PATCH 23/26] netlink: message format descriptions for genetlink
+Subject: [PATCH 23/25] netlink: message format descriptions for genetlink
  control
 
 For the sake of completeness, add description of genetlink message formats

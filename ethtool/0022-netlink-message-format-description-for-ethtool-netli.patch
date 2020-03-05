@@ -1,7 +1,7 @@
-From fc7fe027a0963967af1846154833fb8a0af54480 Mon Sep 17 00:00:00 2001
+From 4b49cd7e618bf0eee6d8dede639ee92167049496 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 22 Feb 2020 18:13:41 +0100
-Subject: [PATCH 22/26] netlink: message format description for ethtool netlink
+Subject: [PATCH 22/25] netlink: message format description for ethtool netlink
 
 Add description of ethtool netlink message formats to be used for pretty
 printing infrastructure. These arrays map (numeric) attribute types to

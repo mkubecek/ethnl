@@ -1,7 +1,7 @@
-From 2d727361b132fa9109f410434be67a97fcb49214 Mon Sep 17 00:00:00 2001
+From bf47a7c0c4c824199ffb6c2abb8e39633adb8b1d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 1 Mar 2020 18:10:44 +0100
-Subject: [PATCH 20/26] netlink: add handler for permaddr (-P)
+Subject: [PATCH 20/25] netlink: add handler for permaddr (-P)
 
 Implement "ethtool -P <dev>" subcommand. This retrieves and displays
 information traditionally provided by ETHTOOL_GPERMADDR ioctl request.

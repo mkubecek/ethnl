@@ -1,7 +1,7 @@
-From b5e9dee5ed6bb72289aa29bef6c0dc1f12b5956e Mon Sep 17 00:00:00 2001
+From 822930f2261c04da4a02dcd7d8b1e4aed360d072 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 14 Feb 2020 11:07:13 +0100
-Subject: [PATCH 15/26] netlink: support getting wake-on-lan and debugging
+Subject: [PATCH 15/25] netlink: support getting wake-on-lan and debugging
  settings
 
 Finish "ethtool <dev>" command implementation by adding support for
@@ -10,6 +10,11 @@ currently only msglevel) settings.
 
 Register the callbacks also with monitor so that "ethtool --monitor" can
 display corresponding notifications.
+
+v2:
+  - suppress error messages for -EOPNOTSUPP responses
+  - perform WOL_GET and DEBUG_GET requests before LINKSTATE_GET
+  - adjust to changes in patch 14
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---

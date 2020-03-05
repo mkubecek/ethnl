@@ -1,7 +1,7 @@
-From 8fcebc851140198c3fa8381550982e2eae8b76f5 Mon Sep 17 00:00:00 2001
+From a60ae93b9831ff95abc1969c54bdfeb71c24ee3a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 11 Feb 2020 18:31:42 +0100
-Subject: [PATCH 07/26] netlink: message buffer and composition helpers
+Subject: [PATCH 07/25] netlink: message buffer and composition helpers
 
 Add data structure for flexible message buffer and helpers for safe message
 composition.
@@ -10,6 +10,9 @@ The nl_msg_buff structure is an abstraction for a message buffer used to
 compose an outgoing netlink message. When the message exceeds currently
 allocated length, buffer is reallocated. Only if the buffer size reaches
 MAX_MSG_SIZE (4 MB), an error is issued.
+
+v2:
+  - add kerneldoc style comments
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---

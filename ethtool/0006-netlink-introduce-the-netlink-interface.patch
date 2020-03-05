@@ -1,7 +1,7 @@
-From f3fbd9e627962e34796530bc19c7519195b94b98 Mon Sep 17 00:00:00 2001
+From 531b909d779b6ec1942f56f7a17ef686c83d3917 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 12 Feb 2020 13:03:30 +0100
-Subject: [PATCH 06/26] netlink: introduce the netlink interface
+Subject: [PATCH 06/25] netlink: introduce the netlink interface
 
 Initial part of netlink interface based on genetlink and libmnl. The
 netlink interface is available in kernel since 5.6-rc1. This commit only
@@ -17,6 +17,10 @@ implementation is also used as fallback.
 
 Running configure with --disable-netlink completely disables the netlink
 interface.
+
+v2:
+  - change type of nl_context::suppress_nlerr
+  - add nl_context::rtnl_socket
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
