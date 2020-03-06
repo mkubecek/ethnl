@@ -1,4 +1,4 @@
-From 4b49cd7e618bf0eee6d8dede639ee92167049496 Mon Sep 17 00:00:00 2001
+From 0d2a147aa6373af3d586eed4eb54a56a4b2aa8f5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 22 Feb 2020 18:13:41 +0100
 Subject: [PATCH 22/25] netlink: message format description for ethtool netlink
@@ -17,10 +17,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/desc-ethtool.c
 
 diff --git a/Makefile.am b/Makefile.am
-index baef0d20fa41..adbe5bc52b4b 100644
+index d745471e53b1..5654b273a0a0 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -32,6 +32,7 @@ ethtool_SOURCES += \
+@@ -31,6 +31,7 @@ ethtool_SOURCES += \
  		  netlink/monitor.c netlink/bitset.c netlink/bitset.h \
  		  netlink/settings.c netlink/parser.c netlink/parser.h \
  		  netlink/permaddr.c netlink/prettymsg.c netlink/prettymsg.h \

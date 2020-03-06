@@ -1,4 +1,4 @@
-From 8c607619bcf65c21a7dc4da11a84625568342438 Mon Sep 17 00:00:00 2001
+From 0967c9bf176b0f4e14f941a0e9c9ef32d54d899f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 23 Jul 2018 14:09:19 +0200
 Subject: [PATCH 10/25] netlink: add support for string sets
@@ -29,10 +29,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/strset.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 04f4157e7bc0..aa41b21fa779 100644
+index c51193ac92fd..70ded2ec8bc3 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -28,7 +28,7 @@ if ETHTOOL_ENABLE_NETLINK
+@@ -27,7 +27,7 @@ if ETHTOOL_ENABLE_NETLINK
  ethtool_SOURCES += \
  		  netlink/netlink.c netlink/netlink.h netlink/extapi.h \
  		  netlink/msgbuff.c netlink/msgbuff.h netlink/nlsock.c \

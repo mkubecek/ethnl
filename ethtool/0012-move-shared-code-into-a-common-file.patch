@@ -1,4 +1,4 @@
-From 64325650e41b075ec5cb285b58cb447e7e00df4d Mon Sep 17 00:00:00 2001
+From b86b20c73a375a195542f16435b7e7bcfbc0569d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 19:15:24 +0100
 Subject: [PATCH 12/25] move shared code into a common file
@@ -18,18 +18,18 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 common.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 0aa88ead27d5..90723a49b591 100644
+index 2985ce533ed3..e6abd3f79cd7 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -6,7 +6,7 @@ EXTRA_DIST = LICENSE ethtool.8 ethtool.spec.in aclocal.m4 ChangeLog autogen.sh
+@@ -7,7 +7,7 @@ EXTRA_DIST = LICENSE ethtool.8 ethtool.spec.in aclocal.m4 ChangeLog autogen.sh
  
  sbin_PROGRAMS = ethtool
  ethtool_SOURCES = ethtool.c uapi/linux/ethtool.h internal.h \
 -		  uapi/linux/net_tstamp.h rxclass.c
 +		  uapi/linux/net_tstamp.h rxclass.c common.c common.h
- ethtool_CFLAGS = $(AM_CFLAGS)
- ethtool_LDADD = $(LDADD)
  if ETHTOOL_ENABLE_PRETTY_DUMP
+ ethtool_SOURCES += \
+ 		  amd8111e.c de2104x.c dsa.c e100.c e1000.c et131x.c igb.c	\
 diff --git a/common.c b/common.c
 new file mode 100644
 index 000000000000..f9c41a32d3a3

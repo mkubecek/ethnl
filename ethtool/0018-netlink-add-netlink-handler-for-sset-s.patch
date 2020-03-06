@@ -1,4 +1,4 @@
-From b901cc057a5b0b6c742c13deebdb360f056df12a Mon Sep 17 00:00:00 2001
+From 148c6fb218b83db9d0e973fb5684b4e3408a5f0a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Nov 2017 22:45:28 +0100
 Subject: [PATCH 18/25] netlink: add netlink handler for sset (-s)
@@ -107,7 +107,7 @@ index 8608ea7f51f5..612002e8228b 100644
  #endif /* ETHTOOL_ENABLE_NETLINK */
  
 diff --git a/netlink/settings.c b/netlink/settings.c
-index e95bbcc9ad86..07eeddc87557 100644
+index 1e43d742245c..c8a911d718b9 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -13,6 +13,7 @@

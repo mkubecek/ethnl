@@ -1,4 +1,4 @@
-From e2a30158cd80c4a99061f98df20c0d8cb4f9b863 Mon Sep 17 00:00:00 2001
+From 5142c96fa91a5c08bfcb46edae99dd6835db24b5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 1 Mar 2020 18:18:12 +0100
 Subject: [PATCH 24/25] netlink: message format descriptions for rtnetlink
@@ -21,10 +21,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/desc-rtnl.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 74143b727c4f..2fd79eb8c79a 100644
+index 8d99315c4b0d..0f8465f7ada9 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -33,6 +33,7 @@ ethtool_SOURCES += \
+@@ -32,6 +32,7 @@ ethtool_SOURCES += \
  		  netlink/settings.c netlink/parser.c netlink/parser.h \
  		  netlink/permaddr.c netlink/prettymsg.c netlink/prettymsg.h \
  		  netlink/desc-ethtool.c netlink/desc-genlctrl.c \

@@ -1,4 +1,4 @@
-From 531b909d779b6ec1942f56f7a17ef686c83d3917 Mon Sep 17 00:00:00 2001
+From 5b9b0cb3b4f3f9b3af4d7eb217068ad0862b2a9c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 12 Feb 2020 13:03:30 +0100
 Subject: [PATCH 06/25] netlink: introduce the netlink interface
@@ -21,35 +21,28 @@ interface.
 v2:
   - change type of nl_context::suppress_nlerr
   - add nl_context::rtnl_socket
+v3:
+  - drop ethtool_CFLAGS and ethtool_LDADD in Makefile.am
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Makefile.am       | 18 +++++++++--
+ Makefile.am       | 10 +++++++
  configure.ac      | 14 ++++++++-
  ethtool.c         | 76 +++++++++++++++++++++++++++++++++++------------
  internal.h        | 12 ++++++++
  netlink/extapi.h  | 31 +++++++++++++++++++
  netlink/netlink.c | 36 ++++++++++++++++++++++
  netlink/netlink.h | 26 ++++++++++++++++
- 7 files changed, 191 insertions(+), 22 deletions(-)
+ 7 files changed, 185 insertions(+), 20 deletions(-)
  create mode 100644 netlink/extapi.h
  create mode 100644 netlink/netlink.c
  create mode 100644 netlink/netlink.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 05beb22be669..b510c3ec8a03 100644
+index e6d6e4ccda9e..f5448350746b 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -7,6 +7,8 @@ EXTRA_DIST = LICENSE ethtool.8 ethtool.spec.in aclocal.m4 ChangeLog autogen.sh
- sbin_PROGRAMS = ethtool
- ethtool_SOURCES = ethtool.c uapi/linux/ethtool.h internal.h \
- 		  uapi/linux/net_tstamp.h rxclass.c
-+ethtool_CFLAGS = $(AM_CFLAGS)
-+ethtool_LDADD = $(LDADD)
- if ETHTOOL_ENABLE_PRETTY_DUMP
- ethtool_SOURCES += \
- 		  amd8111e.c de2104x.c dsa.c e100.c e1000.c et131x.c igb.c	\
-@@ -22,12 +24,24 @@ bashcompletiondir = $(BASH_COMPLETION_DIR)
+@@ -23,6 +23,16 @@ bashcompletiondir = $(BASH_COMPLETION_DIR)
  dist_bashcompletion_DATA = shell-completion/bash/ethtool
  endif
  
@@ -59,23 +52,13 @@ index 05beb22be669..b510c3ec8a03 100644
 +		  uapi/linux/ethtool_netlink.h \
 +		  uapi/linux/netlink.h uapi/linux/genetlink.h \
 +		  uapi/linux/rtnetlink.h uapi/linux/if_link.h
-+ethtool_CFLAGS += @MNL_CFLAGS@
-+ethtool_LDADD += @MNL_LIBS@
++AM_CPPFLAGS += @MNL_CFLAGS@
++LDADD += @MNL_LIBS@
 +endif
 +
  TESTS = test-cmdline test-features
  check_PROGRAMS = test-cmdline test-features
  test_cmdline_SOURCES = test-cmdline.c test-common.c $(ethtool_SOURCES) 
--test_cmdline_CFLAGS = $(AM_FLAGS) -DTEST_ETHTOOL
-+test_cmdline_CFLAGS = $(ethtool_CFLAGS) -DTEST_ETHTOOL
-+test_cmdline_LDADD = $(ethtool_LDADD)
- test_features_SOURCES = test-features.c test-common.c $(ethtool_SOURCES) 
--test_features_CFLAGS = $(AM_FLAGS) -DTEST_ETHTOOL
-+test_features_CFLAGS = $(ethtool_CFLAGS) -DTEST_ETHTOOL
-+test_features_LDADD = $(ethtool_LDADD)
- 
- dist-hook:
- 	cp $(top_srcdir)/ethtool.spec $(distdir)
 diff --git a/configure.ac b/configure.ac
 index a5c1469f9b63..19e7fcb44fb5 100644
 --- a/configure.ac

@@ -1,4 +1,4 @@
-From bf47a7c0c4c824199ffb6c2abb8e39633adb8b1d Mon Sep 17 00:00:00 2001
+From f3ed37731543cb105493f3ef56d7d4299e173e3b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 1 Mar 2020 18:10:44 +0100
 Subject: [PATCH 20/25] netlink: add handler for permaddr (-P)
@@ -35,10 +35,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/permaddr.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 2df64cc4cc52..38268932a955 100644
+index 30cda5b1fc6f..11acdab1a65e 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -31,6 +31,7 @@ ethtool_SOURCES += \
+@@ -30,6 +30,7 @@ ethtool_SOURCES += \
  		  netlink/nlsock.h netlink/strset.c netlink/strset.h \
  		  netlink/monitor.c netlink/bitset.c netlink/bitset.h \
  		  netlink/settings.c netlink/parser.c netlink/parser.h \

@@ -1,4 +1,4 @@
-From 822930f2261c04da4a02dcd7d8b1e4aed360d072 Mon Sep 17 00:00:00 2001
+From fae37db895690dd69d8b3e902ff40ccb9fd5b2d4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 14 Feb 2020 11:07:13 +0100
 Subject: [PATCH 15/25] netlink: support getting wake-on-lan and debugging
@@ -15,6 +15,7 @@ v2:
   - suppress error messages for -EOPNOTSUPP responses
   - perform WOL_GET and DEBUG_GET requests before LINKSTATE_GET
   - adjust to changes in patch 14
+  - load ETH_SS_MSG_CLASSES string set only if needed
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -71,7 +72,7 @@ index 16754899976d..730f8e1b3fe9 100644
  static inline void copy_devname(char *dst, const char *src)
  {
 diff --git a/netlink/settings.c b/netlink/settings.c
-index 46c292a3d92d..e95bbcc9ad86 100644
+index 25d0f02210b5..1e43d742245c 100644
 --- a/netlink/settings.c
 +++ b/netlink/settings.c
 @@ -604,6 +604,110 @@ int linkstate_reply_cb(const struct nlmsghdr *nlhdr, void *data)

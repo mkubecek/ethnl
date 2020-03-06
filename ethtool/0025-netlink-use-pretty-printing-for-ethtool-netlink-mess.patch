@@ -1,4 +1,4 @@
-From 5d787f17d58fb66c671a90d2cfc8f47eaaf730e8 Mon Sep 17 00:00:00 2001
+From 960555ef01564626dd3ebff99f5534896d58bfb2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 22 Feb 2020 19:07:58 +0100
 Subject: [PATCH 25/25] netlink: use pretty printing for ethtool netlink

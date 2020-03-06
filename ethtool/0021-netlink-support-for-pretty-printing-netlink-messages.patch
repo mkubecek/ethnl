@@ -1,4 +1,4 @@
-From 54bf747aa2e8d890096c865d06414d3f7ec164a6 Mon Sep 17 00:00:00 2001
+From 7f846090c02592c5a8628b7ec699c3876b186889 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 22 Feb 2020 17:52:37 +0100
 Subject: [PATCH 21/25] netlink: support for pretty printing netlink messages
@@ -39,10 +39,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/prettymsg.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 38268932a955..baef0d20fa41 100644
+index 11acdab1a65e..d745471e53b1 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -31,7 +31,7 @@ ethtool_SOURCES += \
+@@ -30,7 +30,7 @@ ethtool_SOURCES += \
  		  netlink/nlsock.h netlink/strset.c netlink/strset.h \
  		  netlink/monitor.c netlink/bitset.c netlink/bitset.h \
  		  netlink/settings.c netlink/parser.c netlink/parser.h \

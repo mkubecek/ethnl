@@ -1,4 +1,4 @@
-From c7d9b9f9f95b8365fab4ec597b99360d7bfdaa3b Mon Sep 17 00:00:00 2001
+From a7554f0344d19d2c36893dd30307bfedb08076da Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 10:58:52 +0100
 Subject: [PATCH 08/25] netlink: netlink socket wrapper and helpers
@@ -30,10 +30,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/nlsock.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 81099a79a793..04f4157e7bc0 100644
+index 2f4b8334cfe6..c51193ac92fd 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -27,7 +27,8 @@ endif
+@@ -26,7 +26,8 @@ endif
  if ETHTOOL_ENABLE_NETLINK
  ethtool_SOURCES += \
  		  netlink/netlink.c netlink/netlink.h netlink/extapi.h \

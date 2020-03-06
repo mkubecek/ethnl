@@ -1,4 +1,4 @@
-From 48a31badbefa340dad67752177a4057c6acb745c Mon Sep 17 00:00:00 2001
+From 980e7809d287030917a3cdaf73cbd325cd62fd0e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 22:01:26 +0100
 Subject: [PATCH 13/25] netlink: add bitset helpers
@@ -23,10 +23,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/bitset.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 90723a49b591..2553cf727a36 100644
+index e6abd3f79cd7..616c45007fbd 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -29,7 +29,7 @@ ethtool_SOURCES += \
+@@ -28,7 +28,7 @@ ethtool_SOURCES += \
  		  netlink/netlink.c netlink/netlink.h netlink/extapi.h \
  		  netlink/msgbuff.c netlink/msgbuff.h netlink/nlsock.c \
  		  netlink/nlsock.h netlink/strset.c netlink/strset.h \

@@ -1,4 +1,4 @@
-From a60ae93b9831ff95abc1969c54bdfeb71c24ee3a Mon Sep 17 00:00:00 2001
+From 4f606dd396bbe4fb5791747ff7310c59ba4d80ca Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 11 Feb 2020 18:31:42 +0100
 Subject: [PATCH 07/25] netlink: message buffer and composition helpers
@@ -25,10 +25,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/msgbuff.h
 
 diff --git a/Makefile.am b/Makefile.am
-index b510c3ec8a03..81099a79a793 100644
+index f5448350746b..2f4b8334cfe6 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -27,6 +27,7 @@ endif
+@@ -26,6 +26,7 @@ endif
  if ETHTOOL_ENABLE_NETLINK
  ethtool_SOURCES += \
  		  netlink/netlink.c netlink/netlink.h netlink/extapi.h \

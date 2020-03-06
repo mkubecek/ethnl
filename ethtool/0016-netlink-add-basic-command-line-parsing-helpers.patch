@@ -1,4 +1,4 @@
-From 2594bd8a5276bfa7ee77505cc2f68d2cbdeadfba Mon Sep 17 00:00:00 2001
+From 7ec07fe56010053a402c3507edf224679d32bbc6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 23:04:32 +0100
 Subject: [PATCH 16/25] netlink: add basic command line parsing helpers
@@ -37,10 +37,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/parser.h
 
 diff --git a/Makefile.am b/Makefile.am
-index 77003f27a3a8..2df64cc4cc52 100644
+index eeb36a279045..30cda5b1fc6f 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -30,7 +30,7 @@ ethtool_SOURCES += \
+@@ -29,7 +29,7 @@ ethtool_SOURCES += \
  		  netlink/msgbuff.c netlink/msgbuff.h netlink/nlsock.c \
  		  netlink/nlsock.h netlink/strset.c netlink/strset.h \
  		  netlink/monitor.c netlink/bitset.c netlink/bitset.h \

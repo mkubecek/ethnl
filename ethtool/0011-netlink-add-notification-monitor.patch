@@ -1,4 +1,4 @@
-From 5ca8a91fd1cc6be16b8959d4fd5d5ce83701fe4c Mon Sep 17 00:00:00 2001
+From 7a12613b34e20cb12456aa57811dde2456aa8cb9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 14 Jul 2018 19:28:19 -0400
 Subject: [PATCH 11/25] netlink: add notification monitor
@@ -24,10 +24,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/monitor.c
 
 diff --git a/Makefile.am b/Makefile.am
-index aa41b21fa779..0aa88ead27d5 100644
+index 70ded2ec8bc3..2985ce533ed3 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -29,6 +29,7 @@ ethtool_SOURCES += \
+@@ -28,6 +28,7 @@ ethtool_SOURCES += \
  		  netlink/netlink.c netlink/netlink.h netlink/extapi.h \
  		  netlink/msgbuff.c netlink/msgbuff.h netlink/nlsock.c \
  		  netlink/nlsock.h netlink/strset.c netlink/strset.h \

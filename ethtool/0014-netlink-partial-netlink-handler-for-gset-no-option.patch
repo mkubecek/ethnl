@@ -1,4 +1,4 @@
-From 82b0d11b47550431e01cd7009a668674545df754 Mon Sep 17 00:00:00 2001
+From 5cdb94b000c60287e8dfffa20926329f18199128 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Wed, 22 Nov 2017 17:54:35 +0100
 Subject: [PATCH 14/25] netlink: partial netlink handler for gset (no option)
@@ -16,6 +16,8 @@ v2:
   - suppress error messages for -EOPNOTSUPP responses
   - only show "No data available" if there is no reply at all
   - more readable nl_gset()
+v3:
+  - fix gcc9 compiler warning
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -29,10 +31,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/settings.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 2553cf727a36..77003f27a3a8 100644
+index 616c45007fbd..eeb36a279045 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -30,6 +30,7 @@ ethtool_SOURCES += \
+@@ -29,6 +29,7 @@ ethtool_SOURCES += \
  		  netlink/msgbuff.c netlink/msgbuff.h netlink/nlsock.c \
  		  netlink/nlsock.h netlink/strset.c netlink/strset.h \
  		  netlink/monitor.c netlink/bitset.c netlink/bitset.h \
@@ -131,7 +133,7 @@ index be44f9c16f19..16754899976d 100644
  	strncpy(dst, src, ALTIFNAMSIZ);
 diff --git a/netlink/settings.c b/netlink/settings.c
 new file mode 100644
-index 000000000000..46c292a3d92d
+index 000000000000..25d0f02210b5
 --- /dev/null
 +++ b/netlink/settings.c
 @@ -0,0 +1,647 @@
@@ -439,7 +441,7 @@ index 000000000000..46c292a3d92d
 +		printf("\t%s", before);
 +		for (idx = 0; idx < count; idx++) {
 +			const uint32_t *raw_data = mnl_attr_get_payload(bits);
-+			char buff[10];
++			char buff[14];
 +
 +			if (!(raw_data[idx / 32] & (1U << (idx % 32))))
 +				continue;

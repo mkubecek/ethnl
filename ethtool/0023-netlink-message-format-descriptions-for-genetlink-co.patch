@@ -1,4 +1,4 @@
-From e88468e54a57e2f6af207d14bcf3c529f7d341d8 Mon Sep 17 00:00:00 2001
+From dbf3bb12dd6919936f4ac15bd287dd3911da30b4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 1 Mar 2020 18:17:29 +0100
 Subject: [PATCH 23/25] netlink: message format descriptions for genetlink
@@ -17,10 +17,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  create mode 100644 netlink/desc-genlctrl.c
 
 diff --git a/Makefile.am b/Makefile.am
-index adbe5bc52b4b..74143b727c4f 100644
+index 5654b273a0a0..8d99315c4b0d 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -32,7 +32,7 @@ ethtool_SOURCES += \
+@@ -31,7 +31,7 @@ ethtool_SOURCES += \
  		  netlink/monitor.c netlink/bitset.c netlink/bitset.h \
  		  netlink/settings.c netlink/parser.c netlink/parser.h \
  		  netlink/permaddr.c netlink/prettymsg.c netlink/prettymsg.h \

@@ -1,4 +1,4 @@
-From c7b60ccc37b8af0d3e66bfb2f304744ac21450e8 Mon Sep 17 00:00:00 2001
+From 6b2a34e6a3069e8df12cccee30b54162e1f90908 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 13:10:52 +0100
 Subject: [PATCH 09/25] netlink: initialize ethtool netlink socket

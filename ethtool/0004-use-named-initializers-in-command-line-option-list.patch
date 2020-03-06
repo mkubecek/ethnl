@@ -1,4 +1,4 @@
-From a22eeed5aa569a0fc68a0b9388f703ed1e8112ad Mon Sep 17 00:00:00 2001
+From 5ac30be11d2b1fd4dacb23b1abbd286a4a3dc0d3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 10 Feb 2020 19:35:20 +0100
 Subject: [PATCH 04/25] use named initializers in command line option list

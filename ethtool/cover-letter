@@ -26,10 +26,15 @@ passed to configure script. The most visible changes to existing code are
 Except for changes to main(), all netlink specific code is in a separate
 directory netlink/ and is divided into multiple files.
 
+Changes in v3:
+- fix build in a separate directory
+- drop unnecessary changes to Makefile.am
+
 Changes in v2:
 - add support for permanent hardware addres ("ethtool -P", patch 20)
 - add support for pretty printing of netlink messages (patches 21-25)
 - make output of "ethtool <dev>" closer to ioctl implementation
+- load ETH_SS_MSG_CLASSES string set only if needed (patch 15)
 - two more kernel uapi header copies (patch 5)
 - support for rtnetlink socket and requests (needed for "ethtool -P")
 - some kerneldoc style comments
