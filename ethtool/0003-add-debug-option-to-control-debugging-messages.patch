@@ -1,7 +1,7 @@
 From e97a90e3dc3128a2de15e91a956109e579a9b786 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Aug 2018 18:06:30 +0200
-Subject: [PATCH 03/25] add --debug option to control debugging messages
+Subject: [PATCH 03/36] add --debug option to control debugging messages
 
 Introduce --debug option to control which debugging messages will be shown.
 Argument is a number which is interpreted as bit mask; default value is

@@ -1,7 +1,7 @@
 From 7f846090c02592c5a8628b7ec699c3876b186889 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 22 Feb 2020 17:52:37 +0100
-Subject: [PATCH 21/25] netlink: support for pretty printing netlink messages
+Subject: [PATCH 21/36] netlink: support for pretty printing netlink messages
 
 To improve message reporting and debugging, add support for displaying
 netlink messages in human readable form, e.g.

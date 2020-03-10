@@ -1,0 +1,100 @@
+From 1ab332d25d717cca8cb66b421b36688a43f6a3cf Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Tue, 10 Mar 2020 14:12:16 +0100
+Subject: [PATCH 28/36] netlink: add more ethtool netlink message format
+ descriptions
+
+Add message format descriptions for pretty printing of messages related to
+netdev features, private flags, ring sizes and channel counts.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ netlink/desc-ethtool.c | 58 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 58 insertions(+)
+
+diff --git a/netlink/desc-ethtool.c b/netlink/desc-ethtool.c
+index 76c6f13e4648..46cd521455d6 100644
+--- a/netlink/desc-ethtool.c
++++ b/netlink/desc-ethtool.c
+@@ -106,6 +106,47 @@ static const struct pretty_nla_desc __wol_desc[] = {
+ 	NLATTR_DESC_BINARY(ETHTOOL_A_WOL_SOPASS),
+ };
+ 
++static const struct pretty_nla_desc __features_desc[] = {
++	NLATTR_DESC_INVALID(ETHTOOL_A_FEATURES_UNSPEC),
++	NLATTR_DESC_NESTED(ETHTOOL_A_FEATURES_HEADER, header),
++	NLATTR_DESC_NESTED(ETHTOOL_A_FEATURES_HW, bitset),
++	NLATTR_DESC_NESTED(ETHTOOL_A_FEATURES_WANTED, bitset),
++	NLATTR_DESC_NESTED(ETHTOOL_A_FEATURES_ACTIVE, bitset),
++	NLATTR_DESC_NESTED(ETHTOOL_A_FEATURES_NOCHANGE, bitset),
++};
++
++static const struct pretty_nla_desc __privflags_desc[] = {
++	NLATTR_DESC_INVALID(ETHTOOL_A_PRIVFLAGS_UNSPEC),
++	NLATTR_DESC_NESTED(ETHTOOL_A_PRIVFLAGS_HEADER, header),
++	NLATTR_DESC_NESTED(ETHTOOL_A_PRIVFLAGS_FLAGS, bitset),
++};
++
++static const struct pretty_nla_desc __rings_desc[] = {
++	NLATTR_DESC_INVALID(ETHTOOL_A_RINGS_UNSPEC),
++	NLATTR_DESC_NESTED(ETHTOOL_A_RINGS_HEADER, header),
++	NLATTR_DESC_U32(ETHTOOL_A_RINGS_RX_MAX),
++	NLATTR_DESC_U32(ETHTOOL_A_RINGS_RX_MINI_MAX),
++	NLATTR_DESC_U32(ETHTOOL_A_RINGS_RX_JUMBO_MAX),
++	NLATTR_DESC_U32(ETHTOOL_A_RINGS_TX_MAX),
++	NLATTR_DESC_U32(ETHTOOL_A_RINGS_RX),
++	NLATTR_DESC_U32(ETHTOOL_A_RINGS_RX_MINI),
++	NLATTR_DESC_U32(ETHTOOL_A_RINGS_RX_JUMBO),
++	NLATTR_DESC_U32(ETHTOOL_A_RINGS_TX),
++};
++
++static const struct pretty_nla_desc __channels_desc[] = {
++	NLATTR_DESC_INVALID(ETHTOOL_A_CHANNELS_UNSPEC),
++	NLATTR_DESC_NESTED(ETHTOOL_A_CHANNELS_HEADER, header),
++	NLATTR_DESC_U32(ETHTOOL_A_CHANNELS_RX_MAX),
++	NLATTR_DESC_U32(ETHTOOL_A_CHANNELS_TX_MAX),
++	NLATTR_DESC_U32(ETHTOOL_A_CHANNELS_OTHER_MAX),
++	NLATTR_DESC_U32(ETHTOOL_A_CHANNELS_COMBINED_MAX),
++	NLATTR_DESC_U32(ETHTOOL_A_CHANNELS_RX_COUNT),
++	NLATTR_DESC_U32(ETHTOOL_A_CHANNELS_TX_COUNT),
++	NLATTR_DESC_U32(ETHTOOL_A_CHANNELS_OTHER_COUNT),
++	NLATTR_DESC_U32(ETHTOOL_A_CHANNELS_COMBINED_COUNT),
++};
++
+ const struct pretty_nlmsg_desc ethnl_umsg_desc[] = {
+ 	NLMSG_DESC_INVALID(ETHTOOL_MSG_USER_NONE),
+ 	NLMSG_DESC(ETHTOOL_MSG_STRSET_GET, strset),
+@@ -118,6 +159,14 @@ const struct pretty_nlmsg_desc ethnl_umsg_desc[] = {
+ 	NLMSG_DESC(ETHTOOL_MSG_DEBUG_SET, debug),
+ 	NLMSG_DESC(ETHTOOL_MSG_WOL_GET, wol),
+ 	NLMSG_DESC(ETHTOOL_MSG_WOL_SET, wol),
++	NLMSG_DESC(ETHTOOL_MSG_FEATURES_GET, features),
++	NLMSG_DESC(ETHTOOL_MSG_FEATURES_SET, features),
++	NLMSG_DESC(ETHTOOL_MSG_PRIVFLAGS_GET, privflags),
++	NLMSG_DESC(ETHTOOL_MSG_PRIVFLAGS_SET, privflags),
++	NLMSG_DESC(ETHTOOL_MSG_RINGS_GET, rings),
++	NLMSG_DESC(ETHTOOL_MSG_RINGS_SET, rings),
++	NLMSG_DESC(ETHTOOL_MSG_CHANNELS_GET, channels),
++	NLMSG_DESC(ETHTOOL_MSG_CHANNELS_SET, channels),
+ };
+ 
+ const unsigned int ethnl_umsg_n_desc = ARRAY_SIZE(ethnl_umsg_desc);
+@@ -134,6 +183,15 @@ const struct pretty_nlmsg_desc ethnl_kmsg_desc[] = {
+ 	NLMSG_DESC(ETHTOOL_MSG_DEBUG_NTF, debug),
+ 	NLMSG_DESC(ETHTOOL_MSG_WOL_GET_REPLY, wol),
+ 	NLMSG_DESC(ETHTOOL_MSG_WOL_NTF, wol),
++	NLMSG_DESC(ETHTOOL_MSG_FEATURES_GET_REPLY, features),
++	NLMSG_DESC(ETHTOOL_MSG_FEATURES_SET_REPLY, features),
++	NLMSG_DESC(ETHTOOL_MSG_FEATURES_NTF, features),
++	NLMSG_DESC(ETHTOOL_MSG_PRIVFLAGS_GET_REPLY, privflags),
++	NLMSG_DESC(ETHTOOL_MSG_PRIVFLAGS_NTF, privflags),
++	NLMSG_DESC(ETHTOOL_MSG_RINGS_GET_REPLY, rings),
++	NLMSG_DESC(ETHTOOL_MSG_RINGS_NTF, rings),
++	NLMSG_DESC(ETHTOOL_MSG_CHANNELS_GET_REPLY, channels),
++	NLMSG_DESC(ETHTOOL_MSG_CHANNELS_NTF, channels),
+ };
+ 
+ const unsigned int ethnl_kmsg_n_desc = ARRAY_SIZE(ethnl_kmsg_desc);
+-- 
+2.25.1
+

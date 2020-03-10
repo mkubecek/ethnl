@@ -1,7 +1,7 @@
 From 980e7809d287030917a3cdaf73cbd325cd62fd0e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 22:01:26 +0100
-Subject: [PATCH 13/25] netlink: add bitset helpers
+Subject: [PATCH 13/36] netlink: add bitset helpers
 
 Add basic functions for work with arbitrary length bitsets used in ethtool
 netlink interface.

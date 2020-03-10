@@ -1,7 +1,7 @@
 From a7554f0344d19d2c36893dd30307bfedb08076da Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 10:58:52 +0100
-Subject: [PATCH 08/25] netlink: netlink socket wrapper and helpers
+Subject: [PATCH 08/36] netlink: netlink socket wrapper and helpers
 
 Add data structure for netlink socket and few helpers to work with it.
 

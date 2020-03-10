@@ -1,7 +1,7 @@
 From fae37db895690dd69d8b3e902ff40ccb9fd5b2d4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 14 Feb 2020 11:07:13 +0100
-Subject: [PATCH 15/25] netlink: support getting wake-on-lan and debugging
+Subject: [PATCH 15/36] netlink: support getting wake-on-lan and debugging
  settings
 
 Finish "ethtool <dev>" command implementation by adding support for

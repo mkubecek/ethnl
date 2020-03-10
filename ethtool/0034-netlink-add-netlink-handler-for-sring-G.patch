@@ -1,0 +1,142 @@
+From 5d7cc55fa01d44e2fb92726a51498b16fd91ccd4 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Tue, 10 Mar 2020 14:29:35 +0100
+Subject: [PATCH 34/36] netlink: add netlink handler for sring (-G)
+
+Implement "ethtool -G <dev> ..." subcommand to set network device ring
+sizes using ETHTOOL_MSG_RINGS_SET netlink request. These are traditionally
+set using ETHTOOL_SRINGPARAM ioctl request.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ ethtool.c        |  1 +
+ netlink/extapi.h |  2 ++
+ netlink/rings.c  | 69 +++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 71 insertions(+), 1 deletion(-)
+
+diff --git a/ethtool.c b/ethtool.c
+index 757f9ad4b7ec..55cea4742fd5 100644
+--- a/ethtool.c
++++ b/ethtool.c
+@@ -5189,6 +5189,7 @@ static const struct option args[] = {
+ 	{
+ 		.opts	= "-G|--set-ring",
+ 		.func	= do_sring,
++		.nlfunc	= nl_sring,
+ 		.help	= "Set RX/TX ring parameters",
+ 		.xhelp	= "		[ rx N ]\n"
+ 			  "		[ rx-mini N ]\n"
+diff --git a/netlink/extapi.h b/netlink/extapi.h
+index cfb5190729ec..8f6847b1fa01 100644
+--- a/netlink/extapi.h
++++ b/netlink/extapi.h
+@@ -23,6 +23,7 @@ int nl_sfeatures(struct cmd_context *ctx);
+ int nl_gprivflags(struct cmd_context *ctx);
+ int nl_sprivflags(struct cmd_context *ctx);
+ int nl_gring(struct cmd_context *ctx);
++int nl_sring(struct cmd_context *ctx);
+ int nl_monitor(struct cmd_context *ctx);
+ 
+ void nl_monitor_usage(void);
+@@ -50,6 +51,7 @@ static inline void nl_monitor_usage(void)
+ #define nl_gprivflags		NULL
+ #define nl_sprivflags		NULL
+ #define nl_gring		NULL
++#define nl_sring		NULL
+ 
+ #endif /* ETHTOOL_ENABLE_NETLINK */
+ 
+diff --git a/netlink/rings.c b/netlink/rings.c
+index bf92a7dab6ae..a4594b676be0 100644
+--- a/netlink/rings.c
++++ b/netlink/rings.c
+@@ -1,7 +1,7 @@
+ /*
+  * rings.c - netlink implementation of ring commands
+  *
+- * Implementation of "ethtool -g <dev>"
++ * Implementation of "ethtool -g <dev>" and "ethtool -G <dev> ..."
+  */
+ 
+ #include <errno.h>
+@@ -11,6 +11,7 @@
+ #include "../internal.h"
+ #include "../common.h"
+ #include "netlink.h"
++#include "parser.h"
+ 
+ /* RINGS_GET */
+ 
+@@ -61,3 +62,69 @@ int nl_gring(struct cmd_context *ctx)
+ 		return ret;
+ 	return nlsock_send_get_request(nlsk, rings_reply_cb);
+ }
++
++/* RINGS_SET */
++
++static const struct param_parser sring_params[] = {
++	{
++		.arg		= "rx",
++		.type		= ETHTOOL_A_RINGS_RX,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "rx-mini",
++		.type		= ETHTOOL_A_RINGS_RX_MINI,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "rx-jumbo",
++		.type		= ETHTOOL_A_RINGS_RX_JUMBO,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "tx",
++		.type		= ETHTOOL_A_RINGS_TX,
++		.handler	= nl_parse_direct_u32,
++		.min_argc	= 1,
++	},
++	{}
++};
++
++int nl_sring(struct cmd_context *ctx)
++{
++	struct nl_context *nlctx = ctx->nlctx;
++	struct nl_msg_buff *msgbuff;
++	struct nl_socket *nlsk;
++	int ret;
++
++	nlctx->cmd = "-G";
++	nlctx->argp = ctx->argp;
++	nlctx->argc = ctx->argc;
++	nlctx->devname = ctx->devname;
++	nlsk = nlctx->ethnl_socket;
++	msgbuff = &nlsk->msgbuff;
++
++	ret = msg_init(nlctx, msgbuff, ETHTOOL_MSG_RINGS_SET,
++		       NLM_F_REQUEST | NLM_F_ACK);
++	if (ret < 0)
++		return 2;
++	if (ethnla_fill_header(msgbuff, ETHTOOL_A_RINGS_HEADER,
++			       ctx->devname, 0))
++		return -EMSGSIZE;
++
++	ret = nl_parser(nlctx, sring_params, NULL, PARSER_GROUP_NONE);
++	if (ret < 0)
++		return 1;
++
++	ret = nlsock_sendmsg(nlsk, NULL);
++	if (ret < 0)
++		return 81;
++	ret = nlsock_process_reply(nlsk, nomsg_reply_cb, nlctx);
++	if (ret == 0)
++		return 0;
++	else
++		return nlctx->exit_code ?: 81;
++}
+-- 
+2.25.1
+

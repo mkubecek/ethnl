@@ -1,7 +1,7 @@
 From 7ec07fe56010053a402c3507edf224679d32bbc6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 13 Feb 2020 23:04:32 +0100
-Subject: [PATCH 16/25] netlink: add basic command line parsing helpers
+Subject: [PATCH 16/36] netlink: add basic command line parsing helpers
 
 Existing command line parser functions from the ioctl interface are often
 too closely tied to the ioctl data structures and would not be easily
