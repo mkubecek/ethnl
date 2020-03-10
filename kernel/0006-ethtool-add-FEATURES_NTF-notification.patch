@@ -1,7 +1,7 @@
-From eb5fe4ce59fde6b3a1b907f0ce524be46179d147 Mon Sep 17 00:00:00 2001
+From c26e817cbe7655f98693a33cded0d54c6b0b629b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Jan 2020 17:41:05 +0100
-Subject: [PATCH 5/5] ethtool: add FEATURES_NTF notification
+Subject: [PATCH 06/15] ethtool: add FEATURES_NTF notification
 
 Send ETHTOOL_MSG_FEATURES_NTF notification whenever network device features
 are modified using ETHTOOL_MSG_FEATURES_SET netlink message, ethtool ioctl
@@ -53,10 +53,10 @@ index 6f7aaa6b7f42..3d0204cf96a6 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
 diff --git a/net/ethtool/features.c b/net/ethtool/features.c
-index 3abcfdd0d8ef..11d513de7d82 100644
+index a12e73db4452..cf00751067c6 100644
 --- a/net/ethtool/features.c
 +++ b/net/ethtool/features.c
-@@ -231,6 +231,7 @@ int ethnl_set_features(struct sk_buff *skb, struct genl_info *info)
+@@ -233,6 +233,7 @@ int ethnl_set_features(struct sk_buff *skb, struct genl_info *info)
  	struct nlattr *tb[ETHTOOL_A_FEATURES_MAX + 1];
  	struct ethnl_req_info req_info = {};
  	struct net_device *dev;
@@ -64,7 +64,7 @@ index 3abcfdd0d8ef..11d513de7d82 100644
  	int ret;
  
  	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb,
-@@ -271,6 +272,7 @@ int ethnl_set_features(struct sk_buff *skb, struct genl_info *info)
+@@ -275,6 +276,7 @@ int ethnl_set_features(struct sk_buff *skb, struct genl_info *info)
  	dev->wanted_features = ethnl_bitmap_to_features(req_wanted);
  	__netdev_update_features(dev);
  	ethnl_features_to_bitmap(new_active, dev->features);
@@ -72,7 +72,7 @@ index 3abcfdd0d8ef..11d513de7d82 100644
  
  	ret = 0;
  	if (!(req_info.flags & ETHTOOL_FLAG_OMIT_REPLY)) {
-@@ -291,6 +293,8 @@ int ethnl_set_features(struct sk_buff *skb, struct genl_info *info)
+@@ -295,6 +297,8 @@ int ethnl_set_features(struct sk_buff *skb, struct genl_info *info)
  					  wanted_diff_mask, new_active,
  					  active_diff_mask, compact);
  	}
@@ -82,7 +82,7 @@ index 3abcfdd0d8ef..11d513de7d82 100644
  out_rtnl:
  	rtnl_unlock();
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index c5d4b07b4496..9ef71d95056a 100644
+index 757ea3fc98a0..5c0e361bfd66 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -528,6 +528,7 @@ ethnl_default_notify_ops[ETHTOOL_MSG_KERNEL_MAX + 1] = {
@@ -143,5 +143,5 @@ index c5d4b07b4496..9ef71d95056a 100644
  
  subsys_initcall(ethnl_init);
 -- 
-2.25.0
+2.25.1
 

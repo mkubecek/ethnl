@@ -1,7 +1,7 @@
-From 7b6812be8498f3b9b509b8c235895ca3d073a0de Mon Sep 17 00:00:00 2001
+From d50ab1ab65d07f2986708bdb94a999a1bdf0e01a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Jan 2020 00:03:08 +0100
-Subject: [PATCH 4/5] ethtool: set netdev features with FEATURES_SET request
+Subject: [PATCH 05/15] ethtool: set netdev features with FEATURES_SET request
 
 Implement FEATURES_SET netlink request to set network device features (like
 ETHTOOL_SFEATURES ioctl request does.
@@ -17,12 +17,12 @@ flag in request header.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.rst |  56 ++++++-
+ Documentation/networking/ethtool-netlink.rst |  56 +++++-
  include/uapi/linux/ethtool_netlink.h         |   2 +
- net/ethtool/features.c                       | 165 +++++++++++++++++++
+ net/ethtool/features.c                       | 169 +++++++++++++++++++
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   1 +
- 5 files changed, 220 insertions(+), 9 deletions(-)
+ 5 files changed, 224 insertions(+), 9 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.rst b/Documentation/networking/ethtool-netlink.rst
 index 5713abf98534..d6706c4aa972 100644
@@ -156,10 +156,10 @@ index d0cc7a0334c8..6f7aaa6b7f42 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
 diff --git a/net/ethtool/features.c b/net/ethtool/features.c
-index 9814d5aa6f77..3abcfdd0d8ef 100644
+index 9814d5aa6f77..a12e73db4452 100644
 --- a/net/ethtool/features.c
 +++ b/net/ethtool/features.c
-@@ -132,3 +132,168 @@ const struct ethnl_request_ops ethnl_features_request_ops = {
+@@ -132,3 +132,172 @@ const struct ethnl_request_ops ethnl_features_request_ops = {
  	.reply_size		= features_reply_size,
  	.fill_reply		= features_fill_reply,
  };
@@ -188,12 +188,14 @@ index 9814d5aa6f77..3abcfdd0d8ef 100644
 +
 +static netdev_features_t ethnl_bitmap_to_features(unsigned long *src)
 +{
++	const unsigned int nft_bits = sizeof(netdev_features_t) * BITS_PER_BYTE;
 +	const unsigned int words = BITS_TO_LONGS(NETDEV_FEATURE_COUNT);
 +	netdev_features_t ret = 0;
 +	unsigned int i;
 +
 +	for (i = 0; i < words; i++)
 +		ret |= (netdev_features_t)(src[i]) << (i * BITS_PER_LONG);
++	ret &= ~(netdev_features_t)0 >> (nft_bits - NETDEV_FEATURE_COUNT);
 +	return ret;
 +}
 +
@@ -271,8 +273,10 @@ index 9814d5aa6f77..3abcfdd0d8ef 100644
 +		return ret;
 +	if (!tb[ETHTOOL_A_FEATURES_WANTED])
 +		return -EINVAL;
-+	ret = ethnl_parse_header(&req_info, tb[ETHTOOL_A_FEATURES_HEADER],
-+				 genl_info_net(info), info->extack, true);
++	ret = ethnl_parse_header_dev_get(&req_info,
++					 tb[ETHTOOL_A_FEATURES_HEADER],
++					 genl_info_net(info), info->extack,
++					 true);
 +	if (ret < 0)
 +		return ret;
 +	dev = req_info.dev;
@@ -329,7 +333,7 @@ index 9814d5aa6f77..3abcfdd0d8ef 100644
 +	return ret;
 +}
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 29a171513f9f..c5d4b07b4496 100644
+index e451a75e9577..757ea3fc98a0 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -703,6 +703,11 @@ static const struct genl_ops ethtool_genl_ops[] = {
@@ -345,10 +349,10 @@ index 29a171513f9f..c5d4b07b4496 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index e9005dae0e4e..76c7f5ffbec4 100644
+index be2325ea8493..135836201e89 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -342,5 +342,6 @@ int ethnl_set_linkinfo(struct sk_buff *skb, struct genl_info *info);
+@@ -343,5 +343,6 @@ int ethnl_set_linkinfo(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_linkmodes(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_debug(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_wol(struct sk_buff *skb, struct genl_info *info);
@@ -356,5 +360,5 @@ index e9005dae0e4e..76c7f5ffbec4 100644
  
  #endif /* _NET_ETHTOOL_NETLINK_H */
 -- 
-2.25.0
+2.25.1
 

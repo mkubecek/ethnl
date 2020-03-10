@@ -1,7 +1,7 @@
-From 3c82d075437e6055c21de672377efeee73b0a459 Mon Sep 17 00:00:00 2001
+From 29efb97509da634bbb44647fcfb4e848deb66e91 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 25 Jan 2020 22:22:52 +0100
-Subject: [PATCH 2/5] ethtool: provide netdev features with FEATURES_GET
+Subject: [PATCH 03/15] ethtool: provide netdev features with FEATURES_GET
  request
 
 Implement FEATURES_GET request to get network device features,
@@ -332,7 +332,7 @@ index 000000000000..9814d5aa6f77
 +	.fill_reply		= features_fill_reply,
 +};
 diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
-index b987052d91ef..4e9992f432ec 100644
+index ae97c82c7052..45d1bf1764b7 100644
 --- a/net/ethtool/ioctl.c
 +++ b/net/ethtool/ioctl.c
 @@ -56,8 +56,6 @@ EXPORT_SYMBOL(ethtool_op_get_ts_info);
@@ -345,7 +345,7 @@ index b987052d91ef..4e9992f432ec 100644
  {
  	struct ethtool_gfeatures cmd = {
 diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
-index 180c194fab07..29a171513f9f 100644
+index 8eca55122ef3..e451a75e9577 100644
 --- a/net/ethtool/netlink.c
 +++ b/net/ethtool/netlink.c
 @@ -215,6 +215,7 @@ ethnl_default_requests[__ETHTOOL_MSG_USER_CNT] = {
@@ -371,10 +371,10 @@ index 180c194fab07..29a171513f9f 100644
  
  static const struct genl_multicast_group ethtool_nl_mcgrps[] = {
 diff --git a/net/ethtool/netlink.h b/net/ethtool/netlink.h
-index 60efd87686ad..e9005dae0e4e 100644
+index 961708290074..be2325ea8493 100644
 --- a/net/ethtool/netlink.h
 +++ b/net/ethtool/netlink.h
-@@ -336,6 +336,7 @@ extern const struct ethnl_request_ops ethnl_linkmodes_request_ops;
+@@ -337,6 +337,7 @@ extern const struct ethnl_request_ops ethnl_linkmodes_request_ops;
  extern const struct ethnl_request_ops ethnl_linkstate_request_ops;
  extern const struct ethnl_request_ops ethnl_debug_request_ops;
  extern const struct ethnl_request_ops ethnl_wol_request_ops;
@@ -383,5 +383,5 @@ index 60efd87686ad..e9005dae0e4e 100644
  int ethnl_set_linkinfo(struct sk_buff *skb, struct genl_info *info);
  int ethnl_set_linkmodes(struct sk_buff *skb, struct genl_info *info);
 -- 
-2.25.0
+2.25.1
 

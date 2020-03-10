@@ -1,7 +1,7 @@
-From 03d91616eee5eb83ab48a8c9d17b89fab72b3655 Mon Sep 17 00:00:00 2001
+From 2d40de5e5bf3456e9086b936154d39ce91c2f4d7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 28 Jul 2019 19:12:37 +0200
-Subject: [PATCH 3/5] ethtool: add ethnl_parse_bitset() helper
+Subject: [PATCH 04/15] ethtool: add ethnl_parse_bitset() helper
 
 Unlike other SET type commands, modifying netdev features is required to
 provide a reply telling userspace what was actually changed, compared to
@@ -19,10 +19,10 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 98 insertions(+)
 
 diff --git a/net/ethtool/bitset.c b/net/ethtool/bitset.c
-index 8977fe1f3946..7b04312a62ba 100644
+index ef9197541cb3..db2935206f3d 100644
 --- a/net/ethtool/bitset.c
 +++ b/net/ethtool/bitset.c
-@@ -587,6 +587,100 @@ int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
+@@ -588,6 +588,100 @@ int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
  	return 0;
  }
  
@@ -101,7 +101,7 @@ index 8977fe1f3946..7b04312a62ba 100644
 +	if (no_mask)
 +		bitmap_fill(mask, nbits);
 +	else
-+		bitmap_zero(val, nbits);
++		bitmap_zero(mask, nbits);
 +
 +	nla_for_each_nested(bit_attr, tb[ETHTOOL_A_BITSET_BITS], rem) {
 +		unsigned int idx;
@@ -112,9 +112,9 @@ index 8977fe1f3946..7b04312a62ba 100644
 +		if (ret < 0)
 +			return ret;
 +		if (bit_val)
-+			bitmap_set(val, idx, nbits);
++			set_bit(idx, val);
 +		if (!no_mask)
-+			bitmap_set(mask, idx, nbits);
++			set_bit(idx, mask);
 +	}
 +
 +	return 0;
@@ -124,10 +124,10 @@ index 8977fe1f3946..7b04312a62ba 100644
  
  /* 64-bit big endian architectures are the only case when u32 based bitmaps
 diff --git a/net/ethtool/bitset.h b/net/ethtool/bitset.h
-index b8247e34109d..3cd07b113979 100644
+index b849f9d19676..c2c2e0051d00 100644
 --- a/net/ethtool/bitset.h
 +++ b/net/ethtool/bitset.h
-@@ -24,5 +24,9 @@ int ethnl_update_bitset(unsigned long *bitmap, unsigned int nbits,
+@@ -26,5 +26,9 @@ int ethnl_update_bitset(unsigned long *bitmap, unsigned int nbits,
  int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
  			  const struct nlattr *attr, ethnl_string_array_t names,
  			  struct netlink_ext_ack *extack, bool *mod);
@@ -138,5 +138,5 @@ index b8247e34109d..3cd07b113979 100644
  
  #endif /* _NET_ETHTOOL_BITSET_H */
 -- 
-2.25.0
+2.25.1
 
