@@ -1,10 +1,10 @@
-From d50ab1ab65d07f2986708bdb94a999a1bdf0e01a Mon Sep 17 00:00:00 2001
+From 4fda0f27da984254c3df3c9e58751134967036c9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Jan 2020 00:03:08 +0100
 Subject: [PATCH 05/15] ethtool: set netdev features with FEATURES_SET request
 
-Implement FEATURES_SET netlink request to set network device features (like
-ETHTOOL_SFEATURES ioctl request does.
+Implement FEATURES_SET netlink request to set network device features.
+These are traditionally set using ETHTOOL_SFEATURES ioctl request.
 
 Actual change is subject to netdev_change_features() sanity checks so that
 it can differ from what was requested. Unlike with most other SET requests,

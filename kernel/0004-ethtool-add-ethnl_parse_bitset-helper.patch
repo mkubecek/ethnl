@@ -1,4 +1,4 @@
-From 2d40de5e5bf3456e9086b936154d39ce91c2f4d7 Mon Sep 17 00:00:00 2001
+From 70fe704ddd961de7250e2cb7800369509ed6e1d8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 28 Jul 2019 19:12:37 +0200
 Subject: [PATCH 04/15] ethtool: add ethnl_parse_bitset() helper

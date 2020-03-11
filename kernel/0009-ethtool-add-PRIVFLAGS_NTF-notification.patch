@@ -1,4 +1,4 @@
-From 0843ddbebbf34f0a7817faebdfc73691fda520d1 Mon Sep 17 00:00:00 2001
+From 2cf31052f5bed5f9aa55ffcb63710c637be26402 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 9 Mar 2020 10:18:30 +0100
 Subject: [PATCH 09/15] ethtool: add PRIVFLAGS_NTF notification

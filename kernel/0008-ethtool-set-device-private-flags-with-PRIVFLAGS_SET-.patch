@@ -1,4 +1,4 @@
-From f4a11c2426e6a06c3edd5f132f7e572ca12638dd Mon Sep 17 00:00:00 2001
+From ee141a0bfbe5f6fe1ada537e0f0f1001100eaee5 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 9 Mar 2020 10:15:51 +0100
 Subject: [PATCH 08/15] ethtool: set device private flags with PRIVFLAGS_SET

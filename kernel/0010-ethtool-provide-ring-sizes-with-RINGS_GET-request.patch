@@ -1,4 +1,4 @@
-From 1dfa6f0fc2c447265858aaeeb949c57c4f833f25 Mon Sep 17 00:00:00 2001
+From 55a76ca4eecc92c7209775340ff36ba5dd32f713 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 9 Mar 2020 10:25:57 +0100
 Subject: [PATCH 10/15] ethtool: provide ring sizes with RINGS_GET request

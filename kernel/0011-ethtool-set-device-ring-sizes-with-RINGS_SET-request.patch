@@ -1,4 +1,4 @@
-From 33048c10f9d8c2b5c51c3e87139d468b36d51aab Mon Sep 17 00:00:00 2001
+From ec91e4c53d75ec8e499ecaec36948674b2ef07cc Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 9 Mar 2020 10:31:10 +0100
 Subject: [PATCH 11/15] ethtool: set device ring sizes with RINGS_SET request

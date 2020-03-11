@@ -1,4 +1,4 @@
-From 3adbbbfbc956e9f62961434da2213386b59faac1 Mon Sep 17 00:00:00 2001
+From d2f0b1a0a73f53603c68eb8522cf87167f9b53ac Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 9 Mar 2020 11:04:29 +0100
 Subject: [PATCH 14/15] ethtool: set device channel counts with CHANNELS_SET

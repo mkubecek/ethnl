@@ -1,4 +1,4 @@
-From 99bf06af3a88df86ea3c1d8f54cbbf4902f7a14c Mon Sep 17 00:00:00 2001
+From ee9a57d9bd6d637587a3ca653b6f0cc02a6c505a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 9 Mar 2020 10:35:48 +0100
 Subject: [PATCH 12/15] ethtool: add RINGS_NTF notification

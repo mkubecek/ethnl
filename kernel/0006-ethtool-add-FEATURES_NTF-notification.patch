@@ -1,4 +1,4 @@
-From c26e817cbe7655f98693a33cded0d54c6b0b629b Mon Sep 17 00:00:00 2001
+From 34fbf1c52e23440328f5ca53e7ad8bef9bc991b7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Jan 2020 17:41:05 +0100
 Subject: [PATCH 06/15] ethtool: add FEATURES_NTF notification

@@ -1,4 +1,4 @@
-From c7c38a3a71c376dc141fad267a8f615e84e25ebd Mon Sep 17 00:00:00 2001
+From 1658adf064ca5d7d17bfb3c40f5dc88ea83295b1 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 9 Mar 2020 10:10:40 +0100
 Subject: [PATCH 07/15] ethtool: provide private flags with PRIVFLAGS_GET

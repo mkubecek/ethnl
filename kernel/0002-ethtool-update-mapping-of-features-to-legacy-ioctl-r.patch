@@ -1,7 +1,8 @@
-From 388b785b34ffe3ccc77e5553e87b7d902ba89c2b Mon Sep 17 00:00:00 2001
+From a4ae8b2dd878062bee9be4b1af655f0927c777c4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 9 Mar 2020 09:36:10 +0100
-Subject: [PATCH 02/15] ethtool: update mapping of features to legacy flags
+Subject: [PATCH 02/15] ethtool: update mapping of features to legacy ioctl
+ requests
 
 Legacy ioctl request like ETHTOOL_GTXCSUM are still used by ethtool utility
 to get values of legacy flags (which rather work as feature groups). These
@@ -10,9 +11,9 @@ implemented as an attempt to set all features mapping to them but there are
 two inconsistencies:
 
 - tx-checksum-fcoe-crc is shown under tx-checksumming but NETIF_F_FCOE_CRC
-  is not included for ETHTOOL_GTXCSUM/ETHTOOL_STXCSUM
+  is not included in ETHTOOL_GTXCSUM/ETHTOOL_STXCSUM
 - tx-scatter-gather-fraglist is shown under scatter-gather but
-  NETIF_F_FRAGLIST is not included for ETHTOOL_GSG/ETHTOOL_SSG
+  NETIF_F_FRAGLIST is not included in ETHTOOL_GSG/ETHTOOL_SSG
 
 As the mapping in ethtool output is more correct from logical point of
 view, fix ethtool_get_feature_mask() to match it.

@@ -1,10 +1,10 @@
-From 29efb97509da634bbb44647fcfb4e848deb66e91 Mon Sep 17 00:00:00 2001
+From a3ed11c43f5ac0a68d3b3dfdf62de755ad240e59 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sat, 25 Jan 2020 22:22:52 +0100
 Subject: [PATCH 03/15] ethtool: provide netdev features with FEATURES_GET
  request
 
-Implement FEATURES_GET request to get network device features,
+Implement FEATURES_GET request to get network device features. These are
 traditionally available via ETHTOOL_GFEATURES ioctl request.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>

@@ -1,4 +1,4 @@
-From ab55a7af0f0dc375e125a9414e6fe66ecc86c299 Mon Sep 17 00:00:00 2001
+From 62ce4aad74028e861c4c8d28b663ee16549226e0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 9 Mar 2020 11:26:07 +0100
 Subject: [PATCH 15/15] ethtool: add CHANNELS_NTF notification
