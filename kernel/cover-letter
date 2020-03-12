@@ -10,3 +10,14 @@ Implementation of more netlink request types:
 Patch 1 is a style cleanup suggested in part 2 review and patch 2 updates
 the mapping between netdev features and legacy ioctl requests (which are
 still used by ethtool for backward compatibility).
+
+Changes in v2:
+  - fix netdev reference leaks in error path of ethnl_set_rings() and
+    ethnl_set_channels() (found by Jakub Kicinski)
+  - use __set_bit() rather than set_bit() (suggested by David Miller)
+  - in replies to RINGS_GET and CHANNELS_GET requests, omit ring and
+    channel types not supported by driver/device (suggested by Jakub
+    Kicinski)
+  - more descriptive message size calculations in rings_reply_size() and
+    channels_reply_size() (suggested by Jakub Kicinski)
+  - coding style cleanup (suggested by Jakub Kicinski)

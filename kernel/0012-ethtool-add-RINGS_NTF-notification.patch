@@ -1,4 +1,4 @@
-From ee9a57d9bd6d637587a3ca653b6f0cc02a6c505a Mon Sep 17 00:00:00 2001
+From 6e6d5a2d2b6e0934d18ab29228a8b296d15a6afe Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 9 Mar 2020 10:35:48 +0100
 Subject: [PATCH 12/15] ethtool: add RINGS_NTF notification
@@ -85,10 +85,10 @@ index 6a1ac8897a7e..653e009216cd 100644
  
  void ethtool_notify(struct net_device *dev, unsigned int cmd, const void *data)
 diff --git a/net/ethtool/rings.c b/net/ethtool/rings.c
-index 56e628456619..0e29443e13d6 100644
+index 93f428e9a6c2..c2ebf72be217 100644
 --- a/net/ethtool/rings.c
 +++ b/net/ethtool/rings.c
-@@ -176,6 +176,9 @@ int ethnl_set_rings(struct sk_buff *skb, struct genl_info *info)
+@@ -186,6 +186,9 @@ int ethnl_set_rings(struct sk_buff *skb, struct genl_info *info)
  	}
  
  	ret = dev->ethtool_ops->set_ringparam(dev, &ringparam);

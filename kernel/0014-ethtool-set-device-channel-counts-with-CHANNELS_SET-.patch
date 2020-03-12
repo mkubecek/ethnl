@@ -1,4 +1,4 @@
-From d2f0b1a0a73f53603c68eb8522cf87167f9b53ac Mon Sep 17 00:00:00 2001
+From 58eaff0d7ec1cd4a85142c07e4a1c97772b784e3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 9 Mar 2020 11:04:29 +0100
 Subject: [PATCH 14/15] ethtool: set device channel counts with CHANNELS_SET
@@ -16,17 +16,20 @@ implemented.
 Move ethtool_get_max_rxfh_channel() helper into common.c so that it can be
 used by both ioctl and netlink code.
 
+v2:
+  - fix netdev reference leak in error path (found by Jakub Kicinsky)
+
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  Documentation/networking/ethtool-netlink.rst |  23 +++-
  include/uapi/linux/ethtool_netlink.h         |   1 +
- net/ethtool/channels.c                       | 114 +++++++++++++++++++
+ net/ethtool/channels.c                       | 116 +++++++++++++++++++
  net/ethtool/common.c                         |  31 +++++
  net/ethtool/common.h                         |   1 +
  net/ethtool/ioctl.c                          |  31 -----
  net/ethtool/netlink.c                        |   5 +
  net/ethtool/netlink.h                        |   1 +
- 8 files changed, 175 insertions(+), 32 deletions(-)
+ 8 files changed, 177 insertions(+), 32 deletions(-)
 
 diff --git a/Documentation/networking/ethtool-netlink.rst b/Documentation/networking/ethtool-netlink.rst
 index decbbddfd8be..7df7476cf310 100644
@@ -89,7 +92,7 @@ index 2270eb115eca..f1384a8f3534 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_USER_CNT,
 diff --git a/net/ethtool/channels.c b/net/ethtool/channels.c
-index 01e7d7d39721..412b6380766d 100644
+index 500dd5ad250b..ee232c11acae 100644
 --- a/net/ethtool/channels.c
 +++ b/net/ethtool/channels.c
 @@ -1,5 +1,7 @@
@@ -100,7 +103,7 @@ index 01e7d7d39721..412b6380766d 100644
  #include "netlink.h"
  #include "common.h"
  
-@@ -97,3 +99,115 @@ const struct ethnl_request_ops ethnl_channels_request_ops = {
+@@ -106,3 +108,117 @@ const struct ethnl_request_ops ethnl_channels_request_ops = {
  	.reply_size		= channels_reply_size,
  	.fill_reply		= channels_fill_reply,
  };
@@ -147,8 +150,9 @@ index 01e7d7d39721..412b6380766d 100644
 +		return ret;
 +	dev = req_info.dev;
 +	ops = dev->ethtool_ops;
++	ret = -EOPNOTSUPP;
 +	if (!ops->get_channels || !ops->set_channels)
-+		return -EOPNOTSUPP;
++		goto out_dev;
 +
 +	rtnl_lock();
 +	ret = ethnl_ops_begin(dev);
@@ -213,6 +217,7 @@ index 01e7d7d39721..412b6380766d 100644
 +	ethnl_ops_complete(dev);
 +out_rtnl:
 +	rtnl_unlock();
++out_dev:
 +	dev_put(dev);
 +	return ret;
 +}
@@ -256,7 +261,7 @@ index 7b6969af5ae7..0b22741b2f8f 100644
 +	return ret;
 +}
 diff --git a/net/ethtool/common.h b/net/ethtool/common.h
-index 82211430d3db..6480033f8d98 100644
+index 7dc1163800a7..03946e16e623 100644
 --- a/net/ethtool/common.h
 +++ b/net/ethtool/common.h
 @@ -29,5 +29,6 @@ int __ethtool_get_link(struct net_device *dev);

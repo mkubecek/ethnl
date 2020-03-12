@@ -1,4 +1,4 @@
-From 4fda0f27da984254c3df3c9e58751134967036c9 Mon Sep 17 00:00:00 2001
+From 82d8d976acc0039df90313d1835821f987ebef4f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Jan 2020 00:03:08 +0100
 Subject: [PATCH 05/15] ethtool: set netdev features with FEATURES_SET request
@@ -156,10 +156,10 @@ index d0cc7a0334c8..6f7aaa6b7f42 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
 diff --git a/net/ethtool/features.c b/net/ethtool/features.c
-index 9814d5aa6f77..a12e73db4452 100644
+index a0cc2b969053..4ac1e05684ce 100644
 --- a/net/ethtool/features.c
 +++ b/net/ethtool/features.c
-@@ -132,3 +132,172 @@ const struct ethnl_request_ops ethnl_features_request_ops = {
+@@ -129,3 +129,172 @@ const struct ethnl_request_ops ethnl_features_request_ops = {
  	.reply_size		= features_reply_size,
  	.fill_reply		= features_fill_reply,
  };

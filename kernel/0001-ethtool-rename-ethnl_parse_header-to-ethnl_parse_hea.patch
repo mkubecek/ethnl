@@ -1,4 +1,4 @@
-From c2c1b968bf079121c852f380daaeb7efd7371ad8 Mon Sep 17 00:00:00 2001
+From 0ecad4d21fab1c8aaef043a2dbf043c6f9680d6c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 9 Mar 2020 13:28:03 +0100
 Subject: [PATCH 01/15] ethtool: rename ethnl_parse_header() to
@@ -146,7 +146,7 @@ index e1b8a65b64c4..1d2bcabee554 100644
  		return ret;
  	dev = req_info.dev;
 
-base-commit: 314a9cbbfb1de1e3fe7a14e906efcfd983ab85bf
+base-commit: af91fd7e17f12119763b95ccf526bce4b0693144
 -- 
 2.25.1
 

@@ -1,4 +1,4 @@
-From 34fbf1c52e23440328f5ca53e7ad8bef9bc991b7 Mon Sep 17 00:00:00 2001
+From 62c68681c338ae22b0d2924e9b8728f7858023d2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 26 Jan 2020 17:41:05 +0100
 Subject: [PATCH 06/15] ethtool: add FEATURES_NTF notification
@@ -53,10 +53,10 @@ index 6f7aaa6b7f42..3d0204cf96a6 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
 diff --git a/net/ethtool/features.c b/net/ethtool/features.c
-index a12e73db4452..cf00751067c6 100644
+index 4ac1e05684ce..4e632dc987d8 100644
 --- a/net/ethtool/features.c
 +++ b/net/ethtool/features.c
-@@ -233,6 +233,7 @@ int ethnl_set_features(struct sk_buff *skb, struct genl_info *info)
+@@ -230,6 +230,7 @@ int ethnl_set_features(struct sk_buff *skb, struct genl_info *info)
  	struct nlattr *tb[ETHTOOL_A_FEATURES_MAX + 1];
  	struct ethnl_req_info req_info = {};
  	struct net_device *dev;
@@ -64,7 +64,7 @@ index a12e73db4452..cf00751067c6 100644
  	int ret;
  
  	ret = nlmsg_parse(info->nlhdr, GENL_HDRLEN, tb,
-@@ -275,6 +276,7 @@ int ethnl_set_features(struct sk_buff *skb, struct genl_info *info)
+@@ -272,6 +273,7 @@ int ethnl_set_features(struct sk_buff *skb, struct genl_info *info)
  	dev->wanted_features = ethnl_bitmap_to_features(req_wanted);
  	__netdev_update_features(dev);
  	ethnl_features_to_bitmap(new_active, dev->features);
@@ -72,7 +72,7 @@ index a12e73db4452..cf00751067c6 100644
  
  	ret = 0;
  	if (!(req_info.flags & ETHTOOL_FLAG_OMIT_REPLY)) {
-@@ -295,6 +297,8 @@ int ethnl_set_features(struct sk_buff *skb, struct genl_info *info)
+@@ -292,6 +294,8 @@ int ethnl_set_features(struct sk_buff *skb, struct genl_info *info)
  					  wanted_diff_mask, new_active,
  					  active_diff_mask, compact);
  	}

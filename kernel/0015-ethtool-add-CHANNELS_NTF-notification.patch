@@ -1,4 +1,4 @@
-From 62ce4aad74028e861c4c8d28b663ee16549226e0 Mon Sep 17 00:00:00 2001
+From 884def7dd88186adee725d0348f5779a63763703 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 9 Mar 2020 11:26:07 +0100
 Subject: [PATCH 15/15] ethtool: add CHANNELS_NTF notification
@@ -41,10 +41,10 @@ index f1384a8f3534..c7c7a1a550af 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
 diff --git a/net/ethtool/channels.c b/net/ethtool/channels.c
-index 412b6380766d..04d1a75a55c7 100644
+index ee232c11acae..8dc5485333a4 100644
 --- a/net/ethtool/channels.c
 +++ b/net/ethtool/channels.c
-@@ -203,6 +203,9 @@ int ethnl_set_channels(struct sk_buff *skb, struct genl_info *info)
+@@ -213,6 +213,9 @@ int ethnl_set_channels(struct sk_buff *skb, struct genl_info *info)
  		}
  
  	ret = dev->ethtool_ops->set_channels(dev, &channels);

@@ -1,4 +1,4 @@
-From 70fe704ddd961de7250e2cb7800369509ed6e1d8 Mon Sep 17 00:00:00 2001
+From 2fb9d667997ea5628ebc0d601639e0b7dd59cb35 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 28 Jul 2019 19:12:37 +0200
 Subject: [PATCH 04/15] ethtool: add ethnl_parse_bitset() helper
@@ -12,6 +12,8 @@ bits were requested to change.
 Therefore provide ethnl_parse_bitset() returning effective value and mask
 bitmaps equivalent to the contents of a bitset nested attribute.
 
+v2: use non-atomic __set_bit() (suggested by David Miller)
+
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  net/ethtool/bitset.c | 94 ++++++++++++++++++++++++++++++++++++++++++++
@@ -19,7 +21,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  2 files changed, 98 insertions(+)
 
 diff --git a/net/ethtool/bitset.c b/net/ethtool/bitset.c
-index ef9197541cb3..db2935206f3d 100644
+index ef9197541cb3..dae7402eaca3 100644
 --- a/net/ethtool/bitset.c
 +++ b/net/ethtool/bitset.c
 @@ -588,6 +588,100 @@ int ethnl_update_bitset32(u32 *bitmap, unsigned int nbits,
@@ -112,9 +114,9 @@ index ef9197541cb3..db2935206f3d 100644
 +		if (ret < 0)
 +			return ret;
 +		if (bit_val)
-+			set_bit(idx, val);
++			__set_bit(idx, val);
 +		if (!no_mask)
-+			set_bit(idx, mask);
++			__set_bit(idx, mask);
 +	}
 +
 +	return 0;

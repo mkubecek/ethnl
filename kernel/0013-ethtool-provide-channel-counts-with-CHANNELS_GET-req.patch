@@ -1,4 +1,4 @@
-From 316d090cdc05a905d761b10e607e19a3060be878 Mon Sep 17 00:00:00 2001
+From 94c8eef601034d8f7409a760479e472e506c3ea7 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Mon, 9 Mar 2020 10:56:04 +0100
 Subject: [PATCH 13/15] ethtool: provide channel counts with CHANNELS_GET
@@ -7,15 +7,23 @@ Subject: [PATCH 13/15] ethtool: provide channel counts with CHANNELS_GET
 Implement CHANNELS_GET request to get channel counts of a network device.
 These are traditionally available via ETHTOOL_GCHANNELS ioctl request.
 
+Omit attributes for channel types which are not supported by driver or
+device (zero reported for maximum).
+
+v2: (all suggested by Jakub Kicinski)
+  - minor cleanup in channels_prepare_data()
+  - more descriptive channels_reply_size()
+  - omit attributes with zero max count
+
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Documentation/networking/ethtool-netlink.rst | 30 +++++-
- include/uapi/linux/ethtool_netlink.h         | 21 +++++
- net/ethtool/Makefile                         |  3 +-
- net/ethtool/channels.c                       | 99 ++++++++++++++++++++
- net/ethtool/netlink.c                        |  8 ++
- net/ethtool/netlink.h                        |  1 +
- 6 files changed, 160 insertions(+), 2 deletions(-)
+ Documentation/networking/ethtool-netlink.rst |  30 +++++-
+ include/uapi/linux/ethtool_netlink.h         |  21 ++++
+ net/ethtool/Makefile                         |   3 +-
+ net/ethtool/channels.c                       | 108 +++++++++++++++++++
+ net/ethtool/netlink.c                        |   8 ++
+ net/ethtool/netlink.h                        |   1 +
+ 6 files changed, 169 insertions(+), 2 deletions(-)
  create mode 100644 net/ethtool/channels.c
 
 diff --git a/Documentation/networking/ethtool-netlink.rst b/Documentation/networking/ethtool-netlink.rst
@@ -139,10 +147,10 @@ index b48b70ef4ed0..b0bd3decad02 100644
 +		   channels.o
 diff --git a/net/ethtool/channels.c b/net/ethtool/channels.c
 new file mode 100644
-index 000000000000..01e7d7d39721
+index 000000000000..500dd5ad250b
 --- /dev/null
 +++ b/net/ethtool/channels.c
-@@ -0,0 +1,99 @@
+@@ -0,0 +1,108 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +
 +#include "netlink.h"
@@ -188,17 +196,22 @@ index 000000000000..01e7d7d39721
 +	if (ret < 0)
 +		return ret;
 +	dev->ethtool_ops->get_channels(dev, &data->channels);
-+	ret = 0;
 +	ethnl_ops_complete(dev);
 +
-+	return ret;
++	return 0;
 +}
 +
 +static int channels_reply_size(const struct ethnl_req_info *req_base,
 +			       const struct ethnl_reply_data *reply_base)
 +{
-+	return 8 * nla_total_size(sizeof(u32))
-+		+ 0;
++	return nla_total_size(sizeof(u32)) +	/* _CHANNELS_RX_MAX */
++	       nla_total_size(sizeof(u32)) +	/* _CHANNELS_TX_MAX */
++	       nla_total_size(sizeof(u32)) +	/* _CHANNELS_OTHER_MAX */
++	       nla_total_size(sizeof(u32)) +	/* _CHANNELS_COMBINED_MAX */
++	       nla_total_size(sizeof(u32)) +	/* _CHANNELS_RX_COUNT */
++	       nla_total_size(sizeof(u32)) +	/* _CHANNELS_TX_COUNT */
++	       nla_total_size(sizeof(u32)) +	/* _CHANNELS_OTHER_COUNT */
++	       nla_total_size(sizeof(u32));	/* _CHANNELS_COMBINED_COUNT */
 +}
 +
 +static int channels_fill_reply(struct sk_buff *skb,
@@ -208,22 +221,26 @@ index 000000000000..01e7d7d39721
 +	const struct channels_reply_data *data = CHANNELS_REPDATA(reply_base);
 +	const struct ethtool_channels *channels = &data->channels;
 +
-+	if (nla_put_u32(skb, ETHTOOL_A_CHANNELS_RX_MAX,
-+			channels->max_rx) ||
-+	    nla_put_u32(skb, ETHTOOL_A_CHANNELS_TX_MAX,
-+			channels->max_tx) ||
-+	    nla_put_u32(skb, ETHTOOL_A_CHANNELS_OTHER_MAX,
-+			channels->max_other) ||
-+	    nla_put_u32(skb, ETHTOOL_A_CHANNELS_COMBINED_MAX,
-+			channels->max_combined) ||
-+	    nla_put_u32(skb, ETHTOOL_A_CHANNELS_RX_COUNT,
-+			channels->rx_count) ||
-+	    nla_put_u32(skb, ETHTOOL_A_CHANNELS_TX_COUNT,
-+			channels->tx_count) ||
-+	    nla_put_u32(skb, ETHTOOL_A_CHANNELS_OTHER_COUNT,
-+			channels->other_count) ||
-+	    nla_put_u32(skb, ETHTOOL_A_CHANNELS_COMBINED_COUNT,
-+			channels->combined_count))
++	if ((channels->max_rx &&
++	     (nla_put_u32(skb, ETHTOOL_A_CHANNELS_RX_MAX,
++			  channels->max_rx) ||
++	      nla_put_u32(skb, ETHTOOL_A_CHANNELS_RX_COUNT,
++			  channels->rx_count))) ||
++	    (channels->max_tx &&
++	     (nla_put_u32(skb, ETHTOOL_A_CHANNELS_TX_MAX,
++			  channels->max_tx) ||
++	      nla_put_u32(skb, ETHTOOL_A_CHANNELS_TX_COUNT,
++			  channels->tx_count))) ||
++	    (channels->max_other &&
++	     (nla_put_u32(skb, ETHTOOL_A_CHANNELS_OTHER_MAX,
++			  channels->max_other) ||
++	      nla_put_u32(skb, ETHTOOL_A_CHANNELS_OTHER_COUNT,
++			  channels->other_count))) ||
++	    (channels->max_combined &&
++	     (nla_put_u32(skb, ETHTOOL_A_CHANNELS_COMBINED_MAX,
++			  channels->max_combined) ||
++	      nla_put_u32(skb, ETHTOOL_A_CHANNELS_COMBINED_COUNT,
++			  channels->combined_count))))
 +		return -EMSGSIZE;
 +
 +	return 0;
