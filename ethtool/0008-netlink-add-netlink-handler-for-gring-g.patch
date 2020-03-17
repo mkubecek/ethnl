@@ -1,7 +1,7 @@
-From c4acf56625dbf4523550585ccc1e4dc1b712d7e3 Mon Sep 17 00:00:00 2001
+From 2e5073dff0529d8dd598b8c23c533623f2c58ec0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 10 Mar 2020 14:28:31 +0100
-Subject: [PATCH 33/36] netlink: add netlink handler for gring (-g)
+Subject: [PATCH 08/11] netlink: add netlink handler for gring (-g)
 
 Implement "ethtool -g <dev>" subcommand using ETHTOOL_MSG_RINGS_GET netlink
 message. This retrieves and displays device ring sizes, traditionally

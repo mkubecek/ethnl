@@ -1,7 +1,7 @@
-From 06d592e04f2aa3b9e16e01efea8195b7244394b3 Mon Sep 17 00:00:00 2001
+From 6e344ff329c1ec1a2392184e03cdc5e3a1f2a966 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 6 Mar 2020 20:08:01 +0100
-Subject: [PATCH 29/36] netlink: add netlink handler for gfeatures (-k)
+Subject: [PATCH 04/11] netlink: add netlink handler for gfeatures (-k)
 
 Implement "ethtool -k <dev>" subcommand using ETHTOOL_MSG_FEATURES_GET
 netlink message. This retrieves and displays names and values of netdev

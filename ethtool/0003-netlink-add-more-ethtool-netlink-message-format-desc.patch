@@ -1,7 +1,7 @@
-From 1ab332d25d717cca8cb66b421b36688a43f6a3cf Mon Sep 17 00:00:00 2001
+From 820662a32cb86483e347b6dbfc4259664c994ce8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 10 Mar 2020 14:12:16 +0100
-Subject: [PATCH 28/36] netlink: add more ethtool netlink message format
+Subject: [PATCH 03/11] netlink: add more ethtool netlink message format
  descriptions
 
 Add message format descriptions for pretty printing of messages related to

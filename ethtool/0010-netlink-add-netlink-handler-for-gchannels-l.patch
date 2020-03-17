@@ -1,7 +1,7 @@
-From 60d9a8f3bfca43d737feb6e2fbf3c73dc5650d0f Mon Sep 17 00:00:00 2001
+From 4e1d6b25a90af9aaae561893da6e35ae8d5923bf Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 10 Mar 2020 14:31:57 +0100
-Subject: [PATCH 35/36] netlink: add netlink handler for gchannels (-l)
+Subject: [PATCH 10/11] netlink: add netlink handler for gchannels (-l)
 
 Implement "ethtool -l <dev>" subcommand using ETHTOOL_MSG_CHANNELS_GET
 netlink message. This retrieves and displays device channel counts,

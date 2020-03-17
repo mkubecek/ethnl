@@ -1,7 +1,7 @@
-From 1291f3b60399246f5164a3801decc14f2c2c8067 Mon Sep 17 00:00:00 2001
+From ddd431a824251f771c2480e7fcbcb920607819c6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 10 Mar 2020 14:20:33 +0100
-Subject: [PATCH 32/36] netlink: add netlink handler for sprivflags
+Subject: [PATCH 07/11] netlink: add netlink handler for sprivflags
  (--set-priv-flags)
 
 Implement "ethtool --set-priv-flags <dev> ..." subcommand to set device

@@ -1,7 +1,7 @@
-From d4244edca5cbd071bffa8861764b8f589a8858c3 Mon Sep 17 00:00:00 2001
+From 2344e747a7dd5e412e38eec23258e848c30a281c Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 10 Mar 2020 14:16:01 +0100
-Subject: [PATCH 31/36] netlink: add netlink handler for gprivflags
+Subject: [PATCH 06/11] netlink: add netlink handler for gprivflags
  (--show-priv-flags)
 
 Implement "ethtool --show-priv-flags <dev>" subcommand using
