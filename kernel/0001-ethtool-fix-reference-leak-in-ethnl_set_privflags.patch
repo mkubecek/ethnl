@@ -1,0 +1,51 @@
+From d76ac0a1a45b8a91471a92f2db99e78e5a42ae32 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Sun, 22 Mar 2020 21:17:09 +0100
+Subject: [PATCH 01/12] ethtool: fix reference leak in ethnl_set_privflags()
+
+Andrew noticed that some handlers for *_SET commands leak a netdev
+reference if required ethtool_ops callbacks do not exist. One of them is
+ethnl_set_privflags(), a simple reproducer would be e.g.
+
+  ip link add veth1 type veth peer name veth2
+  ethtool --set-priv-flags veth1 foo on
+  ip link del veth1
+
+Make sure dev_put() is called when ethtool_ops check fails.
+
+Fixes: f265d799596a ("ethtool: set device private flags with PRIVFLAGS_SET request")
+Reported-by: Andrew Lunn <andrew@lunn.ch>
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ net/ethtool/privflags.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/net/ethtool/privflags.c b/net/ethtool/privflags.c
+index e8f03b33db9b..77447dceb109 100644
+--- a/net/ethtool/privflags.c
++++ b/net/ethtool/privflags.c
+@@ -175,9 +175,10 @@ int ethnl_set_privflags(struct sk_buff *skb, struct genl_info *info)
+ 		return ret;
+ 	dev = req_info.dev;
+ 	ops = dev->ethtool_ops;
++	ret = -EOPNOTSUPP;
+ 	if (!ops->get_priv_flags || !ops->set_priv_flags ||
+ 	    !ops->get_sset_count || !ops->get_strings)
+-		return -EOPNOTSUPP;
++		goto out_dev;
+ 
+ 	rtnl_lock();
+ 	ret = ethnl_ops_begin(dev);
+@@ -204,6 +205,7 @@ int ethnl_set_privflags(struct sk_buff *skb, struct genl_info *info)
+ 	ethnl_ops_complete(dev);
+ out_rtnl:
+ 	rtnl_unlock();
++out_dev:
+ 	dev_put(dev);
+ 	return ret;
+ }
+
+base-commit: 92b7e62e5630a370955a4760bbeb3967457034ec
+-- 
+2.25.1
+
