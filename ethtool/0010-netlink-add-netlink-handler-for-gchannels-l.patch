@@ -1,7 +1,7 @@
-From 4e1d6b25a90af9aaae561893da6e35ae8d5923bf Mon Sep 17 00:00:00 2001
+From f0533d7f2cd4ce8c72d14ae6b2fb3eaf3b8a91b3 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 10 Mar 2020 14:31:57 +0100
-Subject: [PATCH 10/11] netlink: add netlink handler for gchannels (-l)
+Subject: [PATCH 10/18] netlink: add netlink handler for gchannels (-l)
 
 Implement "ethtool -l <dev>" subcommand using ETHTOOL_MSG_CHANNELS_GET
 netlink message. This retrieves and displays device channel counts,
@@ -161,7 +161,7 @@ index 1daf9804c527..83f701b71e5e 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index a0b08c3cc70e..881413086ea7 100644
+index fc5725114032..d6a57fb0e2c2 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
 @@ -59,6 +59,7 @@ int debug_reply_cb(const struct nlmsghdr *nlhdr, void *data);

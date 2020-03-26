@@ -1,7 +1,7 @@
-From 0d395199f0c5e03dd4e1cc74c910986231949715 Mon Sep 17 00:00:00 2001
+From 85a975a0ddbfaa3d43bb9fd5c89d59c0dc910016 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 8 Mar 2020 00:31:52 +0100
-Subject: [PATCH 05/11] netlink: add netlink handler for sfeatures (-K)
+Subject: [PATCH 05/18] netlink: add netlink handler for sfeatures (-K)
 
 Implement "ethtool -K <dev> ..." subcommand to set netdev feature flags
 using ETHTOOL_MSG_FEATURES_SET netlink message. These are traditionally set

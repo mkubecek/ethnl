@@ -1,7 +1,7 @@
-From 304ffb717c3132779b4a0413f7ce31db2520d05e Mon Sep 17 00:00:00 2001
+From 3ef3f0be2dccf8c33ff948f1f8fb3dc2611ba619 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 10 Mar 2020 14:33:09 +0100
-Subject: [PATCH 11/11] netlink: add netlink handler for schannels (-L)
+Subject: [PATCH 11/18] netlink: add netlink handler for schannels (-L)
 
 Implement "ethtool -L <dev> ..." subcommand to set network device channel
 counts using ETHTOOL_MSG_CHANNELS_SET netlink message. These are

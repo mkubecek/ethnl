@@ -1,7 +1,7 @@
 From 86440c46ff0119bba075e024717c292e2333a920 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 10 Mar 2020 13:24:55 +0100
-Subject: [PATCH 01/11] netlink: show netlink error even without extack
+Subject: [PATCH 01/18] netlink: show netlink error even without extack
 
 Even if the NLMSG_ERROR message has no extack (NLM_F_ACK_TLVS not set, i.e.
 no error/warning message and bad attribute offset), we still want to

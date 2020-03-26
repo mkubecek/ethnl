@@ -1,0 +1,136 @@
+From 63b2640ee1a9da0e40c88cd4337989a2be5a6787 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Wed, 25 Mar 2020 10:59:53 +0100
+Subject: [PATCH 15/18] netlink: add netlink handler for spause (-A)
+
+Implement "ethtool -A <dev> ..." subcommand to set network device pause
+parameters using ETHTOOL_MSG_PAUSE_SET netlink message. These are
+traditionally set using ETHTOOL_SPAUSEPARAM ioctl request.
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+---
+ ethtool.c        |  1 +
+ netlink/extapi.h |  2 ++
+ netlink/pause.c  | 63 +++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 65 insertions(+), 1 deletion(-)
+
+diff --git a/ethtool.c b/ethtool.c
+index 0c9bc871aa5b..bda65ecb2a64 100644
+--- a/ethtool.c
++++ b/ethtool.c
+@@ -5144,6 +5144,7 @@ static const struct option args[] = {
+ 	{
+ 		.opts	= "-A|--pause",
+ 		.func	= do_spause,
++		.nlfunc	= nl_spause,
+ 		.help	= "Set pause options",
+ 		.xhelp	= "		[ autoneg on|off ]\n"
+ 			  "		[ rx on|off ]\n"
+diff --git a/netlink/extapi.h b/netlink/extapi.h
+index c1f9141d4ae7..1b8fb35eb578 100644
+--- a/netlink/extapi.h
++++ b/netlink/extapi.h
+@@ -29,6 +29,7 @@ int nl_schannels(struct cmd_context *ctx);
+ int nl_gcoalesce(struct cmd_context *ctx);
+ int nl_scoalesce(struct cmd_context *ctx);
+ int nl_gpause(struct cmd_context *ctx);
++int nl_spause(struct cmd_context *ctx);
+ int nl_monitor(struct cmd_context *ctx);
+ 
+ void nl_monitor_usage(void);
+@@ -62,6 +63,7 @@ static inline void nl_monitor_usage(void)
+ #define nl_gcoalesce		NULL
+ #define nl_scoalesce		NULL
+ #define nl_gpause		NULL
++#define nl_spause		NULL
+ 
+ #endif /* ETHTOOL_ENABLE_NETLINK */
+ 
+diff --git a/netlink/pause.c b/netlink/pause.c
+index 763885f3e2c0..da51bd864382 100644
+--- a/netlink/pause.c
++++ b/netlink/pause.c
+@@ -1,7 +1,7 @@
+ /*
+  * pause.c - netlink implementation of pause commands
+  *
+- * Implementation of "ethtool -a <dev>"
++ * Implementation of "ethtool -a <dev>" and "ethtool -A <dev> ..."
+  */
+ 
+ #include <errno.h>
+@@ -12,6 +12,7 @@
+ #include "../common.h"
+ #include "netlink.h"
+ #include "bitset.h"
++#include "parser.h"
+ 
+ /* PAUSE_GET */
+ 
+@@ -148,3 +149,63 @@ int nl_gpause(struct cmd_context *ctx)
+ 		return ret;
+ 	return nlsock_send_get_request(nlsk, pause_reply_cb);
+ }
++
++/* PAUSE_SET */
++
++static const struct param_parser spause_params[] = {
++	{
++		.arg		= "autoneg",
++		.type		= ETHTOOL_A_PAUSE_AUTONEG,
++		.handler	= nl_parse_u8bool,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "rx",
++		.type		= ETHTOOL_A_PAUSE_RX,
++		.handler	= nl_parse_u8bool,
++		.min_argc	= 1,
++	},
++	{
++		.arg		= "tx",
++		.type		= ETHTOOL_A_PAUSE_TX,
++		.handler	= nl_parse_u8bool,
++		.min_argc	= 1,
++	},
++	{}
++};
++
++int nl_spause(struct cmd_context *ctx)
++{
++	struct nl_context *nlctx = ctx->nlctx;
++	struct nl_msg_buff *msgbuff;
++	struct nl_socket *nlsk;
++	int ret;
++
++	nlctx->cmd = "-A";
++	nlctx->argp = ctx->argp;
++	nlctx->argc = ctx->argc;
++	nlctx->devname = ctx->devname;
++	nlsk = nlctx->ethnl_socket;
++	msgbuff = &nlsk->msgbuff;
++
++	ret = msg_init(nlctx, msgbuff, ETHTOOL_MSG_PAUSE_SET,
++		       NLM_F_REQUEST | NLM_F_ACK);
++	if (ret < 0)
++		return 2;
++	if (ethnla_fill_header(msgbuff, ETHTOOL_A_PAUSE_HEADER,
++			       ctx->devname, 0))
++		return -EMSGSIZE;
++
++	ret = nl_parser(nlctx, spause_params, NULL, PARSER_GROUP_NONE);
++	if (ret < 0)
++		return 1;
++
++	ret = nlsock_sendmsg(nlsk, NULL);
++	if (ret < 0)
++		return 76;
++	ret = nlsock_process_reply(nlsk, nomsg_reply_cb, nlctx);
++	if (ret == 0)
++		return 0;
++	else
++		return nlctx->exit_code ?: 76;
++}
+-- 
+2.25.1
+

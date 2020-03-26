@@ -1,7 +1,7 @@
-From 2e5073dff0529d8dd598b8c23c533623f2c58ec0 Mon Sep 17 00:00:00 2001
+From ac112845a2dcba33a2e9c7b56116a43dadc3e5fd Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 10 Mar 2020 14:28:31 +0100
-Subject: [PATCH 08/11] netlink: add netlink handler for gring (-g)
+Subject: [PATCH 08/18] netlink: add netlink handler for gring (-g)
 
 Implement "ethtool -g <dev>" subcommand using ETHTOOL_MSG_RINGS_GET netlink
 message. This retrieves and displays device ring sizes, traditionally
@@ -16,9 +16,9 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  ethtool.c         |  1 +
  netlink/extapi.h  |  2 ++
  netlink/monitor.c |  8 ++++++
- netlink/netlink.h | 11 +++++++++
+ netlink/netlink.h | 13 ++++++++++
  netlink/rings.c   | 63 +++++++++++++++++++++++++++++++++++++++++++++++
- 6 files changed, 86 insertions(+), 1 deletion(-)
+ 6 files changed, 88 insertions(+), 1 deletion(-)
  create mode 100644 netlink/rings.c
 
 diff --git a/Makefile.am b/Makefile.am
@@ -93,10 +93,10 @@ index 0eda27ffe22e..1daf9804c527 100644
  
  static bool pattern_match(const char *s, const char *pattern)
 diff --git a/netlink/netlink.h b/netlink/netlink.h
-index 98c21a967ea1..a0b08c3cc70e 100644
+index 98c21a967ea1..fc5725114032 100644
 --- a/netlink/netlink.h
 +++ b/netlink/netlink.h
-@@ -58,6 +58,17 @@ int wol_reply_cb(const struct nlmsghdr *nlhdr, void *data);
+@@ -58,6 +58,19 @@ int wol_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int debug_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int features_reply_cb(const struct nlmsghdr *nlhdr, void *data);
  int privflags_reply_cb(const struct nlmsghdr *nlhdr, void *data);
@@ -108,6 +108,8 @@ index 98c21a967ea1..a0b08c3cc70e 100644
 +{
 +	if (attr)
 +		printf("%s%u\n", label, mnl_attr_get_u32(attr));
++	else
++		printf("%sn/a\n", label);
 +}
 +
 +/* misc */
