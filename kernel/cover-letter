@@ -1,23 +1,12 @@
-ethtool netlink interface, part 3
+ethtool netlink interface, part 4
 
 Implementation of more netlink request types:
 
-  - netdev features (ethtool -k/-K, patches 3-6)
-  - private flags (--show-priv-flags / --set-priv-flags, patches 7-9)
-  - ring sizes (ethtool -g/-G, patches 10-12)
-  - channel counts (ethtool -l/-L, patches 13-15)
+  - coalescing (ethtool -c/-C, patches 2-4)
+  - pause parameters (ethtool -a/-A, patches 5-7)
+  - EEE settings (--show-eee / --set-eee, patches 8-10)
+  - timestamping info (-T, patches 11-12)
 
-Patch 1 is a style cleanup suggested in part 2 review and patch 2 updates
-the mapping between netdev features and legacy ioctl requests (which are
-still used by ethtool for backward compatibility).
-
-Changes in v2:
-  - fix netdev reference leaks in error path of ethnl_set_rings() and
-    ethnl_set_channels() (found by Jakub Kicinski)
-  - use __set_bit() rather than set_bit() (suggested by David Miller)
-  - in replies to RINGS_GET and CHANNELS_GET requests, omit ring and
-    channel types not supported by driver/device (suggested by Jakub
-    Kicinski)
-  - more descriptive message size calculations in rings_reply_size() and
-    channels_reply_size() (suggested by Jakub Kicinski)
-  - coding style cleanup (suggested by Jakub Kicinski)
+Patch 1 is a fix for netdev reference leak similar to commit 2f599ec422ad
+("ethtool: fix reference leak in some *_SET handlers") but fixing a code
+which is only in net-next tree at the moment.
