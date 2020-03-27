@@ -1,4 +1,4 @@
-From f0533d7f2cd4ce8c72d14ae6b2fb3eaf3b8a91b3 Mon Sep 17 00:00:00 2001
+From 0786bd5d74054b5c0f6aca8fce3a0a78cfaff32a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 10 Mar 2020 14:31:57 +0100
 Subject: [PATCH 10/18] netlink: add netlink handler for gchannels (-l)

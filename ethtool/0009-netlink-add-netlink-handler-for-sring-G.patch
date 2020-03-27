@@ -1,4 +1,4 @@
-From 03b27f66f6eb2017c4736daefac3e6ed3547ff70 Mon Sep 17 00:00:00 2001
+From 3a6df35437b0761c339ee53bf416c2c9c92ae54d Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 10 Mar 2020 14:29:35 +0100
 Subject: [PATCH 09/18] netlink: add netlink handler for sring (-G)

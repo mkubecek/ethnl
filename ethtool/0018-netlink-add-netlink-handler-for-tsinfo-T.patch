@@ -1,23 +1,23 @@
-From 574f8baa51c0f665f453427e1ca7e4d50a825c13 Mon Sep 17 00:00:00 2001
+From 616cea6430d36e5077c99381c525e35af7493bac Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 26 Mar 2020 22:17:10 +0100
 Subject: [PATCH 18/18] netlink: add netlink handler for tsinfo (-T)
 
-Implement "ethtool -T <dev>" subcommand using ETHTOOL_MSG_TIMESTAMP_GET
+Implement "ethtool -T <dev>" subcommand using ETHTOOL_MSG_TSINFO_GET
 netlink message. This retrieves and displays device timestamping
 information, traditionally provided by ETHTOOL_GET_TS_INFO ioctl request.
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
- Makefile.am         |   2 +-
- ethtool.c           |   1 +
- netlink/extapi.h    |   2 +
- netlink/timestamp.c | 117 ++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 121 insertions(+), 1 deletion(-)
- create mode 100644 netlink/timestamp.c
+ Makefile.am      |   2 +-
+ ethtool.c        |   1 +
+ netlink/extapi.h |   2 +
+ netlink/tsinfo.c | 116 +++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 120 insertions(+), 1 deletion(-)
+ create mode 100644 netlink/tsinfo.c
 
 diff --git a/Makefile.am b/Makefile.am
-index 78548ef1f7eb..c1185fdb7ef2 100644
+index 78548ef1f7eb..3ae26127a7b9 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -33,7 +33,7 @@ ethtool_SOURCES += \
@@ -25,7 +25,7 @@ index 78548ef1f7eb..c1185fdb7ef2 100644
  		  netlink/features.c netlink/privflags.c netlink/rings.c \
  		  netlink/channels.c netlink/coalesce.c netlink/pause.c \
 -		  netlink/eee.c \
-+		  netlink/eee.c netlink/timestamp.c \
++		  netlink/eee.c netlink/tsinfo.c \
  		  netlink/desc-ethtool.c netlink/desc-genlctrl.c \
  		  netlink/desc-rtnl.c \
  		  uapi/linux/ethtool_netlink.h \
@@ -61,14 +61,14 @@ index 0b2a7e5a3e5c..bb547da20d86 100644
  
  #endif /* ETHTOOL_ENABLE_NETLINK */
  
-diff --git a/netlink/timestamp.c b/netlink/timestamp.c
+diff --git a/netlink/tsinfo.c b/netlink/tsinfo.c
 new file mode 100644
-index 000000000000..d943ab22d247
+index 000000000000..bf5a47d7f3e0
 --- /dev/null
-+++ b/netlink/timestamp.c
-@@ -0,0 +1,117 @@
++++ b/netlink/tsinfo.c
+@@ -0,0 +1,116 @@
 +/*
-+ * timestamp.c - netlink implementation of timestamp commands
++ * tsinfo.c - netlink implementation of timestamping commands
 + *
 + * Implementation of "ethtool -T <dev>"
 + */
@@ -82,10 +82,10 @@ index 000000000000..d943ab22d247
 +#include "netlink.h"
 +#include "bitset.h"
 +
-+/* TIMESTAMP_GET */
++/* TSINFO_GET */
 +
-+static void timestamp_dump_cb(unsigned int idx, const char *name, bool val,
-+			      void *data)
++static void tsinfo_dump_cb(unsigned int idx, const char *name, bool val,
++			   void *data)
 +{
 +	if (!val)
 +		return;
@@ -96,10 +96,9 @@ index 000000000000..d943ab22d247
 +		printf("\tbit%u\n", idx);
 +}
 +
-+static int timestamp_dump_list(struct nl_context *nlctx,
-+			       const struct nlattr *attr, const char *label,
-+			       const char *if_empty,
-+			       unsigned int stringset_id)
++static int tsinfo_dump_list(struct nl_context *nlctx, const struct nlattr *attr,
++			    const char *label, const char *if_empty,
++			    unsigned int stringset_id)
 +{
 +	const struct stringset *strings = NULL;
 +	int ret;
@@ -120,12 +119,12 @@ index 000000000000..d943ab22d247
 +			return ret;
 +		strings = global_stringset(stringset_id, nlctx->ethnl2_socket);
 +	}
-+	return walk_bitset(attr, strings, timestamp_dump_cb, NULL);
++	return walk_bitset(attr, strings, tsinfo_dump_cb, NULL);
 +}
 +
-+int timestamp_reply_cb(const struct nlmsghdr *nlhdr, void *data)
++int tsinfo_reply_cb(const struct nlmsghdr *nlhdr, void *data)
 +{
-+	const struct nlattr *tb[ETHTOOL_A_TIMESTAMP_MAX + 1] = {};
++	const struct nlattr *tb[ETHTOOL_A_TSINFO_MAX + 1] = {};
 +	DECLARE_ATTR_TB_INFO(tb);
 +	struct nl_context *nlctx = data;
 +	bool silent;
@@ -137,7 +136,7 @@ index 000000000000..d943ab22d247
 +	ret = mnl_attr_parse(nlhdr, GENL_HDRLEN, attr_cb, &tb_info);
 +	if (ret < 0)
 +		return err_ret;
-+	nlctx->devname = get_dev_name(tb[ETHTOOL_A_TIMESTAMP_HEADER]);
++	nlctx->devname = get_dev_name(tb[ETHTOOL_A_TSINFO_HEADER]);
 +	if (!dev_ok(nlctx))
 +		return err_ret;
 +
@@ -145,27 +144,27 @@ index 000000000000..d943ab22d247
 +		putchar('\n');
 +	printf("Time stamping parameters for %s:\n", nlctx->devname);
 +
-+	ret = timestamp_dump_list(nlctx, tb[ETHTOOL_A_TIMESTAMP_TIMESTAMPING],
-+				  "Capabilities", "", ETH_SS_SOF_TIMESTAMPING);
++	ret = tsinfo_dump_list(nlctx, tb[ETHTOOL_A_TSINFO_TIMESTAMPING],
++			       "Capabilities", "", ETH_SS_SOF_TIMESTAMPING);
 +	if (ret < 0)
 +		return err_ret;
 +
 +	printf("PTP Hardware Clock: ");
-+	if (tb[ETHTOOL_A_TIMESTAMP_PHC_INDEX])
++	if (tb[ETHTOOL_A_TSINFO_PHC_INDEX])
 +		printf("%d\n",
-+		       mnl_attr_get_u32(tb[ETHTOOL_A_TIMESTAMP_PHC_INDEX]));
++		       mnl_attr_get_u32(tb[ETHTOOL_A_TSINFO_PHC_INDEX]));
 +	else
 +		printf("none\n");
 +
-+	ret = timestamp_dump_list(nlctx, tb[ETHTOOL_A_TIMESTAMP_TX_TYPES],
-+				  "Hardware Transmit Timestamp Modes", " none",
-+				  ETH_SS_TS_TX_TYPES);
++	ret = tsinfo_dump_list(nlctx, tb[ETHTOOL_A_TSINFO_TX_TYPES],
++			       "Hardware Transmit Timestamp Modes", " none",
++			       ETH_SS_TS_TX_TYPES);
 +	if (ret < 0)
 +		return err_ret;
 +
-+	ret = timestamp_dump_list(nlctx, tb[ETHTOOL_A_TIMESTAMP_RX_FILTERS],
-+				  "Hardware Receive Filter Modes", " none",
-+				  ETH_SS_TS_RX_FILTERS);
++	ret = tsinfo_dump_list(nlctx, tb[ETHTOOL_A_TSINFO_RX_FILTERS],
++			       "Hardware Receive Filter Modes", " none",
++			       ETH_SS_TS_RX_FILTERS);
 +	if (ret < 0)
 +		return err_ret;
 +
@@ -178,11 +177,11 @@ index 000000000000..d943ab22d247
 +	struct nl_socket *nlsk = nlctx->ethnl_socket;
 +	int ret;
 +
-+	ret = nlsock_prep_get_request(nlsk, ETHTOOL_MSG_TIMESTAMP_GET,
-+				      ETHTOOL_A_TIMESTAMP_HEADER, 0);
++	ret = nlsock_prep_get_request(nlsk, ETHTOOL_MSG_TSINFO_GET,
++				      ETHTOOL_A_TSINFO_HEADER, 0);
 +	if (ret < 0)
 +		return ret;
-+	return nlsock_send_get_request(nlsk, timestamp_reply_cb);
++	return nlsock_send_get_request(nlsk, tsinfo_reply_cb);
 +}
 -- 
 2.25.1

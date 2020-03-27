@@ -1,4 +1,4 @@
-From 980d0c8f2f3528bc3661290f0db296f5c3ca8d3f Mon Sep 17 00:00:00 2001
+From 6360aa03a2a8b4b125ef6546959d4077c3e3e11b Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 10 Mar 2020 14:20:33 +0100
 Subject: [PATCH 07/18] netlink: add netlink handler for sprivflags

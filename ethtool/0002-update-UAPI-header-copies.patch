@@ -1,4 +1,4 @@
-From 4c813c57298a04e07f75caa991c702402e850cf2 Mon Sep 17 00:00:00 2001
+From 79302ada68a4862d5b5102992590b96fe5a2d7ec Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Fri, 6 Mar 2020 18:14:20 +0100
 Subject: [PATCH 02/18] update UAPI header copies
@@ -62,7 +62,7 @@ index 16198061d723..c5c394899270 100644
  	__ETHTOOL_LINK_MODE_MASK_NBITS
  };
 diff --git a/uapi/linux/ethtool_netlink.h b/uapi/linux/ethtool_netlink.h
-index ad6d3a00019d..ab7809404cac 100644
+index ad6d3a00019d..10061e4b16d9 100644
 --- a/uapi/linux/ethtool_netlink.h
 +++ b/uapi/linux/ethtool_netlink.h
 @@ -24,6 +24,21 @@ enum {
@@ -83,7 +83,7 @@ index ad6d3a00019d..ab7809404cac 100644
 +	ETHTOOL_MSG_PAUSE_SET,
 +	ETHTOOL_MSG_EEE_GET,
 +	ETHTOOL_MSG_EEE_SET,
-+	ETHTOOL_MSG_TIMESTAMP_GET,
++	ETHTOOL_MSG_TSINFO_GET,
  
  	/* add new constants above here */
  	__ETHTOOL_MSG_USER_CNT,
@@ -106,7 +106,7 @@ index ad6d3a00019d..ab7809404cac 100644
 +	ETHTOOL_MSG_PAUSE_NTF,
 +	ETHTOOL_MSG_EEE_GET_REPLY,
 +	ETHTOOL_MSG_EEE_NTF,
-+	ETHTOOL_MSG_TIMESTAMP_GET_REPLY,
++	ETHTOOL_MSG_TSINFO_GET_REPLY,
  
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
@@ -243,19 +243,19 @@ index ad6d3a00019d..ab7809404cac 100644
 +	ETHTOOL_A_EEE_MAX = (__ETHTOOL_A_EEE_CNT - 1)
 +};
 +
-+/* TIMESTAMP */
++/* TSINFO */
 +
 +enum {
-+	ETHTOOL_A_TIMESTAMP_UNSPEC,
-+	ETHTOOL_A_TIMESTAMP_HEADER,			/* nest - _A_HEADER_* */
-+	ETHTOOL_A_TIMESTAMP_TIMESTAMPING,		/* bitset */
-+	ETHTOOL_A_TIMESTAMP_TX_TYPES,			/* bitset */
-+	ETHTOOL_A_TIMESTAMP_RX_FILTERS,			/* bitset */
-+	ETHTOOL_A_TIMESTAMP_PHC_INDEX,			/* u32 */
++	ETHTOOL_A_TSINFO_UNSPEC,
++	ETHTOOL_A_TSINFO_HEADER,			/* nest - _A_HEADER_* */
++	ETHTOOL_A_TSINFO_TIMESTAMPING,			/* bitset */
++	ETHTOOL_A_TSINFO_TX_TYPES,			/* bitset */
++	ETHTOOL_A_TSINFO_RX_FILTERS,			/* bitset */
++	ETHTOOL_A_TSINFO_PHC_INDEX,			/* u32 */
 +
 +	/* add new constants above here */
-+	__ETHTOOL_A_TIMESTAMP_CNT,
-+	ETHTOOL_A_TIMESTAMP_MAX = (__ETHTOOL_A_TIMESTAMP_CNT - 1)
++	__ETHTOOL_A_TSINFO_CNT,
++	ETHTOOL_A_TSINFO_MAX = (__ETHTOOL_A_TSINFO_CNT - 1)
 +};
 +
  /* generic netlink info */

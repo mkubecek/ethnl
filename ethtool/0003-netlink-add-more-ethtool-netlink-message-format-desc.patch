@@ -1,4 +1,4 @@
-From eca6127ad3c1e143f744c8dc8994e2008a9708c7 Mon Sep 17 00:00:00 2001
+From 1fb7ae53377bcf821dca6618aa04b4aaa4302585 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 10 Mar 2020 14:12:16 +0100
 Subject: [PATCH 03/18] netlink: add more ethtool netlink message format
@@ -14,7 +14,7 @@ Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
  1 file changed, 127 insertions(+)
 
 diff --git a/netlink/desc-ethtool.c b/netlink/desc-ethtool.c
-index 76c6f13e4648..6c3d7d8825a7 100644
+index 76c6f13e4648..c242c72bf87c 100644
 --- a/netlink/desc-ethtool.c
 +++ b/netlink/desc-ethtool.c
 @@ -106,6 +106,102 @@ static const struct pretty_nla_desc __wol_desc[] = {
@@ -108,13 +108,13 @@ index 76c6f13e4648..6c3d7d8825a7 100644
 +	NLATTR_DESC_U32(ETHTOOL_A_EEE_TX_LPI_TIMER),
 +};
 +
-+static const struct pretty_nla_desc __timestamp_desc[] = {
-+	NLATTR_DESC_INVALID(ETHTOOL_A_TIMESTAMP_UNSPEC),
-+	NLATTR_DESC_NESTED(ETHTOOL_A_TIMESTAMP_HEADER, header),
-+	NLATTR_DESC_NESTED(ETHTOOL_A_TIMESTAMP_TIMESTAMPING, bitset),
-+	NLATTR_DESC_NESTED(ETHTOOL_A_TIMESTAMP_TX_TYPES, bitset),
-+	NLATTR_DESC_NESTED(ETHTOOL_A_TIMESTAMP_RX_FILTERS, bitset),
-+	NLATTR_DESC_U32(ETHTOOL_A_TIMESTAMP_PHC_INDEX),
++static const struct pretty_nla_desc __tsinfo_desc[] = {
++	NLATTR_DESC_INVALID(ETHTOOL_A_TSINFO_UNSPEC),
++	NLATTR_DESC_NESTED(ETHTOOL_A_TSINFO_HEADER, header),
++	NLATTR_DESC_NESTED(ETHTOOL_A_TSINFO_TIMESTAMPING, bitset),
++	NLATTR_DESC_NESTED(ETHTOOL_A_TSINFO_TX_TYPES, bitset),
++	NLATTR_DESC_NESTED(ETHTOOL_A_TSINFO_RX_FILTERS, bitset),
++	NLATTR_DESC_U32(ETHTOOL_A_TSINFO_PHC_INDEX),
 +};
 +
  const struct pretty_nlmsg_desc ethnl_umsg_desc[] = {
@@ -138,7 +138,7 @@ index 76c6f13e4648..6c3d7d8825a7 100644
 +	NLMSG_DESC(ETHTOOL_MSG_PAUSE_SET, pause),
 +	NLMSG_DESC(ETHTOOL_MSG_EEE_GET, eee),
 +	NLMSG_DESC(ETHTOOL_MSG_EEE_SET, eee),
-+	NLMSG_DESC(ETHTOOL_MSG_TIMESTAMP_GET, timestamp),
++	NLMSG_DESC(ETHTOOL_MSG_TSINFO_GET, tsinfo),
  };
  
  const unsigned int ethnl_umsg_n_desc = ARRAY_SIZE(ethnl_umsg_desc);
@@ -161,7 +161,7 @@ index 76c6f13e4648..6c3d7d8825a7 100644
 +	NLMSG_DESC(ETHTOOL_MSG_PAUSE_NTF, pause),
 +	NLMSG_DESC(ETHTOOL_MSG_EEE_GET_REPLY, eee),
 +	NLMSG_DESC(ETHTOOL_MSG_EEE_NTF, eee),
-+	NLMSG_DESC(ETHTOOL_MSG_TIMESTAMP_GET_REPLY, timestamp),
++	NLMSG_DESC(ETHTOOL_MSG_TSINFO_GET_REPLY, tsinfo),
  };
  
  const unsigned int ethnl_kmsg_n_desc = ARRAY_SIZE(ethnl_kmsg_desc);
