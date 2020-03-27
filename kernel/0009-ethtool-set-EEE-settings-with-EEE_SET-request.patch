@@ -1,4 +1,4 @@
-From d9573a59a6dbebce1f03dbb4ac0a8fe802fa07d2 Mon Sep 17 00:00:00 2001
+From 3a3befcf8cb301cbe8e19aeda0d93d4f99c7046a Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 26 Mar 2020 15:45:37 +0100
 Subject: [PATCH 09/12] ethtool: set EEE settings with EEE_SET request

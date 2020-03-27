@@ -1,4 +1,4 @@
-From f149ee9fd167609f22892a035f16fac4666dfee6 Mon Sep 17 00:00:00 2001
+From fce3407bfd8c49e06aa29aa96932352eb06b76bd Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 26 Mar 2020 15:49:16 +0100
 Subject: [PATCH 10/12] ethtool: add EEE_NTF notification

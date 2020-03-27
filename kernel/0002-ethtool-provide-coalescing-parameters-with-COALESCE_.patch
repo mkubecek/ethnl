@@ -1,4 +1,4 @@
-From 71cc7d5c3b4e1676cb8f66a81b8931108e1ebf6f Mon Sep 17 00:00:00 2001
+From b70e1203022198e6e3feaa4bcf404ec2f8391703 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 17 Mar 2020 14:00:04 +0100
 Subject: [PATCH 02/12] ethtool: provide coalescing parameters with

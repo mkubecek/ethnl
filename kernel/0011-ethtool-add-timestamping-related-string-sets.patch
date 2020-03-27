@@ -1,4 +1,4 @@
-From 9115b20867b6914eec70a58f3ba3b9deef4eb2b0 Mon Sep 17 00:00:00 2001
+From 1ae8a44f93a11065e10b0b089a49973e6de784cb Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 26 Mar 2020 18:25:45 +0100
 Subject: [PATCH 11/12] ethtool: add timestamping related string sets
@@ -14,7 +14,11 @@ These will be used for TIMESTAMP_GET request.
 v2: avoid compiler warning ("enumeration value not handled in switch")
     in net_hwtstamp_validate()
 
+v3: omit dash in Tx type names ("one-step-*" -> "onestep-*"), suggested by
+    Richard Cochran
+
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+Acked-by: Richard Cochran <richardcochran@gmail.com>
 ---
  include/uapi/linux/ethtool.h    |  6 ++++
  include/uapi/linux/net_tstamp.h |  6 ++++
@@ -97,7 +101,7 @@ index dbaebbe573f0..547b587c1950 100644
  
  	if (!tx_type_valid || !rx_filter_valid)
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
-index dab047eec943..6faa1e0f99a4 100644
+index 51a0941fc62f..150ff405cca4 100644
 --- a/net/ethtool/common.c
 +++ b/net/ethtool/common.c
 @@ -1,5 +1,7 @@
@@ -108,7 +112,7 @@ index dab047eec943..6faa1e0f99a4 100644
  #include "common.h"
  
  const char netdev_features_strings[NETDEV_FEATURE_COUNT][ETH_GSTRING_LEN] = {
-@@ -203,6 +205,53 @@ const char wol_mode_names[][ETH_GSTRING_LEN] = {
+@@ -204,6 +206,53 @@ const char wol_mode_names[][ETH_GSTRING_LEN] = {
  };
  static_assert(ARRAY_SIZE(wol_mode_names) == WOL_MODE_COUNT);
  
@@ -134,8 +138,8 @@ index dab047eec943..6faa1e0f99a4 100644
 +const char ts_tx_type_names[][ETH_GSTRING_LEN] = {
 +	[HWTSTAMP_TX_OFF]		= "off",
 +	[HWTSTAMP_TX_ON]		= "on",
-+	[HWTSTAMP_TX_ONESTEP_SYNC]	= "one-step-sync",
-+	[HWTSTAMP_TX_ONESTEP_P2P]	= "one-step-p2p",
++	[HWTSTAMP_TX_ONESTEP_SYNC]	= "onestep-sync",
++	[HWTSTAMP_TX_ONESTEP_P2P]	= "onestep-p2p",
 +};
 +static_assert(ARRAY_SIZE(ts_tx_type_names) == __HWTSTAMP_TX_CNT);
 +

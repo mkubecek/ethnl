@@ -11,6 +11,13 @@ Patch 1 is a fix for netdev reference leak similar to commit 2f599ec422ad
 ("ethtool: fix reference leak in some *_SET handlers") but fixing a code
 which is only in net-next tree at the moment.
 
+Changes in v3
+  - change "one-step-*" Tx type names to "onestep-*", (patch 11, suggested
+    by Richard Cochran
+  - use "TSINFO" rather than "TIMESTAMP" for timestamping information
+    constants and adjust symbol names (patch 12, suggested by Richard
+    Cochran)
+
 Changes in v2:
   - fix compiler warning in net_hwtstamp_validate() (patch 11)
   - fix follow-up lines alignment (whitespace only, patches 3 and 8)

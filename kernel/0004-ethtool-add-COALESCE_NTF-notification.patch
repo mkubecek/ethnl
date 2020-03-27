@@ -1,4 +1,4 @@
-From d3e1670d6f6b98624e3f235cac0756cd4e7208fd Mon Sep 17 00:00:00 2001
+From 648c8c25842361e8ebbca55fa6a01c130d2202e9 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 17 Mar 2020 16:41:03 +0100
 Subject: [PATCH 04/12] ethtool: add COALESCE_NTF notification
