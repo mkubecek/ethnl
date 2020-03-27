@@ -1,4 +1,4 @@
-From 917c130bee700613bf0605dc4a54fbb3259b61c1 Mon Sep 17 00:00:00 2001
+From 453a7ca61c88b3ac77d6ad0583df70f4c8934ba4 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 26 Mar 2020 15:42:16 +0100
 Subject: [PATCH 08/12] ethtool: provide EEE settings with EEE_GET request
@@ -9,6 +9,8 @@ are traditionally available via ETHTOOL_GEEE ioctl request.
 The netlink interface allows reporting EEE status for all link modes
 supported by kernel but only first 32 link modes are provided at the moment
 as only those are reported by the ethtool_ops callback and drivers.
+
+v2: fix alignment (whitespace only)
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
@@ -143,7 +145,7 @@ index 28589ad5fd8a..a790f408aa5d 100644
 +		   channels.o coalesce.o pause.o eee.o
 diff --git a/net/ethtool/eee.c b/net/ethtool/eee.c
 new file mode 100644
-index 000000000000..666b9b284ff6
+index 000000000000..46244045319e
 --- /dev/null
 +++ b/net/ethtool/eee.c
 @@ -0,0 +1,130 @@
@@ -181,8 +183,8 @@ index 000000000000..666b9b284ff6
 +};
 +
 +static int eee_prepare_data(const struct ethnl_req_info *req_base,
-+				 struct ethnl_reply_data *reply_base,
-+				 struct genl_info *info)
++			    struct ethnl_reply_data *reply_base,
++			    struct genl_info *info)
 +{
 +	struct eee_reply_data *data = EEE_REPDATA(reply_base);
 +	struct net_device *dev = reply_base->dev;
@@ -235,8 +237,8 @@ index 000000000000..666b9b284ff6
 +}
 +
 +static int eee_fill_reply(struct sk_buff *skb,
-+			       const struct ethnl_req_info *req_base,
-+			       const struct ethnl_reply_data *reply_base)
++			  const struct ethnl_req_info *req_base,
++			  const struct ethnl_reply_data *reply_base)
 +{
 +	bool compact = req_base->flags & ETHTOOL_FLAG_COMPACT_BITSETS;
 +	const struct eee_reply_data *data = EEE_REPDATA(reply_base);

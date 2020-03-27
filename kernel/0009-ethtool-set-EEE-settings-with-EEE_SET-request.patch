@@ -1,4 +1,4 @@
-From eafb0d756231d8d756f1a1a92fd432df7854684f Mon Sep 17 00:00:00 2001
+From d9573a59a6dbebce1f03dbb4ac0a8fe802fa07d2 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 26 Mar 2020 15:45:37 +0100
 Subject: [PATCH 09/12] ethtool: set EEE settings with EEE_SET request
@@ -82,7 +82,7 @@ index 2231dc779c3e..8959bc899f3c 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_USER_CNT,
 diff --git a/net/ethtool/eee.c b/net/ethtool/eee.c
-index 666b9b284ff6..207e49a9fbe0 100644
+index 46244045319e..ded092d1b2b9 100644
 --- a/net/ethtool/eee.c
 +++ b/net/ethtool/eee.c
 @@ -128,3 +128,76 @@ const struct ethnl_request_ops ethnl_eee_request_ops = {

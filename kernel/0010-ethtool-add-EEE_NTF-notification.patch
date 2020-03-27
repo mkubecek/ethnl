@@ -1,4 +1,4 @@
-From 0b60dc76c78e48daa84d4e28ddc1b69c51581fef Mon Sep 17 00:00:00 2001
+From f149ee9fd167609f22892a035f16fac4666dfee6 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 26 Mar 2020 15:49:16 +0100
 Subject: [PATCH 10/12] ethtool: add EEE_NTF notification
@@ -41,7 +41,7 @@ index 8959bc899f3c..bacdd5363510 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_KERNEL_CNT,
 diff --git a/net/ethtool/eee.c b/net/ethtool/eee.c
-index 207e49a9fbe0..3afcdd6f7cbe 100644
+index ded092d1b2b9..94aa19cff22f 100644
 --- a/net/ethtool/eee.c
 +++ b/net/ethtool/eee.c
 @@ -192,6 +192,9 @@ int ethnl_set_eee(struct sk_buff *skb, struct genl_info *info)

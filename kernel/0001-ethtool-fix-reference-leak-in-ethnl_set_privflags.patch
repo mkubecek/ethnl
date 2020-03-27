@@ -1,4 +1,4 @@
-From d76ac0a1a45b8a91471a92f2db99e78e5a42ae32 Mon Sep 17 00:00:00 2001
+From c81ba0369c2182ba2e48d13adf2a2589567a6896 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Sun, 22 Mar 2020 21:17:09 +0100
 Subject: [PATCH 01/12] ethtool: fix reference leak in ethnl_set_privflags()
@@ -45,7 +45,7 @@ index e8f03b33db9b..77447dceb109 100644
  	return ret;
  }
 
-base-commit: 92b7e62e5630a370955a4760bbeb3967457034ec
+base-commit: 5bb7357f45315138f623d08a615d23dd6ac26cf3
 -- 
 2.25.1
 

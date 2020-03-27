@@ -1,4 +1,4 @@
-From b500382ba0e0c17d5aeba19597ca7b53c33c6198 Mon Sep 17 00:00:00 2001
+From d09e76f6ac6861480c3a383c9cbde82373e0d0a8 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 26 Mar 2020 15:13:02 +0100
 Subject: [PATCH 07/12] ethtool: add PAUSE_NTF notification

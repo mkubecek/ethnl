@@ -1,4 +1,4 @@
-From 0d94d1390e886c2d616291c46509fac4cd9eac11 Mon Sep 17 00:00:00 2001
+From 71cc7d5c3b4e1676cb8f66a81b8931108e1ebf6f Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 17 Mar 2020 14:00:04 +0100
 Subject: [PATCH 02/12] ethtool: provide coalescing parameters with
@@ -14,6 +14,7 @@ Omit attributes with zero values unless they are declared as supported
 set).
 
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+Reviewed-by: Jakub Kicinski <kuba@kernel.org>
 ---
  Documentation/networking/ethtool-netlink.rst |  48 ++++-
  include/uapi/linux/ethtool_netlink.h         |  35 +++

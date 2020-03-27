@@ -1,4 +1,4 @@
-From 105373960c4afeeea7b51459b9763b0452d6e660 Mon Sep 17 00:00:00 2001
+From 9115b20867b6914eec70a58f3ba3b9deef4eb2b0 Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Thu, 26 Mar 2020 18:25:45 +0100
 Subject: [PATCH 11/12] ethtool: add timestamping related string sets
@@ -11,14 +11,18 @@ Add three string sets related to timestamping information:
 
 These will be used for TIMESTAMP_GET request.
 
+v2: avoid compiler warning ("enumeration value not handled in switch")
+    in net_hwtstamp_validate()
+
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
 ---
  include/uapi/linux/ethtool.h    |  6 ++++
  include/uapi/linux/net_tstamp.h |  6 ++++
+ net/core/dev_ioctl.c            |  6 ++++
  net/ethtool/common.c            | 49 +++++++++++++++++++++++++++++++++
  net/ethtool/common.h            |  5 ++++
  net/ethtool/strset.c            | 15 ++++++++++
- 5 files changed, 81 insertions(+)
+ 6 files changed, 87 insertions(+)
 
 diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
 index d586ee5e10a1..92f737f10117 100644
@@ -68,6 +72,30 @@ index f96e650d0af9..7ed0b3d1c00a 100644
  };
  
  /* SCM_TIMESTAMPING_PKTINFO control message */
+diff --git a/net/core/dev_ioctl.c b/net/core/dev_ioctl.c
+index dbaebbe573f0..547b587c1950 100644
+--- a/net/core/dev_ioctl.c
++++ b/net/core/dev_ioctl.c
+@@ -190,6 +190,9 @@ static int net_hwtstamp_validate(struct ifreq *ifr)
+ 	case HWTSTAMP_TX_ONESTEP_P2P:
+ 		tx_type_valid = 1;
+ 		break;
++	case __HWTSTAMP_TX_CNT:
++		/* not a real value */
++		break;
+ 	}
+ 
+ 	switch (rx_filter) {
+@@ -211,6 +214,9 @@ static int net_hwtstamp_validate(struct ifreq *ifr)
+ 	case HWTSTAMP_FILTER_NTP_ALL:
+ 		rx_filter_valid = 1;
+ 		break;
++	case __HWTSTAMP_FILTER_CNT:
++		/* not a real value */
++		break;
+ 	}
+ 
+ 	if (!tx_type_valid || !rx_filter_valid)
 diff --git a/net/ethtool/common.c b/net/ethtool/common.c
 index dab047eec943..6faa1e0f99a4 100644
 --- a/net/ethtool/common.c

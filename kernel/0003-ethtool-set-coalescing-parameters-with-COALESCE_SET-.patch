@@ -1,4 +1,4 @@
-From bee4443c5091f344629b22ccac812cb083303534 Mon Sep 17 00:00:00 2001
+From 6e422c10036f247adb2a7984dc25d27edd52860e Mon Sep 17 00:00:00 2001
 From: Michal Kubecek <mkubecek@suse.cz>
 Date: Tue, 17 Mar 2020 16:36:51 +0100
 Subject: [PATCH 03/12] ethtool: set coalescing parameters with COALESCE_SET
@@ -13,7 +13,10 @@ Like the ioctl implementation, the generic ethtool code checks if only
 supported parameters are modified; if not, first offending attribute is
 reported using extack.
 
+v2: fix alignment (whitespace only)
+
 Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+Reviewed-by: Jakub Kicinski <kuba@kernel.org>
 ---
  Documentation/networking/ethtool-netlink.rst |  42 +++++-
  include/uapi/linux/ethtool_netlink.h         |   1 +
@@ -102,7 +105,7 @@ index ed0c0fa103cd..d9f4047c64c3 100644
  	/* add new constants above here */
  	__ETHTOOL_MSG_USER_CNT,
 diff --git a/net/ethtool/coalesce.c b/net/ethtool/coalesce.c
-index ba5f2cec4ac4..3fce41a59108 100644
+index ba5f2cec4ac4..6cf1a7ebf0c5 100644
 --- a/net/ethtool/coalesce.c
 +++ b/net/ethtool/coalesce.c
 @@ -212,3 +212,139 @@ const struct ethnl_request_ops ethnl_coalesce_request_ops = {
@@ -206,9 +209,9 @@ index ba5f2cec4ac4..3fce41a59108 100644
 +	ethnl_update_u32(&coalesce.stats_block_coalesce_usecs,
 +			 tb[ETHTOOL_A_COALESCE_STATS_BLOCK_USECS], &mod);
 +	ethnl_update_bool32(&coalesce.use_adaptive_rx_coalesce,
-+			 tb[ETHTOOL_A_COALESCE_USE_ADAPTIVE_RX], &mod);
++			    tb[ETHTOOL_A_COALESCE_USE_ADAPTIVE_RX], &mod);
 +	ethnl_update_bool32(&coalesce.use_adaptive_tx_coalesce,
-+			 tb[ETHTOOL_A_COALESCE_USE_ADAPTIVE_TX], &mod);
++			    tb[ETHTOOL_A_COALESCE_USE_ADAPTIVE_TX], &mod);
 +	ethnl_update_u32(&coalesce.pkt_rate_low,
 +			 tb[ETHTOOL_A_COALESCE_PKT_RATE_LOW], &mod);
 +	ethnl_update_u32(&coalesce.rx_coalesce_usecs_low,
